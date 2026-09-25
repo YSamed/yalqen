@@ -17,6 +17,7 @@ export interface BrowserState {
   tabs: TabSnapshot[];
   activeTabId: TabId | null;
   totalMemoryMB: number | null;
+  addressPlaceholder: string;
 }
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */

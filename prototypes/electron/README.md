@@ -8,6 +8,7 @@ Faz 0 adayı: Electron + TypeScript + Svelte. Amaç ürün değil, [ölçüm sen
 npm install
 npm start          # derler ve uygulamayı açar
 npm run typecheck  # main/preload için tsc, arayüz için svelte-check
+npm test           # adres çözümleme ve arama motoru birim testleri
 npm run build
 ```
 
@@ -23,6 +24,7 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 - Kalıcı oturum (`persist:daily`), sekme listesinin saklanması; açılışta yalnızca aktif sekme yüklenir.
 - Yeni pencere istekleri sekme olarak açılır. İzinler varsayılan olarak reddedilir (tam ekran ve pano yazma hariç).
 - Sayfa çökerse sekme bellekten çıkarılmış duruma geçer; otomatik yeniden yüklenmez.
+- Arama motoru seçimi: Google (varsayılan), Yandex, DuckDuckGo, Bing, Brave Search, Ecosia veya özel adres. Adres çubuğunun ipucu metni seçime göre değişir.
 - Uygulama ikonu [`design/brand/png/icon-512.png`](../../design/brand/png/icon-512.png): macOS'ta Dock ikonu, diğer sistemlerde pencere ikonu olarak ayarlanır.
 
 Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yoktur.
@@ -40,6 +42,13 @@ Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yokt
 | ⌘S | Sekme panelini daralt/genişlet |
 | ⌥⌘I | Sayfa DevTools |
 | ⇧⌘M | Bellek ölçümü kaydet |
+
+## Ayarlar
+
+Ayarlar penceresi henüz yok (tasarım prototipe uygulanırken eklenecek). Şimdilik:
+
+- **Ayarlar → Arama motoru** menüsünden seçim yapılır; seçim `settings.json` dosyasına kaydedilir.
+- **Özel arama motoru:** Ayarlar → Ayar dosyasını aç ile `settings.json` açılır, `customSearchTemplate` alanına `%s` içeren bir http(s) adresi yazılır (ör. `"https://ornek.com/search?q=%s"`), uygulama yeniden başlatılınca menüde "Özel" seçilebilir. Geçersiz adreste Google kullanılır.
 
 ## Ölçüm
 

@@ -1,4 +1,12 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron';
+import type { SearchEngineId } from './search.js';
+
+export interface SearchEngineMenuItem {
+  id: SearchEngineId;
+  label: string;
+  checked: boolean;
+  enabled: boolean;
+}
 
 export interface MenuActions {
   newTab(): void;
@@ -14,6 +22,9 @@ export interface MenuActions {
   openPageSet(): void;
   discardBackground(): void;
   recordSnapshot(): void;
+  searchEngines: SearchEngineMenuItem[];
+  selectSearchEngine(id: SearchEngineId): void;
+  openSettingsFile(): void;
 }
 
 /** Shortcuts live in the app menu so they work while a page has focus. */
@@ -58,6 +69,23 @@ export function buildMenu(actions: MenuActions): Menu {
       ],
     },
     { label: 'Sekmeler', submenu: tabShortcuts },
+    {
+      label: 'Ayarlar',
+      submenu: [
+        {
+          label: 'Arama motoru',
+          submenu: actions.searchEngines.map((engine) => ({
+            label: engine.label,
+            type: 'radio' as const,
+            checked: engine.checked,
+            enabled: engine.enabled,
+            click: () => actions.selectSearchEngine(engine.id),
+          })),
+        },
+        { type: 'separator' },
+        { label: 'Ayar dosyasını aç', click: actions.openSettingsFile },
+      ],
+    },
     {
       label: 'Ölçüm',
       submenu: [

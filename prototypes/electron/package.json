@@ -9,6 +9,7 @@
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "vite build",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && svelte-check --tsconfig ./tsconfig.renderer.json",
+    "test": "npm run build:main && node --test \"test/*.test.mjs\"",
     "start": "npm run build && electron ."
   },
   "devDependencies": {

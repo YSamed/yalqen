@@ -11,7 +11,12 @@
   const DEFAULT_WIDTH = 240;
   const PREFS_KEY = 'yalqen:panel';
 
-  let browser: BrowserState = $state({ tabs: [], activeTabId: null, totalMemoryMB: null });
+  let browser: BrowserState = $state({
+    tabs: [],
+    activeTabId: null,
+    totalMemoryMB: null,
+    addressPlaceholder: 'Ara veya adres yaz',
+  });
   let collapsed = $state(false);
   let width = $state(DEFAULT_WIDTH);
   let toolbar: Toolbar;
@@ -54,7 +59,13 @@
 
 <div class="shell" style:grid-template-columns="1fr {panelWidth}px">
   <div class="top">
-    <Toolbar bind:this={toolbar} tab={activeTab} totalMemoryMB={browser.totalMemoryMB} height={TOOLBAR_HEIGHT} />
+    <Toolbar
+      bind:this={toolbar}
+      tab={activeTab}
+      totalMemoryMB={browser.totalMemoryMB}
+      placeholder={browser.addressPlaceholder}
+      height={TOOLBAR_HEIGHT}
+    />
   </div>
   <!-- The page view is drawn by the main process over this area. -->
   <main class="page" aria-hidden="true"></main>

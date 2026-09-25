@@ -39,7 +39,7 @@ input::placeholder{color:#8a8a82}
     </div>
     <label style="flex-grow: 1; min-width: 0; display: flex">
       <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Adres</span>
-      <input type="text" spellcheck="false" placeholder="Ara veya adres yaz" value="{{addressValue}}" onChange="{{onAddressChange}}" onFocus="{{onAddressFocus}}" onBlur="{{onAddressBlur}}" onKeyDown="{{onAddressKey}}" style="width: 100%; height: 30px; box-sizing: border-box; padding: 0 12px; border: 0; border-radius: 8px; background: {{t.surface}}; box-shadow: {{addressShadow}}; outline: none; font-size: 13px">
+      <input type="text" spellcheck="false" placeholder="{{addressPlaceholder}}" value="{{addressValue}}" onChange="{{onAddressChange}}" onFocus="{{onAddressFocus}}" onBlur="{{onAddressBlur}}" onKeyDown="{{onAddressKey}}" style="width: 100%; height: 30px; box-sizing: border-box; padding: 0 12px; border: 0; border-radius: 8px; background: {{t.surface}}; box-shadow: {{addressShadow}}; outline: none; font-size: 13px">
     </label>
     <button onClick="{{toggleMemory}}" aria-label="Bellek kullanımı: {{totalLabel}}" aria-expanded="{{showMemory}}" style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: 6px; background: {{pillBg}}; color: {{pillColor}}; font-size: 11px; font-variant-numeric: tabular-nums">
       <sc-if value="{{warning}}" hint-placeholder-val="{{false}}">
@@ -231,7 +231,32 @@ input::placeholder{color:#8a8a82}
           </button>
         </div>
         <div style="padding: 8px 20px 20px; display: flex; flex-direction: column">
-          <h3 style="margin: 12px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: {{t.muted}}">Bellek</h3>
+          <h3 style="margin: 12px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: {{t.muted}}">Arama</h3>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 0; border-bottom: 1px solid {{t.border}}">
+            <label for="engine" style="display: flex; flex-direction: column; gap: 2px">
+              <span>Arama motoru</span>
+              <span style="font-size: 11px; color: {{t.muted}}">Adres çubuğuna adres dışında bir şey yazıldığında kullanılır.</span>
+            </label>
+            <select id="engine" value="{{engineValue}}" onChange="{{onEngineChange}}" style="height: 28px; padding: 0 8px; border: 1px solid {{t.border}}; border-radius: 6px; background: {{t.page}}">
+              <sc-for list="{{engineOptions}}" as="opt" hint-placeholder-count="7">
+                <option value="{{opt.value}}">{{opt.label}}</option>
+              </sc-for>
+            </select>
+          </div>
+          <sc-if value="{{isCustomEngine}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid {{t.border}}">
+              <label for="engine-url" style="display: flex; flex-direction: column; gap: 2px">
+                <span>Arama adresi</span>
+                <span style="font-size: 11px; color: {{t.muted}}">Aranan metin %s yerine yazılır.</span>
+              </label>
+              <input id="engine-url" type="url" spellcheck="false" placeholder="https://ornek.com/search?q=%s" value="{{customTemplate}}" onChange="{{onCustomTemplateChange}}" style="height: 28px; box-sizing: border-box; padding: 0 8px; border: 1px solid {{customBorder}}; border-radius: 6px; background: {{t.page}}; font-size: 12px">
+              <sc-if value="{{customInvalid}}" hint-placeholder-val="{{false}}">
+                <span role="alert" style="font-size: 11px; color: {{t.warn}}">Adres http(s) ile başlamalı ve %s içermeli.</span>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <h3 style="margin: 20px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: {{t.muted}}">Bellek</h3>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 10px 0; border-bottom: 1px solid {{t.border}}">
             <label for="target" style="display: flex; flex-direction: column; gap: 2px">
               <span>Bellek hedefi</span>
@@ -366,6 +391,30 @@ class Component extends DCLogic {
     return tabs;
   }
 
+  engines() {
+    return [
+      { value: 'google', label: 'Google', placeholder: "Google'da ara veya adres yaz", template: 'https://www.google.com/search?q=%s' },
+      { value: 'yandex', label: 'Yandex', placeholder: "Yandex'te ara veya adres yaz", template: 'https://yandex.com.tr/search/?text=%s' },
+      { value: 'duckduckgo', label: 'DuckDuckGo', placeholder: "DuckDuckGo'da ara veya adres yaz", template: 'https://duckduckgo.com/?q=%s' },
+      { value: 'bing', label: 'Bing', placeholder: "Bing'de ara veya adres yaz", template: 'https://www.bing.com/search?q=%s' },
+      { value: 'brave', label: 'Brave Search', placeholder: "Brave Search'te ara veya adres yaz", template: 'https://search.brave.com/search?q=%s' },
+      { value: 'ecosia', label: 'Ecosia', placeholder: "Ecosia'da ara veya adres yaz", template: 'https://www.ecosia.org/search?q=%s' },
+      { value: 'custom', label: 'Özel…', placeholder: 'Ara veya adres yaz', template: '' }
+    ];
+  }
+
+  getEngine() {
+    const s = this.st();
+    const id = s.engine || 'google';
+    const engine = this.engines().find((item) => item.value === id) || this.engines()[0];
+    if (engine.value !== 'custom') return engine;
+    return Object.assign({}, engine, { template: s.customTemplate || '' });
+  }
+
+  isValidTemplate(template) {
+    return /^https?:\/\/\S+$/.test(template) && template.indexOf('%s') >= 0;
+  }
+
   st() {
     return this.state || {};
   }
@@ -468,8 +517,23 @@ class Component extends DCLogic {
   }
 
   navigate(input) {
-    const text = String(input || '').trim().replace(/^https?:\/\//, '');
-    if (!text) return;
+    const raw = String(input || '').trim();
+    if (!raw) return;
+    const looksLikeAddress = !/\s/.test(raw) && (/^https?:\/\//.test(raw) || /^[^/]+\.[^/]+/.test(raw) || /^localhost/.test(raw));
+    if (!looksLikeAddress) {
+      const engine = this.getEngine();
+      // An invalid custom template falls back to Google, as the app would.
+      const template = this.isValidTemplate(engine.template) ? engine.template : this.engines()[0].template;
+      const url = template.replace('%s', encodeURIComponent(raw)).replace(/^https?:\/\//, '');
+      const host = url.split('/')[0];
+      const activeId = this.getActiveId();
+      const tabs = this.getTabs().map((tab) => (tab.id === activeId
+        ? Object.assign({}, tab, { url: url, title: raw + ' – ' + host, letter: host.replace(/^www\./, '').charAt(0).toUpperCase(), tile: '#57534e', isNew: false, mb: 120, live: true })
+        : tab));
+      this.setTabs(tabs, { addressDraft: null, addressFocused: false });
+      return;
+    }
+    const text = raw.replace(/^https?:\/\//, '');
     const domain = text.split('/')[0];
     const activeId = this.getActiveId();
     const tabs = this.getTabs().map((tab) => (tab.id === activeId
@@ -623,6 +687,16 @@ class Component extends DCLogic {
       toggleMemory: () => this.setState({ overlay: overlay === 'memory' ? null : 'memory' }),
       openSettings: () => this.setState({ overlay: 'settings' }),
       closeOverlay: () => this.setState({ overlay: null }),
+
+      addressPlaceholder: this.getEngine().placeholder,
+      engineValue: this.getEngine().value,
+      engineOptions: this.engines().map((engine) => ({ value: engine.value, label: engine.label })),
+      onEngineChange: (event) => this.setState({ engine: event.target.value }),
+      isCustomEngine: this.getEngine().value === 'custom',
+      customTemplate: s.customTemplate || '',
+      customInvalid: this.getEngine().value === 'custom' && !!s.customTemplate && !this.isValidTemplate(s.customTemplate),
+      customBorder: this.getEngine().value === 'custom' && !!s.customTemplate && !this.isValidTemplate(s.customTemplate) ? t.warn : t.border,
+      onCustomTemplateChange: (event) => this.setState({ customTemplate: event.target.value }),
 
       targetValue: String(target),
       targetOptions: [1024, 1536, 2048, 3072, 4096].map((mb) => ({ value: String(mb), label: this.formatMb(mb) })),

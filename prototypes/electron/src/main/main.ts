@@ -1,10 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, ipcMain, session } from 'electron';
-import { IpcChannel, type ChromeLayout, type UiAction, type UiCommand } from '../shared/types.js';
+import { BaseWindow, Menu, WebContentsView, app, ipcMain, session, shell } from 'electron';
+import {
+  IpcChannel,
+  type BrowserState,
+  type ChromeLayout,
+  type UiAction,
+  type UiCommand,
+} from '../shared/types.js';
 import { buildMenu } from './menu.js';
 import { MetricsLog, readProcessMemory } from './metrics.js';
 import { SessionStore } from './persistence.js';
+import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
+import { SettingsStore } from './settings.js';
 import { TabManager } from './tabs.js';
 import { resolveInput } from './url.js';
 
@@ -50,12 +58,20 @@ function createBrowser(): void {
   daily.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission));
 
   const store = new SessionStore(app.getPath('userData'));
+  const settings = new SettingsStore(app.getPath('userData'));
+  const searchEngine = () =>
+    resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
   let layout: ChromeLayout = { toolbarHeight: 44, panelWidth: 240 };
   let totalMemoryMB: number | null = null;
 
+  const browserState = (): BrowserState => ({
+    ...tabs.state(),
+    totalMemoryMB,
+    addressPlaceholder: searchEngine().placeholder,
+  });
   const pushState = () => {
     if (!ui.webContents.isDestroyed()) {
-      ui.webContents.send(IpcChannel.state, tabs.state(totalMemoryMB));
+      ui.webContents.send(IpcChannel.state, browserState());
     }
   };
   const sendCommand = (command: UiCommand) => {
@@ -105,7 +121,7 @@ function createBrowser(): void {
     sendCommand({ type: 'focus-address' });
   };
 
-  Menu.setApplicationMenu(
+  const installMenu = () => Menu.setApplicationMenu(
     buildMenu({
       newTab: newTabWithAddress,
       closeTab: () => tabs.activeTabId && tabs.close(tabs.activeTabId),
@@ -122,11 +138,37 @@ function createBrowser(): void {
       },
       discardBackground: () => tabs.discardBackground(),
       recordSnapshot: () => recordSnapshot(`live-${tabs.liveCount}/total-${tabs.count}`),
+      searchEngines: [
+        ...SEARCH_ENGINES.map((engine) => ({
+          id: engine.id,
+          label: engine.label,
+          checked: searchEngine().id === engine.id,
+          enabled: true,
+        })),
+        {
+          id: 'custom' as const,
+          label: isValidSearchTemplate(settings.get().customSearchTemplate)
+            ? 'Özel'
+            : 'Özel (ayar dosyasında tanımlı değil)',
+          checked: searchEngine().id === 'custom',
+          enabled: isValidSearchTemplate(settings.get().customSearchTemplate),
+        },
+      ],
+      selectSearchEngine: (id) => {
+        settings.update({ searchEngine: id });
+        installMenu();
+        pushState();
+      },
+      openSettingsFile: () => {
+        settings.update({});
+        void shell.openPath(settings.file);
+      },
     }),
   );
+  installMenu();
 
   ipcMain.handle(IpcChannel.getState, (event) =>
-    event.sender === ui.webContents ? tabs.state(totalMemoryMB) : null,
+    event.sender === ui.webContents ? browserState() : null,
   );
   ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => {
     if (event.sender !== ui.webContents) return;
@@ -160,7 +202,7 @@ function createBrowser(): void {
         tabs.move(action.id, action.toIndex);
         break;
       case 'navigate':
-        tabs.navigate(resolveInput(action.input));
+        tabs.navigate(resolveInput(action.input, searchEngine()));
         break;
       case 'go-back':
         tabs.goBack();

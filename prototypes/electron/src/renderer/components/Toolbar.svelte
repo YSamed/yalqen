@@ -5,8 +5,14 @@
   let {
     tab,
     totalMemoryMB,
+    placeholder,
     height,
-  }: { tab: TabSnapshot | null; totalMemoryMB: number | null; height: number } = $props();
+  }: {
+    tab: TabSnapshot | null;
+    totalMemoryMB: number | null;
+    placeholder: string;
+    height: number;
+  } = $props();
 
   let input: HTMLInputElement;
   let editing = $state(false);
@@ -70,7 +76,7 @@
       type="text"
       spellcheck="false"
       autocomplete="off"
-      placeholder="Ara veya adres yaz"
+      {placeholder}
       aria-label="Adres"
       onfocus={() => {
         editing = true;

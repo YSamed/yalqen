@@ -53,11 +53,10 @@ export class TabManager {
     return this.tabs.length;
   }
 
-  state(totalMemoryMB: number | null): BrowserState {
+  state(): Pick<BrowserState, 'tabs' | 'activeTabId'> {
     return {
       tabs: this.tabs.map((tab) => this.snapshot(tab)),
       activeTabId: this.activeId,
-      totalMemoryMB,
     };
   }
 
