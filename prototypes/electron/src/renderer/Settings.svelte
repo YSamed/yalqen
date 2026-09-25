@@ -12,6 +12,10 @@
     { value: true, label: 'Açık' },
     { value: false, label: 'Kapalı' },
   ] as const;
+  const blockAdsOptions = [
+    { value: true, label: 'Açık' },
+    { value: false, label: 'Kapalı' },
+  ] as const;
   const themeOptions = [
     { value: 'system', label: 'Sistem' },
     { value: 'light', label: 'Açık' },
@@ -123,7 +127,7 @@
     </div>
 
     <h2>Bellek</h2>
-    <div class="row last">
+    <div class="row">
       <span class="label">
         <span>Arka plan sekmelerini dondur</span>
         <span class="hint">Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve canlı tutulan sekmeler dondurulmaz.</span>
@@ -133,6 +137,24 @@
           <button
             aria-pressed={values.freezeBackgroundTabs === option.value}
             onclick={() => update({ freezeBackgroundTabs: option.value })}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+
+    <h2>İçerik</h2>
+    <div class="row last">
+      <span class="label">
+        <span>Reklam ve izleyicileri engelle</span>
+        <span class="hint">Sayfalar daha az şey indirir ve daha hızlı açılır. Filtre listeleri haftada bir güncellenir.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Reklam ve izleyicileri engelle">
+        {#each blockAdsOptions as option (option.label)}
+          <button
+            aria-pressed={values.blockAds === option.value}
+            onclick={() => update({ blockAds: option.value })}
           >
             {option.label}
           </button>

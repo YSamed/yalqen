@@ -9,6 +9,8 @@ export interface CommandBarOptions {
   onSubmit: (input: string, mode: CommandBarOpen['mode']) => void;
   /** Called after the bar is closed without a submit. */
   onDismiss: () => void;
+  /** Called with the current text each time the user edits it. */
+  onInput: (input: string) => void;
 }
 
 /**
@@ -84,6 +86,10 @@ export class CommandBar {
 
   private readonly onAction = (event: IpcMainEvent, action: CommandBarAction): void => {
     if (event.sender !== this.view.webContents || !this.opened) return;
+    if (action.type === 'input') {
+      if (typeof action.input === 'string') this.options.onInput(action.input);
+      return;
+    }
     this.close();
     if (action.type === 'submit' && typeof action.input === 'string' && action.input.trim() !== '') {
       this.options.onSubmit(action.input, this.mode);

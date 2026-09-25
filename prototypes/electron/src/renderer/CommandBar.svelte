@@ -19,6 +19,10 @@
     finish({ type: 'submit', input: value });
   }
 
+  function onInput(): void {
+    window.yalqenCommand.send({ type: 'input', input: value });
+  }
+
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -50,6 +54,7 @@
     <input
       bind:this={input}
       bind:value
+      oninput={onInput}
       type="text"
       spellcheck="false"
       autocomplete="off"
