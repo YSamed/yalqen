@@ -23,6 +23,7 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 - Kalıcı oturum (`persist:daily`), sekme listesinin saklanması; açılışta yalnızca aktif sekme yüklenir.
 - Yeni pencere istekleri sekme olarak açılır. İzinler varsayılan olarak reddedilir (tam ekran ve pano yazma hariç).
 - Sayfa çökerse sekme bellekten çıkarılmış duruma geçer; otomatik yeniden yüklenmez.
+- Uygulama ikonu [`design/brand/png/icon-512.png`](../../design/brand/png/icon-512.png): macOS'ta Dock ikonu, diğer sistemlerde pencere ikonu olarak ayarlanır.
 
 Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yoktur.
 

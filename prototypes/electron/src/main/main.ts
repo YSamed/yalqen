@@ -18,6 +18,7 @@ app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-proto
 const repoRoot = path.resolve(app.getAppPath(), '../..');
 const metricsLog = new MetricsLog(process.env.YALQEN_METRICS_DIR ?? path.join(repoRoot, 'bench/results'));
 const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
+const appIcon = path.join(repoRoot, 'design/brand/png/icon-512.png');
 
 function createBrowser(): void {
   const window = new BaseWindow({
@@ -26,6 +27,7 @@ function createBrowser(): void {
     minWidth: 640,
     minHeight: 400,
     title: 'yalqen',
+    icon: appIcon,
     titleBarStyle: 'hiddenInset',
   });
 
@@ -207,5 +209,9 @@ function readPageSet(): string[] {
   }
 }
 
-app.whenReady().then(createBrowser);
+app.whenReady().then(() => {
+  // macOS ignores the window icon; unpackaged runs need the Dock icon set explicitly.
+  app.dock?.setIcon(appIcon);
+  createBrowser();
+});
 app.on('window-all-closed', () => app.quit());
