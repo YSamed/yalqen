@@ -188,6 +188,7 @@ Kapsam:
 - Ayrı kalıcı geliştirme oturumu.
 - Otomatik uyutma dışında tutma.
 - İsteğe bağlı açılan gömülü DevTools.
+- Tek tuşla telefon görünümü: sekmeyi seçilen cihaz boyutunda, çerçeve içinde gösterme; cihaz genişliği, piksel yoğunluğu, dokunma ve mobil tarayıcı kimliği emülasyonu; cihaz seçimi ve döndürme. Electron prototipinde denendi.
 - Hard reload ve kapsamı açık site verisi temizleme.
 - Mod göstergesi ve mod değiştirme davranışı.
 

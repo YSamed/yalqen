@@ -24,6 +24,7 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 - Kalıcı oturum (`persist:daily`), sekme listesinin saklanması; açılışta yalnızca aktif sekme yüklenir.
 - Yeni pencere istekleri sekme olarak açılır. İzinler varsayılan olarak reddedilir (tam ekran ve pano yazma hariç).
 - Sayfa çökerse sekme bellekten çıkarılmış duruma geçer; otomatik yeniden yüklenmez.
+- Telefon görünümü: aktif sekme tek tuşla seçili cihazın boyutunda, çerçeve içinde gösterilir. Sayfa cihaz genişliğini, piksel yoğunluğunu, dokunma olaylarını ve mobil tarayıcı kimliğini görür. Cihazlar: iPhone 15, iPhone SE, Pixel 8, iPad mini; yatay çevrilebilir. Pencere küçükse görünüm oranlanarak küçültülür. Açıp kapatınca sayfa yeniden yüklenir (sunucu da tarayıcı kimliğini görsün diye). Sekme bazındadır ve kaydedilmez.
 - Arama motoru seçimi: Google (varsayılan), Yandex, DuckDuckGo, Bing, Brave Search, Ecosia veya özel adres. Adres çubuğunun ipucu metni seçime göre değişir.
 
 Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yoktur.
@@ -40,6 +41,8 @@ Otomatik bellekten çıkarma ve bellek hedefi Faz 2 kapsamındadır; burada yokt
 | ⌘1…⌘8, ⌘9 | Sekme seç, son sekme |
 | ⌘S | Sekme panelini daralt/genişlet |
 | ⌥⌘I | Sayfa DevTools |
+| ⌥⌘M | Telefon görünümü aç/kapat |
+| ⇧⌥⌘M | Cihazı döndür |
 | ⇧⌘M | Bellek ölçümü kaydet |
 
 ## Ayarlar

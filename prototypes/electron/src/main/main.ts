@@ -8,6 +8,7 @@ import {
   type UiAction,
   type UiCommand,
 } from '../shared/types.js';
+import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { buildMenu } from './menu.js';
 import { MetricsLog, readProcessMemory } from './metrics.js';
 import { SessionStore } from './persistence.js';
@@ -61,6 +62,8 @@ function createBrowser(): void {
     resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
   let layout: ChromeLayout = { toolbarHeight: 44, panelWidth: 240 };
   let totalMemoryMB: number | null = null;
+  // Device used by the phone view shortcut; the last one picked from the menu.
+  let deviceId = DEFAULT_DEVICE_ID;
 
   const browserState = (): BrowserState => ({
     ...tabs.state(),
@@ -130,6 +133,18 @@ function createBrowser(): void {
       goForward: () => tabs.goForward(),
       togglePanel: () => sendCommand({ type: 'toggle-panel' }),
       toggleDevTools: () => tabs.toggleDevTools(),
+      toggleDeviceView: () => tabs.toggleEmulation(deviceId),
+      rotateDevice: () => tabs.rotateDevice(),
+      devices: DEVICES.map((device) => ({
+        id: device.id,
+        label: device.label,
+        checked: device.id === deviceId,
+      })),
+      selectDevice: (id) => {
+        deviceId = id;
+        tabs.selectDevice(id);
+        installMenu();
+      },
       selectTab: (index) => tabs.selectByIndex(index),
       openPageSet: () => {
         for (const url of readPageSet()) tabs.open(url, { activate: false });

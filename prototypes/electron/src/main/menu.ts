@@ -1,4 +1,5 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron';
+import type { DeviceId } from '../shared/types.js';
 import type { SearchEngineId } from './search.js';
 
 export interface SearchEngineMenuItem {
@@ -6,6 +7,12 @@ export interface SearchEngineMenuItem {
   label: string;
   checked: boolean;
   enabled: boolean;
+}
+
+export interface DeviceMenuItem {
+  id: DeviceId;
+  label: string;
+  checked: boolean;
 }
 
 export interface MenuActions {
@@ -18,6 +25,10 @@ export interface MenuActions {
   goForward(): void;
   togglePanel(): void;
   toggleDevTools(): void;
+  toggleDeviceView(): void;
+  rotateDevice(): void;
+  devices: DeviceMenuItem[];
+  selectDevice(id: DeviceId): void;
   selectTab(index: number): void;
   openPageSet(): void;
   discardBackground(): void;
@@ -59,6 +70,17 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: 'Sekme panelini daralt/genişlet', accelerator: 'CmdOrCtrl+S', click: actions.togglePanel },
         { type: 'separator' },
         { label: 'Sayfa DevTools', accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },
+        { label: 'Telefon görünümü', accelerator: 'Alt+CmdOrCtrl+M', click: actions.toggleDeviceView },
+        {
+          label: 'Cihaz',
+          submenu: actions.devices.map((device) => ({
+            label: device.label,
+            type: 'radio' as const,
+            checked: device.checked,
+            click: () => actions.selectDevice(device.id),
+          })),
+        },
+        { label: 'Cihazı döndür', accelerator: 'Shift+Alt+CmdOrCtrl+M', click: actions.rotateDevice },
       ],
     },
     {
