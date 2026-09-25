@@ -35,6 +35,7 @@
     const states = [
       tab.id === activeTabId ? 'aktif' : null,
       tab.live ? null : 'bellekten çıkarılmış',
+      tab.frozen ? 'dondurulmuş' : null,
       tab.keepAlive ? 'canlı tutuluyor' : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
@@ -173,6 +174,14 @@
     <span class="memory" title="Uygulamanın toplam bellek kullanımı (working set)">
       {#if totalMemoryMB === null}—{:else}{totalMemoryMB}{/if}{#if !collapsed}&nbsp;MB{/if}
     </span>
+    <button
+      class="footer-button"
+      title="Ayarlar (⌘,)"
+      aria-label="Ayarlar"
+      onclick={() => send({ type: 'open-settings' })}
+    >
+      <Icon name="settings" />
+    </button>
     <button
       class="footer-button toggle"
       title={collapsed ? 'Paneli genişlet (⌘S)' : 'Paneli daralt (⌘S)'}

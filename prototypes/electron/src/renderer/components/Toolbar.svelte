@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TabSnapshot } from '../../shared/types';
+  import { NEW_TAB_URL, type TabSnapshot } from '../../shared/types';
   import Icon from './Icon.svelte';
 
   let {
@@ -19,7 +19,9 @@
   let editing = $state(false);
   let value = $state('');
 
-  const displayUrl = $derived(!tab || tab.url === 'about:blank' ? '' : tab.url);
+  const displayUrl = $derived(
+    !tab || tab.url === 'about:blank' || tab.url === NEW_TAB_URL ? '' : tab.url,
+  );
 
   $effect(() => {
     if (!editing) value = displayUrl;

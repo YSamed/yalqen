@@ -1,18 +1,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { BaseWindow, Menu, WebContentsView, app, ipcMain, session, shell } from 'electron';
+import { BaseWindow, Menu, WebContentsView, app, ipcMain, nativeTheme, session } from 'electron';
 import {
   IpcChannel,
+  SettingsChannel,
   type BrowserState,
   type ChromeLayout,
   type UiAction,
+  type SettingsView,
   type UiCommand,
 } from '../shared/types.js';
+import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { buildMenu } from './menu.js';
 import { MetricsLog, readProcessMemory } from './metrics.js';
 import { SessionStore } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
+import { SettingsWindow } from './settings-window.js';
 import { TabManager } from './tabs.js';
 import { resolveInput } from './url.js';
 
@@ -28,6 +32,9 @@ app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-proto
 const repoRoot = path.resolve(app.getAppPath(), '../..');
 const metricsLog = new MetricsLog(process.env.YALQEN_METRICS_DIR ?? path.join(repoRoot, 'bench/results'));
 const pageSetFile = path.join(repoRoot, 'bench/pages.txt');
+const appIcon = path.join(repoRoot, 'design/brand/png/icon-512.png');
+
+registerInternalScheme();
 
 function createBrowser(): void {
   const window = new BaseWindow({
@@ -36,6 +43,7 @@ function createBrowser(): void {
     minWidth: 640,
     minHeight: 400,
     title: 'yalqen',
+    icon: appIcon,
     titleBarStyle: 'hiddenInset',
   });
 
@@ -56,11 +64,18 @@ function createBrowser(): void {
     callback(ALLOWED_PERMISSIONS.has(permission)),
   );
   daily.setPermissionCheckHandler((_contents, permission) => ALLOWED_PERMISSIONS.has(permission));
+  serveInternalPages(daily, path.join(__dirname, '../renderer/newtab.html'));
 
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
   const searchEngine = () =>
     resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
+  const settingsWindow = new SettingsWindow({
+    preload: path.join(__dirname, '../preload/settings-preload.js'),
+    page: path.join(__dirname, '../renderer/settings.html'),
+    icon: appIcon,
+  });
+  nativeTheme.themeSource = settings.get().theme;
   let layout: ChromeLayout = { panelWidth: 240, windowControls: true };
   let totalMemoryMB: number | null = null;
 
@@ -68,6 +83,7 @@ function createBrowser(): void {
     ...tabs.state(),
     totalMemoryMB,
     addressPlaceholder: searchEngine().placeholder,
+    panelCollapsed: settings.get().panelCollapsed,
   });
   const pushState = () => {
     if (!ui.webContents.isDestroyed()) {
@@ -82,6 +98,7 @@ function createBrowser(): void {
   const tabs: TabManager = new TabManager({
     window,
     session: daily,
+    freezeBackground: () => settings.get().freezeBackgroundTabs,
     onChange: () => {
       pushState();
       store.scheduleSave(() => tabs.toSession());
@@ -112,63 +129,66 @@ function createBrowser(): void {
     const file = metricsLog.write({
       event: 'snapshot',
       label,
-      tabs: { total: tabs.count, live: tabs.liveCount },
+      tabs: { total: tabs.count, live: tabs.liveCount, frozen: tabs.frozenCount },
       totalWorkingSetKB: memory.totalKB,
       processes: memory.processes,
     });
     console.log(`[metrics] ${label}: ${Math.round(memory.totalKB / 1024)} MB -> ${file}`);
   };
 
+  const settingsView = (): SettingsView => {
+    const { version: _version, ...values } = settings.get();
+    return {
+      values,
+      engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
+      customTemplateValid: isValidSearchTemplate(values.customSearchTemplate),
+    };
+  };
+  const updateSettings = (patch: unknown) => {
+    const wasFreezing = settings.get().freezeBackgroundTabs;
+    settings.update(patch);
+    nativeTheme.themeSource = settings.get().theme;
+    if (settings.get().freezeBackgroundTabs !== wasFreezing) tabs.applyFreezeSetting();
+    pushState();
+    settingsWindow.send(settingsView());
+  };
+  const togglePanel = () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed });
+
   const newTabWithAddress = () => {
     tabs.open();
     sendCommand({ type: 'focus-address' });
   };
 
-  const installMenu = () => Menu.setApplicationMenu(
+  Menu.setApplicationMenu(
     buildMenu({
       newTab: newTabWithAddress,
-      closeTab: () => tabs.activeTabId && tabs.close(tabs.activeTabId),
+      closeTab: () => {
+        // The shortcut is app-wide; in the settings window it closes that window.
+        if (settingsWindow.isFocused()) settingsWindow.close();
+        else if (tabs.activeTabId) tabs.close(tabs.activeTabId);
+      },
       reopenClosedTab: () => tabs.reopenClosed(),
       focusAddress: () => sendCommand({ type: 'focus-address' }),
       reload: () => tabs.reload(),
       goBack: () => tabs.goBack(),
       goForward: () => tabs.goForward(),
-      togglePanel: () => sendCommand({ type: 'toggle-panel' }),
+      togglePanel,
       toggleDevTools: () => tabs.toggleDevTools(),
       selectTab: (index) => tabs.selectByIndex(index),
       openPageSet: () => {
         for (const url of readPageSet()) tabs.open(url, { activate: false });
       },
       discardBackground: () => tabs.discardBackground(),
-      recordSnapshot: () => recordSnapshot(`live-${tabs.liveCount}/total-${tabs.count}`),
-      searchEngines: [
-        ...SEARCH_ENGINES.map((engine) => ({
-          id: engine.id,
-          label: engine.label,
-          checked: searchEngine().id === engine.id,
-          enabled: true,
-        })),
-        {
-          id: 'custom' as const,
-          label: isValidSearchTemplate(settings.get().customSearchTemplate)
-            ? 'Özel'
-            : 'Özel (ayar dosyasında tanımlı değil)',
-          checked: searchEngine().id === 'custom',
-          enabled: isValidSearchTemplate(settings.get().customSearchTemplate),
-        },
-      ],
-      selectSearchEngine: (id) => {
-        settings.update({ searchEngine: id });
-        installMenu();
-        pushState();
+      simulateMemoryPressure: () => {
+        void tabs.simulateMemoryPressure().then((sent) => {
+          if (sent) console.log('[memory] critical pressure notification sent');
+        });
       },
-      openSettingsFile: () => {
-        settings.update({});
-        void shell.openPath(settings.file);
-      },
+      recordSnapshot: () =>
+        recordSnapshot(`live-${tabs.liveCount}/frozen-${tabs.frozenCount}/total-${tabs.count}`),
+      openSettings: () => settingsWindow.open(),
     }),
   );
-  installMenu();
 
   ipcMain.handle(IpcChannel.getState, (event) =>
     event.sender === ui.webContents ? browserState() : null,
@@ -181,6 +201,14 @@ function createBrowser(): void {
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => {
     if (event.sender !== ui.webContents) return;
     handleAction(action);
+  });
+  ipcMain.handle(SettingsChannel.get, (event) =>
+    event.sender === settingsWindow.contents ? settingsView() : null,
+  );
+  ipcMain.handle(SettingsChannel.update, (event, patch: unknown) => {
+    if (event.sender !== settingsWindow.contents) return null;
+    updateSettings(patch);
+    return settingsView();
   });
 
   function handleAction(action: UiAction): void {
@@ -216,6 +244,12 @@ function createBrowser(): void {
       case 'reload':
         tabs.reload();
         break;
+      case 'toggle-panel':
+        togglePanel();
+        break;
+      case 'open-settings':
+        settingsWindow.open();
+        break;
     }
   }
 
@@ -226,6 +260,7 @@ function createBrowser(): void {
 
   window.on('close', () => {
     clearInterval(memoryTimer);
+    settingsWindow.close();
     store.saveNow(tabs.toSession());
     tabs.destroyAll();
     if (!ui.webContents.isDestroyed()) ui.webContents.close();
@@ -254,5 +289,16 @@ function readPageSet(): string[] {
   }
 }
 
-app.whenReady().then(createBrowser);
+app.setAboutPanelOptions({
+  applicationName: 'yalqen',
+  applicationVersion: app.getVersion(),
+  version: `Faz 0 prototipi · Electron ${process.versions.electron}`,
+  iconPath: appIcon,
+});
+
+app.whenReady().then(() => {
+  // macOS ignores the window icon; unpackaged runs need the Dock icon set explicitly.
+  app.dock?.setIcon(appIcon);
+  createBrowser();
+});
 app.on('window-all-closed', () => app.quit());

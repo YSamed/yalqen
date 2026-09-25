@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
-import type { BrowserState, TabId, TabSnapshot } from '../shared/types.js';
+import { NEW_TAB_URL, type BrowserState, type TabId, type TabSnapshot } from '../shared/types.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
 const MAX_CLOSED_TABS = 20;
@@ -15,6 +15,8 @@ interface Tab {
   faviconUrl: string | null;
   keepAlive: boolean;
   loading: boolean;
+  /** Live page frozen in the background: no JS, timers or rendering until selected again. */
+  frozen: boolean;
   /** Navigation history kept while the tab is discarded. */
   history: SavedHistory | null;
 }
@@ -28,6 +30,8 @@ export interface RestoreTiming {
 export interface TabManagerOptions {
   window: BaseWindow;
   session: Session;
+  /** Whether background pages are frozen; read each time a tab could be frozen. */
+  freezeBackground: () => boolean;
   onChange: () => void;
   onRestore: (timing: RestoreTiming) => void;
 }
@@ -49,6 +53,10 @@ export class TabManager {
     return this.tabs.filter((tab) => tab.view).length;
   }
 
+  get frozenCount(): number {
+    return this.tabs.filter((tab) => tab.frozen).length;
+  }
+
   get count(): number {
     return this.tabs.length;
   }
@@ -65,7 +73,7 @@ export class TabManager {
     this.active()?.view?.setBounds(bounds);
   }
 
-  open(url = 'about:blank', { activate = true } = {}): TabId {
+  open(url = NEW_TAB_URL, { activate = true } = {}): TabId {
     const tab = this.createRecord({ url });
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
@@ -88,10 +96,13 @@ export class TabManager {
     }
 
     this.activeId = id;
+    if (previous && previous.id !== id) this.maybeFreeze(previous);
     const view = this.ensureLive(next);
+    this.unfreeze(next);
     view.setBounds(this.pageBounds);
     this.options.window.contentView.addChildView(view);
-    if (next.url !== 'about:blank') view.webContents.focus();
+    // A new tab page leaves focus with the address bar.
+    if (next.url !== NEW_TAB_URL && next.url !== 'about:blank') view.webContents.focus();
     this.changed();
   }
 
@@ -157,6 +168,8 @@ export class TabManager {
     const tab = this.find(id);
     if (!tab) return;
     tab.keepAlive = !tab.keepAlive;
+    if (tab.keepAlive) this.unfreeze(tab);
+    else this.maybeFreeze(tab);
     this.changed();
   }
 
@@ -178,6 +191,32 @@ export class TabManager {
 
   reload(): void {
     this.active()?.view?.webContents.reload();
+  }
+
+  /** Applies the freeze setting to the current background tabs. */
+  applyFreezeSetting(): void {
+    for (const tab of this.tabs) {
+      if (this.options.freezeBackground()) this.maybeFreeze(tab);
+      else this.unfreeze(tab);
+    }
+    this.changed();
+  }
+
+  /**
+   * Asks every app process to release caches and collect garbage, as under
+   * critical system memory pressure. For measuring what that frees; not automatic.
+   */
+  async simulateMemoryPressure(): Promise<boolean> {
+    const contents = this.tabs.find((tab) => tab.view)?.view?.webContents;
+    if (!contents || contents.isDestroyed()) return false;
+    try {
+      if (!contents.debugger.isAttached()) contents.debugger.attach('1.3');
+      await contents.debugger.sendCommand('Memory.simulatePressureNotification', { level: 'critical' });
+      return true;
+    } catch (error) {
+      console.warn(`[memory] pressure notification failed: ${(error as Error).message}`);
+      return false;
+    }
   }
 
   toggleDevTools(): void {
@@ -223,6 +262,7 @@ export class TabManager {
       faviconUrl: saved.faviconUrl ?? null,
       keepAlive: saved.keepAlive ?? false,
       loading: false,
+      frozen: false,
       history: saved.history ?? null,
     };
   }
@@ -288,8 +328,14 @@ export class TabManager {
     });
     contents.on('did-stop-loading', () => {
       tab.loading = false;
+      // Background tabs are frozen once loaded, not mid-load.
+      this.maybeFreeze(tab);
       this.changed();
     });
+    contents.on('audio-state-changed', ({ audible }) => {
+      if (!audible) this.maybeFreeze(tab);
+    });
+    contents.on('devtools-closed', () => this.maybeFreeze(tab));
     const updateUrl = () => {
       tab.url = contents.getURL();
       this.changed();
@@ -307,6 +353,46 @@ export class TabManager {
     });
   }
 
+  /** Freezes a background page unless it is loading, protected or still in use. */
+  private maybeFreeze(tab: Tab): void {
+    const contents = tab.view?.webContents;
+    if (!contents || contents.isDestroyed() || tab.frozen || tab.loading) return;
+    if (!this.options.freezeBackground() || tab.id === this.activeId || tab.keepAlive) return;
+    // Playing audio or an open DevTools means the page is still in use.
+    if (contents.isCurrentlyAudible() || contents.isDevToolsOpened()) return;
+    tab.frozen = true;
+    this.setLifecycleState(tab, 'frozen');
+    this.changed();
+  }
+
+  private unfreeze(tab: Tab): void {
+    if (!tab.frozen) return;
+    tab.frozen = false;
+    this.setLifecycleState(tab, 'active');
+  }
+
+  /** Page lifecycle has no Electron API; it goes through the page's DevTools protocol session. */
+  private setLifecycleState(tab: Tab, state: 'frozen' | 'active'): void {
+    const contents = tab.view?.webContents;
+    if (!contents || contents.isDestroyed()) return;
+    const failed = (error: unknown) => {
+      console.warn(`[freeze] ${state} failed for ${tab.url}: ${(error as Error).message}`);
+      if (state === 'frozen' && tab.frozen && tab.view?.webContents === contents) {
+        tab.frozen = false;
+        this.changed();
+      }
+    };
+    try {
+      if (!contents.debugger.isAttached()) contents.debugger.attach('1.3');
+    } catch (error) {
+      failed(error);
+      return;
+    }
+    contents.debugger.sendCommand('Page.setWebLifecycleState', { state }).catch((error: unknown) => {
+      if (!contents.isDestroyed()) failed(error);
+    });
+  }
+
   private captureHistory(tab: Tab): SavedHistory | null {
     const history = tab.view?.webContents.navigationHistory;
     if (!history) return tab.history;
@@ -319,6 +405,7 @@ export class TabManager {
     if (!view) return;
     tab.view = null;
     tab.loading = false;
+    tab.frozen = false;
     this.options.window.contentView.removeChildView(view);
     if (!view.webContents.isDestroyed()) view.webContents.close();
   }
@@ -342,6 +429,7 @@ export class TabManager {
       url: tab.url,
       faviconUrl: tab.faviconUrl,
       live: tab.view !== null,
+      frozen: tab.frozen,
       loading: tab.loading,
       keepAlive: tab.keepAlive,
       canGoBack: history?.canGoBack() ?? false,

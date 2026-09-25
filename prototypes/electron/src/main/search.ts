@@ -1,4 +1,6 @@
-export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'custom';
+import type { SearchEngineId } from '../shared/types.js';
+
+export type { SearchEngineId };
 
 export interface SearchEngine {
   id: SearchEngineId;

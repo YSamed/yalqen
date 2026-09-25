@@ -16,6 +16,7 @@ Kod yazılmamasının nedeni: CEF + AppKit yalnızca macOS'ta Xcode ile derleneb
 2. Dağıtımdaki `cefsimple` örneğini CMake ile derleyip çalıştırarak araç zincirini doğrulamak.
 3. `cefsimple` temel alınarak Objective-C++ köprüsü (`.mm`) + Swift/AppKit arayüzüyle uygulama iskeleti kurmak.
 4. Uygulama paketinde yardımcı süreç paketlerinin (`Helper`, `Helper (GPU)`, `Helper (Renderer)` …) doğru yerleştirildiğini doğrulamak.
+5. Uygulama ikonunu [`design/brand/png/`](../../design/brand/png) PNG'lerinden `iconutil` ile `.icns` olarak üretip paketin `Info.plist` dosyasına bağlamak.
 
 ## Electron prototipiyle eşleşmesi gereken kapsam
 

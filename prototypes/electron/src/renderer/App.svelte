@@ -15,15 +15,16 @@
     activeTabId: null,
     totalMemoryMB: null,
     addressPlaceholder: 'Ara veya adres yaz',
+    panelCollapsed: false,
   });
-  let collapsed = $state(false);
   let width = $state(DEFAULT_WIDTH);
   let toolbar: Toolbar;
+  // Set while waiting for the main process to expand the panel before focusing the address bar.
+  let focusAfterExpand = false;
 
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
     if (saved) {
-      collapsed = Boolean(saved.collapsed);
       width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved.width) || DEFAULT_WIDTH));
     }
   } catch {
@@ -31,29 +32,39 @@
   }
 
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
+  // Collapsed state is a setting kept by the main process; width is a local convenience.
+  const collapsed = $derived(browser.panelCollapsed);
   const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
 
   $effect(() => {
     window.yalqen.setLayout({ panelWidth, windowControls: !collapsed });
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed, width }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
     } catch {
       // Preferences are optional.
     }
   });
 
-  async function focusAddress(): Promise<void> {
-    collapsed = false;
-    await tick();
-    toolbar.focusAddress();
+  $effect(() => {
+    if (collapsed || !focusAfterExpand) return;
+    focusAfterExpand = false;
+    void tick().then(() => toolbar.focusAddress());
+  });
+
+  function focusAddress(): void {
+    if (!collapsed) {
+      toolbar.focusAddress();
+      return;
+    }
+    focusAfterExpand = true;
+    window.yalqen.send({ type: 'toggle-panel' });
   }
 
   onMount(() => {
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
     const offCommand = window.yalqen.onCommand((command) => {
-      if (command.type === 'toggle-panel') collapsed = !collapsed;
-      if (command.type === 'focus-address') void focusAddress();
+      if (command.type === 'focus-address') focusAddress();
     });
     return () => {
       offState();
@@ -73,7 +84,7 @@
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
-    onToggle={() => (collapsed = !collapsed)}
+    onToggle={() => window.yalqen.send({ type: 'toggle-panel' })}
   >
     {#snippet header()}
       <Toolbar
@@ -81,7 +92,7 @@
         tab={activeTab}
         placeholder={browser.addressPlaceholder}
         {collapsed}
-        onSearch={() => void focusAddress()}
+        onSearch={focusAddress}
       />
     {/snippet}
   </TabPanel>
