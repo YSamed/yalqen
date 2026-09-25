@@ -12,6 +12,7 @@ import {
   type SettingsView,
   type WindowMaterial,
 } from '../shared/types.js';
+import { AdBlocker } from './adblock.js';
 import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { registerInternalScheme, serveInternalPages } from './internal-pages.js';
@@ -83,6 +84,8 @@ function createBrowser(): void {
 
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
+  const adBlocker = new AdBlocker(daily, path.join(app.getPath('userData'), 'adblock-engine.bin'));
+  adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () =>
     resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
   const settingsWindow = new SettingsWindow({
@@ -254,6 +257,7 @@ function createBrowser(): void {
     settings.update(patch);
     nativeTheme.themeSource = settings.get().theme;
     if (settings.get().freezeBackgroundTabs !== wasFreezing) tabs.applyFreezeSetting();
+    adBlocker.setEnabled(settings.get().adBlocking);
     pushState();
     settingsWindow.send(settingsView());
   };

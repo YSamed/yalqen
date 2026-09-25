@@ -8,7 +8,7 @@
     { value: false, label: 'Geniş' },
     { value: true, label: 'Dar' },
   ] as const;
-  const freezeOptions = [
+  const onOffOptions = [
     { value: true, label: 'Açık' },
     { value: false, label: 'Kapalı' },
   ] as const;
@@ -122,6 +122,24 @@
       </div>
     </div>
 
+    <h2>Gizlilik</h2>
+    <div class="row">
+      <span class="label">
+        <span>Reklam engelleyici</span>
+        <span class="hint">EasyList ve uBlock Origin filtreleriyle reklamları engeller. Değişiklik yeni yüklenen sayfalarda geçerli olur.</span>
+      </span>
+      <div class="segmented" role="group" aria-label="Reklam engelleyici">
+        {#each onOffOptions as option (option.label)}
+          <button
+            aria-pressed={values.adBlocking === option.value}
+            onclick={() => update({ adBlocking: option.value })}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+
     <h2>Bellek</h2>
     <div class="row last">
       <span class="label">
@@ -129,7 +147,7 @@
         <span class="hint">Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve canlı tutulan sekmeler dondurulmaz.</span>
       </span>
       <div class="segmented" role="group" aria-label="Arka plan sekmelerini dondur">
-        {#each freezeOptions as option (option.label)}
+        {#each onOffOptions as option (option.label)}
           <button
             aria-pressed={values.freezeBackgroundTabs === option.value}
             onclick={() => update({ freezeBackgroundTabs: option.value })}
