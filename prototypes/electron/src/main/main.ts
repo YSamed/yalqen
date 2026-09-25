@@ -85,10 +85,10 @@ function createBrowser(): void {
 
   const store = new SessionStore(app.getPath('userData'));
   const settings = new SettingsStore(app.getPath('userData'));
+  const adBlocker = new AdBlocker(daily, path.join(app.getPath('userData'), 'adblock-engine.bin'));
+  adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () =>
     resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
-  const adBlocker = new AdBlocker(daily, app.getPath('userData'));
-  adBlocker.setEnabled(settings.get().blockAds);
   const preconnector = new Preconnector((origin) => daily.preconnect({ url: origin }));
   const settingsWindow = new SettingsWindow({
     preload: path.join(__dirname, '../preload/settings-preload.js'),
@@ -262,7 +262,7 @@ function createBrowser(): void {
     settings.update(patch);
     nativeTheme.themeSource = settings.get().theme;
     if (settings.get().freezeBackgroundTabs !== wasFreezing) tabs.applyFreezeSetting();
-    adBlocker.setEnabled(settings.get().blockAds);
+    adBlocker.setEnabled(settings.get().adBlocking);
     pushState();
     settingsWindow.send(settingsView());
   };

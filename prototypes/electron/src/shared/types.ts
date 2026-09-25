@@ -143,8 +143,8 @@ export interface SettingsValues {
   panelCollapsed: boolean;
   /** Freeze background tabs' pages when switching away from them. */
   freezeBackgroundTabs: boolean;
-  /** Block ads and trackers in pages. */
-  blockAds: boolean;
+  /** Block ads on web pages. */
+  adBlocking: boolean;
 }
 
 export interface SettingsView {

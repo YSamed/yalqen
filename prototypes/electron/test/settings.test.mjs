@@ -10,13 +10,7 @@ const { SettingsStore, sanitizeSettings } = settings;
 
 test('unknown or mistyped fields fall back', () => {
   assert.deepEqual(
-    sanitizeSettings({
-      searchEngine: 'altavista',
-      theme: 'blue',
-      panelCollapsed: 'yes',
-      freezeBackgroundTabs: 1,
-      blockAds: 'no',
-    }),
+    sanitizeSettings({ searchEngine: 'altavista', theme: 'blue', panelCollapsed: 'yes', freezeBackgroundTabs: 1, adBlocking: 'no' }),
     {
       version: 1,
       searchEngine: 'google',
@@ -24,7 +18,7 @@ test('unknown or mistyped fields fall back', () => {
       theme: 'light',
       panelCollapsed: false,
       freezeBackgroundTabs: true,
-      blockAds: true,
+      adBlocking: true,
     },
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');
@@ -35,13 +29,7 @@ test('updates keep valid fields and persist', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-settings-'));
   try {
     const store = new SettingsStore(dir);
-    store.update({
-      searchEngine: 'yandex',
-      theme: 'dark',
-      panelCollapsed: true,
-      freezeBackgroundTabs: false,
-      blockAds: false,
-    });
+    store.update({ searchEngine: 'yandex', theme: 'dark', panelCollapsed: true, freezeBackgroundTabs: false, adBlocking: false });
     store.update({ searchEngine: 'nope', theme: 7 });
     assert.equal(store.get().searchEngine, 'yandex');
     assert.equal(store.get().theme, 'dark');
@@ -50,7 +38,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.searchEngine, 'yandex');
     assert.equal(reloaded.panelCollapsed, true);
     assert.equal(reloaded.freezeBackgroundTabs, false);
-    assert.equal(reloaded.blockAds, false);
+    assert.equal(reloaded.adBlocking, false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
