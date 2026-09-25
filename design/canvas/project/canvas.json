@@ -1,0 +1,127 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-09-25T13:28:39.490Z"
+  },
+  "title": "yalqen arayüz taslağı",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Etkileşimli — geniş panel",
+      "is_interactive": true
+    },
+    "Narrow.dc.html": {
+      "x": 1360,
+      "y": 0,
+      "w": 1280,
+      "h": 800,
+      "title": "Dar panel, üzerine gelinmiş sekme",
+      "is_interactive": true
+    },
+    "Memory.dc.html": {
+      "x": 0,
+      "y": 920,
+      "w": 1280,
+      "h": 800,
+      "title": "RAM ayrıntısı",
+      "is_interactive": true
+    },
+    "Warning.dc.html": {
+      "x": 1360,
+      "y": 920,
+      "w": 1280,
+      "h": 800,
+      "title": "Korunan sekmeler hedefi aşıyor",
+      "is_interactive": true
+    },
+    "Settings.dc.html": {
+      "x": 0,
+      "y": 1840,
+      "w": 1280,
+      "h": 800,
+      "title": "Ayarlar",
+      "is_interactive": true
+    },
+    "NewTab.dc.html": {
+      "x": 1360,
+      "y": 1840,
+      "w": 1280,
+      "h": 800,
+      "title": "Yeni sekme, adres çubuğu odakta",
+      "is_interactive": true
+    },
+    "Dark.dc.html": {
+      "x": 0,
+      "y": 2760,
+      "w": 1280,
+      "h": 800,
+      "title": "Koyu tema",
+      "is_interactive": true
+    },
+    "DarkNarrow.dc.html": {
+      "x": 1360,
+      "y": 2760,
+      "w": 1280,
+      "h": 800,
+      "title": "Koyu tema, dar panel",
+      "is_interactive": true
+    },
+    "Glass.dc.html": {
+      "x": 0,
+      "y": 3680,
+      "w": 1280,
+      "h": 800,
+      "title": "Cam — koyu",
+      "is_interactive": true
+    },
+    "GlassLight.dc.html": {
+      "x": 1360,
+      "y": 3680,
+      "w": 1280,
+      "h": 800,
+      "title": "Cam — açık",
+      "is_interactive": true
+    },
+    "GlassMemory.dc.html": {
+      "x": 0,
+      "y": 4600,
+      "w": 1280,
+      "h": 800,
+      "title": "Cam — RAM ayrıntısı",
+      "is_interactive": true
+    },
+    "GlassNarrow.dc.html": {
+      "x": 1360,
+      "y": 4600,
+      "w": 1280,
+      "h": 800,
+      "title": "Cam — dar panel",
+      "is_interactive": true
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Narrow.dc.html",
+    "Memory.dc.html",
+    "Warning.dc.html",
+    "Settings.dc.html",
+    "NewTab.dc.html",
+    "Dark.dc.html",
+    "DarkNarrow.dc.html",
+    "Glass.dc.html",
+    "GlassLight.dc.html",
+    "GlassMemory.dc.html",
+    "GlassNarrow.dc.html"
+  ],
+  "notes": {},
+  "designSystems": [],
+  "attachments": {}
+}
