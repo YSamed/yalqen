@@ -1,4 +1,4 @@
-<img src="assets/brand/icon.svg" width="96" alt="yalqen logosu">
+<img src="design/brand/icon.svg" width="96" alt="yalqen logosu">
 
 # yalqen
 
@@ -12,8 +12,7 @@ Durum: Faz 0 — tasarım ve teknik doğrulama.
 |---|---|
 | [`docs/PROJECT_PLAN.md`](docs/PROJECT_PLAN.md) | Proje planı |
 | [`docs/decisions/`](docs/decisions) | Mimari kararlar |
-| [`design/`](design) | Arayüz taslağı ve tasarım kuralları |
+| [`design/`](design) | Arayüz taslağı, tasarım kuralları ve logo |
 | [`bench/SCENARIO.md`](bench/SCENARIO.md) | Faz 0 ortak ölçüm senaryosu |
 | [`prototypes/electron/`](prototypes/electron) | Electron + TypeScript + Svelte denemesi |
 | [`prototypes/cef-appkit/`](prototypes/cef-appkit) | CEF + Swift/AppKit denemesi |
-| [`assets/brand/`](assets/brand) | Logo: uygulama ikonu, işaret ve PNG boyutları |

@@ -1,6 +1,7 @@
 # Tasarım
 
 - [`TOKENS.md`](TOKENS.md) — renkler, yazı, ölçüler ve sekme durumlarının görsel dili.
+- [`brand/`](brand) — logo: uygulama ikonu (`icon.svg`), açık ve koyu zemin için işaret (`mark.svg`, `mark-dark.svg`), 16–1024 px PNG'ler (`png/`). Renkler `TOKENS.md` ile aynı: vurgu `accent`, gövde `text`.
 - [`canvas/`](canvas) — Faz 0 arayüz taslağının kaynağı (etkileşimli tasarım sayfası). Her `.dc.html` bir ekran; `Main.dc.html` tüm durumları yöneten ana ekran, diğerleri onu farklı başlangıç durumlarıyla gösterir.
 
 Taslaktaki ekranlar:
