@@ -34,7 +34,7 @@ Metin kontrastı en az 4.5:1 hedeflenir (`muted` dahil).
 
 | Öğe | Değer |
 |---|---|
-| Üst çubuk yüksekliği | 44 px |
+| Panel üst satırı (trafik ışıkları, geri/ileri/yenile) | 44 px |
 | Adres çubuğu yüksekliği | 30 px |
 | Sekme paneli — geniş (varsayılan) | 240 px, sürüklenerek 180–400 px |
 | Sekme paneli — dar | 48 px |
@@ -43,6 +43,13 @@ Metin kontrastı en az 4.5:1 hedeflenir (`muted` dahil).
 | Araç çubuğu düğmesi | 28 px |
 | Sekme satırı eylem düğmesi | 22 px |
 | Boşluk ölçeği | 2, 4, 6, 8, 12, 16, 20 px |
+
+## Pencere düzeni
+
+Üst çubuk yoktur; sayfa pencerenin üst kenarına kadar uzanır. Pencere denetimleri sağdaki sekme panelinde toplanır:
+
+- Geniş panel, yukarıdan aşağıya: trafik ışıkları ve geri/ileri/yenile satırı, adres çubuğu, sekmeler, en altta "Yeni sekme" satırı; alt şeritte bellek göstergesi, ayarlar ve panel düğmesi.
+- Dar panel: trafik ışıkları ve gezinme düğmeleri gizlenir (kısayollar çalışır). En üstte arama düğmesi bulunur; bu düğme ya da ⌘L paneli genişletip adres çubuğuna odaklanır. Bellek göstergesi alt şeritte simge olarak kalır.
 
 ## Köşe ve gölge
 
@@ -76,7 +83,7 @@ Dar görünümde başlık ve durum, üzerine gelindiğinde ipucu balonunda yazı
 
 ## Cam malzemesi (Liquid Glass varyantı)
 
-Ayarlardaki "Pencere malzemesi: Opak / Cam" seçimiyle açılır. Kural: **cam yalnızca pencere kabuğunda** (üst çubuk, sekme paneli, açılır paneller); web sayfası her zaman opak kartta kalır.
+Ayarlardaki "Pencere malzemesi: Opak / Cam" seçimiyle açılır. Kural: **cam yalnızca pencere kabuğunda** (sekme paneli, açılır paneller); web sayfası her zaman opak kartta kalır.
 
 | Öğe | Koyu | Açık |
 |---|---|---|

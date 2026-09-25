@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { BrowserState } from '../shared/types';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
 
-  const TOOLBAR_HEIGHT = 44;
   const COLLAPSED_WIDTH = 48;
   const MIN_WIDTH = 180;
   const MAX_WIDTH = 400;
@@ -35,7 +34,7 @@
   const panelWidth = $derived(collapsed ? COLLAPSED_WIDTH : width);
 
   $effect(() => {
-    window.yalqen.setLayout({ toolbarHeight: TOOLBAR_HEIGHT, panelWidth });
+    window.yalqen.setLayout({ panelWidth, windowControls: !collapsed });
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ collapsed, width }));
     } catch {
@@ -43,12 +42,18 @@
     }
   });
 
+  async function focusAddress(): Promise<void> {
+    collapsed = false;
+    await tick();
+    toolbar.focusAddress();
+  }
+
   onMount(() => {
     void window.yalqen.getState().then((next) => (browser = next));
     const offState = window.yalqen.onState((next) => (browser = next));
     const offCommand = window.yalqen.onCommand((command) => {
       if (command.type === 'toggle-panel') collapsed = !collapsed;
-      if (command.type === 'focus-address') toolbar.focusAddress();
+      if (command.type === 'focus-address') void focusAddress();
     });
     return () => {
       offState();
@@ -58,37 +63,34 @@
 </script>
 
 <div class="shell" style:grid-template-columns="1fr {panelWidth}px">
-  <div class="top">
-    <Toolbar
-      bind:this={toolbar}
-      tab={activeTab}
-      totalMemoryMB={browser.totalMemoryMB}
-      placeholder={browser.addressPlaceholder}
-      height={TOOLBAR_HEIGHT}
-    />
-  </div>
   <!-- The page view is drawn by the main process over this area. -->
   <main class="page" aria-hidden="true"></main>
   <TabPanel
     tabs={browser.tabs}
     activeTabId={browser.activeTabId}
+    totalMemoryMB={browser.totalMemoryMB}
     {collapsed}
     bind:width
     minWidth={MIN_WIDTH}
     maxWidth={MAX_WIDTH}
     onToggle={() => (collapsed = !collapsed)}
-  />
+  >
+    {#snippet header()}
+      <Toolbar
+        bind:this={toolbar}
+        tab={activeTab}
+        placeholder={browser.addressPlaceholder}
+        {collapsed}
+        onSearch={() => void focusAddress()}
+      />
+    {/snippet}
+  </TabPanel>
 </div>
 
 <style>
   .shell {
     display: grid;
-    grid-template-rows: auto 1fr;
     height: 100%;
-  }
-
-  .top {
-    grid-column: 1 / -1;
   }
 
   .page {

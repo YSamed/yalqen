@@ -49,7 +49,7 @@ Görsel yön: Dia gibi sade bir arayüz. Etkileşim hedefi: Zed gibi hızlı ve 
 
 ### Diğer kontroller
 
-- Üstte kompakt adres çubuğu; geri, ileri ve yenile kontrolleri.
+- Sekme panelinin üstünde kompakt adres çubuğu; geri, ileri ve yenile kontrolleri. Ayrı bir üst çubuk yoktur.
 - Gerektiğinde açılan sade ayarlar paneli.
 - Küçük toplam RAM göstergesi; ayrıntılar talep edildiğinde açılır.
 - Tutarlı yazı boyutları, boşluklar, ikonlar, odak ve hover durumları.

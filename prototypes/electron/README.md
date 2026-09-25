@@ -17,7 +17,7 @@ Gereken: Node 22+. Electron ikili dosyası ilk çalıştırmada indirilir.
 ## Kapsam
 
 - Sağda dikey sekme paneli: dar (ikon) ve geniş (başlık) görünüm; genişlik sol kenardan sürüklenerek 180–400 px arasında ayarlanır.
-- Adres çubuğu, geri/ileri/yenile, toplam bellek göstergesi.
+- Üst çubuk yok: trafik ışıkları, geri/ileri/yenile ve adres çubuğu panelin üstünde; toplam bellek göstergesi panelin alt şeridinde. Dar panelde trafik ışıkları ve gezinme düğmeleri gizlenir; arama düğmesi veya ⌘L paneli genişletip adres çubuğuna odaklanır.
 - Sekme açma, kapatma, sürükleyerek sıralama, kapatılan sekmeyi geri açma.
 - Sekmeyi bellekten çıkarma: sayfa kapatılır, gezinme geçmişi saklanır; sekme seçilince geçmişle birlikte yeniden oluşturulur. Aktif sekme bellekten çıkarılmaz.
 - "Canlı tut" işareti (Faz 0'da yalnızca toplu bellekten çıkarmayı etkiler).
@@ -65,6 +65,6 @@ Metrik: `app.getAppMetrics()` → `workingSetSize` toplamı (tarayıcı, GPU, ya
 
 Linux (Xvfb) üzerinde, yerel test sayfalarıyla otomatik bir duman testi geçti: gezinme, bellekten çıkarma, geçmişle geri yükleme ve geri gitme, canlı tut, sıralama, kapat/geri aç, açılır pencerenin sekmeye dönüşmesi, ölçüm kaydı, yeniden açılışta yalnızca aktif sekmenin yüklenmesi.
 
-**macOS'ta henüz çalıştırılmadı.** Pencere başlık çubuğu (`hiddenInset`), trafik ışıkları boşluğu ve kısayollar Mac'te kontrol edilmelidir. Linux'ta alınan bellek sayıları karar için kullanılmaz.
+**macOS'ta henüz çalıştırılmadı.** Pencere başlık çubuğu (`hiddenInset`), trafik ışıklarının panele taşınması (`setWindowButtonPosition`) ve kısayollar Mac'te kontrol edilmelidir. Linux'ta alınan bellek sayıları karar için kullanılmaz.
 
 Veri dizini: `~/Library/Application Support/yalqen-electron-prototype` (macOS).

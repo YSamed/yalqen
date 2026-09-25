@@ -19,6 +19,8 @@ import { resolveInput } from './url.js';
 const DAILY_PARTITION = 'persist:daily';
 const MEMORY_POLL_MS = 5000;
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
+// Offset of the traffic lights from the left edge and top of the tab panel.
+const WINDOW_CONTROLS_INSET = { x: 14, y: 15 };
 
 // Keep prototype data apart from any other Electron app.
 app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
@@ -59,7 +61,7 @@ function createBrowser(): void {
   const settings = new SettingsStore(app.getPath('userData'));
   const searchEngine = () =>
     resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
-  let layout: ChromeLayout = { toolbarHeight: 44, panelWidth: 240 };
+  let layout: ChromeLayout = { panelWidth: 240, windowControls: true };
   let totalMemoryMB: number | null = null;
 
   const browserState = (): BrowserState => ({
@@ -92,12 +94,15 @@ function createBrowser(): void {
   const applyLayout = () => {
     const { width, height } = window.getContentBounds();
     ui.setBounds({ x: 0, y: 0, width, height });
-    tabs.setPageBounds({
-      x: 0,
-      y: layout.toolbarHeight,
-      width: Math.max(0, width - layout.panelWidth),
-      height: Math.max(0, height - layout.toolbarHeight),
-    });
+    tabs.setPageBounds({ x: 0, y: 0, width: Math.max(0, width - layout.panelWidth), height });
+    if (process.platform === 'darwin') {
+      // The traffic lights live in the top row of the tab panel.
+      window.setWindowButtonVisibility(layout.windowControls);
+      window.setWindowButtonPosition({
+        x: width - layout.panelWidth + WINDOW_CONTROLS_INSET.x,
+        y: WINDOW_CONTROLS_INSET.y,
+      });
+    }
   };
   window.on('resize', applyLayout);
   applyLayout();

@@ -20,37 +20,8 @@ input::placeholder{color:#8a8a82}
 
   <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 1280px; height: 800px; background: {{t.glassTint}}; backdrop-filter: {{t.glassFilter}}; -webkit-backdrop-filter: {{t.glassFilter}}"></div>
 
-  <header style="position: relative; height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; box-sizing: border-box">
-    <div aria-hidden="true" style="display: flex; gap: 8px; margin-right: 20px">
-      <span style="width: 12px; height: 12px; border-radius: 6px; background: #ff5f57"></span>
-      <span style="width: 12px; height: 12px; border-radius: 6px; background: #febc2e"></span>
-      <span style="width: 12px; height: 12px; border-radius: 6px; background: #28c840"></span>
-    </div>
-    <div style="display: flex; gap: 2px">
-      <button aria-label="Geri" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{t.muted}}; display: grid; place-items: center">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg>
-      </button>
-      <button aria-label="İleri" disabled="{{yes}}" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{t.muted}}; opacity: 0.35; display: grid; place-items: center">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 5 5-5 5"></path></svg>
-      </button>
-      <button aria-label="Yenile" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{t.muted}}; display: grid; place-items: center">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v3h-3"></path></svg>
-      </button>
-    </div>
-    <label style="flex-grow: 1; min-width: 0; display: flex">
-      <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Adres</span>
-      <input type="text" spellcheck="false" placeholder="{{addressPlaceholder}}" value="{{addressValue}}" onChange="{{onAddressChange}}" onFocus="{{onAddressFocus}}" onBlur="{{onAddressBlur}}" onKeyDown="{{onAddressKey}}" style="width: 100%; height: 30px; box-sizing: border-box; padding: 0 12px; border: 0; border-radius: 8px; background: {{t.surface}}; box-shadow: {{addressShadow}}; outline: none; font-size: 13px">
-    </label>
-    <button onClick="{{toggleMemory}}" aria-label="Bellek kullanımı: {{totalLabel}}" aria-expanded="{{showMemory}}" style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: 6px; background: {{pillBg}}; color: {{pillColor}}; font-size: 11px; font-variant-numeric: tabular-nums">
-      <sc-if value="{{warning}}" hint-placeholder-val="{{false}}">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5 14 13H2L8 2.5zM8 6.5v3M8 11.3v.2"></path></svg>
-      </sc-if>
-      <span>{{totalLabel}}</span>
-    </button>
-  </header>
-
   <div style="position: relative; flex-grow: 1; min-height: 0; display: flex">
-    <main aria-label="Sayfa" style="flex-grow: 1; min-width: 0; margin: 0 0 8px 8px; border-radius: 10px; background: {{t.page}}; box-shadow: {{t.shadow}}; overflow: hidden; position: relative">
+    <main aria-label="Sayfa" style="flex-grow: 1; min-width: 0; margin: 8px 0 8px 8px; border-radius: 10px; background: {{t.page}}; box-shadow: {{t.shadow}}; overflow: hidden; position: relative">
       <sc-if value="{{isNewTab}}" hint-placeholder-val="{{false}}">
         <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; color: {{t.muted}}">
           <div style="font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: {{t.text}}; opacity: 0.8">yalqen</div>
@@ -91,6 +62,34 @@ input::placeholder{color:#8a8a82}
         <div role="separator" aria-orientation="vertical" aria-label="Panel genişliği" onMouseEnter="{{resizeEnter}}" onMouseLeave="{{resizeLeave}}" style="position: absolute; top: 0; bottom: 8px; left: -4px; width: 8px; cursor: col-resize; display: flex; justify-content: center">
           <div style="width: 2px; height: 100%; border-radius: 1px; background: {{resizeColor}}"></div>
         </div>
+      </sc-if>
+
+      <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+        <div style="height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 2px">
+          <div aria-hidden="true" style="display: flex; gap: 8px; margin: 0 auto 0 6px">
+            <span style="width: 12px; height: 12px; border-radius: 6px; background: #ff5f57"></span>
+            <span style="width: 12px; height: 12px; border-radius: 6px; background: #febc2e"></span>
+            <span style="width: 12px; height: 12px; border-radius: 6px; background: #28c840"></span>
+          </div>
+          <button aria-label="Geri" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{t.muted}}; display: grid; place-items: center">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"></path></svg>
+          </button>
+          <button aria-label="İleri" disabled="{{yes}}" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{t.muted}}; opacity: 0.35; display: grid; place-items: center">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 5 5-5 5"></path></svg>
+          </button>
+          <button aria-label="Yenile" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: {{t.muted}}; display: grid; place-items: center">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 3v3h-3"></path></svg>
+          </button>
+        </div>
+        <label style="flex-shrink: 0; display: flex; margin-bottom: 8px">
+          <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Adres</span>
+          <input type="text" spellcheck="false" placeholder="{{addressPlaceholder}}" value="{{addressValue}}" onChange="{{onAddressChange}}" onFocus="{{onAddressFocus}}" onBlur="{{onAddressBlur}}" onKeyDown="{{onAddressKey}}" style="width: 100%; height: 30px; box-sizing: border-box; padding: 0 12px; border: 0; border-radius: 8px; background: {{t.surface}}; box-shadow: {{addressShadow}}; outline: none; font-size: 13px">
+        </label>
+      </sc-if>
+      <sc-if value="{{narrow}}" hint-placeholder-val="{{false}}">
+        <button onClick="{{openSearch}}" aria-label="Ara veya adres yaz" title="Ara veya adres yaz (⌘L)" style="width: 36px; height: 32px; flex-shrink: 0; margin: 0 auto 8px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: {{t.muted}}">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm3.3 7.8 3.2 3.2"></path></svg>
+        </button>
       </sc-if>
 
       <ol style="flex-grow: 1; margin: 0; padding: 0; list-style: none; overflow: hidden">
@@ -156,12 +155,23 @@ input::placeholder{color:#8a8a82}
             </sc-if>
           </li>
         </sc-for>
+        <li style="margin-bottom: 2px">
+          <button onClick="{{newTab}}" aria-label="Yeni sekme" title="Yeni sekme (⌘T)" style="width: {{newTabWidth}}; height: 32px; margin: 0 auto; display: flex; align-items: center; justify-content: {{footerJustify}}; gap: 9px; padding: {{footerButtonPadding}}; border: 0; border-radius: 8px; background: transparent; color: {{t.muted}}; text-align: left">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M8 3v10M3 8h10"></path></svg>
+            <sc-if value="{{wide}}" hint-placeholder-val="{{true}}"><span>Yeni sekme</span></sc-if>
+          </button>
+        </li>
       </ol>
 
       <div style="display: flex; flex-direction: {{footerDirection}}; align-items: center; gap: 4px; padding-top: 6px; border-top: 1px solid {{t.border}}">
-        <button onClick="{{newTab}}" aria-label="Yeni sekme" title="Yeni sekme (⌘T)" style="flex-grow: {{newTabGrow}}; height: 30px; display: flex; align-items: center; justify-content: {{footerJustify}}; gap: 8px; padding: {{footerButtonPadding}}; border: 0; border-radius: 8px; background: transparent; color: {{t.muted}}">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3 8h10"></path></svg>
-          <sc-if value="{{wide}}" hint-placeholder-val="{{true}}"><span>Yeni sekme</span></sc-if>
+        <button onClick="{{toggleMemory}}" aria-label="Bellek kullanımı: {{totalLabel}}" aria-expanded="{{showMemory}}" title="{{memoryTitle}}" style="flex-grow: {{memoryGrow}}; height: 30px; display: flex; align-items: center; justify-content: {{footerJustify}}; gap: 6px; padding: {{footerButtonPadding}}; border: 0; border-radius: 8px; background: {{pillBg}}; color: {{pillColor}}; font-size: 11px; font-variant-numeric: tabular-nums">
+          <sc-if value="{{warning}}" hint-placeholder-val="{{false}}">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5 14 13H2L8 2.5zM8 6.5v3M8 11.3v.2"></path></svg>
+          </sc-if>
+          <sc-if value="{{narrowMemoryIcon}}" hint-placeholder-val="{{false}}">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5h7v7h-7zM6.5 2v2.5M9.5 2v2.5M6.5 11.5V14M9.5 11.5V14M2 6.5h2.5M2 9.5h2.5M11.5 6.5H14M11.5 9.5H14"></path></svg>
+          </sc-if>
+          <sc-if value="{{wide}}" hint-placeholder-val="{{true}}"><span>{{totalLabel}}</span></sc-if>
         </button>
         <button onClick="{{openSettings}}" aria-label="Ayarlar" title="Ayarlar (⌘,)" style="width: 30px; height: 30px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: {{t.muted}}">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 5h7M12.5 5h1M2.5 11h1M6.5 11h7"></path><circle cx="11" cy="5" r="1.5"></circle><circle cx="5" cy="11" r="1.5"></circle></svg>
@@ -185,7 +195,7 @@ input::placeholder{color:#8a8a82}
   </sc-if>
 
   <sc-if value="{{showMemory}}" hint-placeholder-val="{{false}}">
-    <section aria-label="Bellek ayrıntısı" style="position: absolute; top: 42px; right: 12px; width: 300px; box-sizing: border-box; padding: 16px; border-radius: 12px; background: {{t.popBg}}; backdrop-filter: {{t.popFilter}}; -webkit-backdrop-filter: {{t.popFilter}}; box-shadow: {{t.pop}}; display: flex; flex-direction: column; gap: 14px">
+    <section aria-label="Bellek ayrıntısı" style="position: absolute; bottom: {{memoryBottom}}px; right: {{memoryRight}}px; width: 300px; box-sizing: border-box; padding: 16px; border-radius: 12px; background: {{t.popBg}}; backdrop-filter: {{t.popFilter}}; -webkit-backdrop-filter: {{t.popFilter}}; box-shadow: {{t.pop}}; display: flex; flex-direction: column; gap: 14px">
       <div style="display: flex; align-items: baseline; justify-content: space-between">
         <span style="font-size: 12px; color: {{t.muted}}">Toplam bellek</span>
         <span style="font-size: 22px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums">{{totalLabel}}</span>
@@ -615,7 +625,7 @@ class Component extends DCLogic {
     const hovered = collapsed ? viewTabs.find((tab) => tab.id === hoverId) : null;
     const tooltip = hovered
       ? {
-          top: 44 + 4 + hovered.index * 34 + 2,
+          top: 8 + 32 + 8 + hovered.index * 34 + 2,
           right: panelWidth + 4,
           title: hovered.title,
           state: hovered.stateText ? hovered.stateText.charAt(0).toUpperCase() + hovered.stateText.slice(1) : '',
@@ -637,11 +647,12 @@ class Component extends DCLogic {
       wide: !collapsed,
       narrow: collapsed,
       panelWidth: panelWidth,
-      panelPadding: collapsed ? '4px 6px 8px' : '4px 8px 8px 8px',
+      panelPadding: collapsed ? '8px 6px 8px' : '0 8px 8px 8px',
       footerDirection: collapsed ? 'column' : 'row',
       footerJustify: collapsed ? 'center' : 'flex-start',
       footerButtonPadding: collapsed ? '0' : '0 8px',
-      newTabGrow: collapsed ? 0 : 1,
+      memoryGrow: collapsed ? 0 : 1,
+      newTabWidth: collapsed ? '36px' : '100%',
       collapseLabel: collapsed ? 'Paneli genişlet' : 'Paneli daralt',
       resizeColor: s.resizeHover || this.props.showResize ? t.accent : 'transparent',
       resizeEnter: () => this.setState({ resizeHover: true }),
@@ -661,6 +672,7 @@ class Component extends DCLogic {
         if (event.key === 'Escape') event.target.blur();
       },
       newTab: () => this.newTab(),
+      openSearch: () => this.setState({ collapsed: false, hoverId: null, addressFocused: true, addressDraft: activeUrl }),
 
       showTooltip: !!tooltip,
       tooltip: tooltip || { top: 0, right: 0, title: '', state: '', hasState: false },
@@ -684,6 +696,10 @@ class Component extends DCLogic {
 
       showMemory: overlay === 'memory',
       showSettings: overlay === 'settings',
+      narrowMemoryIcon: collapsed && !warning,
+      memoryTitle: collapsed ? 'Bellek: ' + this.formatMb(total) : 'Bellek ayrıntısı',
+      memoryBottom: collapsed ? 8 : 50,
+      memoryRight: collapsed ? panelWidth + 4 : 12,
       toggleMemory: () => this.setState({ overlay: overlay === 'memory' ? null : 'memory' }),
       openSettings: () => this.setState({ overlay: 'settings' }),
       closeOverlay: () => this.setState({ overlay: null }),

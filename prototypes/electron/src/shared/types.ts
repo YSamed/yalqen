@@ -22,8 +22,9 @@ export interface BrowserState {
 
 /** Regions of the window reserved for the UI; the page view fills the rest. */
 export interface ChromeLayout {
-  toolbarHeight: number;
   panelWidth: number;
+  /** Whether the macOS window controls fit at the top of the tab panel. */
+  windowControls: boolean;
 }
 
 export type UiCommand =
