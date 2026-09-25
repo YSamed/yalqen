@@ -1,5 +1,6 @@
 {
   "name": "yalqen-electron-prototype",
+  "productName": "yalqen",
   "version": "0.0.0",
   "private": true,
   "description": "Phase 0 Electron + TypeScript + Svelte prototype",
@@ -10,6 +11,7 @@
     "build:renderer": "vite build",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && svelte-check --tsconfig ./tsconfig.renderer.json",
     "test": "npm run build:main && node --test \"test/*.test.mjs\"",
+    "prestart": "node scripts/brand-electron-mac.mjs",
     "start": "npm run build && electron ."
   },
   "devDependencies": {
@@ -21,5 +23,8 @@
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",
     "vite": "^8.3.1"
+  },
+  "optionalDependencies": {
+    "electron-liquid-glass": "^1.1.1"
   }
 }

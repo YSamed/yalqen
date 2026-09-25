@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Yeni sekme</title>
+    <!--
+      Served as yalqen://newtab/ by the main process, which adds class="animate"
+      to <html> on the first new tab page of each launch.
+    -->
+    <style>
+      :root {
+        --page: #ffffff;
+        color-scheme: light;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page: #262624;
+          color-scheme: dark;
+        }
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        background: var(--page);
+        overflow: hidden;
+        user-select: none;
+      }
+
+      svg {
+        width: min(560px, 68vw);
+        height: auto;
+        /* Sits slightly above the optical centre, like a title. */
+        margin-bottom: 8vh;
+      }
+
+      .animate path {
+        stroke-dasharray: 1 1.01;
+        stroke-dashoffset: 1.001;
+        animation: write 2.8s cubic-bezier(0.45, 0.05, 0.3, 1) 0.25s forwards;
+      }
+
+      @keyframes write {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .animate path {
+          animation: none;
+          stroke-dashoffset: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg viewBox="0 40 500 180" role="img" aria-label="merhaba">
+      <defs>
+        <linearGradient id="ink" gradientUnits="userSpaceOnUse" x1="20" y1="0" x2="480" y2="0">
+          <stop offset="0" stop-color="#3a93a6" />
+          <stop offset="0.2" stop-color="#e3cf45" />
+          <stop offset="0.38" stop-color="#f2a65a" />
+          <stop offset="0.56" stop-color="#e8615d" />
+          <stop offset="0.72" stop-color="#e493b4" />
+          <stop offset="0.87" stop-color="#8069bb" />
+          <stop offset="1" stop-color="#7fb2e8" />
+        </linearGradient>
+      </defs>
+      <!-- A single stroke of handwriting: "merhaba". -->
+      <path
+        pathLength="1"
+        fill="none"
+        stroke="url(#ink)"
+        stroke-width="9"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="
+          M 18 204 C 30 198 40 170 42 142 L 41 200
+          C 45 162 52 140 63 140 C 75 140 80 150 80 165 L 80 200
+          C 84 162 92 140 103 140 C 115 140 120 150 120 165 L 120 188 C 120 200 128 204 138 200
+          C 150 194 168 178 167 158 C 166 144 152 138 144 150 C 136 164 138 196 158 201 C 170 204 180 198 188 188
+          C 194 170 198 152 200 141 C 206 147 213 147 220 141 C 217 162 215 185 217 199 C 221 204 229 200 236 190
+          C 252 160 272 96 268 70 C 265 52 245 54 246 80 C 247 120 247 170 247 200
+          C 251 162 259 140 270 140 C 282 140 286 150 286 165 L 286 188 C 286 198 290 202 296 200
+          C 300 186 304 160 318 145 C 324 139 334 140 338 145 C 326 136 310 142 307 166 C 304 192 320 204 332 190 C 338 180 340 160 340 142 L 340 188 C 340 200 346 204 354 199
+          C 370 160 390 96 386 70 C 383 52 363 54 364 80 C 365 120 365 170 365 198 C 369 168 381 142 397 148 C 409 154 405 190 386 199 C 377 203 375 186 389 182 C 399 179 406 170 414 158
+          C 420 148 434 140 446 145 C 434 136 418 142 415 166 C 412 192 428 204 440 190 C 446 180 448 160 448 142 L 448 188 C 448 202 462 206 480 194
+        "
+      />
+    </svg>
+  </body>
+</html>

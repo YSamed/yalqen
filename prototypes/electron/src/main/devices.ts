@@ -77,7 +77,16 @@ export async function applyEmulation(contents: WebContents, emulation: Emulation
   });
 }
 
-/** Detaching the protocol client clears every override it set. */
-export function clearEmulation(contents: WebContents): void {
-  if (!contents.isDestroyed() && contents.debugger.isAttached()) contents.debugger.detach();
+/**
+ * Clears the overrides but keeps the protocol session, which background tab
+ * freezing also uses.
+ */
+export async function clearEmulation(contents: WebContents): Promise<void> {
+  if (contents.isDestroyed() || !contents.debugger.isAttached()) return;
+  const dbg = contents.debugger;
+  await dbg.sendCommand('Emulation.clearDeviceMetricsOverride');
+  await dbg.sendCommand('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await dbg.sendCommand('Emulation.setEmitTouchEventsForMouse', { enabled: false });
+  // An empty user agent removes the override.
+  await dbg.sendCommand('Emulation.setUserAgentOverride', { userAgent: '' });
 }

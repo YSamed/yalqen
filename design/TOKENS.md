@@ -34,7 +34,7 @@ Metin kontrastı en az 4.5:1 hedeflenir (`muted` dahil).
 
 | Öğe | Değer |
 |---|---|
-| Üst çubuk yüksekliği | 44 px |
+| Panel üst satırı (trafik ışıkları, geri/ileri/yenile) | 44 px |
 | Adres çubuğu yüksekliği | 30 px |
 | Sekme paneli — geniş (varsayılan) | 240 px, sürüklenerek 180–400 px |
 | Sekme paneli — dar | 48 px |
@@ -43,6 +43,13 @@ Metin kontrastı en az 4.5:1 hedeflenir (`muted` dahil).
 | Araç çubuğu düğmesi | 28 px |
 | Sekme satırı eylem düğmesi | 22 px |
 | Boşluk ölçeği | 2, 4, 6, 8, 12, 16, 20 px |
+
+## Pencere düzeni
+
+Üst çubuk yoktur; sayfa pencerenin üst kenarına kadar uzanır. Pencere denetimleri sağdaki sekme panelinde toplanır:
+
+- Geniş panel, yukarıdan aşağıya: trafik ışıkları ve geri/ileri/yenile satırı, adres çubuğu, sekmeler, en altta "Yeni sekme" satırı; alt şeritte bellek göstergesi, ayarlar ve panel düğmesi.
+- Dar panel: trafik ışıkları ve gezinme düğmeleri gizlenir (kısayollar çalışır). En üstte arama düğmesi bulunur; bu düğme ya da ⌘L paneli genişletip adres çubuğuna odaklanır. Bellek göstergesi alt şeritte simge olarak kalır.
 
 ## Köşe ve gölge
 
@@ -74,9 +81,9 @@ Hiçbir durum yalnızca renkle anlatılmaz.
 
 Dar görünümde başlık ve durum, üzerine gelindiğinde ipucu balonunda yazıyla gösterilir.
 
-## Cam malzemesi (Liquid Glass varyantı)
+## Cam malzemesi (Liquid Glass)
 
-Ayarlardaki "Pencere malzemesi: Opak / Cam" seçimiyle açılır. Kural: **cam yalnızca pencere kabuğunda** (üst çubuk, sekme paneli, açılır paneller); web sayfası her zaman opak kartta kalır.
+Varsayılan görünüm camdır. Ayarlardaki "Pencere malzemesi: Cam / Opak" seçimiyle opağa geçilebilir; yukarıdaki renk tabloları opak görünümün değerleridir. Kural: **cam yalnızca pencere kabuğunda** (sekme paneli, açılır paneller); web sayfası her zaman opak kartta kalır.
 
 | Öğe | Koyu | Açık |
 |---|---|---|
@@ -87,6 +94,14 @@ Ayarlardaki "Pencere malzemesi: Opak / Cam" seçimiyle açılır. Kural: **cam y
 | Açılır panel | `rgba(40 39 54 / .72)` + blur 30 px | `rgba(250 250 252 / .78)` + blur 30 px |
 | Sayfa kartı | `#1e1e22` (opak) | `#ffffff` (opak) |
 | Pencere köşesi | 16 px, 0.5 px açık kenar parlaması | aynı |
+| Kenar parlaması (`rim`) | `inset 0 0 0 .5px rgba(255 255 255 / .22), inset 0 1px 0 rgba(255 255 255 / .12)` | `inset 0 0 0 .5px rgba(255 255 255 / .6), inset 0 1px 0 rgba(255 255 255 / .5)` |
+| Kontrol grubu zemini (`platter`) | `rgba(255 255 255 / .08)` | `rgba(255 255 255 / .42)` |
+
+Cam kabukta kontroller malzemenin üstünde yüzer:
+
+- Geri/ileri/yenile tek kapsülde toplanır (`platter` + `rim`, 2 px iç boşluk, 16 px köşe); düğmeler yuvarlak.
+- Adres çubuğu kapsül biçimindedir (15 px köşe); gölgesine `rim` eklenir. Aktif sekme satırı da `rim` alır.
+- Sayfa kartı pencerenin sol, üst ve alt kenarından 8 px içeride, 10 px köşeli durur. Opak görünümde kart kenarlara dayanır ve köşesizdir.
 
 - Uygulamada bu değerler elle çizilmez; macOS'un sistem malzemesi kullanılır. Tablodaki değerler taslaktaki CSS yaklaşımıdır.
 - Sistemde "Saydamlığı azalt" açıksa opak tokenlara dönülür.

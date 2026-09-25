@@ -1,23 +1,28 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { TabId, TabSnapshot } from '../../shared/types';
   import Icon from './Icon.svelte';
 
   let {
     tabs,
     activeTabId,
+    totalMemoryMB,
     collapsed,
     width = $bindable(),
     minWidth,
     maxWidth,
     onToggle,
+    header,
   }: {
     tabs: TabSnapshot[];
     activeTabId: TabId | null;
+    totalMemoryMB: number | null;
     collapsed: boolean;
     width: number;
     minWidth: number;
     maxWidth: number;
     onToggle: () => void;
+    header: Snippet;
   } = $props();
 
   let dragId: TabId | null = $state(null);
@@ -30,6 +35,7 @@
     const states = [
       tab.id === activeTabId ? 'aktif' : null,
       tab.live ? null : 'bellekten çıkarılmış',
+      tab.frozen ? 'dondurulmuş' : null,
       tab.keepAlive ? 'canlı tutuluyor' : null,
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
@@ -81,6 +87,8 @@
       onpointerdown={startResize}
     ></div>
   {/if}
+
+  {@render header()}
 
   <ol class="tabs" ondrop={onDrop} ondragover={(e) => dragId && e.preventDefault()}>
     {#each tabs as tab, index (tab.id)}
@@ -154,12 +162,25 @@
         {/if}
       </li>
     {/each}
+    <li class="tab new-tab">
+      <button class="select" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
+        <span class="favicon"><Icon name="plus" /></span>
+        {#if !collapsed}<span class="title">Yeni sekme</span>{/if}
+      </button>
+    </li>
   </ol>
 
   <footer class="footer">
-    <button class="footer-button" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-      <Icon name="plus" />
-      {#if !collapsed}<span>Yeni sekme</span>{/if}
+    <span class="memory" title="Uygulamanın toplam bellek kullanımı (working set)">
+      {#if totalMemoryMB === null}—{:else}{totalMemoryMB}{/if}{#if !collapsed}&nbsp;MB{/if}
+    </span>
+    <button
+      class="footer-button"
+      title="Ayarlar (⌘,)"
+      aria-label="Ayarlar"
+      onclick={() => send({ type: 'open-settings' })}
+    >
+      <Icon name="settings" />
     </button>
     <button
       class="footer-button toggle"
@@ -178,11 +199,11 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 4px 8px 8px;
+    padding: 0 8px 8px;
   }
 
   .panel.collapsed {
-    padding: 4px 6px 8px;
+    padding: 0 6px 8px;
   }
 
   .resize {
@@ -219,6 +240,10 @@
   .tab.active {
     background: var(--surface-active);
     box-shadow: var(--shadow);
+  }
+
+  :global([data-material='glass']) .tab.active {
+    box-shadow: var(--shadow), var(--rim);
   }
 
   .tab.drop-before::before,
@@ -292,7 +317,7 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--bg);
+    background: var(--badge);
     color: var(--text);
   }
 
@@ -369,8 +394,26 @@
     color: var(--text-muted);
   }
 
-  .footer-button:first-child {
+  .new-tab .select {
+    color: var(--text-muted);
+  }
+
+  .new-tab:hover .select {
+    color: var(--text);
+  }
+
+  .memory {
     flex: 1;
+    align-self: center;
+    padding: 0 8px;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .collapsed .memory {
+    padding: 4px 0;
+    text-align: center;
   }
 
   .collapsed .footer-button {

@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<title>yalqen — cam, koyu</title>
+<title>yalqen — opak, koyu</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -13,13 +13,13 @@ body{margin:0}
 </style>
 </helmet>
 <div style="width: 1280px; height: 800px">
-<dc-import name="Main" initial-glass="{{yes}}" initial-dark="{{yes}}" preview-hover="1" hint-size="1280px,800px"></dc-import>
+<dc-import name="Main" initial-glass="{{no}}" initial-dark="{{yes}}" preview-hover="1" hint-size="1280px,800px"></dc-import>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
 class Component extends DCLogic {
   renderVals() {
-    return { yes: true };
+    return { yes: true, no: false };
   }
 }
 </script>

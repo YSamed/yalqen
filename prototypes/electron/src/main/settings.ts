@@ -1,21 +1,44 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES, type SearchEngineId } from './search.js';
+import type { SettingsValues, ThemeSource } from '../shared/types.js';
+import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from './search.js';
 
-export interface Settings {
+export interface Settings extends SettingsValues {
   version: 1;
-  searchEngine: SearchEngineId;
-  /** Used when `searchEngine` is `custom`; `%s` marks the query. Edited in settings.json for now. */
-  customSearchTemplate: string | null;
 }
 
 const DEFAULTS: Settings = {
   version: 1,
   searchEngine: DEFAULT_SEARCH_ENGINE,
   customSearchTemplate: null,
+  theme: 'system',
+  panelCollapsed: false,
+  freezeBackgroundTabs: true,
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
+const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
+
+/** Keeps known, well-typed fields and takes the rest from `base`. */
+export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
+  const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
+  const { searchEngine, customSearchTemplate, theme, panelCollapsed, freezeBackgroundTabs } = input;
+  return {
+    version: 1,
+    searchEngine:
+      typeof searchEngine === 'string' && ENGINE_IDS.has(searchEngine)
+        ? (searchEngine as Settings['searchEngine'])
+        : base.searchEngine,
+    customSearchTemplate:
+      customSearchTemplate === null || typeof customSearchTemplate === 'string'
+        ? customSearchTemplate?.trim() || null
+        : base.customSearchTemplate,
+    theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
+    panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
+    freezeBackgroundTabs:
+      typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
+  };
+}
 
 export class SettingsStore {
   readonly file: string;
@@ -30,8 +53,9 @@ export class SettingsStore {
     return this.current;
   }
 
-  update(patch: Partial<Omit<Settings, 'version'>>): Settings {
-    this.current = { ...this.current, ...patch };
+  /** Applies a patch from any source; invalid fields keep their current value. */
+  update(patch: unknown): Settings {
+    this.current = sanitizeSettings({ ...this.current, ...(patch as object) }, this.current);
     const temp = `${this.file}.tmp`;
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     fs.writeFileSync(temp, JSON.stringify(this.current, null, 2));
@@ -41,16 +65,7 @@ export class SettingsStore {
 
   private load(): Settings {
     try {
-      const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as Partial<Settings>;
-      return {
-        version: 1,
-        searchEngine:
-          typeof data.searchEngine === 'string' && ENGINE_IDS.has(data.searchEngine)
-            ? data.searchEngine
-            : DEFAULTS.searchEngine,
-        customSearchTemplate:
-          typeof data.customSearchTemplate === 'string' ? data.customSearchTemplate : null,
-      };
+      return sanitizeSettings(JSON.parse(fs.readFileSync(this.file, 'utf8')));
     } catch {
       return { ...DEFAULTS };
     }

@@ -22,7 +22,7 @@ Sayfa motoru Chromium olarak kesinleşti. Uygulama çatısı ve arayüz teknoloj
 5. Ortak oturum üzerinde sekmeye özel içerik kuralları uygulanabilirliği (Faz 4 için).
 6. Chromium güvenlik güncellemelerinin sürdürülebilir takibi.
 7. Geliştirme ve bakım maliyeti.
-8. macOS sistem cam malzemesi (Liquid Glass) desteği: pencere kabuğunun arkasındaki masaüstünü gösteren sistem malzemesinin kullanılabilmesi. Yerel AppKit'te sistem bileşeniyle doğrudan yapılabileceği; Electron'da `vibrancy` seçeneğinin yalnızca klasik buzlu malzemeyi verdiği düşünülüyor. İkisi de Faz 0'da Mac üzerinde doğrulanacak. Tasarım: [`design/TOKENS.md`](../../design/TOKENS.md#cam-malzemesi-liquid-glass-varyantı).
+8. macOS sistem cam malzemesi (Liquid Glass) desteği: pencere kabuğunun arkasındaki masaüstünü gösteren sistem malzemesinin kullanılabilmesi. Yerel AppKit'te sistem bileşeniyle (`NSGlassEffectView`) doğrudan yapılabilir. Electron'un yerleşik `vibrancy` seçeneği yalnızca klasik buzlu malzemeyi verir; yerleşik Liquid Glass API'si önerisi ([electron/electron#50415](https://github.com/electron/electron/pull/50415)) birleştirilmeden kapatıldı. Electron prototipi bu yüzden `electron-liquid-glass` native eklentisini kullanıyor (üçüncü taraf bağımlılık; Electron sürüm güncellemelerinde ayrıca izlenmeli). İkisi de Faz 0'da Mac üzerinde doğrulanacak. Tasarım: [`design/TOKENS.md`](../../design/TOKENS.md#cam-malzemesi-liquid-glass).
 
 ## Ölçüm sonuçları
 

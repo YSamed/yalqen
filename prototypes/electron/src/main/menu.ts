@@ -1,13 +1,5 @@
-import { Menu, type MenuItemConstructorOptions } from 'electron';
+import { Menu, app, type MenuItemConstructorOptions } from 'electron';
 import type { DeviceId } from '../shared/types.js';
-import type { SearchEngineId } from './search.js';
-
-export interface SearchEngineMenuItem {
-  id: SearchEngineId;
-  label: string;
-  checked: boolean;
-  enabled: boolean;
-}
 
 export interface DeviceMenuItem {
   id: DeviceId;
@@ -32,10 +24,9 @@ export interface MenuActions {
   selectTab(index: number): void;
   openPageSet(): void;
   discardBackground(): void;
+  simulateMemoryPressure(): void;
   recordSnapshot(): void;
-  searchEngines: SearchEngineMenuItem[];
-  selectSearchEngine(id: SearchEngineId): void;
-  openSettingsFile(): void;
+  openSettings(): void;
 }
 
 /** Shortcuts live in the app menu so they work while a page has focus. */
@@ -46,8 +37,34 @@ export function buildMenu(actions: MenuActions): Menu {
     click: () => actions.selectTab(i === 8 ? -1 : i),
   }));
 
+  const isMac = process.platform === 'darwin';
+  const settingsItem: MenuItemConstructorOptions = {
+    label: 'Ayarlar…',
+    accelerator: 'CmdOrCtrl+,',
+    click: actions.openSettings,
+  };
+
   const template: MenuItemConstructorOptions[] = [
-    ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' },
+              { type: 'separator' },
+              settingsItem,
+              { type: 'separator' },
+              { role: 'services' },
+              { type: 'separator' },
+              { role: 'hide' },
+              { role: 'hideOthers' },
+              { role: 'unhide' },
+              { type: 'separator' },
+              { role: 'quit' },
+            ],
+          } satisfies MenuItemConstructorOptions,
+        ]
+      : []),
     {
       label: 'Dosya',
       submenu: [
@@ -60,6 +77,7 @@ export function buildMenu(actions: MenuActions): Menu {
         },
         { type: 'separator' },
         { label: 'Adres çubuğu', accelerator: 'CmdOrCtrl+L', click: actions.focusAddress },
+        ...(isMac ? [] : [{ type: 'separator' } as const, settingsItem]),
       ],
     },
     { role: 'editMenu' },
@@ -92,27 +110,11 @@ export function buildMenu(actions: MenuActions): Menu {
     },
     { label: 'Sekmeler', submenu: tabShortcuts },
     {
-      label: 'Ayarlar',
-      submenu: [
-        {
-          label: 'Arama motoru',
-          submenu: actions.searchEngines.map((engine) => ({
-            label: engine.label,
-            type: 'radio' as const,
-            checked: engine.checked,
-            enabled: engine.enabled,
-            click: () => actions.selectSearchEngine(engine.id),
-          })),
-        },
-        { type: 'separator' },
-        { label: 'Ayar dosyasını aç', click: actions.openSettingsFile },
-      ],
-    },
-    {
       label: 'Ölçüm',
       submenu: [
         { label: 'Sayfa setini aç', click: actions.openPageSet },
         { label: 'Arka plan sekmelerini bellekten çıkar', click: actions.discardBackground },
+        { label: 'Bellek baskısı sinyali gönder', click: actions.simulateMemoryPressure },
         { label: 'Bellek ölçümü kaydet', accelerator: 'CmdOrCtrl+Shift+M', click: actions.recordSnapshot },
       ],
     },

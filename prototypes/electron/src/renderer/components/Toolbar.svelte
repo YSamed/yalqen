@@ -1,32 +1,35 @@
 <script lang="ts">
-  import type { TabSnapshot } from '../../shared/types';
+  import { NEW_TAB_URL, type TabSnapshot } from '../../shared/types';
   import Icon from './Icon.svelte';
 
   let {
     tab,
-    totalMemoryMB,
     placeholder,
-    height,
+    collapsed,
+    onSearch,
   }: {
     tab: TabSnapshot | null;
-    totalMemoryMB: number | null;
     placeholder: string;
-    height: number;
+    collapsed: boolean;
+    /** Opens the address field from the collapsed panel. */
+    onSearch: () => void;
   } = $props();
 
-  let input: HTMLInputElement;
+  let input: HTMLInputElement | undefined = $state();
   let editing = $state(false);
   let value = $state('');
 
-  const displayUrl = $derived(!tab || tab.url === 'about:blank' ? '' : tab.url);
+  const displayUrl = $derived(
+    !tab || tab.url === 'about:blank' || tab.url === NEW_TAB_URL ? '' : tab.url,
+  );
 
   $effect(() => {
     if (!editing) value = displayUrl;
   });
 
   export function focusAddress(): void {
-    input.focus();
-    input.select();
+    input?.focus();
+    input?.select();
   }
 
   function submit(event: SubmitEvent): void {
@@ -34,84 +37,97 @@
     if (value.trim() === '') return;
     window.yalqen.send({ type: 'navigate', input: value });
     editing = false;
-    input.blur();
+    input?.blur();
   }
 
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       value = displayUrl;
       editing = false;
-      input.blur();
+      input?.blur();
     }
   }
 </script>
 
-<header class="toolbar" style:height="{height}px">
-  <nav class="controls">
-    <button
-      class="icon"
-      title="Geri"
-      disabled={!tab?.canGoBack}
-      onclick={() => window.yalqen.send({ type: 'go-back' })}
-    >
-      <Icon name="back" />
+<header class="toolbar" class:collapsed>
+  {#if collapsed}
+    <button class="icon" title="Ara veya adres yaz (⌘L)" onclick={onSearch}>
+      <Icon name="search" />
     </button>
-    <button
-      class="icon"
-      title="İleri"
-      disabled={!tab?.canGoForward}
-      onclick={() => window.yalqen.send({ type: 'go-forward' })}
-    >
-      <Icon name="forward" />
-    </button>
-    <button class="icon" title="Yenile" onclick={() => window.yalqen.send({ type: 'reload' })}>
-      <Icon name="reload" />
-    </button>
-  </nav>
+  {:else}
+    <nav class="controls">
+      <span class="nav">
+        <button
+          class="icon"
+          title="Geri"
+          disabled={!tab?.canGoBack}
+          onclick={() => window.yalqen.send({ type: 'go-back' })}
+        >
+          <Icon name="back" />
+        </button>
+        <button
+          class="icon"
+          title="İleri"
+          disabled={!tab?.canGoForward}
+          onclick={() => window.yalqen.send({ type: 'go-forward' })}
+        >
+          <Icon name="forward" />
+        </button>
+        <button class="icon" title="Yenile" onclick={() => window.yalqen.send({ type: 'reload' })}>
+          <Icon name="reload" />
+        </button>
+      </span>
+    </nav>
 
-  <form class="address" onsubmit={submit}>
-    <input
-      bind:this={input}
-      bind:value
-      type="text"
-      spellcheck="false"
-      autocomplete="off"
-      {placeholder}
-      aria-label="Adres"
-      onfocus={() => {
-        editing = true;
-        input.select();
-      }}
-      onblur={() => (editing = false)}
-      onkeydown={onKeydown}
-    />
-    {#if tab?.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
-  </form>
-
-  <span class="memory" title="Uygulamanın toplam bellek kullanımı (working set)">
-    {totalMemoryMB === null ? '— MB' : `${totalMemoryMB} MB`}
-  </span>
+    <form class="address" onsubmit={submit}>
+      <input
+        bind:this={input}
+        bind:value
+        type="text"
+        spellcheck="false"
+        autocomplete="off"
+        {placeholder}
+        aria-label="Adres"
+        onfocus={() => {
+          editing = true;
+          input?.select();
+        }}
+        onblur={() => (editing = false)}
+        onkeydown={onKeydown}
+      />
+      {#if tab?.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
+    </form>
+  {/if}
 </header>
 
 <style>
   .toolbar {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 8px;
+  }
+
+  .toolbar.collapsed {
     align-items: center;
-    gap: 8px;
-    /* Leaves room for the macOS traffic lights. */
-    padding: 0 12px 0 80px;
+    padding-top: 8px;
     -webkit-app-region: drag;
   }
 
   .controls {
     display: flex;
+    justify-content: flex-end;
+    align-items: center;
     gap: 2px;
+    height: 44px;
+    /* Leaves room for the macOS traffic lights on the left. */
+    padding-left: 72px;
+    -webkit-app-region: drag;
   }
 
-  .controls,
-  .address,
-  .memory {
-    -webkit-app-region: no-drag;
+  .nav {
+    display: flex;
+    gap: 2px;
   }
 
   .icon {
@@ -124,6 +140,13 @@
     background: transparent;
     color: var(--text-muted);
     transition: background var(--transition);
+    -webkit-app-region: no-drag;
+  }
+
+  .collapsed .icon {
+    width: 36px;
+    height: 32px;
+    border-radius: var(--radius);
   }
 
   .icon:hover:not(:disabled) {
@@ -137,7 +160,6 @@
 
   .address {
     position: relative;
-    flex: 1;
     min-width: 0;
   }
 
@@ -174,11 +196,25 @@
     opacity: 0.6;
   }
 
-  .memory {
-    min-width: 56px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
+  /* Liquid Glass: controls float as capsules with a light rim over the material. */
+  :global([data-material='glass']) .nav {
+    padding: 2px;
+    border-radius: 16px;
+    background: var(--platter);
+    box-shadow: var(--rim);
+  }
+
+  :global([data-material='glass']) .nav .icon {
+    border-radius: 50%;
+  }
+
+  :global([data-material='glass']) input {
+    border-radius: 15px;
+    box-shadow: var(--shadow), var(--rim);
+  }
+
+  :global([data-material='glass']) .loading {
+    right: 12px;
+    left: 12px;
   }
 </style>

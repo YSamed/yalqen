@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { WebContentsView, type BaseWindow, type Rectangle, type Session } from 'electron';
-import type { BrowserState, DeviceFrame, DeviceId, TabId, TabSnapshot } from '../shared/types.js';
+import { NEW_TAB_URL, type BrowserState, type DeviceFrame, type DeviceId, type TabId, type TabSnapshot } from '../shared/types.js';
 import { applyEmulation, clearEmulation, deviceSize, findDevice, type Emulation } from './devices.js';
 import type { SavedHistory, SavedSession, SavedTab } from './persistence.js';
 
@@ -20,6 +20,8 @@ interface Tab {
   faviconUrl: string | null;
   keepAlive: boolean;
   loading: boolean;
+  /** Live page frozen in the background: no JS, timers or rendering until selected again. */
+  frozen: boolean;
   /** Navigation history kept while the tab is discarded. */
   history: SavedHistory | null;
   /** Set while the tab is shown as a device. Not persisted. */
@@ -35,6 +37,8 @@ export interface RestoreTiming {
 export interface TabManagerOptions {
   window: BaseWindow;
   session: Session;
+  /** Whether background pages are frozen; read each time a tab could be frozen. */
+  freezeBackground: () => boolean;
   onChange: () => void;
   onRestore: (timing: RestoreTiming) => void;
 }
@@ -45,6 +49,7 @@ export class TabManager {
   private readonly closed: SavedTab[] = [];
   private activeId: TabId | null = null;
   private pageBounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
+  private pageRadius = 0;
 
   constructor(private readonly options: TabManagerOptions) {}
 
@@ -54,6 +59,10 @@ export class TabManager {
 
   get liveCount(): number {
     return this.tabs.filter((tab) => tab.view).length;
+  }
+
+  get frozenCount(): number {
+    return this.tabs.filter((tab) => tab.frozen).length;
   }
 
   get count(): number {
@@ -96,7 +105,15 @@ export class TabManager {
     this.setEmulation(tab, { ...tab.emulation, landscape: !tab.emulation.landscape });
   }
 
-  open(url = 'about:blank', { activate = true } = {}): TabId {
+  setPageRadius(radius: number): void {
+    if (radius === this.pageRadius) return;
+    this.pageRadius = radius;
+    for (const tab of this.tabs) {
+      if (!tab.emulation) tab.view?.setBorderRadius(radius);
+    }
+  }
+
+  open(url = NEW_TAB_URL, { activate = true } = {}): TabId {
     const tab = this.createRecord({ url });
     const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
@@ -119,11 +136,14 @@ export class TabManager {
     }
 
     this.activeId = id;
+    if (previous && previous.id !== id) this.maybeFreeze(previous);
     const view = this.ensureLive(next);
+    this.unfreeze(next);
     // The page area may have changed while the tab was in the background.
     this.layoutView(next, view);
     this.options.window.contentView.addChildView(view);
-    if (next.url !== 'about:blank') view.webContents.focus();
+    // A new tab page leaves focus with the address bar.
+    if (next.url !== NEW_TAB_URL && next.url !== 'about:blank') view.webContents.focus();
     this.changed();
   }
 
@@ -189,6 +209,8 @@ export class TabManager {
     const tab = this.find(id);
     if (!tab) return;
     tab.keepAlive = !tab.keepAlive;
+    if (tab.keepAlive) this.unfreeze(tab);
+    else this.maybeFreeze(tab);
     this.changed();
   }
 
@@ -217,6 +239,32 @@ export class TabManager {
 
   reload(): void {
     this.active()?.view?.webContents.reload();
+  }
+
+  /** Applies the freeze setting to the current background tabs. */
+  applyFreezeSetting(): void {
+    for (const tab of this.tabs) {
+      if (this.options.freezeBackground()) this.maybeFreeze(tab);
+      else this.unfreeze(tab);
+    }
+    this.changed();
+  }
+
+  /**
+   * Asks every app process to release caches and collect garbage, as under
+   * critical system memory pressure. For measuring what that frees; not automatic.
+   */
+  async simulateMemoryPressure(): Promise<boolean> {
+    const contents = this.tabs.find((tab) => tab.view)?.view?.webContents;
+    if (!contents || contents.isDestroyed()) return false;
+    try {
+      if (!contents.debugger.isAttached()) contents.debugger.attach('1.3');
+      await contents.debugger.sendCommand('Memory.simulatePressureNotification', { level: 'critical' });
+      return true;
+    } catch (error) {
+      console.warn(`[memory] pressure notification failed: ${(error as Error).message}`);
+      return false;
+    }
   }
 
   toggleDevTools(): void {
@@ -262,6 +310,7 @@ export class TabManager {
       faviconUrl: saved.faviconUrl ?? null,
       keepAlive: saved.keepAlive ?? false,
       loading: false,
+      frozen: false,
       history: saved.history ?? null,
       emulation: null,
     };
@@ -323,8 +372,8 @@ export class TabManager {
     tab.emulation = emulation;
     const view = tab.view;
     if (view) {
-      if (!emulation) clearEmulation(view.webContents);
-      void (this.layoutView(tab, view) ?? Promise.resolve()).then(() => {
+      const applied = emulation ? this.layoutView(tab, view) : this.clearDevice(tab, view);
+      void (applied ?? Promise.resolve()).then(() => {
         // Reload when switching between desktop and device so the server
         // also sees the new user agent. Rotation and device changes do not reload.
         const contents = view.webContents;
@@ -336,13 +385,20 @@ export class TabManager {
     this.changed();
   }
 
+  private clearDevice(tab: Tab, view: WebContentsView): Promise<void> {
+    this.layoutView(tab, view);
+    return clearEmulation(view.webContents).catch((error: unknown) => {
+      console.warn('[emulation] could not clear device overrides:', error);
+    });
+  }
+
   /**
    * Sizes the view for the page area and applies the tab's device overrides.
    * Returns a promise only when a device is applied.
    */
   private layoutView(tab: Tab, view: WebContentsView): Promise<void> | null {
     if (!tab.emulation) {
-      view.setBorderRadius(0);
+      view.setBorderRadius(this.pageRadius);
       view.setBounds(this.pageBounds);
       return null;
     }
@@ -408,14 +464,21 @@ export class TabManager {
     });
     contents.on('did-stop-loading', () => {
       tab.loading = false;
+      // Background tabs are frozen once loaded, not mid-load.
+      this.maybeFreeze(tab);
       this.changed();
     });
+    contents.on('audio-state-changed', ({ audible }) => {
+      if (!audible) this.maybeFreeze(tab);
+    });
+    contents.on('devtools-closed', () => this.maybeFreeze(tab));
     const updateUrl = () => {
       tab.url = contents.getURL();
       this.changed();
     };
     contents.debugger.on('detach', () => {
-      // Another protocol client took over; drop the device instead of showing stale bounds.
+      // The protocol session ended (overrides are gone with it); drop the device
+      // instead of showing stale bounds.
       if (tab.view !== view || !tab.emulation || contents.isDestroyed()) return;
       tab.emulation = null;
       this.layoutView(tab, view);
@@ -434,6 +497,46 @@ export class TabManager {
     });
   }
 
+  /** Freezes a background page unless it is loading, protected or still in use. */
+  private maybeFreeze(tab: Tab): void {
+    const contents = tab.view?.webContents;
+    if (!contents || contents.isDestroyed() || tab.frozen || tab.loading) return;
+    if (!this.options.freezeBackground() || tab.id === this.activeId || tab.keepAlive) return;
+    // Playing audio or an open DevTools means the page is still in use.
+    if (contents.isCurrentlyAudible() || contents.isDevToolsOpened()) return;
+    tab.frozen = true;
+    this.setLifecycleState(tab, 'frozen');
+    this.changed();
+  }
+
+  private unfreeze(tab: Tab): void {
+    if (!tab.frozen) return;
+    tab.frozen = false;
+    this.setLifecycleState(tab, 'active');
+  }
+
+  /** Page lifecycle has no Electron API; it goes through the page's DevTools protocol session. */
+  private setLifecycleState(tab: Tab, state: 'frozen' | 'active'): void {
+    const contents = tab.view?.webContents;
+    if (!contents || contents.isDestroyed()) return;
+    const failed = (error: unknown) => {
+      console.warn(`[freeze] ${state} failed for ${tab.url}: ${(error as Error).message}`);
+      if (state === 'frozen' && tab.frozen && tab.view?.webContents === contents) {
+        tab.frozen = false;
+        this.changed();
+      }
+    };
+    try {
+      if (!contents.debugger.isAttached()) contents.debugger.attach('1.3');
+    } catch (error) {
+      failed(error);
+      return;
+    }
+    contents.debugger.sendCommand('Page.setWebLifecycleState', { state }).catch((error: unknown) => {
+      if (!contents.isDestroyed()) failed(error);
+    });
+  }
+
   private captureHistory(tab: Tab): SavedHistory | null {
     const history = tab.view?.webContents.navigationHistory;
     if (!history) return tab.history;
@@ -446,6 +549,7 @@ export class TabManager {
     if (!view) return;
     tab.view = null;
     tab.loading = false;
+    tab.frozen = false;
     this.options.window.contentView.removeChildView(view);
     if (!view.webContents.isDestroyed()) view.webContents.close();
   }
@@ -469,6 +573,7 @@ export class TabManager {
       url: tab.url,
       faviconUrl: tab.faviconUrl,
       live: tab.view !== null,
+      frozen: tab.frozen,
       loading: tab.loading,
       keepAlive: tab.keepAlive,
       canGoBack: history?.canGoBack() ?? false,
