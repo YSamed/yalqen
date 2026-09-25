@@ -1,3 +1,5 @@
+<img src="assets/brand/icon.svg" width="96" alt="yalqen logosu">
+
 # yalqen
 
 macOS için RAM odaklı, Chromium tabanlı kişisel tarayıcı.
@@ -13,3 +15,4 @@ Durum: Faz 0 — tasarım ve teknik doğrulama.
 | [`bench/SCENARIO.md`](bench/SCENARIO.md) | Faz 0 ortak ölçüm senaryosu |
 | [`prototypes/electron/`](prototypes/electron) | Electron + TypeScript + Svelte denemesi |
 | [`prototypes/cef-appkit/`](prototypes/cef-appkit) | CEF + Swift/AppKit denemesi |
+| [`assets/brand/`](assets/brand) | Logo: uygulama ikonu, işaret ve PNG boyutları |
