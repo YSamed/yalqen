@@ -24,7 +24,7 @@
     "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
-    "@types/node": "^24.19.0",
+    "@types/node": "^26.6.2",
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
     "eslint": "^10.11.0",
@@ -35,7 +35,7 @@
     "prettier-plugin-svelte": "^4.1.1",
     "svelte": "^5.57.1",
     "svelte-check": "^4.7.6",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.70.1",
     "vite": "^8.3.1"
   },
