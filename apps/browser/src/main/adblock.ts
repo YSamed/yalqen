@@ -46,6 +46,10 @@ export class AdBlocker {
     if (enabled && this.stale) this.scheduleRefresh();
   }
 
+  whenReady(): Promise<void> {
+    return this.loading ?? Promise.resolve();
+  }
+
   destroy(): void {
     this.destroyed = true;
     if (this.refreshTimer) clearTimeout(this.refreshTimer);

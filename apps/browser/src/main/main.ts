@@ -1,3 +1,4 @@
+import { bench } from './bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { BaseWindow, Menu, app, dialog, ipcMain, nativeTheme, session } from 'electron';
@@ -14,6 +15,7 @@ import {
   type SettingsView,
 } from '../shared/types.js';
 import { AdBlocker } from './adblock.js';
+import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench-driver.js';
 import { BookmarkStore, runBookmarksCommand } from './bookmarks.js';
 import { CertificateExceptions } from './certificates.js';
 import { clearSince, sanitizeClearRequest } from './clear-data.js';
@@ -34,6 +36,7 @@ import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-s
 import { buildMenu } from './menu.js';
 import { installPermissionHandlers } from './permission-handlers.js';
 import { PermissionStore } from './permissions.js';
+import { processUsage } from './process-metrics.js';
 import { RequestRuleStore } from './request-rules.js';
 import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
@@ -48,7 +51,9 @@ const DAILY_PARTITION = 'persist:daily';
 const PRIVATE_PARTITION = 'private';
 const DEVELOPER_PARTITION = 'developer';
 
-app.setPath('userData', path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
+bench?.mark('modules-loaded');
+if (bench) prepareBenchApp();
+app.setPath('userData', bench?.profile ?? path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
 const appIcon = app.isPackaged
   ? path.join(process.resourcesPath, 'brand/icon-512.png')
@@ -102,6 +107,7 @@ function startBrowser(): void {
   const certificates = new CertificateExceptions();
   const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
   app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
+  bench?.mark('stores-loaded');
   const closedTabs: SavedTab[] = [];
   let privatePermissions = new PermissionStore(null);
   let privateZoom = new ZoomStore(null, defaultZoom);
@@ -463,6 +469,7 @@ function startBrowser(): void {
     }
     return settingsView();
   });
+  ipcMain.handle(SettingsChannel.processUsage, (event) => (isSettingsFrame(event) ? processUsage() : null));
   ipcMain.handle(SettingsChannel.update, (event, patch: unknown) => {
     if (!isSettingsFrame(event)) return null;
     updateSettings(patch);
@@ -535,7 +542,21 @@ function startBrowser(): void {
     if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
     else if (rest.length > 0) openExternal(rest);
   };
-  void extensions.loadAll().then(openInitialWindows);
+  void extensions.loadAll().then(() => {
+    bench?.mark('extensions-loaded');
+    openInitialWindows();
+    if (!bench) return;
+    void runBench(
+      bench,
+      {
+        window: () => current,
+        adBlockerReady: () => adBlocker.whenReady(),
+        commandBarPainted: () => commandBar.painted(),
+        closeCommandBar: (window) => commandBar.close(window.window),
+      },
+      benchPlanFromEnv(process.env),
+    );
+  });
 }
 
 app.setAboutPanelOptions({
@@ -549,6 +570,7 @@ if (!primary) {
   app.quit();
 } else {
   app.whenReady().then(() => {
+    bench?.mark('app-ready');
     app.dock?.setIcon(appIcon);
     startBrowser();
   });

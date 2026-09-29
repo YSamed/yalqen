@@ -339,7 +339,28 @@ export const SettingsChannel = {
   changed: 'yalqen-settings:changed',
   clearData: 'yalqen-settings:clear-data',
   makeDefault: 'yalqen-settings:make-default',
+  processUsage: 'yalqen-settings:process-usage',
 } as const;
+
+export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
+
+export interface ProcessGroup {
+  kind: ProcessGroupKind;
+  count: number;
+  memoryMB: number;
+}
+
+export interface PageProcess {
+  pid: number;
+  titles: string[];
+  memoryMB: number;
+}
+
+export interface ProcessUsage {
+  totalMB: number;
+  groups: ProcessGroup[];
+  pages: PageProcess[];
+}
 
 export const RequestRulesChannel = {
   list: 'yalqen-rules:list',
@@ -373,6 +394,7 @@ export interface SettingsApi {
   onChange(listener: (view: SettingsView) => void): () => void;
   clearData(request: ClearDataRequest): Promise<void>;
   makeDefault(): Promise<SettingsView>;
+  processUsage(): Promise<ProcessUsage>;
   requestRules(): Promise<RequestRule[]>;
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
   extensions(): Promise<ExtensionInfo[]>;

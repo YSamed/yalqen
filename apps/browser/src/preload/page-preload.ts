@@ -9,6 +9,7 @@ import {
   type ClearDataRequest,
   type ExtensionInfo,
   type NewTabCenter,
+  type ProcessUsage,
   type RequestRule,
   type SettingsApi,
   type SettingsValues,
@@ -113,6 +114,7 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
       ipcRenderer.invoke(settingsChannel.update, patch) as Promise<SettingsView>,
     clearData: (request: ClearDataRequest) => ipcRenderer.invoke(settingsChannel.clearData, request) as Promise<void>,
     makeDefault: () => ipcRenderer.invoke(settingsChannel.makeDefault) as Promise<SettingsView>,
+    processUsage: () => ipcRenderer.invoke(settingsChannel.processUsage) as Promise<ProcessUsage>,
     requestRules: () => ipcRenderer.invoke(RequestRulesChannel.list) as Promise<RequestRule[]>,
     saveRequestRules: (rules: RequestRule[]) =>
       ipcRenderer.invoke(RequestRulesChannel.save, rules) as Promise<RequestRule[]>,

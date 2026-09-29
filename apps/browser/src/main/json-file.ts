@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
+import { bench } from './bench.js';
 
 export const SAVE_DELAY_MS = 500;
 
@@ -36,7 +38,7 @@ export class JsonFile {
     const temp = `${this.file}.tmp`;
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      fs.writeFileSync(temp, JSON.stringify(this.data()));
+      fs.writeFileSync(temp, this.serialize(this.data));
       fs.renameSync(temp, this.file);
       this.dirty = false;
     } catch (error) {
@@ -49,7 +51,7 @@ export class JsonFile {
     const generation = ++this.generation;
     const temp = `${this.file}.${generation}.tmp`;
     try {
-      const json = JSON.stringify(this.data());
+      const json = this.serialize(this.data);
       await fs.promises.mkdir(path.dirname(this.file), { recursive: true });
       await fs.promises.writeFile(temp, json);
       if (generation !== this.generation) {
@@ -62,5 +64,12 @@ export class JsonFile {
       console.warn(`[${this.label}] could not save:`, error);
       await fs.promises.rm(temp, { force: true }).catch(() => {});
     }
+  }
+
+  private serialize(data: () => unknown): string {
+    const started = performance.now();
+    const json = JSON.stringify(data());
+    bench?.countWrite(this.label, Buffer.byteLength(json), performance.now() - started);
+    return json;
   }
 }

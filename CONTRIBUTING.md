@@ -30,6 +30,10 @@ Running `npm install` at the repository root sets up Git hooks: commit messages 
 4. Run `npm run check` (lint, typecheck, tests) and `npm run format` in `apps/browser`.
 5. Open a pull request and fill in the template. Type-specific templates are available for [bug fixes](.github/PULL_REQUEST_TEMPLATE/bugfix.md), [features](.github/PULL_REQUEST_TEMPLATE/feature.md) and [refactors](.github/PULL_REQUEST_TEMPLATE/refactor.md); append `?template=feature.md` to the pull request URL to use one.
 
+## Measuring performance
+
+Run `npm run bench` in `apps/browser` to measure startup, page loads, the command bar and idle cost from fresh temporary profiles; `npm run bench -- --help` lists the options. Records are appended to `bench/results/` as JSONL and a median summary is printed. Compare against a run on `main` before and after a performance change.
+
 ## Commit messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):

@@ -3,6 +3,7 @@
   import type { ClearDataRange, SettingsValues, SettingsView } from '../shared/types';
   import Extensions from './components/Extensions.svelte';
   import type { IconName } from './components/Icon.svelte';
+  import ProcessUsage from './components/ProcessUsage.svelte';
   import RequestRules from './components/RequestRules.svelte';
   import Button from './components/ui/Button.svelte';
   import SegmentedControl from './components/ui/SegmentedControl.svelte';
@@ -499,6 +500,7 @@
             onchange={(value) => update({ discardAfterMinutes: value })}
           />
         </div>
+        <ProcessUsage />
       {/if}
     </div>
   </div>
