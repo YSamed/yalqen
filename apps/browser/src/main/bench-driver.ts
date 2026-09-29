@@ -16,6 +16,12 @@ const NAVIGATION_TIMING_SCRIPT = `(() => {
   const paint = performance.getEntriesByName('first-contentful-paint')[0];
   if (!navigation) return null;
   return {
+    redirectMs: navigation.redirectEnd - navigation.redirectStart,
+    fetchStartMs: navigation.fetchStart,
+    dnsMs: navigation.domainLookupEnd - navigation.domainLookupStart,
+    connectMs: navigation.connectEnd - navigation.connectStart,
+    requestStartMs: navigation.requestStart,
+    serverWaitMs: navigation.responseStart - navigation.requestStart,
     ttfbMs: navigation.responseStart,
     domContentLoadedMs: navigation.domContentLoadedEventEnd,
     loadEventMs: navigation.loadEventEnd,
