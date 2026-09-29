@@ -51,7 +51,7 @@ import { canViewSource } from './page-export.js';
 import { NO_OVERRIDES, hasOverrides, overrideCommands } from './page-overrides.js';
 import { pausedRequestCommand, type PausedRequest } from './request-rules.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from './site-data.js';
-import { trimHistory, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
+import { trimHistory, type PersistChange, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { securityState } from './site-info.js';
 import { withoutHash } from './url.js';
@@ -102,7 +102,7 @@ export interface TabManagerOptions {
   privateSession: Session;
   onPrivateEnded: () => void;
   freezeBackground: () => boolean;
-  onChange: (persist: boolean) => void;
+  onChange: (persist: PersistChange) => void;
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
@@ -1097,14 +1097,14 @@ export class TabManager {
       if (tab.url === contents.getURL()) this.options.onVisitTitle(tab.visitId, title);
       if (tab.title === title) return;
       tab.title = title;
-      this.changed(true);
+      this.changed('lazy');
     });
     listen('page-favicon-updated', (_event, favicons) => {
       const faviconUrl = favicons[0] ?? null;
       if (faviconUrl && tab.url === contents.getURL()) this.options.onVisitFavicon(tab.visitId, faviconUrl);
       if (tab.faviconUrl === faviconUrl) return;
       tab.faviconUrl = faviconUrl;
-      this.changed(true);
+      this.changed('lazy');
     });
     listen('did-start-loading', () => {
       tab.loading = true;
@@ -1366,7 +1366,7 @@ export class TabManager {
     return this.tabs.findIndex((tab) => tab.id === id);
   }
 
-  private changed(persist = false): void {
+  private changed(persist: PersistChange = false): void {
     this.options.onChange(persist);
   }
 }

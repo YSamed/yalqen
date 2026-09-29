@@ -51,6 +51,11 @@
   const windowControls = navigator.userAgent.includes('Macintosh');
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
   const collapsed = $derived(browser.panelCollapsed);
+  // Each field gets its own signal so the effects below run only when their value changes,
+  // not on every state push (a title or favicon update replaces the whole state).
+  const material = $derived(browser.material);
+  const pageFullScreen = $derived(browser.pageFullScreen);
+  const windowFullScreen = $derived(browser.windowFullScreen);
   const panelWidth = $derived(browser.sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : width) : PAGE_INSET);
   const side = $derived(browser.panelSide);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -89,8 +94,8 @@
   const topInset = $derived(browser.toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
-    document.documentElement.dataset.material = browser.material;
-    document.documentElement.toggleAttribute('data-fullscreen', browser.windowFullScreen);
+    document.documentElement.dataset.material = material;
+    document.documentElement.toggleAttribute('data-fullscreen', windowFullScreen);
   });
 
   $effect(() => {
@@ -102,7 +107,7 @@
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
       newTabCenterOffset:
-        browser.material === 'glass' && !browser.pageFullScreen
+        material === 'glass' && !pageFullScreen
           ? ((side === 'right' ? 1 : -1) * Math.max(0, pagePanelWidth - COLLAPSED_WIDTH)) / 2
           : 0,
     });
@@ -141,15 +146,15 @@
 <div
   class="shell"
   class:right={side === 'right'}
-  class:fullscreen={browser.pageFullScreen}
-  style:grid-template-columns={browser.pageFullScreen
+  class:fullscreen={pageFullScreen}
+  style:grid-template-columns={pageFullScreen
     ? 'minmax(0, 1fr)'
     : side === 'left'
       ? `${shownWidth}px minmax(0, 1fr)`
       : `minmax(0, 1fr) ${shownWidth}px`}
-  style:grid-template-rows={browser.pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
+  style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
-  {#if !browser.pageFullScreen}
+  {#if !pageFullScreen}
     {#if browser.sidebarVisible}
       <TabPanel
         tabs={browser.tabs}
@@ -191,12 +196,12 @@
   <section
     class="page"
     class:blank
-    style:margin={browser.pageFullScreen
+    style:margin={pageFullScreen
       ? '0'
       : side === 'left'
         ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0`
         : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
-    style:border-radius={browser.pageFullScreen ? '0' : `${PAGE_RADIUS}px`}
+    style:border-radius={pageFullScreen ? '0' : `${PAGE_RADIUS}px`}
   >
     <div class="viewport" aria-hidden="true">
       {#if browser.device}

@@ -45,7 +45,7 @@ import { canViewSource, formatAddress, pageFileName, type AddressFormat } from '
 import { pageFrame } from './page-layout.js';
 import { fontPreferences } from './page-preferences.js';
 import { permissionOrigin, type PermissionStore } from './permissions.js';
-import type { SavedTab, SavedWindow } from './persistence.js';
+import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
 import { blockedPopupsTemplate } from './popups.js';
 import { Preconnector } from './preconnect.js';
 import { loadWallpaper } from './wallpaper.js';
@@ -91,7 +91,7 @@ export interface AppContext {
   updateSettings(patch: unknown): void;
   deviceId(): DeviceId;
   openWindow(options: WindowOptions): YalqenWindow;
-  onWindowChange(persist: boolean): void;
+  onWindowChange(persist: PersistChange): void;
   onPrivateTabsClosed(): void;
   onWindowFocus(window: YalqenWindow): void;
   onWindowClosing(window: YalqenWindow): void;
@@ -424,8 +424,11 @@ export class YalqenWindow {
   }
 
   setLayout(layout: ChromeLayout): void {
-    this.layout = layout;
-    this.applyLayout();
+    const changed = (Object.keys(layout) as (keyof ChromeLayout)[]).some((key) => layout[key] !== this.layout[key]);
+    if (changed) {
+      this.layout = layout;
+      this.applyLayout();
+    }
     this.reveal();
   }
 

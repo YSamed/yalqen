@@ -4,9 +4,13 @@ import { performance } from 'node:perf_hooks';
 import { bench } from './bench.js';
 
 export const SAVE_DELAY_MS = 500;
+export const LAZY_SAVE_DELAY_MS = 5000;
+export const MAX_SAVE_WAIT_MS = 5000;
 
 export class JsonFile {
   private timer: NodeJS.Timeout | null = null;
+  private pendingSince = 0;
+  private pendingDelay = 0;
   private generation = 0;
   private data: (() => unknown) | null = null;
   private dirty = false;
@@ -14,16 +18,24 @@ export class JsonFile {
   constructor(
     readonly file: string,
     private readonly label: string,
+    private readonly maxWaitMs = MAX_SAVE_WAIT_MS,
   ) {}
 
+  // Each change pushes the save back, but never past maxWaitMs after the first unsaved change,
+  // and a change that may wait longer never delays a save that is already due sooner.
   schedule(data: () => unknown, delayMs = SAVE_DELAY_MS): void {
     this.data = data;
     this.dirty = true;
+    if (this.timer && delayMs > this.pendingDelay) return;
+    const now = Date.now();
     if (this.timer) clearTimeout(this.timer);
+    else this.pendingSince = now;
+    this.pendingDelay = delayMs;
+    const wait = Math.max(0, Math.min(delayMs, this.pendingSince + this.maxWaitMs - now));
     this.timer = setTimeout(() => {
       this.timer = null;
       void this.writeInBackground();
-    }, delayMs);
+    }, wait);
   }
 
   flush(data?: () => unknown): void {

@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { JsonFile } from './json-file.js';
+import { JsonFile, LAZY_SAVE_DELAY_MS } from './json-file.js';
 import { indexHistory, type HistoryIndex } from './suggestions.js';
 import { withoutHash } from './url.js';
 
 const MAX_VISITS = 5000;
+// Pages that keep retitling themselves (unread counters, clocks) would otherwise rewrite the
+// history file for as long as they stay open; like Chrome, only a visit's first titles are kept.
+export const MAX_TITLE_CHANGES = 5;
 
 export interface HistoryEntry {
   id: string;
@@ -20,6 +23,7 @@ export class HistoryStore {
   private entries: HistoryEntry[] = [];
   private readonly json: JsonFile;
   private cachedIndex: HistoryIndex | null = null;
+  private readonly titleChanges = new WeakMap<HistoryEntry, number>();
 
   constructor(directory: string) {
     this.file = path.join(directory, 'history.json');
@@ -56,8 +60,11 @@ export class HistoryStore {
     if (!id || !title) return;
     const entry = this.entries.find((item) => item.id === id);
     if (!entry || entry.title === title) return;
+    const changes = this.titleChanges.get(entry) ?? 0;
+    if (changes >= MAX_TITLE_CHANGES) return;
+    this.titleChanges.set(entry, changes + 1);
     entry.title = title;
-    this.changed();
+    this.changed(LAZY_SAVE_DELAY_MS);
   }
 
   setFavicon(id: string | null, faviconUrl: string): void {
@@ -65,7 +72,7 @@ export class HistoryStore {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry || entry.faviconUrl === faviconUrl) return;
     entry.faviconUrl = faviconUrl;
-    this.changed();
+    this.changed(LAZY_SAVE_DELAY_MS);
   }
 
   remove(id: string): void {
@@ -91,9 +98,9 @@ export class HistoryStore {
     this.json.flush();
   }
 
-  private changed(): void {
+  private changed(delayMs?: number): void {
     this.cachedIndex = null;
-    this.json.schedule(() => this.entries);
+    this.json.schedule(() => this.entries, delayMs);
   }
 }
 

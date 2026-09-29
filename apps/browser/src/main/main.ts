@@ -33,6 +33,7 @@ import { setThirdPartyCookieBlocking } from './third-party-cookies.js';
 import { FindBar } from './find-bar.js';
 import { externalUrls } from './launch.js';
 import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-saver.js';
+import { LAZY_SAVE_DELAY_MS } from './json-file.js';
 import { buildMenu } from './menu.js';
 import { installPermissionHandlers } from './permission-handlers.js';
 import { PermissionStore } from './permissions.js';
@@ -267,7 +268,8 @@ function startBrowser(): void {
     deviceId: () => deviceId,
     openWindow: (options) => openWindow(options),
     onWindowChange: (persist) => {
-      if (persist && !quitting) store.scheduleSave(sessionSnapshot);
+      if (persist && !quitting)
+        store.scheduleSave(sessionSnapshot, persist === 'lazy' ? LAZY_SAVE_DELAY_MS : undefined);
     },
     onPrivateTabsClosed: () => {
       if (windows.some((window) => !window.isDeveloper && window.tabs.hasPrivateTabs)) return;

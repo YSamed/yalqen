@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import historyModule from '../dist/main/history.js';
 import internalPages from '../dist/main/internal-pages.js';
 
-const { HistoryStore, isSameVisit } = historyModule;
+const { HistoryStore, MAX_TITLE_CHANGES, isSameVisit } = historyModule;
 const { renderHistory } = internalPages;
 
 test('visits survive restart, can be searched, removed, and cleared', () => {
@@ -81,6 +81,22 @@ test('the suggestion index follows every change to the visits', () => {
     assert.deepEqual(pages(), [['https://example.com/', 'Örnek', 1]]);
     store.clear();
     assert.deepEqual(pages(), []);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('a page that keeps retitling itself only records its first titles', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
+  try {
+    const store = new HistoryStore(directory);
+    const id = store.visit('https://mail.example/', 'https://mail.example/');
+    for (let count = 1; count <= MAX_TITLE_CHANGES + 3; count++) store.setTitle(id, `(${count}) Gelen kutusu`);
+    store.saveNow();
+    assert.equal(new HistoryStore(directory).list()[0].title, `(${MAX_TITLE_CHANGES}) Gelen kutusu`);
+    const next = store.visit('https://mail.example/', 'https://mail.example/');
+    store.setTitle(next, '(9) Gelen kutusu');
+    assert.equal(store.list()[0].title, '(9) Gelen kutusu');
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
