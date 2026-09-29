@@ -34,6 +34,7 @@ export class CommandBar {
   private ready = false;
   private loaded: Promise<void> = Promise.resolve();
   private lastOpen: CommandBarOpen | null = null;
+  private destroyed = false;
 
   constructor(private readonly options: CommandBarOptions) {
     ipcMain.on(CommandBarChannel.action, this.onAction);
@@ -81,6 +82,10 @@ export class CommandBar {
     this.view.setBounds({ x: 0, y: 0, width, height });
   }
 
+  prewarm(): void {
+    if (!this.destroyed) this.ensureView();
+  }
+
   async painted(): Promise<void> {
     const contents = this.view?.webContents;
     if (!contents || contents.isDestroyed()) return;
@@ -94,6 +99,7 @@ export class CommandBar {
   }
 
   destroy(): void {
+    this.destroyed = true;
     ipcMain.off(CommandBarChannel.action, this.onAction);
     this.close();
     this.host = null;

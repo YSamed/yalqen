@@ -51,6 +51,7 @@ import { ZoomStore } from './zoom.js';
 const DAILY_PARTITION = 'persist:daily';
 const PRIVATE_PARTITION = 'private';
 const DEVELOPER_PARTITION = 'developer';
+const COMMAND_BAR_PREWARM_MS = 5000;
 
 bench?.mark('modules-loaded');
 if (bench) prepareBenchApp();
@@ -523,6 +524,16 @@ function startBrowser(): void {
     if (started && windows.length === 0 && !quitting) openWindow({});
   });
 
+  // The first address bar open would otherwise wait for a new renderer, so it loads right after the first page.
+  const prewarmCommandBar = () => {
+    const warm = () => {
+      bench?.mark('command-bar-prewarm');
+      commandBar.prewarm();
+    };
+    current?.tabs.activeContents()?.once('did-stop-loading', warm);
+    setTimeout(warm, COMMAND_BAR_PREWARM_MS);
+  };
+
   // Content scripts only reach pages that load after their extension, so restored tabs wait for it.
   const openInitialWindows = () => {
     started = true;
@@ -547,6 +558,7 @@ function startBrowser(): void {
   void extensions.loadAll().then(() => {
     bench?.mark('extensions-loaded');
     openInitialWindows();
+    prewarmCommandBar();
     if (!bench) return;
     void runBench(
       bench,
