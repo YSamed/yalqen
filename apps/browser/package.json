@@ -23,6 +23,7 @@
     "package:mac": "npm run build && electron-builder --mac"
   },
   "devDependencies": {
+    "@electron/osx-sign": "^1.3.3",
     "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
@@ -65,6 +66,13 @@
         "to": "brand/icon-512.png"
       }
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "YSamed",
+        "repo": "yalqen"
+      }
+    ],
     "protocols": [
       {
         "name": "Web sayfası",
@@ -84,6 +92,7 @@
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
+      "sign": "./scripts/sign.mjs",
       "extendInfo": {
         "NSCameraUsageDescription": "Web siteleri izin verdiğinizde kameranızı kullanabilir.",
         "NSMicrophoneUsageDescription": "Web siteleri izin verdiğinizde mikrofonunuzu kullanabilir.",
@@ -107,6 +116,7 @@
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.18.2",
+    "electron-updater": "^6.8.9",
     "tldts": "^7.4.15"
   },
   "engines": {

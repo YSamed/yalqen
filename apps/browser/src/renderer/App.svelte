@@ -37,6 +37,7 @@
     defaultZoom: 1,
     downloads: { active: 0, progress: null },
     extensions: false,
+    updateReady: null,
   });
   let width = $state(DEFAULT_WIDTH);
   let stateReceived = $state(false);
@@ -178,6 +179,7 @@
         defaultZoom={browser.defaultZoom}
         downloads={browser.downloads}
         extensions={browser.extensions}
+        updateReady={browser.updateReady}
         leadingInset={windowControls
           ? side === 'left'
             ? Math.max(0, WINDOW_CONTROLS_END - shownWidth)

@@ -45,6 +45,7 @@ import { SettingsStore } from './settings.js';
 import { broadcastExtensions, broadcastSettings, isSettingsFrame } from './settings-page.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { recentPages } from './tabs.js';
+import { Updater, loadAutoUpdater } from './updater.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
 import { ZoomStore } from './zoom.js';
 
@@ -131,8 +132,10 @@ function startBrowser(): void {
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;
+  const windowsToSave = () =>
+    windows.filter((window) => !window.isPrivate).map((window) => window.tabs.toSavedWindow());
   const sessionSnapshot = (): SavedSession => {
-    const saved = windows.filter((window) => !window.isPrivate).map((window) => window.tabs.toSavedWindow());
+    const saved = windowsToSave();
     return {
       version: 2,
       windows:
@@ -215,8 +218,23 @@ function startBrowser(): void {
       defaultBrowser: app.isDefaultProtocolClient('https', clientPath, clientArgs),
       engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
       customTemplateValid: isValidSearchTemplate(values.customSearchTemplate),
+      version: app.getVersion(),
+      update: updater.status(),
     };
   };
+  const updater = new Updater({
+    load: app.isPackaged && !bench ? loadAutoUpdater : null,
+    automatic: () => settings.get().autoUpdate,
+    onChange: () => {
+      pushState();
+      broadcastSettings(settingsView());
+    },
+    // quitAndInstall closes the windows before before-quit fires, so the session is saved first.
+    beforeInstall: () => {
+      quitting = true;
+      store.saveNow({ version: 2, windows: windowsToSave(), resume: true });
+    },
+  });
   const updateSettings = (patch: unknown) => {
     const previous = settings.get();
     const next = settings.update(patch);
@@ -227,6 +245,7 @@ function startBrowser(): void {
     nativeTheme.themeSource = next.theme;
     if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs)
       eachWindow((window) => window.tabs.applyFreezeSetting());
+    if (next.autoUpdate !== previous.autoUpdate) updater.schedule();
     adBlocker.setEnabled(next.adBlocking);
     applyCookieBlocking();
     pushState();
@@ -266,6 +285,8 @@ function startBrowser(): void {
     },
     runDownloadsCommand: (command, params) => downloadManager.runCommand(command, params),
     updateSettings,
+    updateReady: () => updater.readyVersion(),
+    installUpdate: () => updater.install(),
     deviceId: () => deviceId,
     openWindow: (options) => openWindow(options),
     onWindowChange: (persist) => {
@@ -394,6 +415,13 @@ function startBrowser(): void {
         current?.tabs.selectDevice(id);
       },
       openSettings: inWindow((window) => window.tabs.openSettings()),
+      checkForUpdates:
+        updater.status().state === 'unavailable'
+          ? null
+          : inWindow((window) => {
+              updater.check();
+              window.tabs.openSettings();
+            }),
       toggleBookmark: () => {
         const page = current?.tabs.activePage();
         if (page) context.toggleBookmark(page.url, page.title);
@@ -473,6 +501,12 @@ function startBrowser(): void {
     return settingsView();
   });
   ipcMain.handle(SettingsChannel.processUsage, (event) => (isSettingsFrame(event) ? processUsage() : null));
+  ipcMain.handle(SettingsChannel.checkForUpdates, (event) => {
+    if (isSettingsFrame(event)) updater.check();
+  });
+  ipcMain.handle(SettingsChannel.installUpdate, (event) => {
+    if (isSettingsFrame(event)) updater.install();
+  });
   ipcMain.handle(SettingsChannel.update, (event, patch: unknown) => {
     if (!isSettingsFrame(event)) return null;
     updateSettings(patch);
@@ -507,6 +541,7 @@ function startBrowser(): void {
   });
   app.on('will-quit', () => {
     clearInterval(discardTimer);
+    updater.stop();
     downloadManager.destroy();
     adBlocker.destroy();
     commandBar.destroy();
@@ -537,8 +572,9 @@ function startBrowser(): void {
   // Content scripts only reach pages that load after their extension, so restored tabs wait for it.
   const openInitialWindows = () => {
     started = true;
-    const restoring = settings.get().startupBehavior === 'restore';
-    const savedWindows = store.load()?.windows ?? [];
+    const saved = store.load();
+    const restoring = settings.get().startupBehavior === 'restore' || saved?.resume === true;
+    const savedWindows = saved?.windows ?? [];
     const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter(
       (window) => window.tabs.length > 0,
     );

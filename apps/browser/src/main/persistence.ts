@@ -38,6 +38,9 @@ export interface SavedWindow {
 export interface SavedSession {
   version: 2;
   windows: SavedWindow[];
+  // Set when the browser restarts itself to install an update, so every tab comes back once
+  // even when the startup setting would only keep pinned tabs.
+  resume?: true;
 }
 
 // Without session restore only pinned tabs survive, reset to their pinned URL; a null activeTabId
@@ -74,7 +77,7 @@ export class SessionStore {
           : null;
       }
       return data.version === 2 && Array.isArray(data.windows)
-        ? { version: 2, windows: data.windows.filter(isSavedWindow) }
+        ? { version: 2, windows: data.windows.filter(isSavedWindow), ...(data.resume === true && { resume: true }) }
         : null;
     } catch {
       return null;

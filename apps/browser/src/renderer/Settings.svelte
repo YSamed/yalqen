@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { ClearDataRange, SettingsValues, SettingsView } from '../shared/types';
+  import type { ClearDataRange, SettingsValues, SettingsView, UpdateStatus } from '../shared/types';
   import Extensions from './components/Extensions.svelte';
   import type { IconName } from './components/Icon.svelte';
   import ProcessUsage from './components/ProcessUsage.svelte';
@@ -135,6 +135,25 @@
   $effect(() => {
     if (!editingTemplate) templateDraft = values?.customSearchTemplate ?? '';
   });
+
+  function updateMessage(status: UpdateStatus): string {
+    switch (status.state) {
+      case 'unavailable':
+        return 'Geliştirme sürümü kendini güncellemez.';
+      case 'idle':
+        return 'Yeni sürüm henüz denetlenmedi.';
+      case 'checking':
+        return 'Yeni sürüm denetleniyor…';
+      case 'up-to-date':
+        return 'Yalqen güncel.';
+      case 'downloading':
+        return `Yalqen ${status.version} indiriliyor… %${status.percent}`;
+      case 'ready':
+        return `Yalqen ${status.version} hazır. Yeniden başlatınca yüklenir, açık sekmeler geri gelir.`;
+      case 'failed':
+        return 'Güncelleme denetlenemedi. Bağlantınızı kontrol edip tekrar deneyin.';
+    }
+  }
 
   async function update(patch: Partial<SettingsValues>): Promise<void> {
     view = await api.update(patch);
@@ -271,6 +290,39 @@
             options={onOffOptions}
             value={values.pageTranslation}
             onchange={(value) => update({ pageTranslation: value })}
+          />
+        </div>
+
+        <h2>Güncellemeler</h2>
+        <div class="row">
+          <span class="label">
+            <span>Yalqen {view.version}</span>
+            <span class="hint" aria-live="polite">{updateMessage(view.update)}</span>
+          </span>
+          {#if view.update.state === 'ready'}
+            <Button variant="primary" onclick={() => api.installUpdate()}>Yeniden başlat</Button>
+          {:else if view.update.state !== 'unavailable'}
+            <Button
+              disabled={view.update.state === 'checking' || view.update.state === 'downloading'}
+              onclick={() => api.checkForUpdates()}
+            >
+              Şimdi denetle
+            </Button>
+          {/if}
+        </div>
+        <div class="row">
+          <span class="label">
+            <span>Güncellemeleri otomatik denetle</span>
+            <span class="hint">
+              Birkaç saatte bir GitHub'dan yeni sürüm olup olmadığına bakılır ve arka planda indirilir. Tarama verisi
+              gönderilmez.
+            </span>
+          </span>
+          <SegmentedControl
+            label="Güncellemeleri otomatik denetle"
+            options={onOffOptions}
+            value={values.autoUpdate}
+            onchange={(value) => update({ autoUpdate: value })}
           />
         </div>
       {:else if pane === 'appearance'}

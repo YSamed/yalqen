@@ -15,6 +15,7 @@
     defaultZoom,
     downloads,
     extensions,
+    updateReady,
     leadingInset,
     trailingInset,
     trailingOverhang = 0,
@@ -27,6 +28,7 @@
     defaultZoom: number;
     downloads: DownloadsSummary;
     extensions: boolean;
+    updateReady: string | null;
     leadingInset: number;
     trailingInset: number;
     trailingOverhang?: number;
@@ -236,6 +238,14 @@
 
   <div class="side trailing" style:margin-right="{-trailingOverhang}px">
     <Capsule minWidth={trailingWidth} spread>
+      {#if updateReady}
+        <IconButton
+          icon="update"
+          tone="accent"
+          label="Yalqen {updateReady} hazır, güncellemek için yeniden başlat"
+          onclick={() => send({ type: 'install-update' })}
+        />
+      {/if}
       <IconButton icon="bookmarks" label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })} />
       <IconButton icon="history" label="Geçmiş" title="Geçmiş (⌘Y)" onclick={() => send({ type: 'open-history' })} />
       {#if extensions}

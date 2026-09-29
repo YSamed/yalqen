@@ -83,6 +83,7 @@ export interface BrowserState {
   defaultZoom: number;
   downloads: DownloadsSummary;
   extensions: boolean;
+  updateReady: string | null;
 }
 
 export interface DownloadsSummary {
@@ -137,7 +138,8 @@ export type UiAction =
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-history' }
   | { type: 'toggle-translation' }
-  | { type: 'open-settings' };
+  | { type: 'open-settings' }
+  | { type: 'install-update' };
 
 export const PageChannel = {
   swipe: 'yalqen:page-swipe',
@@ -313,14 +315,26 @@ export interface SettingsValues {
   defaultZoom: number;
   pageLanguage: PageLanguage;
   pageTranslation: boolean;
+  autoUpdate: boolean;
   welcomeCompleted: boolean;
 }
+
+export type UpdateStatus =
+  | { state: 'unavailable' }
+  | { state: 'idle' }
+  | { state: 'checking' }
+  | { state: 'up-to-date' }
+  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'ready'; version: string }
+  | { state: 'failed' };
 
 export interface SettingsView {
   values: SettingsValues;
   defaultBrowser: boolean;
   engines: { id: SearchEngineId; label: string }[];
   customTemplateValid: boolean;
+  version: string;
+  update: UpdateStatus;
 }
 
 export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
@@ -340,6 +354,8 @@ export const SettingsChannel = {
   clearData: 'yalqen-settings:clear-data',
   makeDefault: 'yalqen-settings:make-default',
   processUsage: 'yalqen-settings:process-usage',
+  checkForUpdates: 'yalqen-settings:check-for-updates',
+  installUpdate: 'yalqen-settings:install-update',
 } as const;
 
 export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
@@ -395,6 +411,8 @@ export interface SettingsApi {
   clearData(request: ClearDataRequest): Promise<void>;
   makeDefault(): Promise<SettingsView>;
   processUsage(): Promise<ProcessUsage>;
+  checkForUpdates(): Promise<void>;
+  installUpdate(): Promise<void>;
   requestRules(): Promise<RequestRule[]>;
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
   extensions(): Promise<ExtensionInfo[]>;

@@ -35,6 +35,7 @@ export interface MenuActions {
   devices: DeviceMenuItem[];
   selectDevice(id: DeviceId): void;
   openSettings(): void;
+  checkForUpdates: (() => void) | null;
   toggleBookmark(): void;
   showBookmarks(): void;
   print(): void;
@@ -58,6 +59,14 @@ export function buildMenu(actions: MenuActions): Menu {
             label: 'Yalqen',
             submenu: [
               { label: 'Yalqen Hakkında', role: 'about' },
+              ...(actions.checkForUpdates
+                ? [
+                    {
+                      label: 'Güncellemeleri Denetle…',
+                      click: actions.checkForUpdates,
+                    } satisfies MenuItemConstructorOptions,
+                  ]
+                : []),
               { type: 'separator' },
               settingsItem,
               { type: 'separator' },

@@ -89,6 +89,8 @@ export interface AppContext {
   runBookmarksCommand(command: string, params: URLSearchParams): void;
   runDownloadsCommand(command: string, params: URLSearchParams): void;
   updateSettings(patch: unknown): void;
+  updateReady(): string | null;
+  installUpdate(): void;
   deviceId(): DeviceId;
   openWindow(options: WindowOptions): YalqenWindow;
   onWindowChange(persist: PersistChange): void;
@@ -419,6 +421,7 @@ export class YalqenWindow {
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate && this.app.extensions.active,
+      updateReady: this.app.updateReady(),
     };
   }
 
@@ -728,6 +731,9 @@ export class YalqenWindow {
         break;
       case 'open-settings':
         tabs.openSettings();
+        break;
+      case 'install-update':
+        app.installUpdate();
         break;
     }
   }

@@ -90,6 +90,19 @@ test('a single-window session from before windows is read as one window', () => 
   }
 });
 
+test('the update restart flag survives one load and nothing else does', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-session-'));
+  try {
+    const store = new SessionStore(dir);
+    store.saveNow({ ...session('resumed'), resume: true });
+    assert.deepEqual(new SessionStore(dir).load(), { ...session('resumed'), resume: true });
+    fs.writeFileSync(path.join(dir, 'tabs.json'), JSON.stringify({ ...session('plain'), resume: 'yes' }));
+    assert.deepEqual(new SessionStore(dir).load(), session('plain'));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 async function waitFor(condition) {
   const deadline = Date.now() + 2000;
   while (!condition()) {
