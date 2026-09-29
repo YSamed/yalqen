@@ -113,6 +113,8 @@ export class YalqenWindow {
   readonly isPrivate: boolean;
   readonly isDeveloper: boolean;
   private readonly ui: WebContentsView;
+  // view.webContents reads undefined once the contents are destroyed; this reference keeps answering isDestroyed().
+  readonly uiContents: Electron.WebContents;
   private readonly commandHost: CommandBarHost;
   private readonly findHost: FindBarHost;
   private pageArea: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
@@ -161,9 +163,10 @@ export class YalqenWindow {
         nodeIntegration: false,
       },
     });
+    this.uiContents = this.ui.webContents;
     if (glassAvailable) this.ui.setBackgroundColor('#00000000');
-    this.ui.webContents.on('will-navigate', (event) => event.preventDefault());
-    this.ui.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    this.uiContents.on('will-navigate', (event) => event.preventDefault());
+    this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     this.window.contentView.addChildView(this.ui);
 
     this.preconnector = new Preconnector((origin) =>
@@ -185,7 +188,7 @@ export class YalqenWindow {
       },
       onDismiss: () => {
         this.preconnector.cancel();
-        if (!this.tabs.focusActive()) this.ui.webContents.focus();
+        if (!this.tabs.focusActive()) this.uiContents.focus();
       },
       onInput: (input) => {
         if (isDevCommandInput(input)) {
@@ -215,7 +218,7 @@ export class YalqenWindow {
       onClose: () => {
         if (this.findTarget) this.tabs.stopFind(this.findTarget.tabId);
         this.findTarget = null;
-        if (!this.tabs.focusActive()) this.ui.webContents.focus();
+        if (!this.tabs.focusActive()) this.uiContents.focus();
       },
     };
 
@@ -328,7 +331,7 @@ export class YalqenWindow {
     setTimeout(this.reveal, REVEAL_FALLBACK_MS);
 
     nativeTheme.on('updated', this.pushState);
-    this.ui.webContents.once('did-finish-load', () => {
+    this.uiContents.once('did-finish-load', () => {
       this.glassApplied = applyGlass(this.window);
       this.pushState();
       void this.sendWallpaper();
@@ -342,7 +345,7 @@ export class YalqenWindow {
       this.commandBar.release(this.window);
       this.findBar.release(this.window);
       app.extensionPopup.close(this.window);
-      if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close();
+      if (!this.uiContents.isDestroyed()) this.uiContents.close();
       app.onWindowClosed(this);
       if (hadPrivate) app.onPrivateTabsClosed();
     });
@@ -351,7 +354,7 @@ export class YalqenWindow {
     else if (options.saved && options.saved.tabs.length > 0) this.tabs.restore(options.saved, options.url);
     else this.tabs.open(options.url);
 
-    void this.ui.webContents.loadFile(path.join(__dirname, '../renderer/index.html'));
+    void this.uiContents.loadFile(path.join(__dirname, '../renderer/index.html'));
     app.onWindowFocus(this);
   }
 
@@ -373,10 +376,6 @@ export class YalqenWindow {
     else this.tabs.goForward();
   }
 
-  get uiContents(): Electron.WebContents {
-    return this.ui.webContents;
-  }
-
   isFocused(): boolean {
     return !this.window.isDestroyed() && this.window.isFocused();
   }
@@ -387,7 +386,7 @@ export class YalqenWindow {
 
   private async sendWallpaper(): Promise<void> {
     const wallpaper = await loadWallpaper(path.join(app.getPath('userData'), 'wallpaper'));
-    if (!this.ui.webContents.isDestroyed()) this.ui.webContents.send(IpcChannel.wallpaper, wallpaper);
+    if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.wallpaper, wallpaper);
   }
 
   readonly pushState = (): void => {
@@ -395,12 +394,12 @@ export class YalqenWindow {
     this.pushQueued = true;
     setImmediate(() => {
       this.pushQueued = false;
-      if (this.ui.webContents.isDestroyed()) return;
+      if (this.uiContents.isDestroyed()) return;
       const state = this.state();
       const serialized = JSON.stringify(state);
       if (serialized === this.lastPushedState) return;
       this.lastPushedState = serialized;
-      this.ui.webContents.send(IpcChannel.state, state);
+      this.uiContents.send(IpcChannel.state, state);
     });
   };
 
