@@ -16,7 +16,7 @@
   </p>
 
   <p>
-    <a href="https://yalqen.com/">Website</a> ·
+    <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Website</a> ·
     <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
     <a href="CONTRIBUTING.md">Contribute</a> ·
     <a href="https://github.com/YSamed/yalqen/issues">Report a bug</a> ·
@@ -25,7 +25,7 @@
 </div>
 
 <p align="center">
-  <a href="https://yalqen.com/">
+  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="design/screenshots/website-dark.png">
       <source media="(prefers-color-scheme: light)" srcset="design/screenshots/website-light.png">

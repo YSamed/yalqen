@@ -10,7 +10,7 @@
   </p>
 
   <p>
-    <a href="https://yalqen.com/">Web sitesi</a> ·
+    <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Web sitesi</a> ·
     <a href="apps/browser/CHANGELOG.md">Değişiklik günlüğü</a> ·
     <a href="CONTRIBUTING.md">Katkıda bulun</a> ·
     <a href="https://github.com/YSamed/yalqen/issues">Hata bildir</a> ·
