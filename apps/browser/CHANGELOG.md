@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/YSamed/yalqen/compare/v0.2.0...v0.2.1) (2026-09-29)
+
+
+### Features
+
+* update the app in place from github releases ([#35](https://github.com/YSamed/yalqen/issues/35)) ([0de3d42](https://github.com/YSamed/yalqen/commit/0de3d42d2938e4dc1679d3d3a040a67fc0c61846))
+
+
+### Performance
+
+* add a benchmark harness and cut write, layout and command bar costs ([#33](https://github.com/YSamed/yalqen/issues/33)) ([a5c893a](https://github.com/YSamed/yalqen/commit/a5c893a8d0757ecfb55cb18512297294e5713bf1))
+
 ## [0.2.0](https://github.com/YSamed/yalqen/compare/v0.1.2...v0.2.0) (2026-09-29)
 
 
