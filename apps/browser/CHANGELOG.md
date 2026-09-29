@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/YSamed/yalqen/compare/v0.1.2...v0.2.0) (2026-09-29)
+
+
+### Features
+
+* add translate selection option to page context menu ([4fc51f3](https://github.com/YSamed/yalqen/commit/4fc51f309ca8d382fb84914e08cb8e424d79ddfc))
+
 ## [0.1.2](https://github.com/YSamed/yalqen/compare/v0.1.1...v0.1.2) (2026-09-29)
 
 
