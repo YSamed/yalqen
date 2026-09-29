@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/YSamed/yalqen/compare/v0.1.1...v0.1.2) (2026-09-29)
+
+
+### Miscellaneous
+
+* release 0.1.2 ([51bfa71](https://github.com/YSamed/yalqen/commit/51bfa71ab4013a12bbfbdd0d1178e28f8cb0e803))
+
 ## [0.1.1](https://github.com/YSamed/yalqen/compare/v0.1.0...v0.1.1) (2026-09-29)
 
 
