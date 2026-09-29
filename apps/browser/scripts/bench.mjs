@@ -33,7 +33,7 @@ const USAGE = `Usage: npm run bench -- [options]
   --scenario  startup | pages | title | all            (default: all)
   --runs      repetitions per scenario and variant     (default: 3)
   --adblock   on | off | both                          (default: both)
-  --tabs      tabs restored by the startup scenario    (default: 50)
+  --tabs      tabs restored by the startup scenario    (default: 50; the active one is a local static page)
   --history   visits seeded into each profile          (default: 5000)
   --idle      idle window of the title scenario, ms    (default: 15000)
   --pages     page list                                (default: bench/pages.txt)
@@ -182,12 +182,19 @@ async function run({ out, session, scenario, variant, runIndex, adBlocking, hist
   }
 }
 
-function startTicker() {
-  const page = `<!doctype html><meta charset="utf-8"><title>Sayaç 0</title><p>Yalqen bench</p>
-<script>let n = 0; setInterval(() => { document.title = 'Sayaç ' + ++n; }, ${TICKER_INTERVAL_MS});</script>`;
-  const server = http.createServer((_request, response) => {
-    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-    response.end(page);
+// Startup and idle numbers come from local pages, so network latency and page animations
+// (example.com cycles its text) stay out of them.
+const LOCAL_PAGES = {
+  '/static': '<!doctype html><meta charset="utf-8"><title>Yalqen bench</title><p>A static page without scripts.</p>',
+  '/ticker': `<!doctype html><meta charset="utf-8"><title>Sayaç 0</title><p>Yalqen bench</p>
+<script>let n = 0; setInterval(() => { document.title = 'Sayaç ' + ++n; }, ${TICKER_INTERVAL_MS});</script>`,
+};
+
+function startLocalServer() {
+  const server = http.createServer((request, response) => {
+    const page = LOCAL_PAGES[new URL(request.url, 'http://localhost').pathname];
+    response.writeHead(page ? 200 : 404, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    response.end(page ?? '');
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
@@ -327,14 +334,17 @@ async function main() {
     fs.rmSync(prime, { force: true });
   }
 
-  const ticker = settings.scenarios.includes('title') ? await startTicker() : null;
+  const server = await startLocalServer();
+  const local = (pathname) => `http://127.0.0.1:${server.address().port}${pathname}`;
   const plans = {
     startup: {
-      sessionUrls: Array.from({ length: settings.tabs }, (_, i) => settings.pages[i % settings.pages.length]),
+      sessionUrls: Array.from({ length: settings.tabs }, (_, i) =>
+        i === 0 ? local('/static') : settings.pages[i % settings.pages.length],
+      ),
       plan: { idleMs: STARTUP_IDLE_MS },
     },
     pages: { sessionUrls: [], plan: { urls: settings.pages, commandBar: true } },
-    title: ticker && { sessionUrls: [`http://127.0.0.1:${ticker.address().port}/`], plan: { idleMs: settings.idleMs } },
+    title: { sessionUrls: [local('/ticker')], plan: { idleMs: settings.idleMs } },
   };
   try {
     for (const scenario of settings.scenarios) {
@@ -356,7 +366,7 @@ async function main() {
       }
     }
   } finally {
-    ticker?.close();
+    server.close();
   }
 
   summarize(readRecords(settings.out, session), settings.variants.map(variantName), settings.scenarios);
