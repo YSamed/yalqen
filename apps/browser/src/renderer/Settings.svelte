@@ -35,7 +35,7 @@
   });
 
   function movePane(event: KeyboardEvent): void {
-    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
     if (!step) return;
     event.preventDefault();
     const index = panes.findIndex((item) => item.id === pane);
@@ -211,439 +211,443 @@
 {#if view && values}
   <div class="settings">
     <h1>Ayarlar</h1>
-    <div class="panes" role="tablist" aria-label="Ayarlar bölümleri">
-      {#each panes as item (item.id)}
-        <Button
-          size="lg"
-          icon={item.icon}
-          role="tab"
-          id="tab-{item.id}"
-          aria-controls="pane"
-          aria-selected={pane === item.id}
-          tabindex={pane === item.id ? 0 : -1}
-          onclick={() => (pane = item.id)}
-          onkeydown={movePane}
-        >
-          {item.label}
-        </Button>
-      {/each}
-    </div>
-    <div id="pane" class="pane" role="tabpanel" aria-labelledby="tab-{pane}">
-      {#if pane === 'general'}
-        <h2>Arama</h2>
-        <div class="row">
-          <label for="engine" class="label">
-            <span>Arama motoru</span>
-            <span class="hint">Adres çubuğuna adres dışında bir şey yazıldığında kullanılır.</span>
-          </label>
-          <Select
-            id="engine"
-            value={values.searchEngine}
-            onchange={(event) => update({ searchEngine: event.currentTarget.value as SettingsValues['searchEngine'] })}
+    <div class="layout">
+      <div class="panes" role="tablist" aria-orientation="vertical" aria-label="Ayarlar bölümleri">
+        {#each panes as item (item.id)}
+          <Button
+            size="lg"
+            icon={item.icon}
+            role="tab"
+            id="tab-{item.id}"
+            class="pane-tab"
+            aria-controls="pane"
+            aria-selected={pane === item.id}
+            tabindex={pane === item.id ? 0 : -1}
+            onclick={() => (pane = item.id)}
+            onkeydown={movePane}
           >
-            {#each view.engines as engine (engine.id)}
-              <option value={engine.id}>{engine.label}</option>
-            {/each}
-            <option value="custom">Özel</option>
-          </Select>
-        </div>
-        {#if isCustom}
-          <div class="row stacked">
-            <label for="engine-url" class="label">
-              <span>Arama adresi</span>
-              <span class="hint"
-                >Aranan metin %s yerine yazılır. Geçerli bir adres girilene kadar Google kullanılır.</span
-              >
+            {item.label}
+          </Button>
+        {/each}
+      </div>
+      <div id="pane" class="pane" role="tabpanel" aria-labelledby="tab-{pane}">
+        {#if pane === 'general'}
+          <h2>Arama</h2>
+          <div class="row">
+            <label for="engine" class="label">
+              <span>Arama motoru</span>
+              <span class="hint">Adres çubuğuna adres dışında bir şey yazıldığında kullanılır.</span>
             </label>
-            <TextField
-              id="engine-url"
-              type="url"
-              spellcheck="false"
-              autocomplete="off"
-              placeholder="https://ornek.com/search?q=%s"
-              invalid={templateInvalid}
-              bind:value={templateDraft}
-              onfocus={() => (editingTemplate = true)}
-              onchange={commitTemplate}
-              onblur={() => (editingTemplate = false)}
-            />
-            {#if templateInvalid}
-              <span class="error" role="alert">Adres http(s) ile başlamalı ve %s içermeli.</span>
+            <Select
+              id="engine"
+              value={values.searchEngine}
+              onchange={(event) =>
+                update({ searchEngine: event.currentTarget.value as SettingsValues['searchEngine'] })}
+            >
+              {#each view.engines as engine (engine.id)}
+                <option value={engine.id}>{engine.label}</option>
+              {/each}
+              <option value="custom">Özel</option>
+            </Select>
+          </div>
+          {#if isCustom}
+            <div class="row stacked">
+              <label for="engine-url" class="label">
+                <span>Arama adresi</span>
+                <span class="hint"
+                  >Aranan metin %s yerine yazılır. Geçerli bir adres girilene kadar Google kullanılır.</span
+                >
+              </label>
+              <TextField
+                id="engine-url"
+                type="url"
+                spellcheck="false"
+                autocomplete="off"
+                placeholder="https://ornek.com/search?q=%s"
+                invalid={templateInvalid}
+                bind:value={templateDraft}
+                onfocus={() => (editingTemplate = true)}
+                onchange={commitTemplate}
+                onblur={() => (editingTemplate = false)}
+              />
+              {#if templateInvalid}
+                <span class="error" role="alert">Adres http(s) ile başlamalı ve %s içermeli.</span>
+              {/if}
+            </div>
+          {/if}
+
+          <h2>Varsayılan tarayıcı</h2>
+          <div class="row">
+            <span class="label">
+              <span>{view.defaultBrowser ? 'Yalqen varsayılan tarayıcınız' : 'Yalqen varsayılan tarayıcı değil'}</span>
+              <span class="hint">Diğer uygulamalardaki bağlantılar varsayılan tarayıcıda açılır.</span>
+            </span>
+            {#if !view.defaultBrowser}
+              <Button variant="primary" onclick={async () => (view = await api.makeDefault())}>Varsayılan yap</Button>
             {/if}
           </div>
-        {/if}
 
-        <h2>Varsayılan tarayıcı</h2>
-        <div class="row">
-          <span class="label">
-            <span>{view.defaultBrowser ? 'Yalqen varsayılan tarayıcınız' : 'Yalqen varsayılan tarayıcı değil'}</span>
-            <span class="hint">Diğer uygulamalardaki bağlantılar varsayılan tarayıcıda açılır.</span>
-          </span>
-          {#if !view.defaultBrowser}
-            <Button variant="primary" onclick={async () => (view = await api.makeDefault())}>Varsayılan yap</Button>
-          {/if}
-        </div>
-
-        <h2>Açılış</h2>
-        <div class="row">
-          <span class="label">
-            <span>Tarayıcı açıldığında</span>
-            <span class="hint">Yeni sekmeyle başla seçilirse, tarayıcı kapandığında açık sekmeler kaydedilmez.</span>
-          </span>
-          <Select
-            aria-label="Tarayıcı açıldığında"
-            value={values.startupBehavior}
-            onchange={(event) =>
-              update({ startupBehavior: event.currentTarget.value as SettingsValues['startupBehavior'] })}
-          >
-            {#each startupOptions as option (option.value)}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </Select>
-        </div>
-
-        <h2>Dil</h2>
-        <div class="row">
-          <span class="label">
-            <span>Sayfa dili</span>
-            <span class="hint">Sitelerden önce bu dilde içerik istenir; yazım denetimi de bu sırayı izler.</span>
-          </span>
-          <SegmentedControl
-            label="Sayfa dili"
-            options={languageOptions}
-            value={values.pageLanguage}
-            onchange={(value) => update({ pageLanguage: value })}
-          />
-        </div>
-        <div class="row">
-          <span class="label">
-            <span>Sayfa çevirisi</span>
-            <span class="hint">
-              Sayfa dili farklıysa çevir düğmesi görünür. Çevirirken sayfa metni Google Çeviri'ye gönderilir; yalnızca
-              düğmeye bastığınızda.
+          <h2>Açılış</h2>
+          <div class="row">
+            <span class="label">
+              <span>Tarayıcı açıldığında</span>
+              <span class="hint">Yeni sekmeyle başla seçilirse, tarayıcı kapandığında açık sekmeler kaydedilmez.</span>
             </span>
-          </span>
-          <SegmentedControl
-            label="Sayfa çevirisi"
-            options={onOffOptions}
-            value={values.pageTranslation}
-            onchange={(value) => update({ pageTranslation: value })}
-          />
-        </div>
-
-        <h2>Güncellemeler</h2>
-        <div class="row">
-          <span class="label">
-            <span>Yalqen {view.version}</span>
-            <span class="hint" aria-live="polite">{updateMessage(view.update)}</span>
-          </span>
-          {#if view.update.state === 'ready'}
-            <Button variant="primary" onclick={() => api.installUpdate()}>Yeniden başlat</Button>
-          {:else if view.update.state !== 'unavailable'}
-            <Button
-              disabled={view.update.state === 'checking' || view.update.state === 'downloading'}
-              onclick={() => api.checkForUpdates()}
+            <Select
+              aria-label="Tarayıcı açıldığında"
+              value={values.startupBehavior}
+              onchange={(event) =>
+                update({ startupBehavior: event.currentTarget.value as SettingsValues['startupBehavior'] })}
             >
-              Şimdi denetle
-            </Button>
-          {/if}
-        </div>
-        <div class="row">
-          <span class="label">
-            <span>Güncellemeleri otomatik denetle</span>
-            <span class="hint">
-              Birkaç saatte bir GitHub'dan yeni sürüm olup olmadığına bakılır ve arka planda indirilir. Tarama verisi
-              gönderilmez.
-            </span>
-          </span>
-          <SegmentedControl
-            label="Güncellemeleri otomatik denetle"
-            options={onOffOptions}
-            value={values.autoUpdate}
-            onchange={(value) => update({ autoUpdate: value })}
-          />
-        </div>
-      {:else if pane === 'appearance'}
-        <h2>Tema</h2>
-        <div class="row">
-          <span class="label">Renk düzeni</span>
-          <SegmentedControl
-            label="Tema"
-            options={themeOptions}
-            value={values.theme}
-            onchange={(value) => update({ theme: value })}
-          />
-        </div>
-
-        <h2>Sayfalar</h2>
-        <div class="row">
-          <label for="font-size" class="label">
-            <span>Yazı boyutu</span>
-            <span class="hint">Sitenin kendi boyutu yoksa kullanılır. Yeni açılan sekmelerde geçerli olur.</span>
-          </label>
-          <Select
-            id="font-size"
-            value={values.fontSize}
-            onchange={(event) => update({ fontSize: event.currentTarget.value as SettingsValues['fontSize'] })}
-          >
-            {#each fontSizeOptions as option (option.value)}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </Select>
-        </div>
-        <div class="row">
-          <label for="default-zoom" class="label">
-            <span>Sayfa yakınlaştırma</span>
-            <span class="hint">Kendi yakınlaştırması kaydedilmemiş sayfalara uygulanır.</span>
-          </label>
-          <Select
-            id="default-zoom"
-            value={values.defaultZoom}
-            onchange={(event) => update({ defaultZoom: Number(event.currentTarget.value) })}
-          >
-            {#each zoomOptions as factor (factor)}
-              <option value={factor}>%{Math.round(factor * 100)}</option>
-            {/each}
-          </Select>
-        </div>
-        <h2>Menüler</h2>
-        <div class="row">
-          <span class="label">Yan menü</span>
-          <SegmentedControl
-            label="Yan menü görünürlüğü"
-            options={visibilityOptions}
-            value={values.sidebarVisible}
-            onchange={(value) => update({ sidebarVisible: value })}
-          />
-        </div>
-        <div class="row">
-          <span class="label">
-            <span>Üst menü</span>
-            <span class="hint">İki menü gizliyken Görünüm menüsünden yeniden açabilirsiniz.</span>
-          </span>
-          <SegmentedControl
-            label="Üst menü görünürlüğü"
-            options={visibilityOptions}
-            value={values.toolbarVisible}
-            onchange={(value) => update({ toolbarVisible: value })}
-          />
-        </div>
-        <div class="row">
-          <span class="label">
-            <span>Üst menüdeki sekmeler</span>
-            <span class="hint">Yalnızca açık sayfanın adresini göstererek üst menüyü sadeleştirir.</span>
-          </span>
-          <SegmentedControl
-            label="Üst menüdeki sekmeler"
-            options={toolbarTabOptions}
-            value={values.toolbarTabs}
-            onchange={(value) => update({ toolbarTabs: value })}
-          />
-        </div>
-
-        <h2>Üst menü düğmeleri</h2>
-        <ul class="buttons" aria-label="Üst menü düğmeleri">
-          {#each toolbarButtons as id, index (id)}
-            {@const item = toolbarButtonLabels[id]}
-            <li class="row">
-              <label class="check">
-                <input
-                  type="checkbox"
-                  checked={values.toolbarButtons.includes(id)}
-                  disabled={id === REQUIRED_TOOLBAR_BUTTON}
-                  onchange={(event) => toggleToolbarButton(id, event.currentTarget.checked)}
-                />
-                <Icon name={item.icon} size={16} />
-                <span class="label">
-                  <span>{item.label}</span>
-                  {#if id === REQUIRED_TOOLBAR_BUTTON}
-                    <span class="hint">Ayarlara erişmek için her zaman görünür kalır.</span>
-                  {/if}
-                </span>
-              </label>
-              <span class="move">
-                <IconButton
-                  icon="up"
-                  label="{item.label} düğmesini öne al"
-                  disabled={index === 0}
-                  onclick={() => moveToolbarButton(id, -1)}
-                />
-                <IconButton
-                  icon="down"
-                  label="{item.label} düğmesini sona al"
-                  disabled={index === toolbarButtons.length - 1}
-                  onclick={() => moveToolbarButton(id, 1)}
-                />
-              </span>
-            </li>
-          {/each}
-        </ul>
-
-        <h2>Sekme paneli</h2>
-        <div class="row">
-          <span class="label">Görünüm</span>
-          <SegmentedControl
-            label="Panel görünümü"
-            options={panelOptions}
-            value={values.panelCollapsed}
-            onchange={(value) => update({ panelCollapsed: value })}
-          />
-        </div>
-        <div class="row">
-          <span class="label">Konum</span>
-          <SegmentedControl
-            label="Panel konumu"
-            options={sideOptions}
-            value={values.panelSide}
-            onchange={(value) => update({ panelSide: value })}
-          />
-        </div>
-      {:else if pane === 'privacy'}
-        <h2>Koruma</h2>
-        <div class="row">
-          <span class="label">
-            <span>Reklam engelleyici</span>
-            <span class="hint"
-              >EasyList ve uBlock Origin filtreleriyle reklamları engeller. Değişiklik yeni yüklenen sayfalarda geçerli
-              olur.</span
-            >
-          </span>
-          <SegmentedControl
-            label="Reklam engelleyici"
-            options={onOffOptions}
-            value={values.adBlocking}
-            onchange={(value) => update({ adBlocking: value })}
-          />
-        </div>
-
-        <div class="row">
-          <span class="label">
-            <span>Yalnızca HTTPS</span>
-            <span class="hint"
-              >HTTP sayfalarını HTTPS ile açar; site desteklemiyorsa HTTP ile devam etmeden önce sorar. Yerel adresler
-              ve IP adresleri hariç.</span
-            >
-          </span>
-          <SegmentedControl
-            label="Yalnızca HTTPS"
-            options={onOffOptions}
-            value={values.httpsOnly}
-            onchange={(value) => update({ httpsOnly: value })}
-          />
-        </div>
-        <div class="row">
-          <span class="label">
-            <span>Üçüncü taraf çerezleri engelle</span>
-            <span class="hint"
-              >Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum açma
-              ve yorum alanları çalışmayabilir.</span
-            >
-          </span>
-          <SegmentedControl
-            label="Üçüncü taraf çerezleri engelle"
-            options={onOffOptions}
-            value={values.blockThirdPartyCookies}
-            onchange={(value) => update({ blockThirdPartyCookies: value })}
-          />
-        </div>
-        <div class="row">
-          <span class="label">
-            <span>İndirmeden önce sor</span>
-            <span class="hint">Bir site dosya indirmeye başlamadan önce onayınızı ister.</span>
-          </span>
-          <SegmentedControl
-            label="İndirmeden önce sor"
-            options={onOffOptions}
-            value={values.askBeforeDownload}
-            onchange={(value) => update({ askBeforeDownload: value })}
-          />
-        </div>
-        <div class="row">
-          <label for="secure-dns" class="label">
-            <span>Güvenli DNS</span>
-            <span class="hint"
-              >Site adlarını şifreli sorgularla çözer. Otomatik, sistemin DNS sağlayıcısı destekliyorsa kullanır.</span
-            >
-          </label>
-          <Select
-            id="secure-dns"
-            value={values.secureDns}
-            onchange={(event) => update({ secureDns: event.currentTarget.value as SettingsValues['secureDns'] })}
-          >
-            {#each dnsOptions as option (option.value)}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </Select>
-        </div>
-        <h2>Tarama verileri</h2>
-        <div class="row stacked">
-          <span class="label">
-            <span>Tarama verilerini temizle</span>
-            <span class="hint"
-              >Geçmiş ve indirme listesi seçilen aralıktan silinir. Çerezler, site verileri ve önbellek her zaman
-              tümüyle silinir.</span
-            >
-          </span>
-          <div class="clear">
-            <Select aria-label="Zaman aralığı" bind:value={clearRange} onchange={() => (cleared = false)}>
-              {#each rangeOptions as option (option.value)}
+              {#each startupOptions as option (option.value)}
                 <option value={option.value}>{option.label}</option>
               {/each}
             </Select>
-            {#each clearOptions as option (option.key)}
-              <label class="check">
-                <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
-                {option.label}
-              </label>
-            {/each}
-            <div class="clear-actions">
-              <Button variant="primary" disabled={!clearSelected || clearing} onclick={clearData}>
-                {clearing ? 'Temizleniyor…' : 'Verileri temizle'}
+          </div>
+
+          <h2>Dil</h2>
+          <div class="row">
+            <span class="label">
+              <span>Sayfa dili</span>
+              <span class="hint">Sitelerden önce bu dilde içerik istenir; yazım denetimi de bu sırayı izler.</span>
+            </span>
+            <SegmentedControl
+              label="Sayfa dili"
+              options={languageOptions}
+              value={values.pageLanguage}
+              onchange={(value) => update({ pageLanguage: value })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">
+              <span>Sayfa çevirisi</span>
+              <span class="hint">
+                Sayfa dili farklıysa çevir düğmesi görünür. Çevirirken sayfa metni Google Çeviri'ye gönderilir; yalnızca
+                düğmeye bastığınızda.
+              </span>
+            </span>
+            <SegmentedControl
+              label="Sayfa çevirisi"
+              options={onOffOptions}
+              value={values.pageTranslation}
+              onchange={(value) => update({ pageTranslation: value })}
+            />
+          </div>
+
+          <h2>Güncellemeler</h2>
+          <div class="row">
+            <span class="label">
+              <span>Yalqen {view.version}</span>
+              <span class="hint" aria-live="polite">{updateMessage(view.update)}</span>
+            </span>
+            {#if view.update.state === 'ready'}
+              <Button variant="primary" onclick={() => api.installUpdate()}>Yeniden başlat</Button>
+            {:else if view.update.state !== 'unavailable'}
+              <Button
+                disabled={view.update.state === 'checking' || view.update.state === 'downloading'}
+                onclick={() => api.checkForUpdates()}
+              >
+                Şimdi denetle
               </Button>
-              {#if cleared}<span class="hint" role="status">Temizlendi.</span>{/if}
+            {/if}
+          </div>
+          <div class="row">
+            <span class="label">
+              <span>Güncellemeleri otomatik denetle</span>
+              <span class="hint">
+                Birkaç saatte bir GitHub'dan yeni sürüm olup olmadığına bakılır ve arka planda indirilir. Tarama verisi
+                gönderilmez.
+              </span>
+            </span>
+            <SegmentedControl
+              label="Güncellemeleri otomatik denetle"
+              options={onOffOptions}
+              value={values.autoUpdate}
+              onchange={(value) => update({ autoUpdate: value })}
+            />
+          </div>
+        {:else if pane === 'appearance'}
+          <h2>Tema</h2>
+          <div class="row">
+            <span class="label">Renk düzeni</span>
+            <SegmentedControl
+              label="Tema"
+              options={themeOptions}
+              value={values.theme}
+              onchange={(value) => update({ theme: value })}
+            />
+          </div>
+
+          <h2>Sayfalar</h2>
+          <div class="row">
+            <label for="font-size" class="label">
+              <span>Yazı boyutu</span>
+              <span class="hint">Sitenin kendi boyutu yoksa kullanılır. Yeni açılan sekmelerde geçerli olur.</span>
+            </label>
+            <Select
+              id="font-size"
+              value={values.fontSize}
+              onchange={(event) => update({ fontSize: event.currentTarget.value as SettingsValues['fontSize'] })}
+            >
+              {#each fontSizeOptions as option (option.value)}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </Select>
+          </div>
+          <div class="row">
+            <label for="default-zoom" class="label">
+              <span>Sayfa yakınlaştırma</span>
+              <span class="hint">Kendi yakınlaştırması kaydedilmemiş sayfalara uygulanır.</span>
+            </label>
+            <Select
+              id="default-zoom"
+              value={values.defaultZoom}
+              onchange={(event) => update({ defaultZoom: Number(event.currentTarget.value) })}
+            >
+              {#each zoomOptions as factor (factor)}
+                <option value={factor}>%{Math.round(factor * 100)}</option>
+              {/each}
+            </Select>
+          </div>
+          <h2>Menüler</h2>
+          <div class="row">
+            <span class="label">Yan menü</span>
+            <SegmentedControl
+              label="Yan menü görünürlüğü"
+              options={visibilityOptions}
+              value={values.sidebarVisible}
+              onchange={(value) => update({ sidebarVisible: value })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">
+              <span>Üst menü</span>
+              <span class="hint">İki menü gizliyken Görünüm menüsünden yeniden açabilirsiniz.</span>
+            </span>
+            <SegmentedControl
+              label="Üst menü görünürlüğü"
+              options={visibilityOptions}
+              value={values.toolbarVisible}
+              onchange={(value) => update({ toolbarVisible: value })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">
+              <span>Üst menüdeki sekmeler</span>
+              <span class="hint">Yalnızca açık sayfanın adresini göstererek üst menüyü sadeleştirir.</span>
+            </span>
+            <SegmentedControl
+              label="Üst menüdeki sekmeler"
+              options={toolbarTabOptions}
+              value={values.toolbarTabs}
+              onchange={(value) => update({ toolbarTabs: value })}
+            />
+          </div>
+
+          <h2>Üst menü düğmeleri</h2>
+          <ul class="buttons" aria-label="Üst menü düğmeleri">
+            {#each toolbarButtons as id, index (id)}
+              {@const item = toolbarButtonLabels[id]}
+              <li class="row">
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    checked={values.toolbarButtons.includes(id)}
+                    disabled={id === REQUIRED_TOOLBAR_BUTTON}
+                    onchange={(event) => toggleToolbarButton(id, event.currentTarget.checked)}
+                  />
+                  <Icon name={item.icon} size={16} />
+                  <span class="label">
+                    <span>{item.label}</span>
+                    {#if id === REQUIRED_TOOLBAR_BUTTON}
+                      <span class="hint">Ayarlara erişmek için her zaman görünür kalır.</span>
+                    {/if}
+                  </span>
+                </label>
+                <span class="move">
+                  <IconButton
+                    icon="up"
+                    label="{item.label} düğmesini öne al"
+                    disabled={index === 0}
+                    onclick={() => moveToolbarButton(id, -1)}
+                  />
+                  <IconButton
+                    icon="down"
+                    label="{item.label} düğmesini sona al"
+                    disabled={index === toolbarButtons.length - 1}
+                    onclick={() => moveToolbarButton(id, 1)}
+                  />
+                </span>
+              </li>
+            {/each}
+          </ul>
+
+          <h2>Sekme paneli</h2>
+          <div class="row">
+            <span class="label">Görünüm</span>
+            <SegmentedControl
+              label="Panel görünümü"
+              options={panelOptions}
+              value={values.panelCollapsed}
+              onchange={(value) => update({ panelCollapsed: value })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">Konum</span>
+            <SegmentedControl
+              label="Panel konumu"
+              options={sideOptions}
+              value={values.panelSide}
+              onchange={(value) => update({ panelSide: value })}
+            />
+          </div>
+        {:else if pane === 'privacy'}
+          <h2>Koruma</h2>
+          <div class="row">
+            <span class="label">
+              <span>Reklam engelleyici</span>
+              <span class="hint"
+                >EasyList ve uBlock Origin filtreleriyle reklamları engeller. Değişiklik yeni yüklenen sayfalarda
+                geçerli olur.</span
+              >
+            </span>
+            <SegmentedControl
+              label="Reklam engelleyici"
+              options={onOffOptions}
+              value={values.adBlocking}
+              onchange={(value) => update({ adBlocking: value })}
+            />
+          </div>
+
+          <div class="row">
+            <span class="label">
+              <span>Yalnızca HTTPS</span>
+              <span class="hint"
+                >HTTP sayfalarını HTTPS ile açar; site desteklemiyorsa HTTP ile devam etmeden önce sorar. Yerel adresler
+                ve IP adresleri hariç.</span
+              >
+            </span>
+            <SegmentedControl
+              label="Yalnızca HTTPS"
+              options={onOffOptions}
+              value={values.httpsOnly}
+              onchange={(value) => update({ httpsOnly: value })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">
+              <span>Üçüncü taraf çerezleri engelle</span>
+              <span class="hint"
+                >Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum
+                açma ve yorum alanları çalışmayabilir.</span
+              >
+            </span>
+            <SegmentedControl
+              label="Üçüncü taraf çerezleri engelle"
+              options={onOffOptions}
+              value={values.blockThirdPartyCookies}
+              onchange={(value) => update({ blockThirdPartyCookies: value })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">
+              <span>İndirmeden önce sor</span>
+              <span class="hint">Bir site dosya indirmeye başlamadan önce onayınızı ister.</span>
+            </span>
+            <SegmentedControl
+              label="İndirmeden önce sor"
+              options={onOffOptions}
+              value={values.askBeforeDownload}
+              onchange={(value) => update({ askBeforeDownload: value })}
+            />
+          </div>
+          <div class="row">
+            <label for="secure-dns" class="label">
+              <span>Güvenli DNS</span>
+              <span class="hint"
+                >Site adlarını şifreli sorgularla çözer. Otomatik, sistemin DNS sağlayıcısı destekliyorsa kullanır.</span
+              >
+            </label>
+            <Select
+              id="secure-dns"
+              value={values.secureDns}
+              onchange={(event) => update({ secureDns: event.currentTarget.value as SettingsValues['secureDns'] })}
+            >
+              {#each dnsOptions as option (option.value)}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </Select>
+          </div>
+          <h2>Tarama verileri</h2>
+          <div class="row stacked">
+            <span class="label">
+              <span>Tarama verilerini temizle</span>
+              <span class="hint"
+                >Geçmiş ve indirme listesi seçilen aralıktan silinir. Çerezler, site verileri ve önbellek her zaman
+                tümüyle silinir.</span
+              >
+            </span>
+            <div class="clear">
+              <Select aria-label="Zaman aralığı" bind:value={clearRange} onchange={() => (cleared = false)}>
+                {#each rangeOptions as option (option.value)}
+                  <option value={option.value}>{option.label}</option>
+                {/each}
+              </Select>
+              {#each clearOptions as option (option.key)}
+                <label class="check">
+                  <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
+                  {option.label}
+                </label>
+              {/each}
+              <div class="clear-actions">
+                <Button variant="primary" disabled={!clearSelected || clearing} onclick={clearData}>
+                  {clearing ? 'Temizleniyor…' : 'Verileri temizle'}
+                </Button>
+                {#if cleared}<span class="hint" role="status">Temizlendi.</span>{/if}
+              </div>
             </div>
           </div>
-        </div>
-      {:else if pane === 'passwords'}
-        <Passwords />
-      {:else if pane === 'extensions'}
-        <Extensions />
-      {:else if pane === 'developer'}
-        <RequestRules />
-      {:else}
-        <h2>Bellek</h2>
-        <div class="row">
-          <span class="label">
-            <span>Arka plan sekmelerini dondur</span>
-            <span class="hint"
-              >Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.</span
-            >
-          </span>
-          <SegmentedControl
-            label="Arka plan sekmelerini dondur"
-            options={onOffOptions}
-            value={values.freezeBackgroundTabs}
-            onchange={(value) => update({ freezeBackgroundTabs: value })}
-          />
-        </div>
-        <div class="row">
-          <span class="label">
-            <span>Kullanılmayan sekmeleri bellekten çıkar</span>
-            <span class="hint"
-              >Bu süre boyunca açılmayan sekmeler belleği boşaltır; sistem belleği azalınca en eski arka plan sekmeleri
-              daha erken boşaltılır. Tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı yazılan sekmelere
-              dokunulmaz.</span
-            >
-          </span>
-          <SegmentedControl
-            label="Kullanılmayan sekmeleri bellekten çıkar"
-            options={discardOptions}
-            value={values.discardAfterMinutes}
-            onchange={(value) => update({ discardAfterMinutes: value })}
-          />
-        </div>
-        <ProcessUsage />
-      {/if}
+        {:else if pane === 'passwords'}
+          <Passwords />
+        {:else if pane === 'extensions'}
+          <Extensions />
+        {:else if pane === 'developer'}
+          <RequestRules />
+        {:else}
+          <h2>Bellek</h2>
+          <div class="row">
+            <span class="label">
+              <span>Arka plan sekmelerini dondur</span>
+              <span class="hint"
+                >Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.</span
+              >
+            </span>
+            <SegmentedControl
+              label="Arka plan sekmelerini dondur"
+              options={onOffOptions}
+              value={values.freezeBackgroundTabs}
+              onchange={(value) => update({ freezeBackgroundTabs: value })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">
+              <span>Kullanılmayan sekmeleri bellekten çıkar</span>
+              <span class="hint"
+                >Bu süre boyunca açılmayan sekmeler belleği boşaltır; sistem belleği azalınca en eski arka plan
+                sekmeleri daha erken boşaltılır. Tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı
+                yazılan sekmelere dokunulmaz.</span
+              >
+            </span>
+            <SegmentedControl
+              label="Kullanılmayan sekmeleri bellekten çıkar"
+              options={discardOptions}
+              value={values.discardAfterMinutes}
+              onchange={(value) => update({ discardAfterMinutes: value })}
+            />
+          </div>
+          <ProcessUsage />
+        {/if}
+      </div>
     </div>
   </div>
 {/if}
@@ -655,7 +659,7 @@
   }
 
   .settings {
-    width: min(680px, 100%);
+    width: min(920px, 100%);
     margin: 0 auto;
     padding: 42px 24px 80px;
   }
@@ -666,13 +670,30 @@
     letter-spacing: -0.03em;
   }
 
-  .panes {
+  .layout {
     display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .panes {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex: none;
+    flex-direction: column;
     gap: 4px;
-    margin-bottom: 16px;
+    width: 180px;
+  }
+
+  .panes :global(.pane-tab) {
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .pane {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     padding: 4px 20px 12px;
