@@ -450,6 +450,20 @@
               onchange={(value) => update({ toolbarTabs: value })}
             />
           </div>
+          <div class="row">
+            <span class="label">
+              <span>Sabitlenmiş sekmeler ⌘1–9'a dahil</span>
+              <span class="hint"
+                >Kapalıysa, kapalı duran sabitlenmiş sekmeler atlanır ve ⌘1, ⌘2… yalnızca açık sekmeleri sayar.</span
+              >
+            </span>
+            <SegmentedControl
+              label="Kapalı sabitlenmiş sekmeler ve sekme kısayolları"
+              options={onOffOptions}
+              value={!values.shortcutsSkipClosedPinned}
+              onchange={(value) => update({ shortcutsSkipClosedPinned: !value })}
+            />
+          </div>
 
           <h2>Üst menü düğmeleri</h2>
           <ul class="buttons" aria-label="Üst menü düğmeleri">

@@ -1,9 +1,12 @@
 import { HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, type CommandPage } from '../shared/types.js';
 import { PROCEED_URL } from './certificates.js';
 import { PROCEED_HTTP_URL } from './https-only.js';
+import type { RepoPromptAction } from './repo-prompt.js';
 
 const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
 const NEW_TAB_FORGET_URL = `${NEW_TAB_URL}forget`;
+const NEW_TAB_REPO_URL = `${NEW_TAB_URL}repo`;
+const REPO_ACTIONS = new Set<string>(['star', 'later', 'close'] satisfies RepoPromptAction[]);
 const COMMAND_PAGES = new Set<string>(['downloads', 'bookmarks'] satisfies CommandPage[]);
 
 export type InternalNavigation =
@@ -13,7 +16,8 @@ export type InternalNavigation =
   | { type: 'history-delete'; id: string }
   | { type: 'history-clear' }
   | { type: 'new-tab-search'; query: string }
-  | { type: 'new-tab-forget'; url: string };
+  | { type: 'new-tab-forget'; url: string }
+  | { type: 'new-tab-repo'; action: RepoPromptAction };
 
 function pageCommand(url: string): InternalNavigation | null {
   try {
@@ -44,6 +48,10 @@ export function internalNavigation(url: string): InternalNavigation | null {
     return { type: 'new-tab-search', query: param(url, 'q') };
   }
   if (url.startsWith(`${NEW_TAB_FORGET_URL}?`)) return { type: 'new-tab-forget', url: param(url, 'url') };
+  if (url.startsWith(`${NEW_TAB_REPO_URL}?`)) {
+    const action = param(url, 'action');
+    return REPO_ACTIONS.has(action) ? { type: 'new-tab-repo', action: action as RepoPromptAction } : null;
+  }
   return pageCommand(url);
 }
 
@@ -61,6 +69,7 @@ export function isAllowedFrom(navigation: InternalNavigation, currentUrl: string
       return currentUrl.startsWith(HISTORY_URL);
     case 'new-tab-search':
     case 'new-tab-forget':
+    case 'new-tab-repo':
       return currentUrl === NEW_TAB_URL;
   }
 }

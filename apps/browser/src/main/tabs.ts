@@ -53,6 +53,8 @@ import { pausedRequestCommand, type PausedRequest } from './request-rules.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from './site-data.js';
 import { trimHistory, type PersistChange, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
+import { REPO_URL, type RepoPromptAction } from './repo-prompt.js';
+import { tabForShortcut } from './tab-shortcuts.js';
 import { securityState } from './site-info.js';
 import { withoutHash } from './url.js';
 import { detectLanguage, restorePage, translatePage, translateSelection, type FetchLike } from './translate.js';
@@ -102,9 +104,11 @@ export interface TabManagerOptions {
   privateSession: Session;
   onPrivateEnded: () => void;
   freezeBackground: () => boolean;
+  skipClosedPinnedShortcuts: () => boolean;
   onChange: (persist: PersistChange) => void;
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
+  onRepoPrompt: (action: RepoPromptAction) => void;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
   onVisit: (url: string, title: string) => string | null;
   onVisitTitle: (id: string | null, title: string) => void;
@@ -793,7 +797,7 @@ export class TabManager {
   }
 
   selectByIndex(index: number): void {
-    const tab = index < 0 ? this.tabs.at(-1) : this.tabs[index];
+    const tab = tabForShortcut(this.tabs, index, this.options.skipClosedPinnedShortcuts());
     if (tab) this.activate(tab.id);
   }
 
@@ -1251,6 +1255,11 @@ export class TabManager {
       case 'new-tab-forget':
         this.forgetClosed(navigation.url);
         contents.reload();
+        return;
+      case 'new-tab-repo':
+        this.options.onRepoPrompt(navigation.action);
+        if (navigation.action === 'star') void contents.loadURL(REPO_URL);
+        else contents.reload();
         return;
     }
   }

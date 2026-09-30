@@ -146,7 +146,7 @@ export type UiAction =
   | { type: 'open-history' }
   | { type: 'toggle-translation' }
   | { type: 'open-settings' }
-  | { type: 'install-update' };
+  | { type: 'open-update-popup'; anchor: AnchorRect };
 
 export const PageChannel = {
   swipe: 'yalqen:page-swipe',
@@ -321,6 +321,7 @@ export interface SettingsValues {
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   toolbarButtons: ToolbarButtonId[];
+  shortcutsSkipClosedPinned: boolean;
   freezeBackgroundTabs: boolean;
   discardAfterMinutes: number;
   adBlocking: boolean;

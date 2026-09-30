@@ -427,6 +427,64 @@
         margin-right: 6px;
       }
 
+      .repo-prompt {
+        position: fixed;
+        z-index: 2;
+        right: 16px;
+        bottom: 16px;
+        width: 240px;
+        padding: 14px 16px 12px;
+        border-radius: 16px;
+        background: var(--surface);
+        box-shadow: var(--rim), var(--shadow);
+        animation: repo-prompt-in 240ms 600ms ease-out backwards;
+      }
+
+      .repo-prompt strong {
+        display: block;
+        padding-right: 20px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .repo-prompt p {
+        margin: 4px 0 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .repo-prompt-close {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+      }
+
+      .repo-prompt-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      @keyframes repo-prompt-in {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .repo-prompt {
+          animation: none;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .repo-prompt {
+          left: 16px;
+          width: auto;
+        }
+      }
+
       @media (max-width: 560px) {
         .tips {
           grid-template-columns: 1fr;
@@ -489,6 +547,7 @@
       </div>
       __YALQEN_PINNED_SLOT__ __YALQEN_TIPS_SLOT__ __YALQEN_RECENT_SLOT__
     </main>
+    __YALQEN_REPO_PROMPT_SLOT__
     <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>
 </html>

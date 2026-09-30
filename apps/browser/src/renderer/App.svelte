@@ -5,14 +5,12 @@
   import DeviceControls from './components/DeviceControls.svelte';
   import TabPanel from './components/TabPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
-  import UpdateBanner from './components/UpdateBanner.svelte';
 
   const COLLAPSED_WIDTH = 44;
   const MIN_WIDTH = 180;
   const MAX_WIDTH = 360;
   const DEFAULT_WIDTH = 220;
   const CHROME_HEIGHT = 44;
-  const BANNER_HEIGHT = 48;
   const PAGE_INSET = 8;
   const PANEL_ROW_INSET = PAGE_INSET + 3;
   const PAGE_RADIUS = 16;
@@ -44,7 +42,6 @@
   });
   let width = $state(DEFAULT_WIDTH);
   let stateReceived = $state(false);
-  let dismissedUpdate: string | null = $state(null);
 
   try {
     const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
@@ -97,9 +94,6 @@
     panelAnimation = requestAnimationFrame(step);
   });
   const topInset = $derived(browser.toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
-  const readyUpdate = $derived(browser.pendingUpdate?.state === 'ready' ? browser.pendingUpdate.version : null);
-  const showBanner = $derived(readyUpdate !== null && readyUpdate !== dismissedUpdate);
-  const bannerHeight = $derived(showBanner ? BANNER_HEIGHT : 0);
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = material;
@@ -111,7 +105,7 @@
     window.yalqen.setLayout({
       panelWidth: pagePanelWidth,
       panelSide: side,
-      chromeHeight: topInset + bannerHeight,
+      chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
       newTabCenterOffset:
@@ -160,7 +154,7 @@
     : side === 'left'
       ? `${shownWidth}px minmax(0, 1fr)`
       : `minmax(0, 1fr) ${shownWidth}px`}
-  style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px ${bannerHeight}px minmax(0, 1fr)`}
+  style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !pageFullScreen}
     {#if browser.sidebarVisible}
@@ -203,17 +197,6 @@
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
     {/if}
-  {/if}
-  {#if !pageFullScreen && showBanner && readyUpdate !== null}
-    <div class="update" style:margin={side === 'left' ? `0 ${PAGE_INSET}px 0 0` : `0 0 0 ${PAGE_INSET}px`}>
-      <UpdateBanner
-        version={readyUpdate}
-        oninstall={() => window.yalqen.send({ type: 'install-update' })}
-        onnotes={() =>
-          window.yalqen.send({ type: 'new-tab', url: `https://github.com/YSamed/yalqen/releases/tag/v${readyUpdate}` })}
-        ondismiss={() => (dismissedUpdate = readyUpdate)}
-      />
-    </div>
   {/if}
   <section
     class="page"
@@ -261,7 +244,6 @@
     display: grid;
     grid-template-areas:
       'panel bar'
-      'panel update'
       'panel page';
     height: 100%;
     background: var(--chrome-base);
@@ -270,7 +252,6 @@
   .shell.right {
     grid-template-areas:
       'bar panel'
-      'update panel'
       'page panel';
   }
 
@@ -281,13 +262,6 @@
 
   .shell.fullscreen .page {
     box-shadow: none;
-  }
-
-  .update {
-    display: flex;
-    grid-area: update;
-    flex-direction: column;
-    min-width: 0;
   }
 
   .titlebar-drag {
