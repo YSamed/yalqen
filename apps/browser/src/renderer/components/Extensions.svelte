@@ -97,6 +97,7 @@
 </form>
 
 <div class="actions">
+  <Button icon="extensions" onclick={() => api.openExtensionStore()}>Chrome Web Mağazası’nı aç</Button>
   <Button icon="plus" disabled={installing} onclick={install}>Klasörden yükle…</Button>
   {#if installError}<span class="error" role="alert">Yüklenemedi: {installError}</span>{/if}
 </div>

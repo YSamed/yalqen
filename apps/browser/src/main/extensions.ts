@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { nativeImage, net, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
-import type { ExtensionInfo } from '../shared/types.js';
+import type { ExtensionInfo, StoreExtensionStatus } from '../shared/types.js';
 import {
   actionTitle,
   extensionPage,
@@ -34,6 +34,7 @@ export interface ExtensionAction {
 export interface ExtensionsMenuHandlers {
   openPopup(url: string): void;
   openOptions(url: string): void;
+  openStore(): void;
   manage(): void;
 }
 
@@ -55,6 +56,7 @@ export function extensionsMenuTemplate(
   return [
     ...items,
     ...(items.length > 0 ? [{ type: 'separator' as const }] : []),
+    { label: 'Chrome Web Mağazası’nı aç', click: handlers.openStore },
     { label: 'Uzantıları yönet…', click: handlers.manage },
   ];
 }
@@ -78,6 +80,7 @@ export class ExtensionManager {
   private entries: SavedExtension[];
   private readonly ids = new Map<string, string>();
   private readonly errors = new Map<string, string>();
+  private readonly installing = new Set<string>();
 
   constructor(
     directory: string,
@@ -92,10 +95,6 @@ export class ExtensionManager {
 
   async loadAll(): Promise<void> {
     await Promise.all(this.entries.filter((entry) => entry.enabled).map((entry) => this.load(entry.path)));
-  }
-
-  get active(): boolean {
-    return this.ids.size > 0;
   }
 
   actions(): ExtensionAction[] {
@@ -158,9 +157,29 @@ export class ExtensionManager {
     return error;
   }
 
+  storeStatus(id: string): StoreExtensionStatus {
+    if (this.installing.has(id)) return 'installing';
+    const installed = this.entries.some(
+      (entry) => path.basename(entry.path) === id && path.basename(path.dirname(entry.path)) === STORE_DIRECTORY,
+    );
+    return installed ? 'installed' : 'available';
+  }
+
   async installFromStore(input: string): Promise<string | null> {
     const id = parseStoreId(input);
     if (!id) return 'Geçerli bir Chrome Web Mağazası adresi veya uzantı kimliği girin';
+    if (this.installing.has(id)) return null;
+    this.installing.add(id);
+    this.onChange();
+    try {
+      return await this.downloadAndInstall(id);
+    } finally {
+      this.installing.delete(id);
+      this.onChange();
+    }
+  }
+
+  private async downloadAndInstall(id: string): Promise<string | null> {
     try {
       const zip = await downloadCrx(id, (url, init) => net.fetch(url, init), process.versions.chrome);
       fs.mkdirSync(this.storeRoot, { recursive: true });

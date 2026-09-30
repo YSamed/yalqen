@@ -1,3 +1,4 @@
+export const STORE_HOME = 'https://chromewebstore.google.com/';
 const ID_PATTERN = /^[a-p]{32}$/;
 const STORE_HOSTS = new Set(['chromewebstore.google.com', 'chrome.google.com']);
 const CRX_MAGIC = 'Cr24';

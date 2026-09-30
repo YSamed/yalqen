@@ -1,5 +1,13 @@
 <script lang="ts">
-  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId, TranslationStatus } from '../../shared/types';
+  import type {
+    DownloadsSummary,
+    StoreExtension,
+    StoreExtensionStatus,
+    TabId,
+    TabSnapshot,
+    ToolbarButtonId,
+    TranslationStatus,
+  } from '../../shared/types';
   import { consoleErrorCount, devStates, isNewTab, siteLabel } from '../format';
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
@@ -16,6 +24,7 @@
     downloads,
     ready,
     extensions,
+    storeExtension,
     buttons,
     updateReady,
     leadingInset,
@@ -31,6 +40,7 @@
     downloads: DownloadsSummary;
     ready: boolean;
     extensions: boolean;
+    storeExtension: StoreExtension | null;
     buttons: ToolbarButtonId[];
     updateReady: string | null;
     leadingInset: number;
@@ -47,6 +57,11 @@
     translating: 'Sayfa çevriliyor…',
     translated: 'Özgün sayfayı göster',
     failed: 'Çeviri başarısız, tekrar dene',
+  };
+  const storeButtonLabel: Record<StoreExtensionStatus, string> = {
+    available: 'Yalqen’e ekle',
+    installing: 'Ekleniyor…',
+    installed: 'Yüklü',
   };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
@@ -195,6 +210,18 @@
                 aria-pressed={tab.bookmarked}
                 onclick={() => send({ type: 'toggle-bookmark' })}
               />
+            {/if}
+            {#if storeExtension}
+              <Button
+                size="sm"
+                variant="tonal"
+                icon={storeExtension.status === 'installed' ? 'check' : 'plus'}
+                disabled={storeExtension.status !== 'available'}
+                title="Bu uzantıyı Yalqen'e ekle"
+                onclick={() => send({ type: 'install-store-extension', id: storeExtension.id })}
+              >
+                {storeButtonLabel[storeExtension.status]}
+              </Button>
             {/if}
             {#if tab.translation.available}
               {#if tab.translation.status === 'idle' || tab.translation.status === 'failed'}

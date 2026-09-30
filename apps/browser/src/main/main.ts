@@ -23,6 +23,7 @@ import { CommandBar } from './command-bar.js';
 import { DEFAULT_DEVICE_ID, DEVICES } from './devices.js';
 import { DownloadManager } from './download-manager.js';
 import { DownloadStore } from './downloads.js';
+import { STORE_HOME } from './chrome-web-store.js';
 import { ExtensionPopup } from './extension-popup.js';
 import { ExtensionManager } from './extensions.js';
 import { loadInternalPages, registerInternalScheme, serveInternalPages } from './internal-pages.js';
@@ -477,6 +478,9 @@ function startBrowser(): void {
   ipcMain.handle(ExtensionsChannel.installFromStore, (event, input: unknown) =>
     isSettingsFrame(event) && typeof input === 'string' ? extensions.installFromStore(input) : null,
   );
+  ipcMain.handle(ExtensionsChannel.openStore, (event) => {
+    if (isSettingsFrame(event)) windowOf(event.sender)?.tabs.open(STORE_HOME, { isPrivate: false });
+  });
   ipcMain.handle(ExtensionsChannel.remove, (event, directory: unknown) => {
     if (isSettingsFrame(event) && typeof directory === 'string') extensions.remove(directory);
   });

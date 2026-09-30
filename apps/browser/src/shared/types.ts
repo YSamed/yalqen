@@ -88,7 +88,15 @@ export interface BrowserState {
   defaultZoom: number;
   downloads: DownloadsSummary;
   extensions: boolean;
+  storeExtension: StoreExtension | null;
   updateReady: string | null;
+}
+
+export type StoreExtensionStatus = 'available' | 'installing' | 'installed';
+
+export interface StoreExtension {
+  id: string;
+  status: StoreExtensionStatus;
 }
 
 export interface DownloadsSummary {
@@ -142,6 +150,8 @@ export type UiAction =
   | { type: 'open-profile-menu' }
   | { type: 'open-downloads' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
+  | { type: 'open-extension-store' }
+  | { type: 'install-store-extension'; id: string }
   | { type: 'open-history' }
   | { type: 'toggle-translation' }
   | { type: 'open-settings' }
@@ -413,6 +423,7 @@ export const ExtensionsChannel = {
   list: 'yalqen-extensions:list',
   install: 'yalqen-extensions:install',
   installFromStore: 'yalqen-extensions:install-from-store',
+  openStore: 'yalqen-extensions:open-store',
   remove: 'yalqen-extensions:remove',
   setEnabled: 'yalqen-extensions:set-enabled',
   openOptions: 'yalqen-extensions:open-options',
@@ -455,6 +466,7 @@ export interface SettingsApi {
   extensions(): Promise<ExtensionInfo[]>;
   installExtension(): Promise<string | null>;
   installExtensionFromStore(input: string): Promise<string | null>;
+  openExtensionStore(): Promise<void>;
   removeExtension(path: string): Promise<void>;
   setExtensionEnabled(path: string, enabled: boolean): Promise<void>;
   openExtensionOptions(path: string): Promise<void>;

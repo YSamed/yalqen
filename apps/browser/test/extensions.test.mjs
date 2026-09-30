@@ -155,6 +155,7 @@ test('the extensions menu opens popups, falls back to options and links to manag
   const handlers = {
     openPopup: (url) => calls.push(['popup', url]),
     openOptions: (url) => calls.push(['options', url]),
+    openStore: () => calls.push(['store']),
     manage: () => calls.push(['manage']),
   };
   const items = extensionsMenuTemplate(
@@ -167,20 +168,22 @@ test('the extensions menu opens popups, falls back to options and links to manag
   );
   assert.deepEqual(
     items.map((item) => item.label ?? '-'),
-    ['Alfa', 'Boş', 'Zeta', '-', 'Uzantıları yönet…'],
+    ['Alfa', 'Boş', 'Zeta', '-', 'Chrome Web Mağazası’nı aç', 'Uzantıları yönet…'],
   );
   assert.equal(items[1].enabled, false);
   items[0].click();
   items[2].click();
   items[4].click();
+  items[5].click();
   assert.deepEqual(calls, [
     ['options', 'chrome-extension://a/options.html'],
     ['popup', 'chrome-extension://z/popup.html'],
+    ['store'],
     ['manage'],
   ]);
   assert.deepEqual(
     extensionsMenuTemplate([], handlers).map((item) => item.label),
-    ['Uzantıları yönet…'],
+    ['Chrome Web Mağazası’nı aç', 'Uzantıları yönet…'],
   );
 });
 
