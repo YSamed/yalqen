@@ -1,6 +1,6 @@
 import { WebContentsView, type BaseWindow } from 'electron';
 
-export function createOverlayView(preload: string): WebContentsView {
+export function createOverlayView(preload?: string): WebContentsView {
   const view = new WebContentsView({
     webPreferences: {
       preload,
