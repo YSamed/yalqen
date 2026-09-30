@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/YSamed/yalqen/compare/v0.2.2...v0.2.3) (2026-09-30)
+
+
+### Features
+
+* customizable toolbar buttons and navigation hint overlay ([#39](https://github.com/YSamed/yalqen/issues/39)) ([194ccb0](https://github.com/YSamed/yalqen/commit/194ccb0e225549f3fea835e5658074e16138da8a))
+
 ## [0.2.2](https://github.com/YSamed/yalqen/compare/v0.2.1...v0.2.2) (2026-09-30)
 
 
