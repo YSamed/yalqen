@@ -1,11 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { ClearDataRange, SettingsValues, SettingsView, UpdateStatus } from '../shared/types';
+  import { SvelteSet } from 'svelte/reactivity';
+  import type { ClearDataRange, SettingsValues, SettingsView, ToolbarButtonId, UpdateStatus } from '../shared/types';
+  import { REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../shared/types';
   import Extensions from './components/Extensions.svelte';
-  import type { IconName } from './components/Icon.svelte';
+  import Icon, { type IconName } from './components/Icon.svelte';
   import ProcessUsage from './components/ProcessUsage.svelte';
   import RequestRules from './components/RequestRules.svelte';
   import Button from './components/ui/Button.svelte';
+  import IconButton from './components/ui/IconButton.svelte';
   import SegmentedControl from './components/ui/SegmentedControl.svelte';
   import Select from './components/ui/Select.svelte';
   import TextField from './components/ui/TextField.svelte';
@@ -58,6 +61,14 @@
     { value: true, label: 'Tüm sekmeler' },
     { value: false, label: 'Yalnızca açık sayfa' },
   ] as const;
+  const toolbarButtonLabels: Record<ToolbarButtonId, { label: string; icon: IconName }> = {
+    bookmarks: { label: 'Yer imleri', icon: 'bookmarks' },
+    history: { label: 'Geçmiş', icon: 'history' },
+    extensions: { label: 'Uzantılar', icon: 'extensions' },
+    profile: { label: 'Profil', icon: 'profile' },
+    settings: { label: 'Ayarlar', icon: 'settings' },
+    downloads: { label: 'İndirilenler', icon: 'download' },
+  };
   const discardOptions = [
     { value: 0, label: 'Kapalı' },
     { value: 15, label: '15 dk' },
@@ -135,6 +146,31 @@
   $effect(() => {
     if (!editingTemplate) templateDraft = values?.customSearchTemplate ?? '';
   });
+
+  const toolbarButtons = $derived.by(() => {
+    const shown = values?.toolbarButtons ?? [];
+    return [...shown, ...TOOLBAR_BUTTON_IDS.filter((id) => !shown.includes(id))];
+  });
+
+  function updateToolbarButtons(order: ToolbarButtonId[], shown: Set<ToolbarButtonId>): void {
+    update({ toolbarButtons: order.filter((id) => shown.has(id)) });
+  }
+
+  function toggleToolbarButton(id: ToolbarButtonId, visible: boolean): void {
+    const shown = new SvelteSet(values?.toolbarButtons);
+    if (visible) shown.add(id);
+    else shown.delete(id);
+    updateToolbarButtons(toolbarButtons, shown);
+  }
+
+  function moveToolbarButton(id: ToolbarButtonId, step: -1 | 1): void {
+    const order = [...toolbarButtons];
+    const index = order.indexOf(id);
+    const target = index + step;
+    if (target < 0 || target >= order.length) return;
+    [order[index], order[target]] = [order[target], order[index]];
+    updateToolbarButtons(order, new Set(values?.toolbarButtons));
+  }
 
   function updateMessage(status: UpdateStatus): string {
     switch (status.state) {
@@ -403,6 +439,44 @@
           />
         </div>
 
+        <h2>Üst menü düğmeleri</h2>
+        <ul class="buttons" aria-label="Üst menü düğmeleri">
+          {#each toolbarButtons as id, index (id)}
+            {@const item = toolbarButtonLabels[id]}
+            <li class="row">
+              <label class="check">
+                <input
+                  type="checkbox"
+                  checked={values.toolbarButtons.includes(id)}
+                  disabled={id === REQUIRED_TOOLBAR_BUTTON}
+                  onchange={(event) => toggleToolbarButton(id, event.currentTarget.checked)}
+                />
+                <Icon name={item.icon} size={16} />
+                <span class="label">
+                  <span>{item.label}</span>
+                  {#if id === REQUIRED_TOOLBAR_BUTTON}
+                    <span class="hint">Ayarlara erişmek için her zaman görünür kalır.</span>
+                  {/if}
+                </span>
+              </label>
+              <span class="move">
+                <IconButton
+                  icon="up"
+                  label="{item.label} düğmesini öne al"
+                  disabled={index === 0}
+                  onclick={() => moveToolbarButton(id, -1)}
+                />
+                <IconButton
+                  icon="down"
+                  label="{item.label} düğmesini sona al"
+                  disabled={index === toolbarButtons.length - 1}
+                  onclick={() => moveToolbarButton(id, 1)}
+                />
+              </span>
+            </li>
+          {/each}
+        </ul>
+
         <h2>Sekme paneli</h2>
         <div class="row">
           <span class="label">Görünüm</span>
@@ -666,6 +740,21 @@
 
   .check input {
     margin: 0;
+  }
+
+  .buttons {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .buttons .check {
+    gap: 10px;
+  }
+
+  .move {
+    display: flex;
+    gap: 2px;
   }
 
   .clear-actions {

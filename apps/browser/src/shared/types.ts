@@ -65,6 +65,10 @@ export type WindowMaterial = 'glass' | 'opaque';
 
 export type PanelSide = 'left' | 'right';
 
+export const TOOLBAR_BUTTON_IDS = ['bookmarks', 'history', 'extensions', 'profile', 'settings', 'downloads'] as const;
+export type ToolbarButtonId = (typeof TOOLBAR_BUTTON_IDS)[number];
+export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
+
 export interface BrowserState {
   tabs: TabSnapshot[];
   developer: boolean;
@@ -77,6 +81,7 @@ export interface BrowserState {
   sidebarVisible: boolean;
   toolbarVisible: boolean;
   toolbarTabs: boolean;
+  toolbarButtons: ToolbarButtonId[];
   material: WindowMaterial;
   device: DeviceFrame | null;
   zoom: number;
@@ -306,6 +311,7 @@ export interface SettingsValues {
   sidebarVisible: boolean;
   toolbarVisible: boolean;
   toolbarTabs: boolean;
+  toolbarButtons: ToolbarButtonId[];
   freezeBackgroundTabs: boolean;
   discardAfterMinutes: number;
   adBlocking: boolean;

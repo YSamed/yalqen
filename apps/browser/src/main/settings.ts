@@ -7,7 +7,9 @@ import type {
   SecureDnsSetting,
   SettingsValues,
   ThemeSource,
+  ToolbarButtonId,
 } from '../shared/types.js';
+import { REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../shared/types.js';
 import { JsonFile } from './json-file.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from './memory-saver.js';
 import { DEFAULT_ZOOM_FACTORS, FONT_SIZES } from './page-preferences.js';
@@ -28,6 +30,7 @@ const DEFAULTS: Settings = {
   sidebarVisible: true,
   toolbarVisible: true,
   toolbarTabs: true,
+  toolbarButtons: [...TOOLBAR_BUTTON_IDS],
   freezeBackgroundTabs: true,
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   adBlocking: true,
@@ -49,6 +52,14 @@ const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Settings['startupBehavior'][]);
 
+const TOOLBAR_BUTTONS = new Set<string>(TOOLBAR_BUTTON_IDS);
+
+function sanitizeToolbarButtons(value: unknown, fallback: ToolbarButtonId[]): ToolbarButtonId[] {
+  if (!Array.isArray(value)) return fallback;
+  const buttons = [...new Set(value)].filter((id): id is ToolbarButtonId => TOOLBAR_BUTTONS.has(id));
+  return buttons.includes(REQUIRED_TOOLBAR_BUTTON) ? buttons : [...buttons, REQUIRED_TOOLBAR_BUTTON];
+}
+
 export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
   const input = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
   const {
@@ -61,6 +72,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     sidebarVisible,
     toolbarVisible,
     toolbarTabs,
+    toolbarButtons,
     freezeBackgroundTabs,
     discardAfterMinutes,
     adBlocking,
@@ -95,6 +107,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     toolbarTabs: typeof toolbarTabs === 'boolean' ? toolbarTabs : base.toolbarTabs,
+    toolbarButtons: sanitizeToolbarButtons(toolbarButtons, base.toolbarButtons),
     freezeBackgroundTabs: typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
@@ -117,7 +130,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
 }
 
 function sameSettings(a: Settings, b: Settings): boolean {
-  return (Object.keys(a) as (keyof Settings)[]).every((key) => a[key] === b[key]);
+  return (Object.keys(a) as (keyof Settings)[]).every((key) => JSON.stringify(a[key]) === JSON.stringify(b[key]));
 }
 
 export class SettingsStore {

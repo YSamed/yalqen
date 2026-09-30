@@ -40,6 +40,7 @@ test('unknown or mistyped fields fall back', () => {
       sidebarVisible: true,
       toolbarVisible: true,
       toolbarTabs: true,
+      toolbarButtons: ['bookmarks', 'history', 'extensions', 'profile', 'settings', 'downloads'],
       freezeBackgroundTabs: true,
       discardAfterMinutes: 30,
       adBlocking: true,
@@ -59,6 +60,16 @@ test('unknown or mistyped fields fall back', () => {
   assert.equal(sanitizeSettings({ customSearchTemplate: '  ' }).customSearchTemplate, null);
 });
 
+test('toolbar buttons are deduplicated, filtered and always keep settings', () => {
+  assert.deepEqual(sanitizeSettings({ toolbarButtons: ['history', 'bogus', 'history', 'downloads'] }).toolbarButtons, [
+    'history',
+    'downloads',
+    'settings',
+  ]);
+  assert.deepEqual(sanitizeSettings({ toolbarButtons: [] }).toolbarButtons, ['settings']);
+  assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 6);
+});
+
 test('updates keep valid fields and persist', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-settings-'));
   try {
@@ -72,6 +83,7 @@ test('updates keep valid fields and persist', () => {
       sidebarVisible: false,
       toolbarVisible: false,
       toolbarTabs: false,
+      toolbarButtons: ['downloads', 'settings'],
       freezeBackgroundTabs: false,
       discardAfterMinutes: 0,
       adBlocking: false,
@@ -95,6 +107,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.sidebarVisible, false);
     assert.equal(reloaded.toolbarVisible, false);
     assert.equal(reloaded.toolbarTabs, false);
+    assert.deepEqual(reloaded.toolbarButtons, ['downloads', 'settings']);
     assert.equal(reloaded.freezeBackgroundTabs, false);
     assert.equal(reloaded.discardAfterMinutes, 0);
     assert.equal(reloaded.adBlocking, false);

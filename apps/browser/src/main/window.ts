@@ -417,6 +417,7 @@ export class YalqenWindow {
       sidebarVisible: this.app.settings.get().sidebarVisible,
       toolbarVisible: this.app.settings.get().toolbarVisible,
       toolbarTabs: this.app.settings.get().toolbarTabs,
+      toolbarButtons: this.app.settings.get().toolbarButtons,
       material: this.material(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),

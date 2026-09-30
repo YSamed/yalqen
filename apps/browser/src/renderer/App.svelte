@@ -31,6 +31,7 @@
     sidebarVisible: true,
     toolbarVisible: true,
     toolbarTabs: true,
+    toolbarButtons: [],
     material: 'opaque',
     device: null,
     zoom: 1,
@@ -180,6 +181,7 @@
         downloads={browser.downloads}
         ready={stateReceived}
         extensions={browser.extensions}
+        buttons={browser.toolbarButtons}
         updateReady={browser.updateReady}
         leadingInset={windowControls
           ? side === 'left'
