@@ -37,11 +37,7 @@ macOS 13+ ve Apple Silicon gerekir.
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Sürümler henüz noter onaylı değil; macOS uygulamayı hasarlı olarak bildirirse şunu çalıştırın:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/Yalqen.app
-```
+Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin.
 
 ## Geliştirme
 
