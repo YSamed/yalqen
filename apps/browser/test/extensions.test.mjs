@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import { test } from 'node:test';
 import zlib from 'node:zlib';
 import store from '../dist/main/chrome-web-store.js';
 import zip from '../dist/main/zip.js';
+import webStoreApi from '../dist/main/web-store-api.js';
 import manifests from '../dist/main/extension-manifest.js';
 import popup from '../dist/main/extension-popup.js';
 import extensions from '../dist/main/extensions.js';
@@ -20,11 +22,13 @@ const {
   popupPage,
   resolveInside,
   sanitizeSavedExtensions,
+  withManifestKey,
 } = manifests;
 const { popupBounds, sanitizeAnchor } = popup;
 const { errorMessage, extensionsMenuTemplate } = extensions;
-const { crxPayload, crxUrl, parseStoreId } = store;
+const { crxPayload, crxPublicKey, crxUrl, extensionIdOfKey, parseStoreId } = store;
 const { extractZip } = zip;
+const { extensionInfo, installPrompt, isSupportedManifest, parseManifest, permissionSummary } = webStoreApi;
 
 const STORE_ID = 'abcdefghijklmnopabcdefghijklmnop';
 
@@ -257,4 +261,89 @@ test('zip files cannot write outside the destination', () => {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('store manifests must be valid json and at least manifest v3', () => {
+  assert.equal(parseManifest('not json'), null);
+  assert.equal(parseManifest('[]'), null);
+  assert.equal(parseManifest(5), null);
+  assert.deepEqual(parseManifest('{"manifest_version":3}'), { manifest_version: 3 });
+  assert.equal(isSupportedManifest({ manifest_version: 3 }), true);
+  assert.equal(isSupportedManifest({ manifest_version: 2 }), false);
+  assert.equal(isSupportedManifest({}), false);
+});
+
+test('the install prompt names the extension and lists what it can access', () => {
+  assert.equal(permissionSummary({}), 'Bu uzantı özel bir izin istemiyor.');
+  assert.equal(
+    permissionSummary({ permissions: ['tabs', 7, 'storage'], host_permissions: ['https://a.example/*'] }),
+    'İstediği izinler: tabs, storage, https://a.example/*',
+  );
+  const many = { permissions: Array.from({ length: 15 }, (_, index) => `p${index}`) };
+  assert.match(permissionSummary(many), /p11 ve 3 tane daha$/);
+  assert.equal(installPrompt({ localizedName: ' Karanlık ' }, { name: 'Dark' }, STORE_ID).name, 'Karanlık');
+  assert.equal(installPrompt({}, { name: 'Dark' }, STORE_ID).name, 'Dark');
+  assert.equal(installPrompt({ localizedName: 3 }, {}, STORE_ID).name, STORE_ID);
+  assert.equal(installPrompt({ localizedName: 'x'.repeat(500) }, {}, STORE_ID).name.length, 100);
+});
+
+test('management info mirrors the manifest and tolerates missing fields', () => {
+  const info = extensionInfo(
+    { id: STORE_ID, manifest: { name: 'Dark', version: '1.2', permissions: ['tabs'], short_name: 5 } },
+    false,
+  );
+  assert.equal(info.id, STORE_ID);
+  assert.equal(info.name, 'Dark');
+  assert.equal(info.shortName, 'Dark');
+  assert.equal(info.enabled, false);
+  assert.deepEqual(info.permissions, ['tabs']);
+  assert.equal(extensionInfo({ id: STORE_ID, manifest: null }, true).name, STORE_ID);
+});
+
+function varint(value) {
+  const bytes = [];
+  let rest = value;
+  while (rest >= 0x80) {
+    bytes.push((rest & 0x7f) | 0x80);
+    rest = Math.floor(rest / 128);
+  }
+  bytes.push(rest);
+  return Buffer.from(bytes);
+}
+
+function field(number, data) {
+  return Buffer.concat([varint(number * 8 + 2), varint(data.length), data]);
+}
+
+test('the crx signing key is found by its extension id and pinned into the manifest', () => {
+  const pair = () =>
+    crypto.generateKeyPairSync('rsa', { modulusLength: 1024 }).publicKey.export({ type: 'spki', format: 'der' });
+  const key = pair();
+  const other = pair();
+  const id = extensionIdOfKey(key);
+  assert.match(id, /^[a-p]{32}$/);
+
+  const proof = (der) => field(1, field(1, der));
+  const header = Buffer.concat([proof(other), field(3, field(1, key)), field(10000, field(1, Buffer.alloc(16)))]);
+  const preface = Buffer.from([0x43, 0x72, 0x32, 0x34, 3, 0, 0, 0]);
+  const length = Buffer.alloc(4);
+  length.writeUInt32LE(header.length);
+  const v3 = Buffer.concat([preface, length, header, buildZip([['manifest.json', '{}']])]);
+  assert.equal(crxPublicKey(v3, id), key.toString('base64'));
+  assert.equal(crxPublicKey(v3, STORE_ID), null);
+
+  const v2Header = Buffer.alloc(8);
+  v2Header.writeUInt32LE(key.length, 0);
+  v2Header.writeUInt32LE(3, 4);
+  const v2 = Buffer.concat([Buffer.from('Cr24'), Buffer.from([2, 0, 0, 0]), v2Header, key, Buffer.alloc(3)]);
+  assert.equal(crxPublicKey(v2, id), key.toString('base64'));
+  assert.equal(crxPublicKey(buildZip([['manifest.json', '{}']]), id), null);
+});
+
+test('pinning a key keeps the manifest and never replaces an existing key', () => {
+  const pinned = JSON.parse(withManifestKey('\uFEFF{"name":"x","version":"1"}', 'AAA'));
+  assert.deepEqual(pinned, { key: 'AAA', name: 'x', version: '1' });
+  assert.equal(JSON.parse(withManifestKey('{"key":"mine","name":"x"}', 'AAA')).key, 'mine');
+  assert.equal(withManifestKey('not json', 'AAA'), null);
+  assert.equal(withManifestKey('[1]', 'AAA'), null);
 });

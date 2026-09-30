@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { nativeImage, net, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
-import type { ExtensionInfo, StoreExtensionStatus } from '../shared/types.js';
+import type { ExtensionInfo } from '../shared/types.js';
 import {
   actionTitle,
   extensionPage,
@@ -11,6 +11,7 @@ import {
   parseMessages,
   popupPage,
   resolveInside,
+  withManifestKey,
   sanitizeSavedExtensions,
   type Manifest,
   type Messages,
@@ -23,6 +24,8 @@ import { extractZip } from './zip.js';
 const MENU_ICON_SIZE = 16;
 const LIST_ICON_SIZE = 64;
 const STORE_DIRECTORY = 'store-extensions';
+
+export type StoreExtensionStatus = 'available' | 'installing' | 'installed';
 
 export interface ExtensionAction {
   title: string;
@@ -159,10 +162,28 @@ export class ExtensionManager {
 
   storeStatus(id: string): StoreExtensionStatus {
     if (this.installing.has(id)) return 'installing';
-    const installed = this.entries.some(
-      (entry) => path.basename(entry.path) === id && path.basename(path.dirname(entry.path)) === STORE_DIRECTORY,
-    );
-    return installed ? 'installed' : 'available';
+    return this.storeEntry(id) ? 'installed' : 'available';
+  }
+
+  storeEnabled(id: string): boolean {
+    return this.storeEntry(id)?.enabled ?? false;
+  }
+
+  storeExtensions(): { id: string; extension: Electron.Extension }[] {
+    return this.entries.flatMap((entry) => {
+      const extension = this.isStorePath(entry.path) ? this.loadedAt(entry.path) : null;
+      return extension ? [{ id: path.basename(entry.path), extension }] : [];
+    });
+  }
+
+  async setStoreEnabled(id: string, enabled: boolean): Promise<void> {
+    const entry = this.storeEntry(id);
+    if (entry) await this.setEnabled(entry.path, enabled);
+  }
+
+  removeStore(id: string): void {
+    const entry = this.storeEntry(id);
+    if (entry) this.remove(entry.path);
   }
 
   async installFromStore(input: string): Promise<string | null> {
@@ -181,13 +202,14 @@ export class ExtensionManager {
 
   private async downloadAndInstall(id: string): Promise<string | null> {
     try {
-      const zip = await downloadCrx(id, (url, init) => net.fetch(url, init), process.versions.chrome);
+      const { zip, key } = await downloadCrx(id, (url, init) => net.fetch(url, init), process.versions.chrome);
       fs.mkdirSync(this.storeRoot, { recursive: true });
       const target = path.join(fs.realpathSync(this.storeRoot), id);
       const staging = `${target}.tmp`;
       fs.rmSync(staging, { recursive: true, force: true });
       try {
         extractZip(zip, staging);
+        if (key) this.pinExtensionId(staging, key);
         this.unload(target);
         fs.rmSync(target, { recursive: true, force: true });
         fs.renameSync(staging, target);
@@ -241,6 +263,20 @@ export class ExtensionManager {
       console.warn(`[extensions] could not load ${directory}:`, message);
       return message;
     }
+  }
+
+  private pinExtensionId(directory: string, key: string): void {
+    const file = path.join(directory, 'manifest.json');
+    const pinned = withManifestKey(fs.readFileSync(file, 'utf8'), key);
+    if (pinned) fs.writeFileSync(file, pinned);
+  }
+
+  private isStorePath(directory: string): boolean {
+    return path.basename(path.dirname(directory)) === STORE_DIRECTORY;
+  }
+
+  private storeEntry(id: string): SavedExtension | undefined {
+    return this.entries.find((entry) => path.basename(entry.path) === id && this.isStorePath(entry.path));
   }
 
   private deleteStoreFiles(directory: string): void {

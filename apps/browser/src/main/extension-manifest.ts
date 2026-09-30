@@ -94,3 +94,13 @@ export function manifestText(manifest: Manifest, key: string, messages: Messages
   const value = manifest[key];
   return typeof value === 'string' ? localize(value, messages).trim() : '';
 }
+
+export function withManifestKey(text: string, key: string): string | null {
+  try {
+    const manifest = record(JSON.parse(text.replace(/^\uFEFF/, '')));
+    if (!manifest) return null;
+    return JSON.stringify({ key, ...manifest, ...(nonEmpty(manifest.key) ? {} : { key }) }, null, 2);
+  } catch {
+    return null;
+  }
+}

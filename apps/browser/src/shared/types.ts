@@ -88,15 +88,7 @@ export interface BrowserState {
   defaultZoom: number;
   downloads: DownloadsSummary;
   extensions: boolean;
-  storeExtension: StoreExtension | null;
   pendingUpdate: PendingUpdate | null;
-}
-
-export type StoreExtensionStatus = 'available' | 'installing' | 'installed';
-
-export interface StoreExtension {
-  id: string;
-  status: StoreExtensionStatus;
 }
 
 export interface DownloadsSummary {
@@ -151,7 +143,6 @@ export type UiAction =
   | { type: 'open-downloads' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-extension-store' }
-  | { type: 'install-store-extension'; id: string }
   | { type: 'open-history' }
   | { type: 'toggle-translation' }
   | { type: 'open-settings' }

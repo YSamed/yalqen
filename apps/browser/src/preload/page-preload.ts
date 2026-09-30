@@ -18,6 +18,8 @@ import {
   type SettingsView,
   type SubmittedCredential,
 } from '../shared/types.js';
+import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
+import { setupWebStorePage } from './web-store.js';
 
 const THRESHOLD = 90;
 const GAP_MS = 350;
@@ -103,6 +105,8 @@ window.addEventListener(
   },
   { capture: true, passive: true },
 );
+
+if (location.origin === WEB_STORE_ORIGIN && window === window.top) setupWebStorePage();
 
 function subscribe<T>(name: string, listener: (value: T) => void): () => void {
   const handler = (_event: IpcRendererEvent, value: T) => listener(value);

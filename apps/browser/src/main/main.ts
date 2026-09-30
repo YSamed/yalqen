@@ -26,6 +26,7 @@ import { DownloadStore } from './downloads.js';
 import { STORE_HOME } from './chrome-web-store.js';
 import { ExtensionPopup } from './extension-popup.js';
 import { ExtensionManager } from './extensions.js';
+import { registerWebStoreApi } from './web-store-api.js';
 import { loadInternalPages, registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
@@ -460,6 +461,11 @@ function startBrowser(): void {
     const saved = requestRules.save(rules);
     eachWindow((window) => window.tabs.refreshRequestRules());
     return saved;
+  });
+  registerWebStoreApi({
+    daily,
+    extensions,
+    parentWindow: (contents) => windowOf(contents)?.window ?? null,
   });
   ipcMain.handle(ExtensionsChannel.list, (event) => (isSettingsFrame(event) ? extensions.list() : null));
   ipcMain.handle(ExtensionsChannel.install, async (event) => {

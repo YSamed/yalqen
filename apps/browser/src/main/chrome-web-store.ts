@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 export const STORE_HOME = 'https://chromewebstore.google.com/';
 const ID_PATTERN = /^[a-p]{32}$/;
 const STORE_HOSTS = new Set(['chromewebstore.google.com', 'chrome.google.com']);
@@ -37,11 +39,77 @@ export function crxPayload(file: Buffer): Buffer {
   throw new Error('Desteklenmeyen uzantı paketi sürümü');
 }
 
+function readVarint(buffer: Buffer, start: number): { value: number; next: number } {
+  let value = 0;
+  let shift = 0;
+  let position = start;
+  while (position < buffer.length && shift < 35) {
+    const byte = buffer[position++]!;
+    value += (byte & 0x7f) * 2 ** shift;
+    if ((byte & 0x80) === 0) return { value, next: position };
+    shift += 7;
+  }
+  throw new Error('Geçersiz uzantı paketi');
+}
+
+function protoFields(buffer: Buffer, wanted: readonly number[]): { field: number; data: Buffer }[] {
+  const found: { field: number; data: Buffer }[] = [];
+  let position = 0;
+  while (position < buffer.length) {
+    const tag = readVarint(buffer, position);
+    position = tag.next;
+    const field = Math.floor(tag.value / 8);
+    const wire = tag.value % 8;
+    if (wire === 0) {
+      position = readVarint(buffer, position).next;
+    } else if (wire === 2) {
+      const length = readVarint(buffer, position);
+      const end = length.next + length.value;
+      if (end > buffer.length) throw new Error('Geçersiz uzantı paketi');
+      if (wanted.includes(field)) found.push({ field, data: buffer.subarray(length.next, end) });
+      position = end;
+    } else if (wire === 1) {
+      position += 8;
+    } else if (wire === 5) {
+      position += 4;
+    } else {
+      throw new Error('Geçersiz uzantı paketi');
+    }
+  }
+  return found;
+}
+
+export function extensionIdOfKey(publicKey: Buffer): string {
+  const digest = createHash('sha256').update(publicKey).digest().subarray(0, 16);
+  return Array.from(digest, (byte) => String.fromCharCode(97 + (byte >> 4), 97 + (byte & 0xf))).join('');
+}
+
+export function crxPublicKey(file: Buffer, id: string): string | null {
+  if (file.toString('latin1', 0, 4) !== CRX_MAGIC || file.length < 16) return null;
+  const version = file.readUInt32LE(4);
+  const candidates: Buffer[] = [];
+  if (version === 2) {
+    candidates.push(file.subarray(16, 16 + file.readUInt32LE(8)));
+  } else if (version === 3) {
+    const header = file.subarray(12, 12 + file.readUInt32LE(8));
+    for (const { data } of protoFields(header, [2, 3])) {
+      candidates.push(...protoFields(data, [1]).map((item) => item.data));
+    }
+  }
+  const key = candidates.find((candidate) => extensionIdOfKey(candidate) === id);
+  return key ? key.toString('base64') : null;
+}
+
+export interface DownloadedCrx {
+  zip: Buffer;
+  key: string | null;
+}
+
 export async function downloadCrx(
   id: string,
   fetchFile: (url: string, init: RequestInit) => Promise<Response>,
   chromeVersion: string,
-): Promise<Buffer> {
+): Promise<DownloadedCrx> {
   const response = await fetchFile(crxUrl(id, chromeVersion), { credentials: 'omit' });
   if (response.status === 204 || response.status === 404) throw new Error('Uzantı Chrome Web Mağazası’nda bulunamadı');
   if (!response.ok) throw new Error(`Mağaza yanıt vermedi (${response.status})`);
@@ -49,5 +117,5 @@ export async function downloadCrx(
   if (declared > MAX_CRX_BYTES) throw new Error('Uzantı paketi çok büyük');
   const file = Buffer.from(await response.arrayBuffer());
   if (file.length > MAX_CRX_BYTES) throw new Error('Uzantı paketi çok büyük');
-  return crxPayload(file);
+  return { zip: crxPayload(file), key: crxPublicKey(file, id) };
 }

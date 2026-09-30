@@ -16,7 +16,6 @@ import {
   IpcChannel,
   type AnchorRect,
   type BrowserState,
-  type StoreExtension,
   type ChromeLayout,
   type DevCommandId,
   type DeviceId,
@@ -38,7 +37,7 @@ import {
 import { devMenuTemplate } from './dev-menu.js';
 import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from './downloads.js';
 import { sanitizeAnchor, type ExtensionPopup } from './extension-popup.js';
-import { STORE_HOME, parseStoreId } from './chrome-web-store.js';
+import { STORE_HOME } from './chrome-web-store.js';
 import { extensionsMenuTemplate, type ExtensionManager } from './extensions.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
@@ -417,10 +416,8 @@ export class YalqenWindow {
   };
 
   state(): BrowserState {
-    const tabState = this.tabs.state();
     return {
-      ...tabState,
-      storeExtension: this.storeExtension(tabState),
+      ...this.tabs.state(),
       developer: this.isDeveloper,
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
@@ -437,24 +434,6 @@ export class YalqenWindow {
       extensions: !this.isPrivate,
       pendingUpdate: this.app.pendingUpdate(),
     };
-  }
-
-  private storeExtension({ tabs, activeTabId }: ReturnType<TabManager['state']>): StoreExtension | null {
-    if (this.isPrivate) return null;
-    const url = tabs.find((tab) => tab.id === activeTabId)?.url;
-    const id = url?.startsWith('https:') ? parseStoreId(url) : null;
-    return id ? { id, status: this.app.extensions.storeStatus(id) } : null;
-  }
-
-  private async installStoreExtension(input: string): Promise<void> {
-    const error = await this.app.extensions.installFromStore(input);
-    if (error && !this.window.isDestroyed()) {
-      void dialog.showMessageBox(this.window, {
-        type: 'error',
-        message: 'Uzantı eklenemedi.',
-        detail: error,
-      });
-    }
   }
 
   setLayout(layout: ChromeLayout): void {
@@ -757,9 +736,6 @@ export class YalqenWindow {
         break;
       case 'open-extension-store':
         tabs.open(STORE_HOME, { isPrivate: false });
-        break;
-      case 'install-store-extension':
-        if (!this.isPrivate && typeof action.id === 'string') void this.installStoreExtension(action.id);
         break;
       case 'open-history':
         tabs.openHistory();

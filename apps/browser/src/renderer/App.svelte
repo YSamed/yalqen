@@ -40,7 +40,6 @@
     defaultZoom: 1,
     downloads: { active: 0, progress: null, started: 0 },
     extensions: false,
-    storeExtension: null,
     pendingUpdate: null,
   });
   let width = $state(DEFAULT_WIDTH);
@@ -188,7 +187,6 @@
         downloads={browser.downloads}
         ready={stateReceived}
         extensions={browser.extensions}
-        storeExtension={browser.storeExtension}
         buttons={browser.toolbarButtons}
         pendingUpdate={browser.pendingUpdate}
         leadingInset={windowControls
