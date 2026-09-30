@@ -49,7 +49,7 @@ test('without a backend nothing is checked or installed', () => {
   updater.check();
   updater.install();
   assert.deepEqual(updater.status(), { state: 'unavailable' });
-  assert.equal(updater.readyVersion(), null);
+  assert.equal(updater.pending(), null);
   assert.deepEqual(changes, []);
 });
 
@@ -77,11 +77,11 @@ test('backend events become statuses and a ready update can be installed', () =>
   backend.emit('download-progress', { percent: 41.9 });
   updater.check();
   assert.equal(backend.checks, 1);
-  assert.equal(updater.readyVersion(), null);
+  assert.deepEqual(updater.pending(), { state: 'downloading', version: '0.3.0', percent: 41 });
   backend.emit('update-downloaded', { version: '0.3.0' });
   updater.check();
   assert.equal(backend.checks, 1);
-  assert.equal(updater.readyVersion(), '0.3.0');
+  assert.deepEqual(updater.pending(), { state: 'ready', version: '0.3.0' });
   updater.install();
   assert.equal(backend.installs, 1);
   assert.deepEqual(events, [

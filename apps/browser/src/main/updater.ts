@@ -1,5 +1,5 @@
 import type { AppUpdater } from 'electron-updater';
-import type { UpdateStatus } from '../shared/types.js';
+import type { PendingUpdate, UpdateStatus } from '../shared/types.js';
 
 export const FIRST_CHECK_DELAY_MS = 30_000;
 export const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -36,8 +36,8 @@ export class Updater {
     return this.current;
   }
 
-  readyVersion(): string | null {
-    return this.current.state === 'ready' ? this.current.version : null;
+  pending(): PendingUpdate | null {
+    return this.current.state === 'downloading' || this.current.state === 'ready' ? this.current : null;
   }
 
   check(): void {

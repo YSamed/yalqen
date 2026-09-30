@@ -299,7 +299,7 @@ function startBrowser(): void {
     },
     runDownloadsCommand: (command, params) => downloadManager.runCommand(command, params),
     updateSettings,
-    updateReady: () => updater.readyVersion(),
+    pendingUpdate: () => updater.pending(),
     installUpdate: () => updater.install(),
     deviceId: () => deviceId,
     openWindow: (options) => openWindow(options),

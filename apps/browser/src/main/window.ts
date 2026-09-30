@@ -20,6 +20,7 @@ import {
   type ChromeLayout,
   type DevCommandId,
   type DeviceId,
+  type PendingUpdate,
   type UiAction,
   type WindowMaterial,
 } from '../shared/types.js';
@@ -92,7 +93,7 @@ export interface AppContext {
   runBookmarksCommand(command: string, params: URLSearchParams): void;
   runDownloadsCommand(command: string, params: URLSearchParams): void;
   updateSettings(patch: unknown): void;
-  updateReady(): string | null;
+  pendingUpdate(): PendingUpdate | null;
   installUpdate(): void;
   deviceId(): DeviceId;
   openWindow(options: WindowOptions): YalqenWindow;
@@ -434,7 +435,7 @@ export class YalqenWindow {
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
-      updateReady: this.app.updateReady(),
+      pendingUpdate: this.app.pendingUpdate(),
     };
   }
 

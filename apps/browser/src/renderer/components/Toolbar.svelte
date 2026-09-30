@@ -1,6 +1,7 @@
 <script lang="ts">
   import type {
     DownloadsSummary,
+    PendingUpdate,
     StoreExtension,
     StoreExtensionStatus,
     TabId,
@@ -26,7 +27,7 @@
     extensions,
     storeExtension,
     buttons,
-    updateReady,
+    pendingUpdate,
     leadingInset,
     trailingInset,
     trailingOverhang = 0,
@@ -42,7 +43,7 @@
     extensions: boolean;
     storeExtension: StoreExtension | null;
     buttons: ToolbarButtonId[];
-    updateReady: string | null;
+    pendingUpdate: PendingUpdate | null;
     leadingInset: number;
     trailingInset: number;
     trailingOverhang?: number;
@@ -323,12 +324,19 @@
 
   <div class="side trailing" style:margin-right="{-trailingOverhang}px">
     <Capsule minWidth={roomy ? trailingWidth : undefined} spread={roomy}>
-      {#if updateReady}
+      {#if pendingUpdate?.state === 'ready'}
         <IconButton
           icon="update"
           tone="accent"
-          label="Yalqen {updateReady} hazır, güncellemek için yeniden başlat"
+          label="Yalqen {pendingUpdate.version} hazır, güncellemek için yeniden başlat"
           onclick={() => send({ type: 'install-update' })}
+        />
+      {:else if pendingUpdate}
+        <IconButton
+          icon="update"
+          tone="muted"
+          label="Yalqen {pendingUpdate.version} indiriliyor %{pendingUpdate.percent}"
+          onclick={() => send({ type: 'open-settings' })}
         />
       {/if}
       {#each buttons as id (id)}

@@ -89,7 +89,7 @@ export interface BrowserState {
   downloads: DownloadsSummary;
   extensions: boolean;
   storeExtension: StoreExtension | null;
-  updateReady: string | null;
+  pendingUpdate: PendingUpdate | null;
 }
 
 export type StoreExtensionStatus = 'available' | 'installing' | 'installed';
@@ -351,6 +351,8 @@ export type UpdateStatus =
   | { state: 'downloading'; version: string; percent: number }
   | { state: 'ready'; version: string }
   | { state: 'failed' };
+
+export type PendingUpdate = Extract<UpdateStatus, { state: 'downloading' | 'ready' }>;
 
 export interface SettingsView {
   values: SettingsValues;
