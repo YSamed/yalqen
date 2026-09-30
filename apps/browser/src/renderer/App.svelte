@@ -35,7 +35,7 @@
     device: null,
     zoom: 1,
     defaultZoom: 1,
-    downloads: { active: 0, progress: null },
+    downloads: { active: 0, progress: null, started: 0 },
     extensions: false,
     updateReady: null,
   });
@@ -178,6 +178,7 @@
         zoom={browser.zoom}
         defaultZoom={browser.defaultZoom}
         downloads={browser.downloads}
+        ready={stateReceived}
         extensions={browser.extensions}
         updateReady={browser.updateReady}
         leadingInset={windowControls

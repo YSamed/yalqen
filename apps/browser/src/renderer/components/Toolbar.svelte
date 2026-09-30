@@ -14,6 +14,7 @@
     zoom,
     defaultZoom,
     downloads,
+    ready,
     extensions,
     updateReady,
     leadingInset,
@@ -27,6 +28,7 @@
     zoom: number;
     defaultZoom: number;
     downloads: DownloadsSummary;
+    ready: boolean;
     extensions: boolean;
     updateReady: string | null;
     leadingInset: number;
@@ -44,12 +46,21 @@
     translated: 'Özgün sayfayı göster',
     failed: 'Çeviri başarısız, tekrar dene',
   };
+  let dropKey = $state(0);
+  let seenStarts: number | null = null;
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
     const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
     send({ type: 'open-extensions-menu', anchor: { x, y, width, height } });
   }
+
+  $effect(() => {
+    if (!ready) return;
+    const started = downloads.started;
+    if (seenStarts !== null && started > seenStarts) dropKey++;
+    seenStarts = started;
+  });
 
   $effect(() => {
     void activeTabId;
@@ -276,6 +287,14 @@
             />
           </svg>
         {/if}
+        {#key dropKey}
+          {#if dropKey > 0}
+            <span class="drop-x" aria-hidden="true">
+              <span class="drop-y"><Icon name="download" size={12} /></span>
+            </span>
+            <span class="landing" aria-hidden="true"></span>
+          {/if}
+        {/key}
       </IconButton>
     </Capsule>
   </div>
@@ -508,6 +527,84 @@
 
   @media (prefers-reduced-motion: reduce) {
     .ring.indeterminate {
+      animation: none;
+    }
+  }
+
+  .drop-x,
+  .drop-y,
+  .landing {
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .drop-x {
+    animation: drop-x 0.55s cubic-bezier(0.45, 0, 0.55, 1) both;
+  }
+
+  .drop-y {
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: #fff;
+    animation: drop-y 0.55s ease-out both;
+  }
+
+  .landing {
+    inset: 0;
+    border: 1.6px solid var(--accent);
+    opacity: 0;
+    animation: landing 0.5s ease-out 0.5s both;
+  }
+
+  @keyframes drop-x {
+    from {
+      transform: translateX(-190px);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes drop-y {
+    0% {
+      transform: translateY(6px) scale(1.25);
+      opacity: 0;
+    }
+    30% {
+      transform: translateY(-12px) scale(1.25);
+      opacity: 1;
+    }
+    85% {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0) scale(0.4);
+      opacity: 0;
+    }
+  }
+
+  @keyframes landing {
+    from {
+      transform: scale(0.8);
+      opacity: 0.9;
+    }
+    to {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drop-x,
+    .drop-y {
+      animation-duration: 0.01s;
+    }
+
+    .landing {
       animation: none;
     }
   }

@@ -86,6 +86,18 @@ test('the toolbar summary counts running downloads', () => {
   assert.deepEqual(downloadsSummary([entry({ state: 'progressing', totalBytes: 0 })]), { active: 1, progress: null });
 });
 
+test('the store counts every download that starts', () => {
+  withDir((dir) => {
+    const store = new DownloadStore(dir);
+    assert.equal(store.summary().started, 0);
+    store.add(entry({ id: 'a' }));
+    store.add(entry({ id: 'b' }));
+    store.remove('a');
+    assert.equal(store.summary().started, 2);
+    assert.equal(new DownloadStore(dir).summary().started, 0);
+  });
+});
+
 test('the list persists and running downloads come back as failed', () => {
   withDir((dir) => {
     const store = new DownloadStore(dir);

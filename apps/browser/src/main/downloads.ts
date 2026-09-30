@@ -69,7 +69,7 @@ export function isActive(entry: DownloadEntry): boolean {
   return entry.state === 'progressing' || entry.state === 'paused';
 }
 
-export function downloadsSummary(entries: readonly DownloadEntry[]): DownloadsSummary {
+export function downloadsSummary(entries: readonly DownloadEntry[]): Omit<DownloadsSummary, 'started'> {
   const active = entries.filter(isActive);
   const known = active.every((entry) => entry.totalBytes > 0);
   const total = active.reduce((sum, entry) => sum + entry.totalBytes, 0);
@@ -97,6 +97,7 @@ export class DownloadStore {
   readonly file: string;
   private readonly json: JsonFile;
   private entries: DownloadEntry[] = [];
+  private started = 0;
 
   constructor(directory: string) {
     this.file = path.join(directory, 'downloads.json');
@@ -117,7 +118,7 @@ export class DownloadStore {
   }
 
   summary(): DownloadsSummary {
-    return downloadsSummary(this.entries);
+    return { ...downloadsSummary(this.entries), started: this.started };
   }
 
   get(id: string): DownloadEntry | undefined {
@@ -126,6 +127,7 @@ export class DownloadStore {
   }
 
   add(entry: DownloadEntry): void {
+    this.started++;
     this.entries.unshift({ ...entry });
     if (this.entries.length > MAX_ENTRIES) this.entries.length = MAX_ENTRIES;
     this.save();

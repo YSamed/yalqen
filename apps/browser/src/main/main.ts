@@ -181,6 +181,8 @@ function startBrowser(): void {
     privateBrowsing,
     developer,
     directory: () => app.getPath('downloads'),
+    askBeforeDownload: () => settings.get().askBeforeDownload,
+    parentOf: (contents) => windowOf(contents)?.window,
     onStateChange: pushState,
   });
   const downloadsChanged = () => downloadManager.changed();

@@ -471,6 +471,18 @@
           />
         </div>
         <div class="row">
+          <span class="label">
+            <span>İndirmeden önce sor</span>
+            <span class="hint">Bir site dosya indirmeye başlamadan önce onayınızı ister.</span>
+          </span>
+          <SegmentedControl
+            label="İndirmeden önce sor"
+            options={onOffOptions}
+            value={values.askBeforeDownload}
+            onchange={(value) => update({ askBeforeDownload: value })}
+          />
+        </div>
+        <div class="row">
           <label for="secure-dns" class="label">
             <span>Güvenli DNS</span>
             <span class="hint"

@@ -89,6 +89,7 @@ export interface BrowserState {
 export interface DownloadsSummary {
   active: number;
   progress: number | null;
+  started: number;
 }
 
 export interface ChromeLayout {
@@ -316,6 +317,7 @@ export interface SettingsValues {
   pageLanguage: PageLanguage;
   pageTranslation: boolean;
   autoUpdate: boolean;
+  askBeforeDownload: boolean;
   welcomeCompleted: boolean;
 }
 

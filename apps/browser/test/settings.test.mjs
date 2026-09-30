@@ -51,6 +51,7 @@ test('unknown or mistyped fields fall back', () => {
       pageLanguage: 'tr',
       pageTranslation: true,
       autoUpdate: true,
+      askBeforeDownload: true,
       welcomeCompleted: false,
     },
   );
@@ -80,6 +81,7 @@ test('updates keep valid fields and persist', () => {
       fontSize: 'large',
       defaultZoom: 1.25,
       pageLanguage: 'en',
+      askBeforeDownload: false,
     });
     store.update({ searchEngine: 'nope', theme: 7 });
     assert.equal(store.get().searchEngine, 'yandex');
@@ -102,6 +104,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.fontSize, 'large');
     assert.equal(reloaded.defaultZoom, 1.25);
     assert.equal(reloaded.pageLanguage, 'en');
+    assert.equal(reloaded.askBeforeDownload, false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
