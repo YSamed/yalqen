@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/YSamed/yalqen/compare/v0.2.4...v0.2.5) (2026-09-30)
+
+
+### Features
+
+* move settings tabs to vertical sidebar layout ([#43](https://github.com/YSamed/yalqen/issues/43)) ([4c8c2fb](https://github.com/YSamed/yalqen/commit/4c8c2fb9fc87d8724e3be0775fc5c71b4d2f5f52))
+
 ## [0.2.4](https://github.com/YSamed/yalqen/compare/v0.2.3...v0.2.4) (2026-09-30)
 
 
