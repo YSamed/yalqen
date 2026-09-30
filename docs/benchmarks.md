@@ -6,11 +6,15 @@
 
 Memory is the sum of `phys_footprint` over the browser's whole process tree, 60 seconds after the tabs were opened. Idle CPU is the CPU time the process tree used during the following 120 seconds with nobody touching it.
 
+### Memory
+
 | Tabs | Yalqen, ad blocking on | Yalqen, ad blocking off | Chrome  |
 | ---- | ---------------------- | ----------------------- | ------- |
 | 10   | 920 MB                 | 1057 MB                 | 1583 MB |
 | 20   | 1548 MB                | 1796 MB                 | 2819 MB |
 | 40   | 2802 MB                | 3237 MB                 | 5312 MB |
+
+### Idle CPU
 
 | Tabs | Yalqen, ad blocking on | Yalqen, ad blocking off | Chrome |
 | ---- | ---------------------- | ----------------------- | ------ |
