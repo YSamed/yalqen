@@ -9,6 +9,9 @@
     <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="https://img.shields.io/github/v/release/YSamed/yalqen" alt="Latest release"></a>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/YSamed/yalqen" alt="MIT license"></a>
     <a href="https://github.com/YSamed/yalqen/releases"><img src="https://img.shields.io/github/downloads/YSamed/yalqen/total" alt="Downloads"></a>
+    <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+    <a href="https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen"><img src="https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge" alt="OpenSSF Scorecard"></a>
   </p>
 
   <p>
@@ -57,7 +60,7 @@
 
 ## Install
 
-Requires macOS 13+ on Apple Silicon.
+> **Requires macOS 13 or later on Apple Silicon.** Intel Macs are not supported.
 
 With [Homebrew](https://brew.sh):
 
@@ -65,9 +68,23 @@ With [Homebrew](https://brew.sh):
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest).
+Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest). The app is signed with a Developer ID and notarized, so it opens without a Gatekeeper warning.
+
+Yalqen updates itself in the background. To update through Homebrew instead:
+
+```bash
+brew upgrade --cask yalqen
+```
+
+To uninstall and remove its data:
+
+```bash
+brew uninstall --zap --cask yalqen
+```
 
 ## Development
+
+The app lives in `apps/browser`. You need Node.js 22.12 or later.
 
 ```bash
 cd apps/browser
@@ -75,6 +92,18 @@ npm ci
 npm start
 ```
 
+Other commands, all run from `apps/browser`:
+
+| Command               | What it does                            |
+| --------------------- | --------------------------------------- |
+| `npm run check`       | Lint, format check, typecheck and tests |
+| `npm test`            | Tests only                              |
+| `npm run package:mac` | Build the macOS app bundle              |
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
 ## License
 
-[MIT](LICENSE). Filter lists keep their own licenses, see [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md). The Yalqen name and logo are not covered by the MIT License.
+- Yalqen is released under the [MIT License](LICENSE).
+- Bundled filter lists keep their own licenses, see [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md).
+- The Yalqen name and logo are not covered by the MIT License.
