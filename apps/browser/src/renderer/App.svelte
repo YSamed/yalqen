@@ -12,7 +12,7 @@
   const MAX_WIDTH = 360;
   const DEFAULT_WIDTH = 220;
   const CHROME_HEIGHT = 44;
-  const BANNER_HEIGHT = 40;
+  const BANNER_HEIGHT = 48;
   const PAGE_INSET = 8;
   const PANEL_ROW_INSET = PAGE_INSET + 3;
   const PAGE_RADIUS = 16;
@@ -209,6 +209,8 @@
       <UpdateBanner
         version={readyUpdate}
         oninstall={() => window.yalqen.send({ type: 'install-update' })}
+        onnotes={() =>
+          window.yalqen.send({ type: 'new-tab', url: `https://github.com/YSamed/yalqen/releases/tag/v${readyUpdate}` })}
         ondismiss={() => (dismissedUpdate = readyUpdate)}
       />
     </div>
