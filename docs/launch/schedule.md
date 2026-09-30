@@ -6,7 +6,7 @@ Nothing here is posted automatically. The author posts each item by hand.
 
 1. **English interface.** The app's menus, settings and dialogs are in Turkish only (roughly 275 Turkish strings in `apps/browser/src`, for example the File menu's "Yeni sekme", "Sekmeyi kapat"). English-speaking audiences (HN, Reddit, Product Hunt) will open a Turkish UI and leave. Ship an English UI, or at least English as the default with Turkish selectable, before week 1.
 2. **README demo** (Phase 2): `design/readme/demo.gif` in the README.
-3. **Benchmarks** (Phase 3): real numbers in [docs/benchmarks.md](../benchmarks.md), or remove every benchmark link from the drafts.
+3. **Benchmarks** (Phase 3): [docs/benchmarks.md](../benchmarks.md) has one preliminary run (Yalqen uses 53–58% of Chrome's memory with ad blocking). Run the full three-run benchmark before posting, and do not quote the idle CPU ratio until it is confirmed with a used Chrome profile.
 4. **CEF section** in [docs/why-electron.md](../why-electron.md) filled in by the author.
 
 Code signing and notarization are done: v0.2.11 passes `codesign --verify --deep --strict`, `spctl` ("Notarized Developer ID") and `stapler validate`, and a quarantined copy passes `syspolicy_check distribution`.
