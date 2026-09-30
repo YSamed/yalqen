@@ -338,7 +338,14 @@
           <div class="row">
             <span class="label">
               <span>Yalqen {view.version}</span>
-              <span class="hint" aria-live="polite">{updateMessage(view.update)}</span>
+              <span class="hint" class:ready={view.update.state === 'ready'} aria-live="polite">
+                {updateMessage(view.update)}
+              </span>
+              {#if view.update.state === 'downloading'}
+                <span class="progress" role="progressbar" aria-valuenow={view.update.percent} aria-label="İndirme">
+                  <span style:width="{Math.max(2, view.update.percent)}%"></span>
+                </span>
+              {/if}
             </span>
             {#if view.update.state === 'ready'}
               <Button variant="primary" onclick={() => api.installUpdate()}>Yeniden başlat</Button>
@@ -743,6 +750,27 @@
   .hint {
     color: var(--text-muted);
     font-size: var(--font-size-small);
+  }
+
+  .hint.ready {
+    color: var(--text);
+  }
+
+  .progress {
+    width: 220px;
+    height: 4px;
+    margin-top: 4px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--well);
+  }
+
+  .progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width 0.25s linear;
   }
 
   .error {
