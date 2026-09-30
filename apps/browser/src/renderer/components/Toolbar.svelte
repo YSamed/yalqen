@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DownloadsSummary, TabId, TabSnapshot, TranslationStatus } from '../../shared/types';
+  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId, TranslationStatus } from '../../shared/types';
   import { consoleErrorCount, devStates, isNewTab, siteLabel } from '../format';
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
@@ -16,6 +16,7 @@
     downloads,
     ready,
     extensions,
+    buttons,
     updateReady,
     leadingInset,
     trailingInset,
@@ -30,6 +31,7 @@
     downloads: DownloadsSummary;
     ready: boolean;
     extensions: boolean;
+    buttons: ToolbarButtonId[];
     updateReady: string | null;
     leadingInset: number;
     trailingInset: number;
@@ -48,6 +50,7 @@
   };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
+  const roomy = $derived(buttons.length >= 4);
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
@@ -78,6 +81,50 @@
       <Icon name="globe" size={14} />
     {/if}
   </span>
+{/snippet}
+
+{#snippet button(id: ToolbarButtonId)}
+  {#if id === 'bookmarks'}
+    <IconButton icon="bookmarks" label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })} />
+  {:else if id === 'history'}
+    <IconButton icon="history" label="Geçmiş" title="Geçmiş (⌘Y)" onclick={() => send({ type: 'open-history' })} />
+  {:else if id === 'extensions'}
+    {#if extensions}
+      <IconButton icon="extensions" label="Uzantılar" onclick={openExtensionsMenu} />
+    {/if}
+  {:else if id === 'profile'}
+    <IconButton icon="profile" label="Profil" onclick={() => send({ type: 'open-profile-menu' })} />
+  {:else if id === 'settings'}
+    <IconButton icon="settings" label="Ayarlar" title="Ayarlar (⌘,)" onclick={() => send({ type: 'open-settings' })} />
+  {:else}
+    <IconButton
+      icon="download"
+      tone={downloads.active > 0 ? 'accent' : 'default'}
+      label={downloads.active > 0 ? `İndirilenler, ${downloads.active} indirme sürüyor` : 'İndirilenler'}
+      title="İndirilenler"
+      onclick={() => send({ type: 'open-downloads' })}
+    >
+      {#if downloads.active > 0}
+        <svg class="ring" class:indeterminate={downloads.progress === null} viewBox="0 0 28 28" aria-hidden="true">
+          <circle
+            cx="14"
+            cy="14"
+            r="12.5"
+            pathLength="100"
+            stroke-dasharray="{downloads.progress === null ? 25 : Math.max(2, downloads.progress * 100)} 100"
+          />
+        </svg>
+      {/if}
+      {#key dropKey}
+        {#if dropKey > 0}
+          <span class="drop-x" aria-hidden="true">
+            <span class="drop-y"><Icon name="download" size={12} /></span>
+          </span>
+          <span class="landing" aria-hidden="true"></span>
+        {/if}
+      {/key}
+    </IconButton>
+  {/if}
 {/snippet}
 
 <header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
@@ -248,7 +295,7 @@
   </div>
 
   <div class="side trailing" style:margin-right="{-trailingOverhang}px">
-    <Capsule minWidth={trailingWidth} spread>
+    <Capsule minWidth={roomy ? trailingWidth : undefined} spread={roomy}>
       {#if updateReady}
         <IconButton
           icon="update"
@@ -257,45 +304,9 @@
           onclick={() => send({ type: 'install-update' })}
         />
       {/if}
-      <IconButton icon="bookmarks" label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })} />
-      <IconButton icon="history" label="Geçmiş" title="Geçmiş (⌘Y)" onclick={() => send({ type: 'open-history' })} />
-      {#if extensions}
-        <IconButton icon="extensions" label="Uzantılar" onclick={openExtensionsMenu} />
-      {/if}
-      <IconButton icon="profile" label="Profil" onclick={() => send({ type: 'open-profile-menu' })} />
-      <IconButton
-        icon="settings"
-        label="Ayarlar"
-        title="Ayarlar (⌘,)"
-        onclick={() => send({ type: 'open-settings' })}
-      />
-      <IconButton
-        icon="download"
-        tone={downloads.active > 0 ? 'accent' : 'default'}
-        label={downloads.active > 0 ? `İndirilenler, ${downloads.active} indirme sürüyor` : 'İndirilenler'}
-        title="İndirilenler"
-        onclick={() => send({ type: 'open-downloads' })}
-      >
-        {#if downloads.active > 0}
-          <svg class="ring" class:indeterminate={downloads.progress === null} viewBox="0 0 28 28" aria-hidden="true">
-            <circle
-              cx="14"
-              cy="14"
-              r="12.5"
-              pathLength="100"
-              stroke-dasharray="{downloads.progress === null ? 25 : Math.max(2, downloads.progress * 100)} 100"
-            />
-          </svg>
-        {/if}
-        {#key dropKey}
-          {#if dropKey > 0}
-            <span class="drop-x" aria-hidden="true">
-              <span class="drop-y"><Icon name="download" size={12} /></span>
-            </span>
-            <span class="landing" aria-hidden="true"></span>
-          {/if}
-        {/key}
-      </IconButton>
+      {#each buttons as id (id)}
+        {@render button(id)}
+      {/each}
     </Capsule>
   </div>
 </header>

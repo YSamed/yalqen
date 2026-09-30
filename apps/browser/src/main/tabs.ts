@@ -543,14 +543,18 @@ export class TabManager {
     else this.open(url);
   }
 
-  goBack(): void {
+  goBack(): boolean {
     const history = this.active()?.view?.webContents.navigationHistory;
-    if (history?.canGoBack()) history.goBack();
+    if (!history?.canGoBack()) return false;
+    history.goBack();
+    return true;
   }
 
-  goForward(): void {
+  goForward(): boolean {
     const history = this.active()?.view?.webContents.navigationHistory;
-    if (history?.canGoForward()) history.goForward();
+    if (!history?.canGoForward()) return false;
+    history.goForward();
+    return true;
   }
 
   reload(): void {

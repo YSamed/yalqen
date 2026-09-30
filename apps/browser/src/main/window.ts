@@ -42,6 +42,7 @@ import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from './history.js';
 import type { HttpsOnly } from './https-only.js';
 import { canViewSource, formatAddress, pageFileName, type AddressFormat } from './page-export.js';
+import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
 import { pageFrame } from './page-layout.js';
 import { fontPreferences } from './page-preferences.js';
 import { permissionOrigin, type PermissionStore } from './permissions.js';
@@ -135,6 +136,7 @@ export class YalqenWindow {
   private pushQueued = false;
   private lastPushedState = '';
   private findTarget: { tabId: string; url: string } | null = null;
+  private readonly navigationHint: NavigationHint;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
   constructor(
@@ -309,6 +311,7 @@ export class YalqenWindow {
       }),
     });
 
+    this.navigationHint = new NavigationHint({ window: this.window, area: () => this.pageArea });
     this.window.on('focus', () => app.onWindowFocus(this));
     if (process.platform === 'darwin') {
       this.window.on('swipe', (_event, direction) => {
@@ -346,6 +349,7 @@ export class YalqenWindow {
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
       this.findBar.release(this.window);
+      this.navigationHint.destroy();
       app.extensionPopup.close(this.window);
       if (!this.uiContents.isDestroyed()) this.uiContents.close();
       app.onWindowClosed(this);
@@ -374,8 +378,12 @@ export class YalqenWindow {
     const last = this.lastNavigationGesture;
     if (last && last.source !== source && last.direction === direction && now - last.at < 650) return;
     this.lastNavigationGesture = { source, direction, at: now };
-    if (direction === 'back') this.tabs.goBack();
-    else this.tabs.goForward();
+    this.goInHistory(direction);
+  }
+
+  private goInHistory(direction: HistoryDirection): void {
+    const moved = direction === 'back' ? this.tabs.goBack() : this.tabs.goForward();
+    if (moved) this.navigationHint.show(direction);
   }
 
   isFocused(): boolean {
@@ -417,6 +425,7 @@ export class YalqenWindow {
       sidebarVisible: this.app.settings.get().sidebarVisible,
       toolbarVisible: this.app.settings.get().toolbarVisible,
       toolbarTabs: this.app.settings.get().toolbarTabs,
+      toolbarButtons: this.app.settings.get().toolbarButtons,
       material: this.material(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
@@ -632,10 +641,10 @@ export class YalqenWindow {
         tabs.navigate(resolveInput(action.input, app.searchEngine()));
         break;
       case 'go-back':
-        tabs.goBack();
+        this.goInHistory('back');
         break;
       case 'go-forward':
-        tabs.goForward();
+        this.goInHistory('forward');
         break;
       case 'reload':
         tabs.reload();
