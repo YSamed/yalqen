@@ -44,5 +44,5 @@ It's MIT licensed, macOS 13+ on Apple Silicon only for now. I'd love feedback on
 - Stay in the thread for the first 3–4 hours; answer every question, especially critical ones, without getting defensive.
 - Do not ask anyone to upvote; HN detects voting rings and penalizes the post.
 - The "Arc came close" line is honest but invites an Arc debate. Keep it only if you are comfortable with that.
-- The benchmark link must point to real numbers. Remove the line if [benchmarks.md](../benchmarks.md) still says "results pending".
+- The benchmark link points to real numbers, but they are marked preliminary until the three-run benchmark is done. Quote memory, not idle CPU.
 - Mention the Turkish-only interface if it has not been translated by then; HN will notice immediately. See [schedule.md](schedule.md).
