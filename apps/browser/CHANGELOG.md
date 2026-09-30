@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.9](https://github.com/YSamed/yalqen/compare/v0.2.8...v0.2.9) (2026-09-30)
+
+
+### Features
+
+* make the chrome web store add button work in the browser ([b445961](https://github.com/YSamed/yalqen/commit/b4459611d594b83f995567a04beb8b9f32845ff6))
+
 ## [0.2.8](https://github.com/YSamed/yalqen/compare/v0.2.7...v0.2.8) (2026-09-30)
 
 
