@@ -77,6 +77,11 @@
     send({ type: 'open-extensions-menu', anchor: { x, y, width, height } });
   }
 
+  function openUpdatePopup(event: MouseEvent & { currentTarget: HTMLElement }): void {
+    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
+    send({ type: 'open-update-popup', anchor: { x, y, width, height } });
+  }
+
   $effect(() => {
     if (!ready) return;
     const started = downloads.started;
@@ -158,6 +163,8 @@
         disabled={!activeTab?.canGoForward}
         onclick={() => send({ type: 'go-forward' })}
       />
+    </Capsule>
+    <Capsule ariaLabel="Sayfa yükleme">
       {#if activeTab?.loading}
         <IconButton icon="close" label="Durdur" title="Durdur (Esc)" onclick={() => send({ type: 'stop' })} />
       {:else}
@@ -345,8 +352,8 @@
         <IconButton
           icon="update"
           tone="accent"
-          label="Yalqen {pendingUpdate.version} hazır, güncellemek için yeniden başlat"
-          onclick={() => send({ type: 'install-update' })}
+          label="Yalqen {pendingUpdate.version} hazır, güncelleme seçenekleri"
+          onclick={openUpdatePopup}
         >
           <span class="update-dot" aria-hidden="true"></span>
         </IconButton>

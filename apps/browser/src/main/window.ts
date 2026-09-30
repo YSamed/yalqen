@@ -51,6 +51,7 @@ import { permissionOrigin, type PermissionStore } from './permissions.js';
 import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
 import { blockedPopupsTemplate } from './popups.js';
 import { Preconnector } from './preconnect.js';
+import type { RepoPrompt } from './repo-prompt.js';
 import { loadWallpaper } from './wallpaper.js';
 import { buildSearchUrl, type SearchEngine } from './search.js';
 import type { SettingsStore } from './settings.js';
@@ -58,6 +59,7 @@ import { clearSiteData, cookieUrl, cookiesForHost } from './site-data.js';
 import { siteInfoTemplate } from './site-info.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { TabManager, type DetachedTab } from './tabs.js';
+import { releaseNotesUrl, updatePopupCommand, updatePopupUrl } from './update-popup.js';
 import { resolveInput, withoutHash } from './url.js';
 import type { RequestRuleStore } from './request-rules.js';
 import type { ZoomStore } from './zoom.js';
@@ -76,6 +78,7 @@ export interface AppContext {
   commandBar: CommandBar;
   findBar: FindBar;
   history: HistoryStore;
+  repoPrompt: RepoPrompt;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
   extensions: ExtensionManager;
@@ -237,6 +240,7 @@ export class YalqenWindow {
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       freezeBackground: () => app.settings.get().freezeBackgroundTabs,
+      skipClosedPinnedShortcuts: () => app.settings.get().shortcutsSkipClosedPinned,
       onChange: (persist) => {
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
           this.htmlFullScreenTabId = null;
@@ -256,6 +260,7 @@ export class YalqenWindow {
         if (query.trim() === '') this.openAddress();
         else this.tabs.navigate(resolveInput(query, app.searchEngine()));
       },
+      onRepoPrompt: (action) => app.repoPrompt.respond(action),
       onHtmlFullScreenChange: (tabId, fullScreen) => {
         if (fullScreen) {
           if (tabId !== this.tabs.activeTabId || this.htmlFullScreenTabId === tabId) return;
@@ -746,8 +751,8 @@ export class YalqenWindow {
       case 'open-settings':
         tabs.openSettings();
         break;
-      case 'install-update':
-        app.installUpdate();
+      case 'open-update-popup':
+        this.openUpdatePopup(sanitizeAnchor(action.anchor));
         break;
     }
   }
@@ -793,6 +798,28 @@ export class YalqenWindow {
       },
     );
     this.popup(template);
+  }
+
+  private openUpdatePopup(anchor: AnchorRect): void {
+    const update = this.app.pendingUpdate();
+    if (update?.state !== 'ready') return;
+    this.app.extensionPopup.open({
+      window: this.window,
+      session: this.app.daily,
+      url: updatePopupUrl(update.version),
+      anchor,
+      onOpenUrl: () => {},
+      onCommand: (target) => {
+        switch (updatePopupCommand(target)) {
+          case 'install':
+            this.app.installUpdate();
+            break;
+          case 'notes':
+            this.tabs.open(releaseNotesUrl(update.version), { isPrivate: false });
+            break;
+        }
+      },
+    });
   }
 
   private openExtensionsMenu(anchor: AnchorRect): void {

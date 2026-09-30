@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Güncelleme</title>
+    <style>
+      __YALQEN_CONTROLS_SLOT__
+    </style>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --text: #1a1b1e;
+        --text-muted: #6b6e75;
+        --surface: #fff;
+        --border: rgb(16 18 24 / 0.14);
+        --surface-hover: rgb(16 18 24 / 0.05);
+        --accent: #f28c28;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text: #eceef1;
+          --text-muted: #9a9ea6;
+          --surface: #2b2c31;
+          --border: rgb(255 255 255 / 0.14);
+          --surface-hover: rgb(255 255 255 / 0.07);
+        }
+      }
+
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        width: 272px;
+        padding: 14px 16px 14px;
+        box-sizing: border-box;
+        background: var(--surface);
+        box-shadow: inset 0 0 0 0.5px var(--border);
+        color: var(--text);
+        font:
+          13px / 1.4 -apple-system,
+          BlinkMacSystemFont,
+          'SF Pro Text',
+          'Helvetica Neue',
+          sans-serif;
+        user-select: none;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .badge {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--accent) 18%, transparent);
+        color: var(--accent);
+      }
+
+      strong {
+        font-weight: 600;
+      }
+
+      p {
+        margin: 6px 0 12px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      .actions .primary {
+        margin-right: auto;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="badge" aria-hidden="true">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 10.5v-5M5.8 7.7 8 5.5l2.2 2.2" />
+        </svg>
+      </span>
+      <strong>Yalqen __YALQEN_VERSION_SLOT__ hazır</strong>
+    </header>
+    <p>Yeniden başlatınca yüklenir, açık sekmeler geri gelir.</p>
+    <div class="actions">
+      <a class="btn primary" href="yalqen://update/install">Yeniden başlat</a>
+      <a class="btn ghost" href="yalqen://update/notes">Yenilikler</a>
+      <a class="btn ghost" href="yalqen://update/later">Sonra</a>
+    </div>
+  </body>
+</html>

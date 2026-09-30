@@ -29,6 +29,7 @@ import { ExtensionManager } from './extensions.js';
 import { registerWebStoreApi } from './web-store-api.js';
 import { loadInternalPages, registerInternalScheme, serveInternalPages } from './internal-pages.js';
 import { HistoryStore } from './history.js';
+import { RepoPrompt } from './repo-prompt.js';
 import { HttpsOnly, hostResolverOptions } from './https-only.js';
 import { acceptLanguages, chromeUserAgent, spellCheckerLanguages } from './page-preferences.js';
 import { setThirdPartyCookieBlocking } from './third-party-cookies.js';
@@ -104,6 +105,7 @@ function startBrowser(): void {
   const developer = session.fromPartition(DEVELOPER_PARTITION);
   const settings = new SettingsStore(userData);
   const history = new HistoryStore(userData);
+  const repoPrompt = new RepoPrompt(userData);
   const downloads = new DownloadStore(userData);
   const bookmarks = new BookmarkStore(userData);
   const store = new SessionStore(userData);
@@ -277,6 +279,7 @@ function startBrowser(): void {
     commandBar,
     findBar,
     history,
+    repoPrompt,
     downloads,
     bookmarks,
     extensions,
@@ -361,6 +364,7 @@ function startBrowser(): void {
     downloads: path.join(rendererDir, 'downloads.html'),
     bookmarks: path.join(rendererDir, 'bookmarks.html'),
     settings: path.join(rendererDir, 'settings.html'),
+    updatePopup: path.join(rendererDir, 'update-popup.html'),
   });
   for (const [browsing, isPrivate] of [
     [daily, false],
@@ -380,6 +384,7 @@ function startBrowser(): void {
         if (showWelcome) settings.update({ welcomeCompleted: true });
         return showWelcome;
       },
+      showRepoPrompt: () => !isPrivate && repoPrompt.take(),
       suggestions: (query) =>
         suggest(query, {
           tabs: [],
@@ -575,6 +580,7 @@ function startBrowser(): void {
     extensionPopup.close();
     extensions.saveNow();
     history.saveNow();
+    repoPrompt.saveNow();
     downloads.saveNow();
     bookmarks.saveNow();
     zoom.saveNow();

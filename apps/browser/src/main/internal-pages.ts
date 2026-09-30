@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { protocol, type Session } from 'electron';
 import { displayHost } from '../shared/hosts.js';
-import { HISTORY_URL, INTERNAL_SCHEME } from '../shared/types.js';
+import { HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL } from '../shared/types.js';
 import { renderBookmarks, type Bookmark, type BookmarkFolder } from './bookmarks.js';
 import type { ChangeFeed } from './change-feed.js';
 import { renderDownloads, type DownloadEntry } from './downloads.js';
@@ -10,6 +10,7 @@ import type { HistoryEntry } from './history.js';
 import { escapeHtml } from './html.js';
 import type { AddressSuggestion } from '../shared/types.js';
 import { searchFieldMarkup } from './search-field-markup.js';
+import { updatePopupVersion } from './update-popup.js';
 import type { RecentPage } from './tabs.js';
 
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
@@ -21,6 +22,8 @@ const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
 const PINNED_MARKER = '__YALQEN_PINNED_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
 const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
+const VERSION_MARKER = '__YALQEN_VERSION_SLOT__';
+const REPO_PROMPT_MARKER = '__YALQEN_REPO_PROMPT_SLOT__';
 const HISTORY_MARKER = '__YALQEN_HISTORY_SLOT__';
 const DOWNLOADS_MARKER = '__YALQEN_DOWNLOADS_SLOT__';
 const BOOKMARKS_MARKER = '__YALQEN_BOOKMARKS_SLOT__';
@@ -84,6 +87,18 @@ function renderTips(): string {
   </ul>`;
 }
 
+function renderRepoPrompt(): string {
+  return `<aside class="repo-prompt" aria-labelledby="repo-prompt-title">
+    <a class="icon-btn sm tone-muted repo-prompt-close" href="${NEW_TAB_URL}repo?action=close" aria-label="Kapat">${SMALL_FORGET_ICON}</a>
+    <strong id="repo-prompt-title">Yalqen'i beğendin mi?</strong>
+    <p>GitHub'da yıldız vermen projenin görünür olmasına yardım eder.</p>
+    <div class="repo-prompt-actions">
+      <a class="btn primary" href="${NEW_TAB_URL}repo?action=star">Yıldızla</a>
+      <a class="btn ghost" href="${NEW_TAB_URL}repo?action=later">Sonra</a>
+    </div>
+  </aside>`;
+}
+
 export function renderHistory(entries: HistoryEntry[], query: string): string {
   const search = query.trim().slice(0, 200);
   const form = searchFieldMarkup({
@@ -125,6 +140,7 @@ export interface InternalPageFiles {
   downloads: string;
   bookmarks: string;
   settings: string;
+  updatePopup: string;
 }
 
 export interface InternalPageSources {
@@ -134,6 +150,7 @@ export interface InternalPageSources {
   downloads: { list: () => DownloadEntry[]; changes: ChangeFeed };
   bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] };
   showWelcome: () => boolean;
+  showRepoPrompt: () => boolean;
   suggestions: (query: string) => AddressSuggestion[];
 }
 
@@ -146,6 +163,7 @@ export interface InternalPages {
   downloadsScript: string;
   bookmarks: string;
   settings: string;
+  updatePopup: string;
   settingsAsset: (name: string) => Buffer<ArrayBuffer> | null;
 }
 
@@ -164,6 +182,7 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
     downloadsScript: fs.readFileSync(path.join(path.dirname(files.downloads), 'downloads.js'), 'utf8'),
     bookmarks: readPage(files.bookmarks),
     settings: fs.readFileSync(files.settings, 'utf8'),
+    updatePopup: readPage(files.updatePopup),
     settingsAsset: (name) => {
       const cached = assetCache.get(name);
       if (cached) return cached;
@@ -255,7 +274,8 @@ function serveNewTab(url: URL, pages: InternalPages, sources: InternalPageSource
         .replace(WELCOME_MARKER, welcomeVisible ? renderWelcome() : '')
         .replace(PINNED_MARKER, renderPinned(sources.pinned()))
         .replace(TIPS_MARKER, welcomeVisible ? renderTips() : '')
-        .replace(RECENT_MARKER, renderRecent(sources.recent()));
+        .replace(RECENT_MARKER, renderRecent(sources.recent()))
+        .replace(REPO_PROMPT_MARKER, !welcomeVisible && sources.showRepoPrompt() ? renderRepoPrompt() : '');
       return html(body, NEW_TAB_CSP, false);
     }
     default:
@@ -271,6 +291,16 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         return serveSettings(url.pathname, pages);
       case 'newtab':
         return serveNewTab(url, pages, sources);
+      case 'update':
+        return url.pathname === '/'
+          ? html(
+              pages.updatePopup.replace(
+                VERSION_MARKER,
+                escapeHtml(updatePopupVersion(url.searchParams.get('version'))),
+              ),
+              INTERNAL_CSP,
+            )
+          : notFound();
       case 'downloads':
         return serveDownloads(url, pages, sources);
       case 'history':
