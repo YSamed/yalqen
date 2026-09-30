@@ -162,9 +162,7 @@ function prepareProfile(browser, profile, template) {
     path.join(profile, 'settings.json'),
     JSON.stringify({ version: 1, adBlocking: browser.adBlocking, welcomeCompleted: true, startupBehavior: 'restore' }),
   );
-  if (browser.adBlocking && fs.existsSync(engineCache)) {
-    fs.copyFileSync(engineCache, path.join(profile, 'adblock-engine.bin'));
-  }
+  if (browser.adBlocking) fs.copyFileSync(engineCache, path.join(profile, 'adblock-engine.bin'));
 }
 
 const running = new Set();
@@ -226,7 +224,8 @@ async function measure(name, browser, tabs, settings, scratch, template) {
 
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length / 2)];
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round(((sorted[middle - 1] + sorted[middle]) / 2) * 100) / 100;
 };
 
 function summarize(records) {
@@ -251,6 +250,11 @@ async function main() {
   if (settings.help) {
     console.log(USAGE);
     return;
+  }
+  if (settings.browsers.some((name) => BROWSERS[name].adBlocking) && !fs.existsSync(engineCache)) {
+    throw new Error(
+      `missing ${engineCache}: run \`npm run bench\` once so ad blocking does not download its lists mid-run`,
+    );
   }
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-bench-browsers-'));
   const interrupt = () => {
