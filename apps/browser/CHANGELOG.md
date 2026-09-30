@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.12](https://github.com/YSamed/yalqen/compare/v0.2.11...v0.2.12) (2026-09-30)
+
+
+### Features
+
+* split address bar into pill and actions capsule ([#62](https://github.com/YSamed/yalqen/issues/62)) ([07acf59](https://github.com/YSamed/yalqen/commit/07acf597d175eb6a460aa870cbd6a1ae8229f756))
+
 ## [0.2.11](https://github.com/YSamed/yalqen/compare/v0.2.10...v0.2.11) (2026-09-30)
 
 
