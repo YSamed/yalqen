@@ -20,6 +20,8 @@ import {
   type DevCommandId,
   type DeviceId,
   type PendingUpdate,
+  type ProfileKind,
+  type TabId,
   type UiAction,
   type WindowMaterial,
 } from '../shared/types.js';
@@ -99,6 +101,7 @@ export interface AppContext {
   installUpdate(): void;
   deviceId(): DeviceId;
   openWindow(options: WindowOptions): YalqenWindow;
+  switchProfile(profile: ProfileKind, from: YalqenWindow): void;
   onWindowChange(persist: PersistChange): void;
   onPrivateTabsClosed(): void;
   onWindowFocus(window: YalqenWindow): void;
@@ -128,7 +131,7 @@ export class YalqenWindow {
   private pageArea: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private readonly preconnector: Preconnector;
   private layout: ChromeLayout = {
-    panelWidth: 220,
+    panelWidth: 180,
     panelSide: 'left',
     chromeHeight: 44,
     pageInset: 8,
@@ -240,7 +243,6 @@ export class YalqenWindow {
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       freezeBackground: () => app.settings.get().freezeBackgroundTabs,
-      skipClosedPinnedShortcuts: () => app.settings.get().shortcutsSkipClosedPinned,
       onChange: (persist) => {
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
           this.htmlFullScreenTabId = null;
@@ -397,6 +399,10 @@ export class YalqenWindow {
     return !this.window.isDestroyed() && this.window.isFocused();
   }
 
+  get profile(): ProfileKind {
+    return this.isDeveloper ? 'developer' : this.isPrivate ? 'private' : 'personal';
+  }
+
   focus(): void {
     if (this.revealed && !this.window.isDestroyed()) this.window.focus();
   }
@@ -438,6 +444,7 @@ export class YalqenWindow {
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
       pendingUpdate: this.app.pendingUpdate(),
+      profile: this.profile,
     };
   }
 
@@ -641,6 +648,9 @@ export class YalqenWindow {
       case 'toggle-mute':
         tabs.toggleMute(action.id);
         break;
+      case 'open-tab-menu':
+        this.openTabMenu(action.id);
+        break;
       case 'move-tab':
         tabs.move(action.id, action.toIndex);
         break;
@@ -707,6 +717,9 @@ export class YalqenWindow {
         break;
       case 'open-address':
         this.openAddress();
+        break;
+      case 'switch-profile':
+        if (action.profile !== this.profile) app.switchProfile(action.profile, this);
         break;
       case 'open-profile-menu':
         this.popup([
@@ -847,6 +860,26 @@ export class YalqenWindow {
   private sessionFor(isPrivate: boolean): Session {
     if (!isPrivate) return this.app.daily;
     return this.isDeveloper ? this.app.developer : this.app.privateBrowsing;
+  }
+
+  private openTabMenu(id: TabId): void {
+    const tabs = this.tabs;
+    const tab = tabs.state().tabs.find((candidate) => candidate.id === id);
+    if (!tab) return;
+    const pinnable = tab.pinned || (!tab.isPrivate && /^https?:/.test(tab.url));
+    const template: Electron.MenuItemConstructorOptions[] = [];
+    if (pinnable) {
+      template.push({ label: tab.pinned ? 'Sabitlemeyi kaldır' : 'Sabitle', click: () => tabs.togglePin(id) });
+    }
+    if (tab.audible || tab.muted) {
+      template.push({ label: tab.muted ? 'Sesi aç' : 'Sessize al', click: () => tabs.toggleMute(id) });
+    }
+    if (tab.live && id !== tabs.activeTabId) {
+      template.push({ label: 'Bellekten çıkar', click: () => tabs.discard(id) });
+    }
+    if (template.length > 0) template.push({ type: 'separator' });
+    template.push({ label: 'Sekmeyi kapat', click: () => tabs.close(id) });
+    this.popup(template);
   }
 
   private popup(template: Electron.MenuItemConstructorOptions[]): void {

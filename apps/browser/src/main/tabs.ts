@@ -54,7 +54,7 @@ import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from './
 import { trimHistory, type PersistChange, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { REPO_URL, type RepoPromptAction } from './repo-prompt.js';
-import { tabForShortcut } from './tab-shortcuts.js';
+import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { securityState } from './site-info.js';
 import { withoutHash } from './url.js';
 import { detectLanguage, restorePage, translatePage, translateSelection, type FetchLike } from './translate.js';
@@ -104,7 +104,6 @@ export interface TabManagerOptions {
   privateSession: Session;
   onPrivateEnded: () => void;
   freezeBackground: () => boolean;
-  skipClosedPinnedShortcuts: () => boolean;
   onChange: (persist: PersistChange) => void;
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
@@ -159,6 +158,7 @@ const translationFetch: FetchLike = (endpoint, init) => net.fetch(endpoint, { ..
 export class TabManager {
   private readonly tabs: Tab[] = [];
   private activeId: TabId | null = null;
+  private readonly openedPinned = new Map<TabId, TabId | null>();
   private pageBounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private pageRadius = 0;
   private newTabCenterOffset = 0;
@@ -197,10 +197,11 @@ export class TabManager {
     return recentPages(this.options.closed, limit);
   }
 
-  state(): Pick<BrowserState, 'tabs' | 'activeTabId' | 'device' | 'zoom'> {
+  state(): Pick<BrowserState, 'tabs' | 'listOrder' | 'activeTabId' | 'device' | 'zoom'> {
     const contents = this.active()?.view?.webContents;
     return {
       tabs: this.tabs.map((tab) => this.snapshot(tab)),
+      listOrder: tabListOrder(this.tabs, this.openedPinned).map((tab) => tab.id),
       activeTabId: this.activeId,
       device: this.deviceFrame(),
       zoom: contents && !contents.isDestroyed() ? contents.getZoomFactor() : 1,
@@ -314,6 +315,9 @@ export class TabManager {
     }
 
     this.activeId = id;
+    if (next.pinnedUrl && !this.openedPinned.has(id)) {
+      this.openedPinned.set(id, this.tabs.findLast((tab) => !tab.pinnedUrl)?.id ?? null);
+    }
     if (previous && previous.id !== id) {
       previous.inactiveSince = Date.now();
       this.maybeFreeze(previous);
@@ -339,9 +343,11 @@ export class TabManager {
     if (index < 0) return;
     const { pinnedUrl } = this.tabs[index];
     if (pinnedUrl) {
+      this.openedPinned.delete(id);
       this.unloadPinned(this.tabs[index], pinnedUrl);
       return;
     }
+    this.reanchorOpenedPinned(id);
     const [tab] = this.tabs.splice(index, 1);
 
     if (!tab.isPrivate) {
@@ -433,13 +439,27 @@ export class TabManager {
     if (!tab) return;
     if (tab.pinnedUrl) {
       tab.pinnedUrl = null;
+      this.openedPinned.delete(id);
       this.maybeFreeze(tab);
     } else {
       if (tab.isPrivate || !/^https?:/.test(tab.url)) return;
+      this.reanchorOpenedPinned(id);
+      if (id === this.activeId) this.openedPinned.set(id, this.previousUnpinnedId(id));
       tab.pinnedUrl = tab.url;
       this.unfreeze(tab);
     }
     this.changed(true);
+  }
+
+  private previousUnpinnedId(id: TabId): TabId | null {
+    return this.tabs.slice(0, this.indexOf(id)).findLast((tab) => !tab.pinnedUrl)?.id ?? null;
+  }
+
+  private reanchorOpenedPinned(id: TabId): void {
+    const anchor = this.previousUnpinnedId(id);
+    for (const [pinnedId, current] of this.openedPinned) {
+      if (current === id) this.openedPinned.set(pinnedId, anchor);
+    }
   }
 
   private unloadPinned(tab: Tab, pinnedUrl: string): void {
@@ -797,7 +817,7 @@ export class TabManager {
   }
 
   selectByIndex(index: number): void {
-    const tab = tabForShortcut(this.tabs, index, this.options.skipClosedPinnedShortcuts());
+    const tab = tabForShortcut(tabListOrder(this.tabs, this.openedPinned), index);
     if (tab) this.activate(tab.id);
   }
 
@@ -850,6 +870,8 @@ export class TabManager {
     const index = this.indexOf(id);
     const tab = this.tabs[index];
     if (!tab || this.tabs.length < 2) return null;
+    this.reanchorOpenedPinned(id);
+    this.openedPinned.delete(id);
     this.tabs.splice(index, 1);
     this.unfreeze(tab);
     tab.detachListeners?.();

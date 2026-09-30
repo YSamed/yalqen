@@ -226,6 +226,77 @@
                   onclick={() => send({ type: 'toggle-mute', id: tab.id })}
                 />
               {/if}
+              {#if activeTab && hasActions}
+                <span class="page-actions" role="group" aria-label="Sayfa işlemleri">
+                  {#if bookmarkable}
+                    <IconButton
+                      icon="star"
+                      tone={activeTab.bookmarked ? 'accent' : 'muted'}
+                      class="star"
+                      label={activeTab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
+                      title={activeTab.bookmarked ? 'Yer iminden kaldır (⌘D)' : 'Yer imlerine ekle (⌘D)'}
+                      aria-pressed={activeTab.bookmarked}
+                      onclick={() => send({ type: 'toggle-bookmark' })}
+                    />
+                  {/if}
+                  {#if activeTab.translation.available}
+                    {#if activeTab.translation.status === 'idle' || activeTab.translation.status === 'failed'}
+                      <IconButton
+                        icon="translate"
+                        tone={activeTab.translation.status === 'failed' ? 'warn' : 'muted'}
+                        label={translateTitle[activeTab.translation.status]}
+                        onclick={() => send({ type: 'toggle-translation' })}
+                      />
+                    {:else}
+                      <Button
+                        size="sm"
+                        variant="tonal"
+                        icon="translate"
+                        disabled={activeTab.translation.status === 'translating'}
+                        aria-pressed={activeTab.translation.status === 'translated'}
+                        title={translateTitle[activeTab.translation.status]}
+                        onclick={() => send({ type: 'toggle-translation' })}
+                      >
+                        {activeTab.translation.status === 'translating' ? 'Çevriliyor…' : 'Çevrildi'}
+                      </Button>
+                    {/if}
+                  {/if}
+                  {#if activeTab.blockedPopups > 0}
+                    <IconButton
+                      icon="popup-blocked"
+                      variant="tonal"
+                      tone="warn"
+                      label="{activeTab.blockedPopups} açılır pencere engellendi"
+                      title="Açılır pencere engellendi"
+                      onclick={() => send({ type: 'open-blocked-popups' })}
+                    />
+                  {/if}
+                  {#if states.length > 0}
+                    <Button
+                      size="sm"
+                      variant="tonal"
+                      icon={activeTab.consoleErrors > 0 ? 'warning' : 'gauge'}
+                      class={['dev-state', activeTab.consoleErrors > 0 && 'has-errors']}
+                      aria-label="Geliştirici durumu: {states.join(', ')}"
+                      title={states.join(' · ')}
+                      onclick={() => send({ type: 'open-dev-menu' })}
+                    >
+                      {activeTab.consoleErrors > 0 ? consoleErrorCount(activeTab) : states.length}
+                    </Button>
+                  {/if}
+                  {#if zoomChanged}
+                    <Button
+                      size="sm"
+                      variant="tonal"
+                      class="zoom"
+                      title="Varsayılan yakınlaştırmaya dön (⌘0)"
+                      onclick={() => send({ type: 'reset-zoom' })}
+                    >
+                      %{Math.round(zoom * 100)}
+                    </Button>
+                  {/if}
+                </span>
+              {/if}
               <IconButton
                 size="sm"
                 icon="close"
@@ -236,77 +307,6 @@
               />
               {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
             </div>
-            {#if activeTab && hasActions}
-              <Capsule ariaLabel="Sayfa işlemleri">
-                {#if bookmarkable}
-                  <IconButton
-                    icon="star"
-                    tone={activeTab.bookmarked ? 'accent' : 'muted'}
-                    class="star"
-                    label={activeTab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
-                    title={activeTab.bookmarked ? 'Yer iminden kaldır (⌘D)' : 'Yer imlerine ekle (⌘D)'}
-                    aria-pressed={activeTab.bookmarked}
-                    onclick={() => send({ type: 'toggle-bookmark' })}
-                  />
-                {/if}
-                {#if activeTab.translation.available}
-                  {#if activeTab.translation.status === 'idle' || activeTab.translation.status === 'failed'}
-                    <IconButton
-                      icon="translate"
-                      tone={activeTab.translation.status === 'failed' ? 'warn' : 'muted'}
-                      label={translateTitle[activeTab.translation.status]}
-                      onclick={() => send({ type: 'toggle-translation' })}
-                    />
-                  {:else}
-                    <Button
-                      size="sm"
-                      variant="tonal"
-                      icon="translate"
-                      disabled={activeTab.translation.status === 'translating'}
-                      aria-pressed={activeTab.translation.status === 'translated'}
-                      title={translateTitle[activeTab.translation.status]}
-                      onclick={() => send({ type: 'toggle-translation' })}
-                    >
-                      {activeTab.translation.status === 'translating' ? 'Çevriliyor…' : 'Çevrildi'}
-                    </Button>
-                  {/if}
-                {/if}
-                {#if activeTab.blockedPopups > 0}
-                  <IconButton
-                    icon="popup-blocked"
-                    variant="tonal"
-                    tone="warn"
-                    label="{activeTab.blockedPopups} açılır pencere engellendi"
-                    title="Açılır pencere engellendi"
-                    onclick={() => send({ type: 'open-blocked-popups' })}
-                  />
-                {/if}
-                {#if states.length > 0}
-                  <Button
-                    size="sm"
-                    variant="tonal"
-                    icon={activeTab.consoleErrors > 0 ? 'warning' : 'gauge'}
-                    class={['dev-state', activeTab.consoleErrors > 0 && 'has-errors']}
-                    aria-label="Geliştirici durumu: {states.join(', ')}"
-                    title={states.join(' · ')}
-                    onclick={() => send({ type: 'open-dev-menu' })}
-                  >
-                    {activeTab.consoleErrors > 0 ? consoleErrorCount(activeTab) : states.length}
-                  </Button>
-                {/if}
-                {#if zoomChanged}
-                  <Button
-                    size="sm"
-                    variant="tonal"
-                    class="zoom"
-                    title="Varsayılan yakınlaştırmaya dön (⌘0)"
-                    onclick={() => send({ type: 'reset-zoom' })}
-                  >
-                    %{Math.round(zoom * 100)}
-                  </Button>
-                {/if}
-              </Capsule>
-            {/if}
           {:else}
             <button
               class="select"
@@ -485,6 +485,13 @@
     border-radius: 999px;
     background: var(--surface);
     box-shadow: var(--shadow);
+  }
+
+  .page-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 2px;
   }
 
   .chip:not(.active) :global(.close) {

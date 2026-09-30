@@ -14,6 +14,8 @@
   --accent: #f28c28;
   --focus: #f28c28;
   --warn: #a34a06;
+  --on-accent: #ffffff;
+  --profile-developer: #7c6cf2;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 1px 3px rgb(16 18 24 / 0.08);
   --window: var(--bg);
   --chrome-base: var(--bg);
@@ -27,6 +29,7 @@
   --rim: none;
 
   --radius: 10px;
+  --panel-radius: 14px;
   --chrome-control-size: 34px;
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
   --font-size: 13px;

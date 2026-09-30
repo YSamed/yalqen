@@ -307,6 +307,11 @@ function startBrowser(): void {
     installUpdate: () => updater.install(),
     deviceId: () => deviceId,
     openWindow: (options) => openWindow(options),
+    switchProfile: (profile, from) => {
+      const target = [...windows].reverse().find((window) => window.profile === profile);
+      if (target) target.focus();
+      else openWindow({ developer: profile === 'developer', isPrivate: profile === 'private', from });
+    },
     onWindowChange: (persist) => {
       if (persist && !quitting)
         store.scheduleSave(sessionSnapshot, persist === 'lazy' ? LAZY_SAVE_DELAY_MS : undefined);

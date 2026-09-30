@@ -7,20 +7,19 @@
   import Toolbar from './components/Toolbar.svelte';
 
   const COLLAPSED_WIDTH = 44;
-  const MIN_WIDTH = 180;
-  const MAX_WIDTH = 360;
-  const DEFAULT_WIDTH = 220;
+  const CONTROL_SIZE = 34;
+  const PANEL_WIDTH = 180;
   const CHROME_HEIGHT = 44;
   const PAGE_INSET = 8;
   const PANEL_ROW_INSET = PAGE_INSET + 3;
   const PAGE_RADIUS = 16;
   const WINDOW_CONTROLS_END = 88;
-  const PREFS_KEY = 'yalqen:panel:2';
   const DEVICE_BEZEL = 10;
   const PANEL_ANIMATION_MS = 240;
 
   let browser: BrowserState = $state.raw({
     tabs: [],
+    listOrder: [],
     developer: false,
     activeTabId: null,
     pageFullScreen: false,
@@ -39,16 +38,9 @@
     downloads: { active: 0, progress: null, started: 0 },
     extensions: false,
     pendingUpdate: null,
+    profile: 'personal',
   });
-  let width = $state(DEFAULT_WIDTH);
   let stateReceived = $state(false);
-
-  try {
-    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
-    if (saved) {
-      width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved.width) || DEFAULT_WIDTH));
-    }
-  } catch {}
 
   const windowControls = navigator.userAgent.includes('Macintosh');
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
@@ -58,11 +50,11 @@
   const material = $derived(browser.material);
   const pageFullScreen = $derived(browser.pageFullScreen);
   const windowFullScreen = $derived(browser.windowFullScreen);
-  const panelWidth = $derived(browser.sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : width) : PAGE_INSET);
+  const panelWidth = $derived(browser.sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : PANEL_WIDTH) : PAGE_INSET);
   const side = $derived(browser.panelSide);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let shownWidth = $state(DEFAULT_WIDTH);
-  let pagePanelWidth = $state(DEFAULT_WIDTH);
+  let shownWidth = $state(PANEL_WIDTH);
+  let pagePanelWidth = $state(PANEL_WIDTH);
   let panelMode = '';
   let animateModeChanges = false;
   let panelAnimation = 0;
@@ -115,12 +107,6 @@
     });
   });
 
-  $effect(() => {
-    try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ width }));
-    } catch {}
-  });
-
   onMount(() => {
     void window.yalqen.getState().then((next) => {
       browser = next;
@@ -160,15 +146,18 @@
     {#if browser.sidebarVisible}
       <TabPanel
         tabs={browser.tabs}
+        listOrder={browser.listOrder}
         developer={browser.developer}
         activeTabId={browser.activeTabId}
         collapsed={collapsed && panelSettled}
+        shrinking={collapsed && !panelSettled}
         {side}
-        bind:width
-        minWidth={MIN_WIDTH}
-        maxWidth={MAX_WIDTH}
         {topInset}
         rowInset={PANEL_ROW_INSET}
+        edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
+        downloads={browser.downloads}
+        pendingUpdate={browser.pendingUpdate}
+        profile={browser.profile}
       />
     {/if}
     {#if browser.toolbarVisible}
@@ -189,7 +178,7 @@
             : WINDOW_CONTROLS_END
           : 0}
         trailingInset={PAGE_INSET}
-        trailingWidth={MIN_WIDTH - 2 * PANEL_ROW_INSET}
+        trailingWidth={PANEL_WIDTH - 2 * PANEL_ROW_INSET}
         trailingOverhang={rightPanel
           ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET)
           : 0}
