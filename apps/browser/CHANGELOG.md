@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/YSamed/yalqen/compare/v0.2.3...v0.2.4) (2026-09-30)
+
+
+### Features
+
+* offer to save passwords and manage them in settings ([#41](https://github.com/YSamed/yalqen/issues/41)) ([508665d](https://github.com/YSamed/yalqen/commit/508665d7fa87e5b35718be8d26855347407d5bb9))
+
 ## [0.2.3](https://github.com/YSamed/yalqen/compare/v0.2.2...v0.2.3) (2026-09-30)
 
 
