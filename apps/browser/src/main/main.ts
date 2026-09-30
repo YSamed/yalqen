@@ -35,6 +35,8 @@ import { externalUrls } from './launch.js';
 import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-saver.js';
 import { LAZY_SAVE_DELAY_MS } from './json-file.js';
 import { buildMenu } from './menu.js';
+import { installPasswordHandlers, safeStorageCipher } from './password-handlers.js';
+import { PasswordStore } from './passwords.js';
 import { installPermissionHandlers } from './permission-handlers.js';
 import { PermissionStore } from './permissions.js';
 import { processUsage } from './process-metrics.js';
@@ -42,7 +44,7 @@ import { RequestRuleStore } from './request-rules.js';
 import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './search.js';
 import { SettingsStore } from './settings.js';
-import { broadcastExtensions, broadcastSettings, isSettingsFrame } from './settings-page.js';
+import { broadcastExtensions, broadcastPasswords, broadcastSettings, isSettingsFrame } from './settings-page.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { recentPages } from './tabs.js';
 import { Updater, loadAutoUpdater } from './updater.js';
@@ -106,6 +108,7 @@ function startBrowser(): void {
   const defaultZoom = () => settings.get().defaultZoom;
   const zoom = new ZoomStore(userData, defaultZoom);
   const permissions = new PermissionStore(userData);
+  const passwords = new PasswordStore(userData, safeStorageCipher);
   const requestRules = new RequestRuleStore(userData);
   const certificates = new CertificateExceptions();
   const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
@@ -168,6 +171,14 @@ function startBrowser(): void {
     ],
     storeFor: permissionsFor,
     parentOf: (contents) => windowOf(contents)?.window,
+  });
+  installPasswordHandlers({
+    store: passwords,
+    savesPasswords: (contents) =>
+      contents.session === daily && windows.some((window) => window.tabs.hasContents(contents)),
+    parentOf: (contents) => windowOf(contents)?.window,
+    isSettingsFrame,
+    onChange: () => broadcastPasswords(passwords.view()),
   });
 
   const bookmarksChanged = () => {
@@ -555,6 +566,7 @@ function startBrowser(): void {
     bookmarks.saveNow();
     zoom.saveNow();
     permissions.saveNow();
+    passwords.saveNow();
     requestRules.saveNow();
   });
   app.on('activate', () => {

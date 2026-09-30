@@ -3,17 +3,20 @@ import {
   ExtensionsChannel,
   NEW_TAB_URL,
   PageChannel,
+  PasswordsChannel,
   RequestRulesChannel,
   SETTINGS_URL,
   SettingsChannel as settingsChannel,
   type ClearDataRequest,
   type ExtensionInfo,
   type NewTabCenter,
+  type PasswordsView,
   type ProcessUsage,
   type RequestRule,
   type SettingsApi,
   type SettingsValues,
   type SettingsView,
+  type SubmittedCredential,
 } from '../shared/types.js';
 
 const THRESHOLD = 90;
@@ -128,6 +131,69 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     openExtensionOptions: (path: string) => ipcRenderer.invoke(ExtensionsChannel.openOptions, path) as Promise<void>,
     onChange: (listener) => subscribe<SettingsView>(settingsChannel.changed, listener),
     onExtensionsChange: (listener) => subscribe<ExtensionInfo[]>(ExtensionsChannel.changed, listener),
+    passwords: () => ipcRenderer.invoke(PasswordsChannel.list) as Promise<PasswordsView>,
+    revealPassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.reveal, id) as Promise<string | null>,
+    copyPassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.copy, id) as Promise<boolean>,
+    removePassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.remove, id) as Promise<void>,
+    allowSaving: (origin: string) => ipcRenderer.invoke(PasswordsChannel.allowSaving, origin) as Promise<void>,
+    onPasswordsChange: (listener) => subscribe<PasswordsView>(PasswordsChannel.changed, listener),
   };
   contextBridge.exposeInMainWorld('yalqenSettings', api);
+}
+
+const USERNAME_TYPES = new Set(['text', 'email', 'tel']);
+
+function filledPasswords(scope: ParentNode): HTMLInputElement[] {
+  return [...scope.querySelectorAll<HTMLInputElement>('input[type="password"]')].filter((input) => input.value);
+}
+
+function usernameFor(scope: ParentNode, password: HTMLInputElement): string {
+  const inputs = [...scope.querySelectorAll<HTMLInputElement>('input')].filter((input) => input.value.trim());
+  const tagged = inputs.find((input) => input.autocomplete.split(/\s+/).includes('username'));
+  if (tagged) return tagged.value;
+  const before = inputs.slice(0, inputs.indexOf(password) + 1).filter((input) => USERNAME_TYPES.has(input.type));
+  return before.at(-1)?.value ?? '';
+}
+
+// On a change-password form the new password is the one worth keeping.
+function credentialIn(scope: ParentNode): SubmittedCredential | null {
+  const passwords = filledPasswords(scope);
+  if (passwords.length === 0) return null;
+  const password = passwords.find((input) => input.autocomplete.split(/\s+/).includes('new-password')) ?? passwords[0];
+  return { username: usernameFor(scope, password), password: password.value };
+}
+
+function reportCredential(scope: ParentNode): void {
+  const credential = credentialIn(scope);
+  if (credential) ipcRenderer.send(PageChannel.credentialSubmitted, credential);
+}
+
+if (window === window.top && (location.protocol === 'https:' || location.protocol === 'http:')) {
+  document.addEventListener(
+    'submit',
+    (event) => {
+      if (event.isTrusted && event.target instanceof HTMLFormElement) reportCredential(event.target);
+    },
+    { capture: true },
+  );
+  // Script-driven logins often skip the form's submit, so the click or Enter that starts them counts too.
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!event.isTrusted || !(event.target instanceof Element)) return;
+      const button = event.target.closest('button, input[type="submit"], [role="button"]');
+      if (button) reportCredential(button.closest('form') ?? document);
+    },
+    { capture: true },
+  );
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (!event.isTrusted || event.key !== 'Enter' || !(event.target instanceof HTMLInputElement)) return;
+      if (event.target.type === 'password' || USERNAME_TYPES.has(event.target.type)) {
+        reportCredential(event.target.form ?? document);
+      }
+    },
+    { capture: true },
+  );
 }

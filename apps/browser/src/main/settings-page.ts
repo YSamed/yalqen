@@ -1,9 +1,11 @@
 import { webContents, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import {
   ExtensionsChannel,
+  PasswordsChannel,
   SETTINGS_URL,
   SettingsChannel,
   type ExtensionInfo,
+  type PasswordsView,
   type SettingsView,
 } from '../shared/types.js';
 
@@ -35,4 +37,8 @@ export function broadcastSettings(view: SettingsView): void {
 
 export function broadcastExtensions(extensions: ExtensionInfo[]): void {
   broadcast(ExtensionsChannel.changed, extensions);
+}
+
+export function broadcastPasswords(view: PasswordsView): void {
+  broadcast(PasswordsChannel.changed, view);
 }

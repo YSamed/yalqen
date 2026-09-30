@@ -145,7 +145,13 @@ export type UiAction =
 export const PageChannel = {
   swipe: 'yalqen:page-swipe',
   newTabCenter: 'yalqen:newtab-center',
+  credentialSubmitted: 'yalqen:credential-submitted',
 } as const;
+
+export interface SubmittedCredential {
+  username: string;
+  password: string;
+}
 
 export interface NewTabCenter {
   offset: number;
@@ -406,6 +412,28 @@ export const ExtensionsChannel = {
   changed: 'yalqen-extensions:changed',
 } as const;
 
+export interface SavedPasswordInfo {
+  id: string;
+  origin: string;
+  username: string;
+  updatedAt: number;
+}
+
+export interface PasswordsView {
+  available: boolean;
+  passwords: SavedPasswordInfo[];
+  neverSave: string[];
+}
+
+export const PasswordsChannel = {
+  list: 'yalqen-passwords:list',
+  reveal: 'yalqen-passwords:reveal',
+  copy: 'yalqen-passwords:copy',
+  remove: 'yalqen-passwords:remove',
+  allowSaving: 'yalqen-passwords:allow-saving',
+  changed: 'yalqen-passwords:changed',
+} as const;
+
 export interface SettingsApi {
   get(): Promise<SettingsView>;
   update(patch: Partial<SettingsValues>): Promise<SettingsView>;
@@ -423,4 +451,10 @@ export interface SettingsApi {
   setExtensionEnabled(path: string, enabled: boolean): Promise<void>;
   openExtensionOptions(path: string): Promise<void>;
   onExtensionsChange(listener: (extensions: ExtensionInfo[]) => void): () => void;
+  passwords(): Promise<PasswordsView>;
+  revealPassword(id: string): Promise<string | null>;
+  copyPassword(id: string): Promise<boolean>;
+  removePassword(id: string): Promise<void>;
+  allowSaving(origin: string): Promise<void>;
+  onPasswordsChange(listener: (view: PasswordsView) => void): () => void;
 }
