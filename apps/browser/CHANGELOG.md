@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.13](https://github.com/YSamed/yalqen/compare/v0.2.12...v0.2.13) (2026-09-30)
+
+
+### Features
+
+* add repo card, update popup, separate reload button and pinned shortcut option ([#64](https://github.com/YSamed/yalqen/issues/64)) ([1fd80f4](https://github.com/YSamed/yalqen/commit/1fd80f405d37736cbf8da19c76c9ebf0f83c7199))
+
 ## [0.2.12](https://github.com/YSamed/yalqen/compare/v0.2.11...v0.2.12) (2026-09-30)
 
 
