@@ -29,7 +29,7 @@
 
 ## Kurulum
 
-macOS 13+ ve Apple Silicon gerekir.
+> **macOS 13 veya üzeri ve Apple Silicon gerekir.** Intel Mac'ler desteklenmez.
 
 [Homebrew](https://brew.sh) ile:
 
@@ -37,9 +37,23 @@ macOS 13+ ve Apple Silicon gerekir.
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin.
+Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Uygulama Developer ID ile imzalı ve notarize edilmiştir, Gatekeeper uyarısı olmadan açılır.
+
+Yalqen arka planda kendini günceller. Güncellemeyi Homebrew ile yapmak için:
+
+```bash
+brew upgrade --cask yalqen
+```
+
+Kaldırmak ve verilerini silmek için:
+
+```bash
+brew uninstall --zap --cask yalqen
+```
 
 ## Geliştirme
+
+Uygulama `apps/browser` klasöründe. Node.js 22.12 veya üzeri gerekir.
 
 ```bash
 cd apps/browser
@@ -47,6 +61,18 @@ npm ci
 npm start
 ```
 
+Diğer komutlar, hepsi `apps/browser` içinden çalıştırılır:
+
+| Komut                 | Ne yapar                                      |
+| --------------------- | --------------------------------------------- |
+| `npm run check`       | Lint, biçim kontrolü, tip kontrolü ve testler |
+| `npm test`            | Yalnızca testler                              |
+| `npm run package:mac` | macOS uygulama paketini derler                |
+
+Pull request açmadan önce [CONTRIBUTING.md](CONTRIBUTING.md) dosyasını okuyun.
+
 ## Lisans
 
-[MIT](LICENSE). Filtre listeleri kendi lisanslarını korur, bkz. [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md). Yalqen adı ve logosu MIT Lisansı kapsamında değildir.
+- Yalqen [MIT Lisansı](LICENSE) ile yayınlanır.
+- Dahil edilen filtre listeleri kendi lisanslarını korur, bkz. [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md).
+- Yalqen adı ve logosu MIT Lisansı kapsamında değildir.
