@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.14](https://github.com/YSamed/yalqen/compare/v0.2.13...v0.2.14) (2026-09-30)
+
+
+### Features
+
+* redesign sidebar and number tab shortcuts by list order ([#69](https://github.com/YSamed/yalqen/issues/69)) ([0be3b49](https://github.com/YSamed/yalqen/commit/0be3b49e7266bc96c937c6c950dad92a69b36999))
+
 ## [0.2.13](https://github.com/YSamed/yalqen/compare/v0.2.12...v0.2.13) (2026-09-30)
 
 
