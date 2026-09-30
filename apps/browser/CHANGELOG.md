@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10](https://github.com/YSamed/yalqen/compare/v0.2.9...v0.2.10) (2026-09-30)
+
+
+### Bug Fixes
+
+* use 2048-bit rsa key in crx signing key test ([3b07694](https://github.com/YSamed/yalqen/commit/3b07694f2e7dba3e68c4dfeae80ab10809eb0f5e))
+
 ## [0.2.9](https://github.com/YSamed/yalqen/compare/v0.2.8...v0.2.9) (2026-09-30)
 
 
