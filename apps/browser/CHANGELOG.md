@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.11](https://github.com/YSamed/yalqen/compare/v0.2.10...v0.2.11) (2026-09-30)
+
+
+### Features
+
+* autofill saved passwords and offer to save right after login ([#50](https://github.com/YSamed/yalqen/issues/50)) ([c88dc8c](https://github.com/YSamed/yalqen/commit/c88dc8c7f31b66d7e7a993805935d8fda96a55ce))
+
 ## [0.2.10](https://github.com/YSamed/yalqen/compare/v0.2.9...v0.2.10) (2026-09-30)
 
 
