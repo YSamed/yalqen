@@ -3,7 +3,8 @@
 
   <h1>Yalqen</h1>
 
-  <p>Open-source, Chromium-based developer browser for macOS. Vertical tabs, keyboard-first command bar, built-in ad blocking.</p>
+  <p><strong>A keyboard-first Chromium browser built for developers on macOS.</strong></p>
+  <p>Vertical tabs, a fast command bar, built-in ad and tracker blocking, and developer tools without the usual browser chrome.</p>
 
   <p>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="https://img.shields.io/github/v/release/YSamed/yalqen" alt="Latest release"></a>
@@ -19,10 +20,12 @@
   </p>
 
   <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><strong>Download</strong></a> ·
+    <a href="#install">Homebrew</a> ·
+    <a href="#why-yalqen">Why Yalqen?</a> ·
     <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Website</a> ·
     <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
     <a href="CONTRIBUTING.md">Contribute</a> ·
-    <a href="https://github.com/YSamed/yalqen/issues">Report a bug</a> ·
     <a href="README.tr.md">Türkçe</a>
   </p>
 </div>
@@ -37,16 +40,21 @@
   </a>
 </p>
 
+## Why Yalqen?
+
+Yalqen is for developers who want Chromium compatibility without a browser UI getting in the way.
+
+- **Keyboard-first by default.** Open tabs, search, navigate and trigger actions from the command bar.
+- **Vertical tabs that stay out of your content.** Pinned tabs, the address bar and window controls live in one compact panel.
+- **Developer-oriented workflow.** Chromium DevTools are built in, with a one-key phone view for responsive testing.
+- **Privacy features included.** Ad and tracker blocking, third-party cookie blocking, HTTPS-only mode and secure DNS are available out of the box.
+- **Open source and easy to inspect.** Yalqen is MIT licensed and built in public.
+
 <p align="center">
-  <img src="design/readme/feature-ad-blocking.png" alt="Ad & tracker blocking" width="240">
-  <img src="design/readme/feature-cookies.png" alt="Third-party cookie blocking" width="281">
-  <img src="design/readme/feature-https-only.png" alt="HTTPS-only mode" width="215">
-  <img src="design/readme/feature-secure-dns.png" alt="Secure DNS" width="174">
   <img src="design/readme/feature-command-bar.png" alt="Command bar" width="188">
   <img src="design/readme/feature-pinned-tabs.png" alt="Pinned tabs" width="173">
-  <img src="design/readme/feature-memory-saver.png" alt="Memory saver" width="189">
-  <img src="design/readme/feature-search-engines.png" alt="Search engines" width="209">
   <img src="design/readme/feature-developer-tools.png" alt="Developer tools" width="200">
+  <img src="design/readme/feature-ad-blocking.png" alt="Ad and tracker blocking" width="240">
 </p>
 
 ## Features
@@ -57,6 +65,16 @@
 - **HTTPS-only mode** and **secure DNS**
 - **Developer tools** and a one-key **phone view**
 - **Memory saver** and seven built-in search engines
+
+<p align="center">
+  <img src="design/readme/feature-cookies.png" alt="Third-party cookie blocking" width="281">
+  <img src="design/readme/feature-https-only.png" alt="HTTPS-only mode" width="215">
+  <img src="design/readme/feature-secure-dns.png" alt="Secure DNS" width="174">
+  <img src="design/readme/feature-memory-saver.png" alt="Memory saver" width="189">
+  <img src="design/readme/feature-search-engines.png" alt="Search engines" width="209">
+</p>
+
+> If Yalqen is useful to you, consider starring the repository. It helps other developers discover the project.
 
 ## Install
 
