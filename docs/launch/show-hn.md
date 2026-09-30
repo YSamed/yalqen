@@ -33,7 +33,7 @@ What it does today:
 
 About Electron, since someone will ask: yes, it's Electron. That was the fastest way to a real Chromium with DevTools and extensions as a solo developer. It costs memory (the interface is one more renderer) and download size, and it lags Chrome by some weeks. I wrote up the trade-offs and the CEF + AppKit direction here: https://github.com/YSamed/yalqen/blob/main/docs/why-electron.md
 
-Benchmarks against Chrome and Safari, including where Yalqen is worse: https://github.com/YSamed/yalqen/blob/main/docs/benchmarks.md
+Benchmarks against Chrome, including where Yalqen is worse: https://github.com/YSamed/yalqen/blob/main/docs/benchmarks.md
 
 It's MIT licensed, macOS 13+ on Apple Silicon only for now. I'd love feedback on what would make you switch, or what stops you.
 ```
