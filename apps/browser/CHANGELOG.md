@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.6](https://github.com/YSamed/yalqen/compare/v0.2.5...v0.2.6) (2026-09-30)
+
+
+### Features
+
+* install extensions from the chrome web store ([913fc40](https://github.com/YSamed/yalqen/commit/913fc4003de6d1df00f883f299c1220c2d7871a8))
+
 ## [0.2.5](https://github.com/YSamed/yalqen/compare/v0.2.4...v0.2.5) (2026-09-30)
 
 
