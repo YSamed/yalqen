@@ -10,6 +10,15 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 
 The release pull request is opened by GitHub Actions, so CI does not run on it; merge it with the admin bypass. Pushing a `v*` tag by hand still runs the release workflow on its own. If a release ends up without its DMG and ZIP, run the Release workflow from the Actions tab with that tag to build and upload them again.
 
+## Announcing a release
+
+```bash
+node scripts/release-announcement.mjs          # newest release in CHANGELOG.md
+node scripts/release-announcement.mjs 0.2.11   # a given version
+```
+
+It prints a short post for X and Bluesky (at most 300 characters) and a longer post for GitHub Discussions, built from the Features, Bug Fixes and Performance entries of that release. Review the text before posting; entries come straight from commit messages.
+
 ## Updates
 
 Packaged builds check the GitHub releases with [electron-updater](https://www.electron.build/auto-update) 30 seconds after launch and every 6 hours, unless **Settings › General › Updates** turns automatic checks off. A new version downloads in the background (only the changed blocks, using the blockmap) and installs when Yalqen quits, or right away from the update button in the toolbar, which restores every tab after the restart.
