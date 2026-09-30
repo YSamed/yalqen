@@ -5,6 +5,7 @@ import {
   safeStorage,
   systemPreferences,
   type BaseWindow,
+  type IpcMainEvent,
   type IpcMainInvokeEvent,
   type MessageBoxOptions,
   type WebContents,
@@ -12,8 +13,8 @@ import {
 import { PageChannel, PasswordsChannel, type SubmittedCredential } from '../shared/types.js';
 import { passwordOrigin, sanitizeCredential, type Cipher, type PasswordStore, type SaveOffer } from './passwords.js';
 
-// A login usually navigates once it succeeds; waiting for that keeps most failed attempts from being offered.
-const NAVIGATION_WAIT_MS = 3000;
+// A login that succeeds navigates or removes its form; one that does neither in time most likely failed.
+const SUBMISSION_WAIT_MS = 10_000;
 
 export const safeStorageCipher: Cipher = {
   available: () => safeStorage.isEncryptionAvailable(),
@@ -75,7 +76,7 @@ export function installPasswordHandlers({
   isSettingsFrame,
   onChange,
 }: PasswordHandlerOptions): void {
-  const pending = new WeakMap<WebContents, () => void>();
+  const pending = new WeakMap<WebContents, { accept: () => void; cancel: () => void }>();
   let prompts: Promise<unknown> = Promise.resolve();
 
   const offerToSave = (contents: WebContents, submission: Submission) => {
@@ -96,36 +97,47 @@ export function installPasswordHandlers({
       .catch((error: unknown) => console.warn('[passwords] could not offer to save:', error));
   };
 
-  const waitForNavigation = (contents: WebContents, submission: Submission) => {
-    pending.get(contents)?.();
-    const done = () => {
+  const waitForSuccess = (contents: WebContents, submission: Submission) => {
+    pending.get(contents)?.cancel();
+    const accept = () => {
       cancel();
       offerToSave(contents, submission);
     };
     const cancel = () => {
       clearTimeout(timer);
-      contents.off('did-navigate', done);
+      contents.off('did-navigate', accept);
       contents.off('did-navigate-in-page', onPageNavigation);
       contents.off('destroyed', cancel);
       pending.delete(contents);
     };
     const onPageNavigation = (_event: unknown, _url: string, isMainFrame: boolean) => {
-      if (isMainFrame) done();
+      if (isMainFrame) accept();
     };
-    const timer = setTimeout(done, NAVIGATION_WAIT_MS);
-    contents.on('did-navigate', done);
+    const timer = setTimeout(cancel, SUBMISSION_WAIT_MS);
+    contents.on('did-navigate', accept);
     contents.on('did-navigate-in-page', onPageNavigation);
     contents.once('destroyed', cancel);
-    pending.set(contents, cancel);
+    pending.set(contents, { accept, cancel });
+  };
+
+  const mainFrameOrigin = (event: IpcMainEvent | IpcMainInvokeEvent) => {
+    const frame = event.senderFrame;
+    if (!frame || frame !== event.sender.mainFrame || !savesPasswords(event.sender)) return null;
+    return passwordOrigin(frame.url);
   };
 
   ipcMain.on(PageChannel.credentialSubmitted, (event, value: unknown) => {
-    const frame = event.senderFrame;
-    if (!frame || frame !== event.sender.mainFrame || !savesPasswords(event.sender)) return;
-    const origin = passwordOrigin(frame.url);
+    const origin = mainFrameOrigin(event);
     const credential = sanitizeCredential(value);
     if (!origin || !credential || !store.offer(origin, credential)) return;
-    waitForNavigation(event.sender, { origin, credential });
+    waitForSuccess(event.sender, { origin, credential });
+  });
+  ipcMain.on(PageChannel.credentialAccepted, (event) => {
+    if (mainFrameOrigin(event)) pending.get(event.sender)?.accept();
+  });
+  ipcMain.handle(PageChannel.savedLogins, (event) => {
+    const origin = mainFrameOrigin(event);
+    return origin ? store.logins(origin) : [];
   });
 
   ipcMain.handle(PasswordsChannel.list, (event) => (isSettingsFrame(event) ? store.view() : null));

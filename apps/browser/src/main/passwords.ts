@@ -119,6 +119,16 @@ export class PasswordStore {
     if (this.passwords.length !== count) this.persist();
   }
 
+  logins(origin: string): SubmittedCredential[] {
+    return this.passwords
+      .filter((entry) => entry.origin === origin)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .flatMap((entry) => {
+        const password = this.decrypt(entry);
+        return password === null ? [] : [{ username: entry.username, password }];
+      });
+  }
+
   reveal(id: string): string | null {
     const entry = this.passwords.find((candidate) => candidate.id === id);
     return entry ? this.decrypt(entry) : null;

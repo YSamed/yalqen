@@ -149,33 +149,146 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
 }
 
 const USERNAME_TYPES = new Set(['text', 'email', 'tel']);
+const SUBMISSION_WATCH_MS = 10_000;
+const SUBMISSION_POLL_MS = 100;
+const FILL_WATCH_MS = 10_000;
+const FILL_THROTTLE_MS = 100;
 
-function filledPasswords(scope: ParentNode): HTMLInputElement[] {
-  return [...scope.querySelectorAll<HTMLInputElement>('input[type="password"]')].filter((input) => input.value);
+function hasToken(input: HTMLInputElement, token: string): boolean {
+  return input.autocomplete.split(/\s+/).includes(token);
+}
+
+function isShown(input: HTMLInputElement): boolean {
+  return input.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+}
+
+function isFillable(input: HTMLInputElement): boolean {
+  return !input.disabled && isShown(input);
+}
+
+function passwordInputs(scope: ParentNode): HTMLInputElement[] {
+  return [...scope.querySelectorAll<HTMLInputElement>('input[type="password"]')];
 }
 
 function usernameFor(scope: ParentNode, password: HTMLInputElement): string {
   const inputs = [...scope.querySelectorAll<HTMLInputElement>('input')].filter((input) => input.value.trim());
-  const tagged = inputs.find((input) => input.autocomplete.split(/\s+/).includes('username'));
+  const tagged = inputs.find((input) => hasToken(input, 'username'));
   if (tagged) return tagged.value;
   const before = inputs.slice(0, inputs.indexOf(password) + 1).filter((input) => USERNAME_TYPES.has(input.type));
   return before.at(-1)?.value ?? '';
 }
 
 // On a change-password form the new password is the one worth keeping.
-function credentialIn(scope: ParentNode): SubmittedCredential | null {
-  const passwords = filledPasswords(scope);
-  if (passwords.length === 0) return null;
-  const password = passwords.find((input) => input.autocomplete.split(/\s+/).includes('new-password')) ?? passwords[0];
-  return { username: usernameFor(scope, password), password: password.value };
+function submittedPassword(scope: ParentNode): HTMLInputElement | null {
+  const passwords = passwordInputs(scope).filter((input) => input.value);
+  return passwords.find((input) => hasToken(input, 'new-password')) ?? passwords[0] ?? null;
+}
+
+let submissionWatch = 0;
+
+// Script-driven logins that succeed often just swap the form out, with no navigation to wait for.
+function watchForSuccess(password: HTMLInputElement): void {
+  clearInterval(submissionWatch);
+  const startedAt = performance.now();
+  submissionWatch = window.setInterval(() => {
+    if (performance.now() - startedAt > SUBMISSION_WATCH_MS) {
+      clearInterval(submissionWatch);
+      return;
+    }
+    const formGone = !(password.isConnected && isShown(password)) && !passwordInputs(document).some(isShown);
+    if (!formGone) return;
+    clearInterval(submissionWatch);
+    ipcRenderer.send(PageChannel.credentialAccepted);
+  }, SUBMISSION_POLL_MS);
 }
 
 function reportCredential(scope: ParentNode): void {
-  const credential = credentialIn(scope);
-  if (credential) ipcRenderer.send(PageChannel.credentialSubmitted, credential);
+  const password = submittedPassword(scope);
+  if (!password) return;
+  const credential: SubmittedCredential = { username: usernameFor(scope, password), password: password.value };
+  ipcRenderer.send(PageChannel.credentialSubmitted, credential);
+  watchForSuccess(password);
+}
+
+interface LoginFields {
+  username: HTMLInputElement | null;
+  password: HTMLInputElement;
+}
+
+// Sign-up and change-password forms carry several password fields or a new-password hint, so only
+// a form with a single current-password field is filled.
+function loginFields(): LoginFields | null {
+  const password = passwordInputs(document).find((input) => isFillable(input) && !hasToken(input, 'new-password'));
+  if (!password) return null;
+  const scope = password.form ?? document;
+  if (passwordInputs(scope).filter(isShown).length !== 1) return null;
+  const inputs = [...scope.querySelectorAll<HTMLInputElement>('input')].filter(isFillable);
+  const username =
+    inputs.find((input) => hasToken(input, 'username')) ??
+    inputs
+      .slice(0, inputs.indexOf(password))
+      .filter((input) => USERNAME_TYPES.has(input.type))
+      .at(-1) ??
+    null;
+  return { username, password };
+}
+
+function pickLogin(logins: SubmittedCredential[], { username }: LoginFields): SubmittedCredential | undefined {
+  const typed = username?.value.trim();
+  if (typed) return logins.find((login) => login.username === typed);
+  return username || logins.length === 1 ? logins[0] : undefined;
+}
+
+function setValue(input: HTMLInputElement, value: string): void {
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+let savedLogins: Promise<SubmittedCredential[]> | null = null;
+const filledPasswords = new WeakSet<HTMLInputElement>();
+
+async function fillLogin(): Promise<void> {
+  const before = loginFields();
+  if (!before || before.password.value || filledPasswords.has(before.password)) return;
+  savedLogins ??= (ipcRenderer.invoke(PageChannel.savedLogins) as Promise<SubmittedCredential[]>).catch(() => []);
+  const logins = await savedLogins;
+  if (logins.length === 0) return;
+  const fields = loginFields();
+  if (!fields || fields.password.value || filledPasswords.has(fields.password)) return;
+  const login = pickLogin(logins, fields);
+  if (!login) return;
+  if (fields.username && !fields.username.value.trim()) setValue(fields.username, login.username);
+  setValue(fields.password, login.password);
+  filledPasswords.add(fields.password);
 }
 
 if (window === window.top && (location.protocol === 'https:' || location.protocol === 'http:')) {
+  let fillTimer = 0;
+  const scheduleFill = () => {
+    if (fillTimer) return;
+    fillTimer = window.setTimeout(() => {
+      fillTimer = 0;
+      void fillLogin();
+    }, FILL_THROTTLE_MS);
+  };
+  window.addEventListener(
+    'DOMContentLoaded',
+    () => {
+      void fillLogin();
+      const observer = new MutationObserver(scheduleFill);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      window.setTimeout(() => observer.disconnect(), FILL_WATCH_MS);
+    },
+    { once: true },
+  );
+  document.addEventListener(
+    'focusin',
+    (event) => {
+      if (event.target instanceof HTMLInputElement) void fillLogin();
+    },
+    { capture: true },
+  );
   document.addEventListener(
     'submit',
     (event) => {
