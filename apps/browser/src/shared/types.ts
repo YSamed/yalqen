@@ -152,6 +152,8 @@ export const PageChannel = {
   swipe: 'yalqen:page-swipe',
   newTabCenter: 'yalqen:newtab-center',
   credentialSubmitted: 'yalqen:credential-submitted',
+  credentialAccepted: 'yalqen:credential-accepted',
+  savedLogins: 'yalqen:saved-logins',
 } as const;
 
 export interface SubmittedCredential {

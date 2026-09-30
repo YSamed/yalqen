@@ -64,6 +64,20 @@ test('a new login is offered for saving, a known one only when its password chan
   });
 });
 
+test('logins for a site come back decrypted, most recently used first', () => {
+  withStore((dir) => {
+    const store = new PasswordStore(dir, cipher);
+    store.save(SITE, { username: 'ada', password: 'first' }, 1);
+    store.save(SITE, { username: 'grace', password: 'second' }, 2);
+    store.save('https://gitlab.com', { username: 'linus', password: 'third' }, 3);
+    assert.deepEqual(store.logins(SITE), [
+      { username: 'grace', password: 'second' },
+      { username: 'ada', password: 'first' },
+    ]);
+    assert.deepEqual(store.logins('https://example.com'), []);
+  });
+});
+
 test('passwords are stored encrypted and survive a restart', () => {
   withStore((dir) => {
     const store = new PasswordStore(dir, cipher);
