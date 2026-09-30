@@ -4,16 +4,16 @@ Status as of 2026-09-30.
 
 ## Listed or submitted
 
-| Where                                   | Status                                            |
-| --------------------------------------- | ------------------------------------------------- |
-| jaywcjlove/awesome-mac                  | Merged ("Add Yalqen to Browsers")                 |
-| serhii-londar/open-source-mac-os-apps   | PR #1450 open                                     |
-| Rajaniraiyn/awesome-electron-browsers   | PR #5 open                                        |
-| nerdyslacker/desktop-web-browsers       | PR #61 open                                       |
-| IonicaBizau/made-in-turkey              | PR #43 open                                       |
-| MacUpdate                               | Submitted, reply by email expected                |
-| OpenAlternative                         | Submitted, free queue                             |
-| Homebrew tap (`YSamed/homebrew-yalqen`) | Live; cask bumped to 0.2.11 locally, push pending |
+| Where                                   | Status                                    |
+| --------------------------------------- | ----------------------------------------- |
+| jaywcjlove/awesome-mac                  | Merged ("Add Yalqen to Browsers")         |
+| serhii-londar/open-source-mac-os-apps   | PR #1450 open                             |
+| Rajaniraiyn/awesome-electron-browsers   | PR #5 open                                |
+| nerdyslacker/desktop-web-browsers       | PR #61 open                               |
+| IonicaBizau/made-in-turkey              | PR #43 open                               |
+| MacUpdate                               | Submitted, reply by email expected        |
+| OpenAlternative                         | Submitted, free queue                     |
+| Homebrew tap (`YSamed/homebrew-yalqen`) | Live, 0.2.11, `brew audit --online` clean |
 
 ## Waiting on a date
 
