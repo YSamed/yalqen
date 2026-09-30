@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/YSamed/yalqen/compare/v0.2.1...v0.2.2) (2026-09-30)
+
+
+### Features
+
+* add download confirmation dialog with native prompt ([#37](https://github.com/YSamed/yalqen/issues/37)) ([1371ef1](https://github.com/YSamed/yalqen/commit/1371ef18839fcd9f28c0388b156cbf35f56b43df))
+
 ## [0.2.1](https://github.com/YSamed/yalqen/compare/v0.2.0...v0.2.1) (2026-09-29)
 
 
