@@ -317,7 +317,7 @@ function field(number, data) {
 
 test('the crx signing key is found by its extension id and pinned into the manifest', () => {
   const pair = () =>
-    crypto.generateKeyPairSync('rsa', { modulusLength: 1024 }).publicKey.export({ type: 'spki', format: 'der' });
+    crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({ type: 'spki', format: 'der' });
   const key = pair();
   const other = pair();
   const id = extensionIdOfKey(key);
