@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/YSamed/yalqen/compare/v0.2.7...v0.2.8) (2026-09-30)
+
+
+### Features
+
+* show update download progress and ready banner ([8ac2836](https://github.com/YSamed/yalqen/commit/8ac2836221d6944e02b4c9e5e11686cc45b88516))
+
 ## [0.2.7](https://github.com/YSamed/yalqen/compare/v0.2.6...v0.2.7) (2026-09-30)
 
 
