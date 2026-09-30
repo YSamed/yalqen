@@ -71,6 +71,7 @@ export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
 
 export interface BrowserState {
   tabs: TabSnapshot[];
+  listOrder: TabId[];
   developer: boolean;
   activeTabId: TabId | null;
   pageFullScreen: boolean;
@@ -326,7 +327,6 @@ export interface SettingsValues {
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   toolbarButtons: ToolbarButtonId[];
-  shortcutsSkipClosedPinned: boolean;
   freezeBackgroundTabs: boolean;
   discardAfterMinutes: number;
   adBlocking: boolean;

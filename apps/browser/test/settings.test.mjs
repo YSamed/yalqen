@@ -41,7 +41,6 @@ test('unknown or mistyped fields fall back', () => {
       toolbarVisible: true,
       toolbarTabs: true,
       toolbarButtons: ['bookmarks', 'history', 'extensions', 'profile', 'settings', 'downloads'],
-      shortcutsSkipClosedPinned: false,
       freezeBackgroundTabs: true,
       discardAfterMinutes: 30,
       adBlocking: true,
@@ -85,7 +84,6 @@ test('updates keep valid fields and persist', () => {
       toolbarVisible: false,
       toolbarTabs: false,
       toolbarButtons: ['downloads', 'settings'],
-      shortcutsSkipClosedPinned: true,
       freezeBackgroundTabs: false,
       discardAfterMinutes: 0,
       adBlocking: false,
@@ -110,7 +108,6 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.toolbarVisible, false);
     assert.equal(reloaded.toolbarTabs, false);
     assert.deepEqual(reloaded.toolbarButtons, ['downloads', 'settings']);
-    assert.equal(reloaded.shortcutsSkipClosedPinned, true);
     assert.equal(reloaded.freezeBackgroundTabs, false);
     assert.equal(reloaded.discardAfterMinutes, 0);
     assert.equal(reloaded.adBlocking, false);

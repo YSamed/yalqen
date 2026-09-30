@@ -243,7 +243,6 @@ export class YalqenWindow {
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       freezeBackground: () => app.settings.get().freezeBackgroundTabs,
-      skipClosedPinnedShortcuts: () => app.settings.get().shortcutsSkipClosedPinned,
       onChange: (persist) => {
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
           this.htmlFullScreenTabId = null;

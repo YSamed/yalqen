@@ -9,6 +9,7 @@
 
   let {
     tabs,
+    listOrder,
     developer,
     activeTabId,
     collapsed,
@@ -22,6 +23,7 @@
     profile,
   }: {
     tabs: TabSnapshot[];
+    listOrder: TabId[];
     developer: boolean;
     activeTabId: TabId | null;
     collapsed: boolean;
@@ -43,21 +45,11 @@
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
   const listed = $derived(tabs.filter((tab) => !tab.pinned));
-  let openedPinnedIds: TabId[] = $state([]);
-  const openedPinned = $derived(
-    openedPinnedIds.map((id) => pinned.find((tab) => tab.id === id)).filter((tab) => tab !== undefined),
+  const entries = $derived(
+    listOrder
+      .map((id) => tabs.find((tab) => tab.id === id))
+      .filter((tab): tab is TabSnapshot => tab !== undefined && (!collapsed || !tab.pinned)),
   );
-
-  $effect(() => {
-    const active = pinned.find((tab) => tab.id === activeTabId);
-    const kept = openedPinnedIds.filter((id) =>
-      pinned.some((tab) => tab.id === id && (tab.live || tab.id === activeTabId)),
-    );
-    if (active && !kept.includes(active.id)) kept.push(active.id);
-    if (kept.length !== openedPinnedIds.length || kept.some((id, index) => id !== openedPinnedIds[index])) {
-      openedPinnedIds = kept;
-    }
-  });
   const profiles: { id: ProfileKind; name: string }[] = [
     { id: 'personal', name: 'Kişisel' },
     { id: 'developer', name: 'Geliştirici' },
@@ -261,46 +253,32 @@
           <span class="divider" aria-hidden="true"></span>
         {/if}
 
-        {#if openedPinned.length > 0 && !collapsed}
-          <ul class="rows current" aria-label="Açık sabitlenenler">
-            {#each openedPinned as tab (tab.id)}
-              <li
-                class="row"
-                class:active={tab.id === activeTabId}
-                class:discarded={!tab.live}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  send({ type: 'open-tab-menu', id: tab.id });
-                }}
-              >
-                {@render tabRow(tab)}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        {#if listed.length > 0}
+        {#if entries.length > 0}
           <ol
             class="rows"
             ondrop={(e) => onDrop(e, listed)}
             ondragover={(e) => dragId && !draggingPinned && e.preventDefault()}
           >
-            {#each listed as tab, index (tab.id)}
+            {#each entries as tab (tab.id)}
+              {@const index = listed.indexOf(tab)}
               <li
                 class="row"
                 class:private={tab.isPrivate}
                 class:active={tab.id === activeTabId}
                 class:discarded={!tab.live}
-                class:drop-before={!draggingPinned && dropIndex === index}
-                class:drop-after={!draggingPinned && dropIndex === index + 1 && index === listed.length - 1}
-                draggable="true"
+                class:drop-before={index >= 0 && !draggingPinned && dropIndex === index}
+                class:drop-after={index >= 0 &&
+                  !draggingPinned &&
+                  dropIndex === index + 1 &&
+                  index === listed.length - 1}
+                draggable={index >= 0}
                 ondragstart={() => (dragId = tab.id)}
                 oncontextmenu={(e) => {
                   e.preventDefault();
                   send({ type: 'open-tab-menu', id: tab.id });
                 }}
                 ondragend={endDrag}
-                ondragover={(e) => onDragOver(e, listed, index)}
+                ondragover={(e) => index >= 0 && onDragOver(e, listed, index)}
               >
                 {#if collapsed}
                   {@render compactTab(tab)}
@@ -460,10 +438,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  .current + .rows {
-    margin-top: 2px;
   }
 
   .collapsed .rows {

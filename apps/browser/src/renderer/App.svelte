@@ -19,6 +19,7 @@
 
   let browser: BrowserState = $state.raw({
     tabs: [],
+    listOrder: [],
     developer: false,
     activeTabId: null,
     pageFullScreen: false,
@@ -145,6 +146,7 @@
     {#if browser.sidebarVisible}
       <TabPanel
         tabs={browser.tabs}
+        listOrder={browser.listOrder}
         developer={browser.developer}
         activeTabId={browser.activeTabId}
         collapsed={collapsed && panelSettled}
