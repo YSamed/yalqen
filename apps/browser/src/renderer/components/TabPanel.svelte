@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { PanelSide, TabId, TabSnapshot } from '../../shared/types';
+  import type { DownloadsSummary, PanelSide, PendingUpdate, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import { cubicOut } from 'svelte/easing';
+  import { fly } from 'svelte/transition';
   import { devStates } from '../format';
-  import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import IconButton from './ui/IconButton.svelte';
@@ -11,23 +12,27 @@
     developer,
     activeTabId,
     collapsed,
+    shrinking,
     side,
-    width = $bindable(),
-    minWidth,
-    maxWidth,
     topInset,
     rowInset,
+    edgeInset,
+    downloads,
+    pendingUpdate,
+    profile,
   }: {
     tabs: TabSnapshot[];
     developer: boolean;
     activeTabId: TabId | null;
     collapsed: boolean;
+    shrinking: boolean;
     side: PanelSide;
-    width: number;
-    minWidth: number;
-    maxWidth: number;
     topInset: number;
     rowInset: number;
+    edgeInset: number;
+    downloads: DownloadsSummary;
+    pendingUpdate: PendingUpdate | null;
+    profile: ProfileKind;
   } = $props();
 
   let dragId: TabId | null = $state(null);
@@ -38,7 +43,41 @@
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
   const listed = $derived(tabs.filter((tab) => !tab.pinned));
+  let openedPinnedIds: TabId[] = $state([]);
+  const openedPinned = $derived(
+    openedPinnedIds.map((id) => pinned.find((tab) => tab.id === id)).filter((tab) => tab !== undefined),
+  );
+
+  $effect(() => {
+    const active = pinned.find((tab) => tab.id === activeTabId);
+    const kept = openedPinnedIds.filter((id) =>
+      pinned.some((tab) => tab.id === id && (tab.live || tab.id === activeTabId)),
+    );
+    if (active && !kept.includes(active.id)) kept.push(active.id);
+    if (kept.length !== openedPinnedIds.length || kept.some((id, index) => id !== openedPinnedIds[index])) {
+      openedPinnedIds = kept;
+    }
+  });
+  const profiles: { id: ProfileKind; name: string }[] = [
+    { id: 'personal', name: 'Kişisel' },
+    { id: 'developer', name: 'Geliştirici' },
+    { id: 'private', name: 'Gizli' },
+  ];
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function reveal(node: Element) {
+    return fly(node, {
+      x: side === 'left' ? -8 : 8,
+      duration: reducedMotion.matches ? 0 : 220,
+      easing: cubicOut,
+    });
+  }
   const draggingPinned = $derived(pinned.some((tab) => tab.id === dragId));
+
+  function openUpdatePopup(event: MouseEvent & { currentTarget: HTMLElement }): void {
+    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
+    send({ type: 'open-update-popup', anchor: { x, y, width, height } });
+  }
 
   function label(tab: TabSnapshot): string {
     const states = [
@@ -77,23 +116,6 @@
     dragId = null;
     dropIndex = null;
   }
-
-  function startResize(event: PointerEvent): void {
-    const handle = event.currentTarget as HTMLElement;
-    handle.setPointerCapture(event.pointerId);
-    const startX = event.clientX;
-    const startWidth = width;
-    const move = (e: PointerEvent) => {
-      const delta = side === 'left' ? e.clientX - startX : startX - e.clientX;
-      width = Math.round(Math.min(maxWidth, Math.max(minWidth, startWidth + delta)));
-    };
-    const end = () => {
-      handle.removeEventListener('pointermove', move);
-      handle.removeEventListener('pointerup', end);
-    };
-    handle.addEventListener('pointermove', move);
-    handle.addEventListener('pointerup', end);
-  }
 </script>
 
 {#snippet favicon(tab: TabSnapshot, size: number)}
@@ -112,203 +134,258 @@
   </span>
 {/snippet}
 
+{#snippet compactTab(tab: TabSnapshot)}
+  <IconButton
+    size="lg"
+    variant={tab.id === activeTabId ? 'surface' : 'ghost'}
+    label={label(tab)}
+    aria-current={tab.id === activeTabId ? 'page' : undefined}
+    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+    onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+  >
+    {@render favicon(tab, 16)}
+  </IconButton>
+{/snippet}
+
+{#snippet tabRow(tab: TabSnapshot)}
+  <IconButton
+    size="lg"
+    variant={tab.id === activeTabId ? 'surface' : 'ghost'}
+    class="tab-icon"
+    label={label(tab)}
+    tabindex={-1}
+    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+    onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+  >
+    {@render favicon(tab, 16)}
+  </IconButton>
+  <div class="pill">
+    {@render selectButton(tab)}
+    <span class="actions">
+      <IconButton
+        size="sm"
+        tone="muted"
+        icon="close"
+        label="Kapat"
+        onclick={() => send({ type: 'close-tab', id: tab.id })}
+      />
+    </span>
+  </div>
+{/snippet}
+
+{#snippet selectButton(tab: TabSnapshot)}
+  <button
+    class="select"
+    title={tab.url}
+    aria-label={label(tab)}
+    aria-current={tab.id === activeTabId ? 'page' : undefined}
+    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+    onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+  >
+    <span class="title">{tab.title}</span>
+    {#if developer}<span class="mark" title="Geliştirici sekmesi"><Icon name="gauge" size={13} /></span
+      >{:else if tab.isPrivate}<span class="mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
+  </button>
+  {#if tab.audible || tab.muted}
+    <IconButton
+      size="sm"
+      tone="muted"
+      icon={tab.muted ? 'muted' : 'sound'}
+      class="audio"
+      label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+      aria-pressed={tab.muted}
+      onclick={() => send({ type: 'toggle-mute', id: tab.id })}
+    />
+  {/if}
+{/snippet}
+
 <aside
   class="panel"
   class:collapsed
+  class:shrinking
   class:right={side === 'right'}
   aria-label="Sekmeler"
-  style={`--panel-row-inset: ${rowInset}px`}
+  style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px`}
 >
-  {#if !collapsed}
-    <div
-      class="resize"
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Panel genişliği"
-      onpointerdown={startResize}
-    ></div>
-  {/if}
-
   <div class="top" style:height="{topInset}px"></div>
 
-  {#if pinned.length > 0}
-    <ul
-      class="favorites"
-      aria-label="Sabitlenenler"
-      ondrop={(e) => onDrop(e, pinned)}
-      ondragover={(e) => draggingPinned && e.preventDefault()}
-    >
-      {#each pinned as tab, index (tab.id)}
-        <li
-          class="favorite"
-          class:active={tab.id === activeTabId}
-          class:discarded={!tab.live}
-          class:drop-before={draggingPinned && dropIndex === index}
-          class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
-          draggable="true"
-          ondragstart={() => (dragId = tab.id)}
-          ondragend={endDrag}
-          ondragover={(e) => onDragOver(e, pinned, index, !collapsed)}
-        >
-          {#if collapsed}
-            <IconButton
-              size="lg"
-              variant="surface"
-              label={label(tab)}
-              aria-current={tab.id === activeTabId ? 'page' : undefined}
-              onclick={() => send({ type: 'activate-tab', id: tab.id })}
-              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-            >
-              {@render favicon(tab, 16)}
-            </IconButton>
-          {:else}
-            <button
-              class="tile"
-              title={label(tab)}
-              aria-label={label(tab)}
-              aria-current={tab.id === activeTabId ? 'page' : undefined}
-              onclick={() => send({ type: 'activate-tab', id: tab.id })}
-              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-            >
-              {@render favicon(tab, 20)}
-            </button>
-            <IconButton
-              size="sm"
-              variant="surface"
-              tone="muted"
-              icon="close"
-              class="unpin"
-              label="Sabitlemeyi kaldır: {tab.title}"
-              title="Sabitlemeyi kaldır"
-              onclick={() => send({ type: 'toggle-pin', id: tab.id })}
-            />
-          {/if}
-        </li>
-      {/each}
-    </ul>
-  {/if}
-
-  {#if listed.length > 0}
-    <ol
-      class="tabs"
-      class:single={listed.length === 1}
-      ondrop={(e) => onDrop(e, listed)}
-      ondragover={(e) => dragId && !draggingPinned && e.preventDefault()}
-    >
-      {#each listed as tab, index (tab.id)}
-        <li
-          class="tab"
-          class:private={tab.isPrivate}
-          class:active={tab.id === activeTabId}
-          class:discarded={!tab.live}
-          class:drop-before={!draggingPinned && dropIndex === index}
-          class:drop-after={!draggingPinned && dropIndex === index + 1 && index === listed.length - 1}
-          draggable="true"
-          ondragstart={() => (dragId = tab.id)}
-          ondragend={endDrag}
-          ondragover={(e) => onDragOver(e, listed, index)}
-        >
-          {#if collapsed}
-            <IconButton
-              size="lg"
-              variant="surface"
-              label={label(tab)}
-              aria-current={tab.id === activeTabId ? 'page' : undefined}
-              onclick={() => send({ type: 'activate-tab', id: tab.id })}
-              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-            >
-              {@render favicon(tab, 16)}
-            </IconButton>
-          {:else}
-            <Capsule layout="tab" tone={tab.id === activeTabId ? (listed.length === 1 ? 'surface' : 'active') : 'bare'}>
-              <button
-                class="select"
-                title={tab.url}
-                aria-label={label(tab)}
-                aria-current={tab.id === activeTabId ? 'page' : undefined}
-                onclick={() => send({ type: 'activate-tab', id: tab.id })}
-                onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+  {#key collapsed}
+    <div class="body" in:reveal>
+      <div class="lists">
+        {#if pinned.length > 0}
+          <ul
+            class="favorites"
+            class:rows={collapsed}
+            aria-label="Sabitlenenler"
+            ondrop={(e) => onDrop(e, pinned)}
+            ondragover={(e) => draggingPinned && e.preventDefault()}
+          >
+            {#each pinned as tab, index (tab.id)}
+              <li
+                class="favorite"
+                class:active={tab.id === activeTabId}
+                class:discarded={!tab.live}
+                class:drop-before={draggingPinned && dropIndex === index}
+                class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
+                draggable="true"
+                ondragstart={() => (dragId = tab.id)}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  send({ type: 'open-tab-menu', id: tab.id });
+                }}
+                ondragend={endDrag}
+                ondragover={(e) => onDragOver(e, pinned, index, !collapsed)}
               >
-                {@render favicon(tab, 16)}
-                <span class="title">{tab.title}</span>
-                {#if developer}<span class="private-mark" title="Geliştirici sekmesi"
-                    ><Icon name="gauge" size={13} /></span
-                  >{:else if tab.isPrivate}<span class="private-mark" title="Gizli sekme"
-                    ><Icon name="private" size={13} /></span
-                  >{/if}
-              </button>
+                {#if collapsed}
+                  {@render compactTab(tab)}
+                {:else}
+                  <IconButton
+                    size="lg"
+                    variant="surface"
+                    class="tile"
+                    label={label(tab)}
+                    aria-current={tab.id === activeTabId ? 'page' : undefined}
+                    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+                    onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+                  >
+                    {@render favicon(tab, 16)}
+                    {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
+                  </IconButton>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
 
-              {#if tab.audible || tab.muted}
-                <IconButton
-                  size="sm"
-                  tone="muted"
-                  icon={tab.muted ? 'muted' : 'sound'}
-                  class="audio"
-                  label={tab.muted ? 'Sesi aç' : 'Sessize al'}
-                  aria-pressed={tab.muted}
-                  onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-                />
+        {#if collapsed && pinned.length > 0 && listed.length > 0}
+          <span class="divider" aria-hidden="true"></span>
+        {/if}
+
+        {#if openedPinned.length > 0 && !collapsed}
+          <ul class="rows current" aria-label="Açık sabitlenenler">
+            {#each openedPinned as tab (tab.id)}
+              <li
+                class="row"
+                class:active={tab.id === activeTabId}
+                class:discarded={!tab.live}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  send({ type: 'open-tab-menu', id: tab.id });
+                }}
+              >
+                {@render tabRow(tab)}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if listed.length > 0}
+          <ol
+            class="rows"
+            ondrop={(e) => onDrop(e, listed)}
+            ondragover={(e) => dragId && !draggingPinned && e.preventDefault()}
+          >
+            {#each listed as tab, index (tab.id)}
+              <li
+                class="row"
+                class:private={tab.isPrivate}
+                class:active={tab.id === activeTabId}
+                class:discarded={!tab.live}
+                class:drop-before={!draggingPinned && dropIndex === index}
+                class:drop-after={!draggingPinned && dropIndex === index + 1 && index === listed.length - 1}
+                draggable="true"
+                ondragstart={() => (dragId = tab.id)}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  send({ type: 'open-tab-menu', id: tab.id });
+                }}
+                ondragend={endDrag}
+                ondragover={(e) => onDragOver(e, listed, index)}
+              >
+                {#if collapsed}
+                  {@render compactTab(tab)}
+                {:else}
+                  {@render tabRow(tab)}
+                {/if}
+              </li>
+            {/each}
+          </ol>
+        {/if}
+
+        {#if collapsed}
+          <div class="new-tab-position">
+            <NewTabButton />
+          </div>
+        {/if}
+      </div>
+
+      {#if !collapsed && (downloads.active > 0 || pendingUpdate)}
+        {#if downloads.active > 0}
+          <button class="card" onclick={() => send({ type: 'open-downloads' })}>
+            <span class="card-line">
+              <Icon name="download" size={15} />
+              <span class="card-title">{downloads.active} indirme sürüyor</span>
+              {#if downloads.progress !== null}
+                <span class="card-meta">%{Math.round(downloads.progress * 100)}</span>
               {/if}
-              <span class="actions">
-                {#if !tab.isPrivate && /^https?:/.test(tab.url)}
-                  <IconButton
-                    size="sm"
-                    tone="muted"
-                    icon="pin"
-                    class="extra"
-                    label="Sabitle"
-                    onclick={() => send({ type: 'toggle-pin', id: tab.id })}
-                  />
-                {/if}
-                {#if tab.live && tab.id !== activeTabId}
-                  <IconButton
-                    size="sm"
-                    tone="muted"
-                    icon="moon"
-                    class="extra"
-                    label="Bellekten çıkar"
-                    onclick={() => send({ type: 'discard-tab', id: tab.id })}
-                  />
-                {/if}
-                <IconButton
-                  size="sm"
-                  tone="muted"
-                  icon="close"
-                  label="Kapat"
-                  onclick={() => send({ type: 'close-tab', id: tab.id })}
-                />
-              </span>
-            </Capsule>
-          {/if}
-        </li>
-      {/each}
-    </ol>
-  {/if}
+            </span>
+            <span class="meter" class:indeterminate={downloads.progress === null}>
+              <span style:width="{downloads.progress === null ? 30 : Math.max(4, downloads.progress * 100)}%"></span>
+            </span>
+          </button>
+        {:else if pendingUpdate?.state === 'ready'}
+          <button class="card" onclick={openUpdatePopup}>
+            <span class="card-line">
+              <Icon name="sparkle" size={15} />
+              <span class="card-title">Yalqen {pendingUpdate.version} hazır</span>
+              <span class="card-action">Güncelle</span>
+            </span>
+          </button>
+        {:else if pendingUpdate}
+          <button class="card" onclick={() => send({ type: 'open-settings' })}>
+            <span class="card-line">
+              <Icon name="update" size={15} />
+              <span class="card-title">Güncelleme indiriliyor</span>
+              <span class="card-meta">%{pendingUpdate.percent}</span>
+            </span>
+            <span class="meter"><span style:width="{Math.max(4, pendingUpdate.percent)}%"></span></span>
+          </button>
+        {/if}
+      {/if}
 
-  <div class="new-tab-position">
-    <NewTabButton compact={collapsed} />
-  </div>
-
-  <footer class="footer" class:compact={collapsed}>
-    {#if !collapsed}
-      <span class="tab-count">{tabs.length} sekme</span>
-    {/if}
-    <IconButton
-      size="lg"
-      tone="muted"
-      icon={side === 'left'
-        ? collapsed
-          ? 'panel-expand'
-          : 'panel-close'
-        : collapsed
-          ? 'panel-expand-right'
-          : 'panel-close-right'}
-      label={collapsed ? 'Yan paneli genişlet' : 'Yan paneli daralt'}
-      title={collapsed ? 'Yan paneli genişlet (⌘S)' : 'Yan paneli daralt (⌘S)'}
-      aria-expanded={!collapsed}
-      onclick={() => send({ type: 'toggle-panel' })}
-    />
-  </footer>
+      <footer class="footer" class:compact={collapsed}>
+        <div class="profiles" role="group" aria-label="Profiller">
+          {#each profiles as item (item.id)}
+            <button
+              class="profile {item.id}"
+              aria-pressed={item.id === profile}
+              aria-label="{item.name} profili"
+              title={item.id === profile ? `${item.name} (açık)` : `${item.name} profiline geç`}
+              onclick={() => send({ type: 'switch-profile', profile: item.id })}
+            >
+              <Icon name={item.id === 'developer' ? 'code' : item.id === 'private' ? 'private' : 'profile'} size={14} />
+            </button>
+          {/each}
+        </div>
+        <IconButton
+          size="lg"
+          variant="surface"
+          tone="muted"
+          icon={side === 'left'
+            ? collapsed
+              ? 'panel-expand'
+              : 'panel-close'
+            : collapsed
+              ? 'panel-expand-right'
+              : 'panel-close-right'}
+          label={collapsed ? 'Yan paneli genişlet' : 'Yan paneli daralt'}
+          title={collapsed ? 'Yan paneli genişlet (⌘S)' : 'Yan paneli daralt (⌘S)'}
+          aria-expanded={!collapsed}
+          onclick={() => send({ type: 'toggle-panel' })}
+        />
+      </footer>
+    </div>
+  {/key}
 </aside>
 
 <style>
@@ -319,8 +396,16 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    padding: 0 var(--panel-row-inset) 8px;
+    padding: 0 var(--panel-row-inset) 8px var(--panel-edge-inset);
     overflow-x: clip;
+  }
+
+  .panel.right {
+    padding: 0 var(--panel-edge-inset) 8px var(--panel-row-inset);
+  }
+
+  .panel:not(.collapsed) .lists {
+    padding-top: 4px;
   }
 
   .panel.collapsed {
@@ -328,152 +413,121 @@
     padding: 0 0 8px;
   }
 
-  .resize {
-    position: absolute;
-    top: 0;
-    right: -2px;
-    bottom: 0;
-    width: 6px;
-    cursor: col-resize;
-  }
-
-  .panel.right .resize {
-    right: auto;
-    left: -2px;
-  }
-
   .top {
-    display: flex;
     flex: none;
-    align-items: center;
-    gap: 4px;
-    height: 44px;
     -webkit-app-region: drag;
   }
 
-  .favorites {
-    display: grid;
-    flex: none;
-    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
-    gap: 6px;
-    margin: 0 0 10px;
+  .lists {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .lists::-webkit-scrollbar {
+    display: none;
+  }
+
+  .collapsed .lists {
+    align-items: center;
+    width: 100%;
+  }
+
+  .body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    transition: opacity 120ms ease-out;
+  }
+
+  .collapsed .body {
+    align-items: center;
+    width: 100%;
+  }
+
+  .shrinking .body {
+    opacity: 0;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .collapsed .favorites {
-    grid-template-columns: var(--chrome-control-size);
+  .current + .rows {
+    margin-top: 2px;
+  }
+
+  .collapsed .rows {
     gap: 6px;
+    padding: 4px 0;
+  }
+
+  .favorites:not(.rows) {
+    display: grid;
+    grid-template-columns: repeat(4, var(--chrome-control-size));
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
   }
 
   .favorite {
     position: relative;
   }
 
-  .tile {
-    display: grid;
-    place-items: center;
-    width: 100%;
-    height: 46px;
-    padding: 0;
-    border: 0;
-    border-radius: 14px;
-    background: var(--well);
-    box-shadow: var(--well-rim);
-    transition:
-      background var(--transition),
-      box-shadow var(--transition);
+  .favorite.active :global(.tile) {
+    background-color: var(--surface-strong);
+    box-shadow:
+      var(--shadow),
+      inset 0 0 0 1.5px var(--accent);
   }
 
-  :global([data-material='glass']) .panel:not(.collapsed) .tile {
-    background: var(--platter);
-    box-shadow: var(--rim);
+  .favorite:not(.active) .favicon {
+    opacity: 0.7;
   }
 
-  .tile:hover,
-  :global([data-material='glass']) .panel:not(.collapsed) .tile:hover {
-    background: var(--well-hover);
+  .favorite.discarded .favicon {
+    opacity: 0.45;
+    filter: grayscale(1);
   }
 
-  .favorite.active .tile,
-  :global([data-material='glass']) .panel:not(.collapsed) .favorite.active .tile {
-    background: var(--surface-active);
-    box-shadow: var(--shadow);
-  }
-
-  :global([data-material='glass']) .panel:not(.collapsed) .favorite.active .tile {
-    box-shadow: var(--shadow), var(--rim);
-  }
-
-  .tabs {
-    flex: 0 1 auto;
-    min-height: 0;
-    margin: 0;
-    padding: 2px;
-    overflow-y: auto;
-    border-radius: 18px;
-    background: var(--well);
-    box-shadow: var(--well-rim);
-    list-style: none;
-  }
-
-  .panel:not(.collapsed) .tabs.single {
-    padding: 0;
-    overflow: visible;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .collapsed .tabs {
-    width: calc(var(--chrome-control-size) + 8px);
-    padding: 4px;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    scrollbar-width: none;
-  }
-
-  .collapsed .tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tab {
-    position: relative;
-    display: flex;
-    align-items: center;
-    height: var(--chrome-control-size);
-    border-radius: 999px;
-  }
-
-  .tab + .tab {
-    margin-top: 1px;
-  }
-
-  .collapsed .tab + .tab {
-    margin-top: 6px;
-  }
-
-  :global([data-material='glass']) .favorite.active .tile {
-    box-shadow: var(--shadow), var(--rim);
+  .audible-dot {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--accent);
   }
 
   .favorite.drop-before::before,
   .favorite.drop-after::after {
     content: '';
     position: absolute;
-    top: 6px;
-    bottom: 6px;
+    top: 4px;
+    bottom: 4px;
     width: 2px;
     border-radius: 1px;
     background: var(--accent);
   }
 
   .favorite.drop-before::before {
-    left: -4px;
+    left: -2px;
   }
 
   .favorite.drop-after::after {
-    right: -4px;
+    right: -2px;
   }
 
   .collapsed .favorite.drop-before::before,
@@ -494,55 +548,97 @@
     bottom: -4px;
   }
 
-  .tab.drop-before::before,
-  .tab.drop-after::after {
-    content: '';
-    position: absolute;
-    right: 6px;
-    left: 6px;
-    height: 2px;
-    border-radius: 1px;
-    background: var(--accent);
+  .divider {
+    width: 16px;
+    height: 1px;
+    margin: 4px 0;
+    background: var(--page-divider);
   }
 
-  .tab.drop-before::before {
-    top: -2px;
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: var(--chrome-control-size);
+    border-radius: 999px;
+    color: var(--text-muted);
+    transition:
+      background var(--transition),
+      color var(--transition);
   }
 
-  .tab.drop-after::after {
-    bottom: -2px;
+  .collapsed .row {
+    height: auto;
+  }
+
+  .panel:not(.collapsed) .row {
+    gap: 6px;
+  }
+
+  .pill {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
+    border-radius: 999px;
+    transition:
+      background var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .row:not(.active):hover .pill {
+    background: var(--surface-hover);
+  }
+
+  .row:hover {
+    color: var(--text);
+  }
+
+  .row.active {
+    color: var(--text);
+  }
+
+  .row.active .pill {
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .row.discarded :global(.tab-icon) {
+    opacity: 0.55;
+  }
+
+  :global([data-material='glass']) .row.active .pill,
+  :global([data-material='glass']) .card {
+    box-shadow: var(--shadow), var(--rim);
+  }
+
+  .row:not(.active) .favicon {
+    opacity: 0.7;
   }
 
   .select {
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
     height: 100%;
-    padding: 0 8px 0 10px;
+    padding: 0 6px 0 10px;
     border: 0;
     border-radius: 999px;
     background: transparent;
-    color: var(--text-muted);
-    font-size: 13px;
+    color: inherit;
+    font-size: var(--font-size);
     text-align: left;
   }
 
-  .tab.active .select {
-    color: var(--text);
-  }
-
   .favicon {
-    position: relative;
     display: grid;
     flex: none;
     place-items: center;
     color: var(--text-muted);
-  }
-
-  .tab:not(.active) .favicon {
-    opacity: 0.7;
   }
 
   .favicon img {
@@ -551,10 +647,14 @@
     border-radius: 4px;
   }
 
-  .tab.discarded .favicon img,
-  .tab.discarded .favicon > :global(svg) {
+  .row.discarded .favicon img,
+  .row.discarded .favicon > :global(svg) {
     opacity: 0.45;
     filter: grayscale(1);
+  }
+
+  .row.discarded .title {
+    opacity: 0.7;
   }
 
   .title {
@@ -563,28 +663,11 @@
     white-space: nowrap;
   }
 
-  .actions {
-    display: flex;
-    padding-right: 4px;
+  .row.private .title {
+    font-style: italic;
   }
 
-  .favorite :global(.unpin) {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    display: none;
-  }
-
-  .favorite:hover :global(.unpin) {
-    display: inline-flex;
-  }
-
-  .tab:not(:hover, :focus-within) :global(.extra),
-  .tab:not(.active, :hover, :focus-within) .actions {
-    display: none;
-  }
-
-  .private-mark {
+  .mark {
     display: grid;
     flex: none;
     place-items: center;
@@ -592,12 +675,36 @@
     color: var(--text-muted);
   }
 
-  .tab.private .title {
-    font-style: italic;
+  .actions {
+    display: flex;
+    padding-right: 4px;
   }
 
-  .tab:not(.active, :hover, :focus-within) :global(.audio) {
+  .row:not(:hover, :focus-within) .actions {
+    display: none;
+  }
+
+  .row:not(:hover, :focus-within) :global(.audio) {
     margin-right: 4px;
+  }
+
+  .row.drop-before::before,
+  .row.drop-after::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    left: 10px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+  }
+
+  .row.drop-before::before {
+    top: -2px;
+  }
+
+  .row.drop-after::after {
+    bottom: -2px;
   }
 
   .new-tab-position {
@@ -605,27 +712,171 @@
     margin-top: 6px;
   }
 
+  .card {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: auto;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: var(--panel-radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    text-align: left;
+  }
+
+  .card-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .card-line > :global(svg) {
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  .card-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .card-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-action {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: var(--font-size-small);
+  }
+
+  .meter {
+    position: relative;
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--well);
+  }
+
+  .meter > span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width 300ms var(--ease-out);
+  }
+
+  .meter.indeterminate > span {
+    animation: slide 1.2s var(--ease-in-out) infinite;
+  }
+
+  @keyframes slide {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(340%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .meter.indeterminate > span {
+      animation: none;
+    }
+  }
+
   .footer {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: space-between;
     width: 100%;
     min-height: var(--chrome-control-size);
     margin-top: auto;
-    padding: 0 8px;
+    gap: 2px;
+    padding-top: 8px;
+  }
+
+  .card + .footer {
+    margin-top: 8px;
   }
 
   .footer.compact {
-    justify-content: center;
-    padding: 0;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 0 0;
   }
 
-  .tab-count {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .profiles {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: var(--chrome-control-size);
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  :global([data-material='glass']) .profiles {
+    box-shadow: var(--shadow), var(--rim);
+  }
+
+  .compact .profiles {
+    flex-direction: column;
+    width: var(--chrome-control-size);
+    height: auto;
+  }
+
+  .profile {
+    --profile-color: var(--accent);
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--control-md);
+    height: var(--control-md);
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
     color: var(--text-muted);
     font-size: var(--font-size-small);
-    white-space: nowrap;
+    font-weight: 600;
+    transition:
+      background var(--transition),
+      color var(--transition);
+  }
+
+  .profile.developer {
+    --profile-color: var(--profile-developer);
+  }
+
+  .profile.private {
+    --profile-color: var(--text);
+  }
+
+  .profile:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .profile[aria-pressed='true'] {
+    background: color-mix(in srgb, var(--profile-color) 18%, transparent);
+    color: var(--profile-color);
+    cursor: default;
   }
 </style>

@@ -89,7 +89,10 @@ export interface BrowserState {
   downloads: DownloadsSummary;
   extensions: boolean;
   pendingUpdate: PendingUpdate | null;
+  profile: ProfileKind;
 }
+
+export type ProfileKind = 'personal' | 'developer' | 'private';
 
 export interface DownloadsSummary {
   active: number;
@@ -120,6 +123,7 @@ export type UiAction =
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }
   | { type: 'toggle-mute'; id: TabId }
+  | { type: 'open-tab-menu'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }
   | { type: 'go-back' }
@@ -140,6 +144,7 @@ export type UiAction =
   | { type: 'toggle-sidebar' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
+  | { type: 'switch-profile'; profile: ProfileKind }
   | { type: 'open-downloads' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-extension-store' }
