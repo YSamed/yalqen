@@ -25,6 +25,14 @@ test('known engine ids resolve to their engine', () => {
   assert.equal(resolveSearchEngine('duckduckgo', 'https://ara.example/s?q=%s').id, 'duckduckgo');
 });
 
+test('kagi resolves and builds kagi search urls', () => {
+  const kagi = resolveSearchEngine('kagi', null);
+  assert.equal(kagi.id, 'kagi');
+  assert.equal(kagi.label, 'Kagi');
+  assert.equal(kagi.placeholder, "Kagi'de ara veya adres yaz");
+  assert.equal(buildSearchUrl(kagi, 'hava durumu'), 'https://kagi.com/search?q=hava%20durumu');
+});
+
 test('custom engines use a valid template and fall back otherwise', () => {
   const custom = resolveSearchEngine('custom', 'https://ara.example/s?q=%s');
   assert.equal(custom.id, 'custom');
