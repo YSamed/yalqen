@@ -1,14 +1,26 @@
 import type { Session } from 'electron';
 import { getDomain } from 'tldts';
 
-export function siteOf(url: string): string | null {
+function resolveSite(url: string, domains?: Map<string, string>): string | null {
   try {
     const { protocol, hostname } = new URL(url);
     if (!['http:', 'https:', 'ws:', 'wss:'].includes(protocol) || hostname === '') return null;
-    return getDomain(hostname) ?? hostname;
+    const cached = domains?.get(hostname);
+    if (cached !== undefined) return cached;
+    const site = getDomain(hostname) ?? hostname;
+    if (domains) {
+      // Bound retention even when a page requests many distinct hosts.
+      if (domains.size >= 256) domains.delete(domains.keys().next().value!);
+      domains.set(hostname, site);
+    }
+    return site;
   } catch {
     return null;
   }
+}
+
+export function siteOf(url: string): string | null {
+  return resolveSite(url);
 }
 
 export function isThirdParty(requestUrl: string, pageUrl: string): boolean {
@@ -51,14 +63,25 @@ export function setThirdPartyCookieBlocking(session: Session, enabled: boolean):
   }
   blocking.add(session);
   const existing = new Map<number, Set<string>>();
+  const domains = new Map<string, string>();
+  const pages = new WeakMap<Electron.WebContents, { url: string; site: string | null }>();
   const pageOf = (details: { webContents?: Electron.WebContents | null }) => {
     const contents = details.webContents;
-    return contents && !contents.isDestroyed() ? contents.getURL() : '';
+    if (!contents || contents.isDestroyed()) return null;
+    const url = contents.getURL();
+    if (!url) return null;
+    let page = pages.get(contents);
+    if (page?.url !== url) {
+      page = { url, site: resolveSite(url, domains) };
+      pages.set(contents, page);
+    }
+    return page;
   };
 
   webRequest.onBeforeSendHeaders((details, callback) => {
-    const page = pageOf(details);
-    if (details.resourceType === 'mainFrame' || !page || !isThirdParty(details.url, page)) {
+    const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
+    const request = page ? resolveSite(details.url, domains) : null;
+    if (!page || request === null || request === page.site) {
       callback({});
       return;
     }

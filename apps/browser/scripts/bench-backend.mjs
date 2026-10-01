@@ -16,6 +16,7 @@ const { HistoryStore } = await load('history');
 const { indexHistory, suggest } = await load('suggestions');
 const { matchRequestRule } = await load('request-rules');
 const { tabListOrder } = await load('tab-shortcuts');
+const { setThirdPartyCookieBlocking } = await load('third-party-cookies');
 
 const visits = Array.from({ length: 5000 }, (_, index) => ({
   id: String(index),
@@ -37,6 +38,27 @@ const tabs = Array.from({ length: 500 }, (_, index) => ({
 }));
 const opened = new Map(tabs.slice(0, 250).map(({ id }) => [id, '250']));
 let checksum = 0;
+const cookieListeners = {};
+const cookieSession = {
+  webRequest: Object.fromEntries(
+    ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [
+      name,
+      (listener) => {
+        cookieListeners[name] = listener;
+      },
+    ]),
+  ),
+  cookies: { remove: async () => {} },
+};
+setThirdPartyCookieBlocking(cookieSession, true);
+const cookiePage = { getURL: () => 'https://www.example.co.uk/articles/123', isDestroyed: () => false };
+const cookieRequests = Array.from({ length: 16 }, (_, index) => ({
+  id: index,
+  url: `https://cdn${index % 8}.${index < 8 ? 'example.co.uk' : 'tracker.net'}/resource/${index}`,
+  resourceType: 'script',
+  webContents: cookiePage,
+  requestHeaders: { Cookie: 'existing=1', Accept: '*/*' },
+}));
 
 function measure(name, iterations, run) {
   for (let index = 0; index < Math.min(iterations, 100); index++) run(index);
@@ -47,7 +69,7 @@ function measure(name, iterations, run) {
     samples.push((performance.now() - start) / iterations);
   }
   samples.sort((a, b) => a - b);
-  return { name, iterations, medianMs: Number(samples[3].toFixed(4)) };
+  return { name, iterations, medianMs: Number(samples[3].toFixed(6)) };
 }
 
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-backend-bench-'));
@@ -70,6 +92,13 @@ try {
     }),
     measure('tab ordering, 500 tabs, 250 opened pins', 2000, () => {
       checksum += tabListOrder(tabs, opened).length;
+    }),
+    measure('cookie classification, repeated page and 16 hosts', 20000, (index) => {
+      const details = cookieRequests[index % cookieRequests.length];
+      cookieListeners.onBeforeSendHeaders(details, (result) => {
+        checksum += Number(result.requestHeaders !== undefined);
+      });
+      cookieListeners.onCompleted(details);
     }),
   ];
 } finally {

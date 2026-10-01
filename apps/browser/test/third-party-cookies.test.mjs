@@ -59,3 +59,108 @@ test('request listeners are attached only while blocking is on', () => {
     ['onErrorOccurred', false],
   ]);
 });
+
+function fixture() {
+  const listeners = {};
+  const removed = [];
+  const session = {
+    webRequest: Object.fromEntries(
+      ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [
+        name,
+        (listener) => {
+          listeners[name] = listener;
+        },
+      ]),
+    ),
+    cookies: {
+      remove: async (url, name) => {
+        removed.push([url, name]);
+      },
+    },
+  };
+  let url = 'https://www.example.com/';
+  let destroyed = false;
+  const contents = { getURL: () => url, isDestroyed: () => destroyed };
+  cookies.setThirdPartyCookieBlocking(session, true);
+  const request = (requestUrl, extra = {}) => {
+    const details = {
+      id: 1,
+      url: requestUrl,
+      resourceType: 'script',
+      requestHeaders: { Cookie: 'old=1', Accept: '*/*' },
+      webContents: contents,
+      ...extra,
+    };
+    let response;
+    listeners.onBeforeSendHeaders(details, (value) => {
+      response = value;
+    });
+    return response;
+  };
+  return {
+    session,
+    listeners,
+    removed,
+    request,
+    navigate: (value) => {
+      url = value;
+    },
+    destroy: () => {
+      destroyed = true;
+    },
+  };
+}
+
+test('cached classification follows page navigation, schemes and unavailable contents', () => {
+  const f = fixture();
+  assert.deepEqual(f.request('https://cdn.example.com/a.js'), {});
+  assert.deepEqual(f.request('https://tracker.net/a.js'), { requestHeaders: { Accept: '*/*' } });
+  f.navigate('https://tracker.net/');
+  assert.deepEqual(f.request('https://tracker.net/b.js'), {});
+  assert.deepEqual(f.request('https://cdn.example.com/a.js'), { requestHeaders: { Accept: '*/*' } });
+  assert.deepEqual(f.request('file://cdn.example.com/a.js'), {});
+  assert.deepEqual(f.request('not a URL'), {});
+  assert.deepEqual(f.request('https://example.com/', { resourceType: 'mainFrame' }), {});
+  f.navigate('yalqen://newtab/');
+  assert.deepEqual(f.request('https://tracker.net/c.js'), { requestHeaders: { Accept: '*/*' } });
+  f.navigate('');
+  assert.deepEqual(f.request('https://tracker.net/c.js'), {});
+  f.navigate('https://example.com/');
+  assert.deepEqual(f.request('https://tracker.net/c.js', { webContents: null }), {});
+  f.destroy();
+  assert.deepEqual(f.request('https://tracker.net/c.js'), {});
+});
+
+test('blocking keeps existing cookie names, removes new response cookies and cleans failed requests', () => {
+  const f = fixture();
+  const url = 'https://tracker.net/p';
+  assert.deepEqual(f.request(url, { requestHeaders: { cOoKiE: 'old=1; keep=2', Other: 'x' } }), {
+    requestHeaders: { Other: 'x' },
+  });
+  f.listeners.onCompleted({ id: 1, url, responseHeaders: { 'Set-Cookie': ['old=2', 'keep=3', 'fresh=4; Path=/'] } });
+  assert.deepEqual(f.removed, [[url, 'fresh']]);
+  f.request(url, { id: 2 });
+  f.listeners.onErrorOccurred({ id: 2 });
+  f.listeners.onCompleted({ id: 2, url, responseHeaders: { 'Set-Cookie': ['unexpected=1'] } });
+  assert.equal(f.removed.length, 1);
+  f.request(url, { id: 3, requestHeaders: {} });
+  f.listeners.onCompleted({ id: 3, url, responseHeaders: { 'set-cookie': 'fresh=5' } });
+  assert.equal(f.removed.length, 2);
+});
+
+test('domain eviction and independently enabled sessions preserve classification', () => {
+  const a = fixture();
+  const b = fixture();
+  b.navigate('https://tracker.net/');
+  for (let index = 0; index < 600; index++) {
+    assert.deepEqual(a.request(`https://host${index}.example.com/`, { id: index + 10 }), {});
+  }
+  assert.deepEqual(a.request('https://tracker.net/p'), { requestHeaders: { Accept: '*/*' } });
+  assert.deepEqual(b.request('https://tracker.net/p'), {});
+  cookies.setThirdPartyCookieBlocking(a.session, false);
+  assert.equal(a.listeners.onBeforeSendHeaders, null);
+  a.navigate('https://tracker.net/');
+  cookies.setThirdPartyCookieBlocking(a.session, true);
+  assert.deepEqual(a.request('https://tracker.net/p'), {});
+  assert.deepEqual(a.request('https://example.com/p'), { requestHeaders: { Accept: '*/*' } });
+});
