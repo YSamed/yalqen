@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.23](https://github.com/YSamed/yalqen/compare/v0.2.22...v0.2.23) (2026-10-01)
+
+
+### Bug Fixes
+
+* keep window.opener for sign-in popups so google login completes ([44e4161](https://github.com/YSamed/yalqen/commit/44e416181fe38b5dd55e13e325aff397f9c7f0fe))
+
 ## [0.2.22](https://github.com/YSamed/yalqen/compare/v0.2.21...v0.2.22) (2026-10-01)
 
 
