@@ -142,6 +142,7 @@ export class YalqenWindow {
   private readonly preconnector: Preconnector;
   private layout: ChromeLayout = {
     panelWidth: 180,
+    panelSlide: 0,
     panelSide: 'left',
     chromeHeight: 44,
     pageInset: 8,
@@ -459,10 +460,16 @@ export class YalqenWindow {
   }
 
   setLayout(layout: ChromeLayout): void {
-    const changed = (Object.keys(layout) as (keyof ChromeLayout)[]).some((key) => layout[key] !== this.layout[key]);
-    if (changed) {
+    const changed = (Object.keys(layout) as (keyof ChromeLayout)[]).filter((key) => layout[key] !== this.layout[key]);
+    if (changed.length > 0) {
       this.layout = layout;
-      this.applyLayout();
+      // A sliding panel only moves the page, so it skips the window-wide relayout on every frame.
+      if (changed.length === 1 && changed[0] === 'panelSlide') {
+        const { width, height } = this.window.getContentBounds();
+        this.placePage(width, height);
+      } else {
+        this.applyLayout();
+      }
     }
     this.reveal();
   }
@@ -1036,13 +1043,17 @@ export class YalqenWindow {
     const { width, height } = this.window.getContentBounds();
     this.ui.setBounds({ x: 0, y: 0, width, height });
     this.commandBar.fitWindow(this.window);
-    const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
-    this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
-    this.tabs.setPageRadius(radius);
-    this.pageArea = bounds;
-    this.findBar.relayout(this.window);
+    this.tabs.setPageRadius(this.placePage(width, height));
     if (process.platform === 'darwin') {
       this.showWindowControls();
     }
+  }
+
+  private placePage(width: number, height: number): number {
+    const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
+    this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
+    this.pageArea = bounds;
+    this.findBar.relayout(this.window);
+    return radius;
   }
 }

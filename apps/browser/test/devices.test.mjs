@@ -95,7 +95,7 @@ test('the responsive frame is emulated as a desktop page', async () => {
 test('phone presets apply their own viewport and user agent', async () => {
   const cases = {
     'iphone-15-pro-max': { size: [430, 932], scaleFactor: 3, userAgent: /iPhone/, platform: 'iPhone' },
-    'galaxy-s24': { size: [360, 780], scaleFactor: 3, userAgent: /Android 14; SM-S921B/, platform: 'Linux armv8l' },
+    'galaxy-s24': { size: [360, 780], scaleFactor: 3, userAgent: /Android 10; K\)/, platform: 'Linux armv8l' },
   };
   for (const [deviceId, expected] of Object.entries(cases)) {
     const { commands, contents } = fakeContents();

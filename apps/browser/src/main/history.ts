@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JsonFile, LAZY_SAVE_DELAY_MS } from './json-file.js';
-import { indexHistory, type HistoryIndex } from './suggestions.js';
+import { indexHistory, searchKey, type HistoryIndex } from './suggestions.js';
 import { withoutHash } from './url.js';
 
 export const MAX_VISITS = 5000;
@@ -40,12 +40,12 @@ export class HistoryStore {
   }
 
   list(query = ''): HistoryEntry[] {
-    const term = query.trim().toLocaleLowerCase('tr').slice(0, 200);
+    const term = searchKey(query.trim()).slice(0, 200);
     if (!term) return [...this.entries];
     return this.entries.filter((entry) => {
       let cached = this.searchTexts.get(entry);
       if (!cached || cached.title !== entry.title || cached.url !== entry.url) {
-        cached = { title: entry.title, url: entry.url, text: `${entry.title} ${entry.url}`.toLocaleLowerCase('tr') };
+        cached = { title: entry.title, url: entry.url, text: searchKey(`${entry.title} ${entry.url}`) };
         this.searchTexts.set(entry, cached);
       }
       return cached.text.includes(term);

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.18](https://github.com/YSamed/yalqen/compare/v0.2.17...v0.2.18) (2026-10-01)
+
+
+### Features
+
+* center active tab in toolbar ([49bae3c](https://github.com/YSamed/yalqen/commit/49bae3cbb5a66738b73f7f277dc8af041ed5378d))
+
+
+### Bug Fixes
+
+* prefer unpinned tabs when closing tab ([4637a24](https://github.com/YSamed/yalqen/commit/4637a2463e063358a7c6f296dab475264b77a928))
+
 ## [0.2.17](https://github.com/YSamed/yalqen/compare/v0.2.16...v0.2.17) (2026-10-01)
 
 

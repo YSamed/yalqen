@@ -32,6 +32,12 @@ interface VisitText {
   host?: string;
 }
 
+// Folds I, İ, ı and i to "i" so Turkish and English typing find the same pages:
+// "insta" finds "Instagram" and "ısparta" finds "Isparta".
+export function searchKey(text: string): string {
+  return text.toLowerCase().replace(/i\u0307|ı/g, 'i');
+}
+
 // Stable bookmark snapshots and visits can reuse normalized text across keystrokes
 // and index rebuilds. Weak keys let removed pages disappear with their browsing data.
 const pageTexts = new WeakMap<PageTextSource, VisitText>();
@@ -39,7 +45,7 @@ const pageTexts = new WeakMap<PageTextSource, VisitText>();
 function textOf(page: PageTextSource): VisitText {
   let text = pageTexts.get(page);
   if (!text || text.title !== page.title || text.url !== page.url) {
-    const name = page.title.toLocaleLowerCase('tr');
+    const name = searchKey(page.title);
     text = { title: page.title, url: page.url, address: bareUrl(page.url), name, words: wordsOf(name) };
     pageTexts.set(page, text);
   }
@@ -63,7 +69,7 @@ export const MAX_SUGGESTIONS = 6;
 const KIND_ORDER: Record<AddressSuggestion['kind'], number> = { command: 0, tab: 1, bookmark: 2, history: 3 };
 
 function bareUrl(url: string): string {
-  return url.replace(/^[a-z][a-z\d+\-.]*:\/\/(www\.)?/i, '').toLocaleLowerCase('tr');
+  return searchKey(url.replace(/^[a-z][a-z\d+\-.]*:\/\/(www\.)?/i, ''));
 }
 
 function wordsOf(name: string): string[] {
@@ -79,7 +85,7 @@ function matchText(term: string, address: string, name: string, words: readonly 
 }
 
 function matchScore(term: string, title: string, url: string): number {
-  const name = title.toLocaleLowerCase('tr');
+  const name = searchKey(title);
   return matchText(term, bareUrl(url), name, wordsOf(name));
 }
 
@@ -128,7 +134,7 @@ function compareCandidates(a: Candidate, b: Candidate): number {
 }
 
 export function suggest(input: string, sources: SuggestionSources, limit = MAX_SUGGESTIONS): AddressSuggestion[] {
-  const term = input.trim().toLocaleLowerCase('tr').slice(0, 200);
+  const term = searchKey(input.trim()).slice(0, 200);
   const count = Math.max(0, Math.trunc(limit));
   if (term === '' || !count) return [];
   const byUrl = new Map<string, Candidate>();
