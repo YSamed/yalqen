@@ -193,14 +193,17 @@ async function translateGroup(
   fetchLike: FetchLike,
   group: readonly string[],
   target: PageLanguage,
-): Promise<{ texts: string[]; source: string | null }> {
+  isCancelled: () => boolean,
+): Promise<{ texts: string[]; source: string | null } | null> {
   const joined = await translateChunk(fetchLike, group.join(SEPARATOR), target);
+  if (isCancelled()) return null;
   const lines = joined.text.split(SEPARATOR);
   if (lines.length === group.length) return { texts: lines.map((line) => line.trim()), source: joined.source };
   // The engine merged or split lines, so the batch cannot be mapped back reliably; go one by one.
   const texts: string[] = [];
   let source = joined.source;
   for (const text of group) {
+    if (isCancelled()) return null;
     const single = await translateChunk(fetchLike, text, target);
     texts.push(single.text.replace(/\s+/g, ' ').trim());
     source ??= single.source;
@@ -214,26 +217,48 @@ export async function translateTexts(
   target: PageLanguage,
   isCancelled: () => boolean = () => false,
 ): Promise<{ texts: string[]; source: string | null }> {
-  const chunks = chunkTexts(texts);
-  const result = [...texts];
+  // Repeated labels and navigation text need only one translation per run. The
+  // index is local to this page/selection; no page text is cached across runs.
+  const unique: string[] = [];
+  const positions = new Map<string, number>();
+  const indices = texts.map((text) => {
+    let index = positions.get(text);
+    if (index === undefined) {
+      index = unique.length;
+      positions.set(text, index);
+      unique.push(text);
+    }
+    return index;
+  });
+  const chunks = chunkTexts(unique);
+  const result = [...unique];
   let source: string | null = null;
   let next = 0;
+  let failed = false;
+  const stopped = () => failed || isCancelled();
   const worker = async () => {
-    while (next < chunks.length && !isCancelled()) {
-      const indices = chunks[next++];
-      const group = await translateGroup(
-        fetchLike,
-        indices.map((index) => texts[index]),
-        target,
-      );
-      indices.forEach((index, position) => {
-        if (group.texts[position]) result[index] = group.texts[position];
-      });
-      source ??= group.source;
+    try {
+      while (next < chunks.length && !stopped()) {
+        const indices = chunks[next++];
+        const group = await translateGroup(
+          fetchLike,
+          indices.map((index) => unique[index]),
+          target,
+          stopped,
+        );
+        if (!group || stopped()) return;
+        indices.forEach((index, position) => {
+          if (group.texts[position]) result[index] = group.texts[position];
+        });
+        source ??= group.source;
+      }
+    } catch (error) {
+      failed = true;
+      throw error;
     }
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, chunks.length) }, worker));
-  return { texts: result, source };
+  return { texts: indices.map((index) => result[index]), source };
 }
 
 export async function detectLanguage(target: ScriptTarget): Promise<string | null> {

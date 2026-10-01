@@ -115,8 +115,30 @@ export async function downloadCrx(
   if (response.status === 204 || response.status === 404) throw new Error(t('chromeWebStore.notFound'));
   if (!response.ok) throw new Error(t('chromeWebStore.noResponse', { status: response.status }));
   const declared = Number(response.headers.get('content-length'));
-  if (declared > MAX_CRX_BYTES) throw new Error(t('chromeWebStore.tooLarge'));
-  const file = Buffer.from(await response.arrayBuffer());
-  if (file.length > MAX_CRX_BYTES) throw new Error(t('chromeWebStore.tooLarge'));
+  if (declared > MAX_CRX_BYTES) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new Error(t('chromeWebStore.tooLarge'));
+  }
+  const chunks: Buffer[] = [];
+  let size = 0;
+  const reader = response.body?.getReader();
+  if (reader) {
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_CRX_BYTES) throw new Error(t('chromeWebStore.tooLarge'));
+        chunks.push(Buffer.from(value));
+      }
+    } catch (error) {
+      // Do not keep downloading an oversized or failed response after rejecting it.
+      await reader.cancel().catch(() => undefined);
+      throw error;
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  const file = Buffer.concat(chunks, size);
   return { zip: crxPayload(file), key: crxPublicKey(file, id) };
 }

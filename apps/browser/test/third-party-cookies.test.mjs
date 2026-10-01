@@ -23,6 +23,14 @@ test('requests to another site are third party', () => {
   assert.equal(isThirdParty('data:text/plain,x', 'https://example.com/'), false);
 });
 
+test('private public suffixes keep hosted tenants separate', () => {
+  assert.equal(siteOf('https://alice.github.io/'), 'alice.github.io');
+  assert.equal(siteOf('https://static.alice.github.io/'), 'alice.github.io');
+  assert.equal(isThirdParty('https://bob.github.io/script.js', 'https://alice.github.io/'), true);
+  assert.equal(isThirdParty('https://static.alice.github.io/script.js', 'https://alice.github.io/'), false);
+  assert.equal(isThirdParty('https://first.blogspot.com/', 'https://second.blogspot.com/'), true);
+});
+
 test('cookie names are read from request and response headers', () => {
   assert.deepEqual(requestCookieNames('a=1; b=two=2;  c='), ['a', 'b', 'c']);
   assert.deepEqual(responseCookieNames(['id=9; Path=/; HttpOnly', ' x = 1 ', '=nameless']), ['id', 'x']);
@@ -146,6 +154,33 @@ test('blocking keeps existing cookie names, removes new response cookies and cle
   f.request(url, { id: 3, requestHeaders: {} });
   f.listeners.onCompleted({ id: 3, url, responseHeaders: { 'set-cookie': 'fresh=5' } });
   assert.equal(f.removed.length, 2);
+});
+
+test('cookie blocking distinguishes hosted tenants and follows tenant navigation', () => {
+  const f = fixture();
+  f.navigate('https://alice.github.io/');
+  assert.deepEqual(f.request('https://bob.github.io/script.js'), { requestHeaders: { Accept: '*/*' } });
+  assert.deepEqual(f.request('https://static.alice.github.io/script.js'), {});
+  f.navigate('https://bob.github.io/');
+  assert.deepEqual(f.request('https://bob.github.io/script.js'), {});
+  assert.deepEqual(f.request('https://alice.github.io/script.js'), { requestHeaders: { Accept: '*/*' } });
+});
+
+test('a third-party request redirected to the page site keeps first-party response cookies', () => {
+  const f = fixture();
+  f.request('https://tracker.net/redirect');
+  assert.deepEqual(f.request('https://www.example.com/final'), {});
+  f.listeners.onCompleted({
+    id: 1,
+    url: 'https://www.example.com/final',
+    responseHeaders: { 'Set-Cookie': ['first-party=1'] },
+  });
+  assert.deepEqual(f.removed, []);
+
+  f.request('https://www.example.com/redirect', { id: 2 });
+  f.request('https://tracker.net/final', { id: 2 });
+  f.listeners.onCompleted({ id: 2, url: 'https://tracker.net/final', responseHeaders: { 'Set-Cookie': ['fresh=1'] } });
+  assert.deepEqual(f.removed, [['https://tracker.net/final', 'fresh']]);
 });
 
 test('domain eviction and independently enabled sessions preserve classification', () => {

@@ -366,6 +366,7 @@ export class YalqenWindow {
     this.window.on('close', () => {
       app.onWindowClosing(this);
       nativeTheme.off('updated', this.pushState);
+      this.preconnector.cancel();
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
       this.commandBar.release(this.window);

@@ -235,6 +235,54 @@ test('only the most recent visits up to the history cap are imported', () => {
   assert.equal(visits.at(-1).url, 'https://site.example/10');
 });
 
+test('streamed history keeps the newest valid rows and preserves source order at the cap', () => {
+  const rows = Array.from({ length: MAX_VISITS + 1 }, (_, index) => visitRow(`https://same-time.example/${index}`));
+  rows.push(
+    visitRow('chrome://invalid/', BigInt(NEW_YEAR_WEBKIT) + 9000n),
+    visitRow('https://no-time.example/', 0n),
+    visitRow('https://newer.example/', BigInt(NEW_YEAR_WEBKIT) + 1000n),
+    visitRow('https://latest.example/', BigInt(NEW_YEAR_WEBKIT) + 5000n),
+    visitRow('https://middle.example/', BigInt(NEW_YEAR_WEBKIT) + 3000n),
+  );
+  const stream = function* () {
+    yield* rows;
+  };
+  const visits = parseChromiumHistory(stream());
+  assert.equal(visits.length, MAX_VISITS);
+  assert.deepEqual(
+    visits.slice(0, 3).map(({ url }) => url),
+    ['https://latest.example/', 'https://middle.example/', 'https://newer.example/'],
+  );
+  assert.deepEqual(
+    visits.slice(3).map(({ url }) => url),
+    rows.slice(0, MAX_VISITS - 3).map(({ url }) => url),
+  );
+  assert.deepEqual(
+    parseFirefoxHistory(
+      rows
+        .map(({ last_visit_time, ...row }) => ({
+          ...row,
+          last_visit_date: last_visit_time === 0n ? 0n : BigInt(last_visit_time) - 11_644_473_600_000_000n,
+        }))
+        [Symbol.iterator](),
+    ),
+    visits,
+  );
+});
+
+test('unsorted streamed histories match the newest visits selected from the complete source', () => {
+  const rows = Array.from({ length: MAX_VISITS * 4 }, (_, index) => ({
+    url: `https://site.example/${index}`,
+    title: `Visit ${index}`,
+    last_visit_time: BigInt(NEW_YEAR_WEBKIT) + BigInt(((index * 7919) % 1000) * 1000),
+  }));
+  const expected = rows
+    .map(({ url, title, last_visit_time }) => ({ url, title, visitedAt: webkitTimeToUnixMs(last_visit_time) }))
+    .sort((a, b) => b.visitedAt - a.visitedAt)
+    .slice(0, MAX_VISITS);
+  assert.deepEqual(parseChromiumHistory(rows[Symbol.iterator]()), expected);
+});
+
 function historyDb(file) {
   const db = new DatabaseSync(file);
   db.exec(`CREATE TABLE urls(id INTEGER PRIMARY KEY, url LONGVARCHAR, title LONGVARCHAR,

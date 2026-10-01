@@ -1252,6 +1252,7 @@ export class TabManager {
     listen('render-process-gone', () => {
       tab.history = this.captureHistory(tab);
       setImmediate(() => {
+        if (tab.view !== view || this.find(tab.id) !== tab) return;
         this.destroyView(tab);
         this.changed(true);
       });
@@ -1351,6 +1352,8 @@ export class TabManager {
   private destroyView(tab: Tab): void {
     const view = tab.view;
     if (!view) return;
+    tab.detachListeners?.();
+    tab.detachListeners = null;
     this.options.onHtmlFullScreenChange(tab.id, false);
     tab.view = null;
     tab.loading = false;

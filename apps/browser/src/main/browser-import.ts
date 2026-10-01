@@ -181,27 +181,69 @@ export async function importChromiumBookmarks(store: BookmarkStore, file: string
 // Chromium keeps one row per address with its latest visit; hidden rows are subframes the user never opened.
 const CHROMIUM_HISTORY_QUERY = 'SELECT url, title, last_visit_time FROM urls WHERE hidden = 0';
 
-export function parseChromiumHistory(rows: readonly ChromiumHistoryRow[]): ImportedVisit[] {
+export function parseChromiumHistory(rows: Iterable<ChromiumHistoryRow>): ImportedVisit[] {
   return newestWebVisits(rows, (row) => webkitTimeToUnixMs(row.last_visit_time));
 }
 
 function newestWebVisits<Row extends { url?: unknown; title?: unknown }>(
-  rows: readonly Row[],
+  rows: Iterable<Row>,
   visitedAt: (row: Row) => number | null,
 ): ImportedVisit[] {
-  return rows
-    .map((row) => ({
-      url: typeof row.url === 'string' ? row.url : '',
-      title: typeof row.title === 'string' ? row.title : '',
-      visitedAt: visitedAt(row),
-    }))
-    .filter((visit): visit is ImportedVisit => visit.visitedAt !== null && isWebUrl(visit.url))
-    .sort((a, b) => b.visitedAt - a.visitedAt)
-    .slice(0, MAX_VISITS);
+  type Candidate = { visit: ImportedVisit; order: number };
+  const newest: Candidate[] = [];
+  // The oldest retained visit is first; at equal times the last source row is
+  // replaced first, preserving the stable order of the original full-array sort.
+  const compare = (a: Candidate, b: Candidate) => a.visit.visitedAt - b.visit.visitedAt || b.order - a.order;
+  const siftDown = (start: number): void => {
+    let parent = start;
+    for (;;) {
+      const left = parent * 2 + 1;
+      if (left >= newest.length) return;
+      const right = left + 1;
+      const child = right < newest.length && compare(newest[right], newest[left]) < 0 ? right : left;
+      if (compare(newest[parent], newest[child]) <= 0) return;
+      [newest[parent], newest[child]] = [newest[child], newest[parent]];
+      parent = child;
+    }
+  };
+  let heap = false;
+  let order = 0;
+  for (const row of rows) {
+    const time = visitedAt(row);
+    if (time === null) continue;
+    if (newest.length === MAX_VISITS) {
+      // Small histories only need the final sort. Larger sources retain at most
+      // MAX_VISITS candidates instead of materializing and sorting every row.
+      if (!heap) {
+        for (let index = Math.floor(newest.length / 2) - 1; index >= 0; index--) siftDown(index);
+        heap = true;
+      }
+      // A later source row also loses an equal-time tie. Discard it before URL
+      // parsing and allocation once it cannot enter the retained results.
+      if (time <= newest[0].visit.visitedAt) continue;
+    }
+    const url = typeof row.url === 'string' ? row.url : '';
+    if (!isWebUrl(url)) continue;
+    const candidate = {
+      visit: { url, title: typeof row.title === 'string' ? row.title : '', visitedAt: time },
+      order: order++,
+    };
+    if (newest.length < MAX_VISITS) {
+      newest.push(candidate);
+      continue;
+    }
+    newest[0] = candidate;
+    siftDown(0);
+  }
+  return newest.sort((a, b) => compare(b, a)).map(({ visit }) => visit);
 }
 
 // The source browser may be running and writing, so SQLite only ever opens a private copy.
-async function querySqliteCopy(file: string, query: string): Promise<unknown[]> {
+async function querySqliteCopy<Result>(
+  file: string,
+  query: string,
+  read: (rows: Iterable<Record<string, unknown>>) => Result,
+): Promise<Result> {
   const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'yalqen-sqlite-'));
   try {
     const copy = path.join(dir, 'source.sqlite');
@@ -216,7 +258,7 @@ async function querySqliteCopy(file: string, query: string): Promise<unknown[]> 
     // Not read-only: a journal copied mid-write must be rolled back, and that only touches the copy.
     const db = new DatabaseSync(copy, { readBigInts: true });
     try {
-      return db.prepare(query).all();
+      return read(db.prepare(query).iterate());
     } catch (error) {
       // SQLITE_ERROR (missing table or column) and SQLITE_NOTADB mean some other kind of file.
       const errcode = (error as { errcode?: unknown } | null)?.errcode;
@@ -230,7 +272,7 @@ async function querySqliteCopy(file: string, query: string): Promise<unknown[]> 
 }
 
 export async function importChromiumHistory(store: HistoryStore, file: string): Promise<HistoryImportResult> {
-  const visits = parseChromiumHistory((await querySqliteCopy(file, CHROMIUM_HISTORY_QUERY)) as ChromiumHistoryRow[]);
+  const visits = await querySqliteCopy(file, CHROMIUM_HISTORY_QUERY, parseChromiumHistory);
   const added = store.importVisits(visits);
   return { visits: added, skipped: visits.length - added };
 }
@@ -313,7 +355,7 @@ export function parseFirefoxBookmarks(rows: readonly FirefoxBookmarkRow[]): Pars
 }
 
 export async function importFirefoxBookmarks(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
-  const parsed = parseFirefoxBookmarks((await querySqliteCopy(file, FIREFOX_BOOKMARKS_QUERY)) as FirefoxBookmarkRow[]);
+  const parsed = await querySqliteCopy(file, FIREFOX_BOOKMARKS_QUERY, (rows) => parseFirefoxBookmarks([...rows]));
   const added = store.importBookmarks(parsed.bookmarks);
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
@@ -321,12 +363,12 @@ export async function importFirefoxBookmarks(store: BookmarkStore, file: string)
 // Hidden rows are frames and redirect sources that Firefox leaves out of its own history.
 const FIREFOX_HISTORY_QUERY = 'SELECT url, title, last_visit_date FROM moz_places WHERE hidden = 0';
 
-export function parseFirefoxHistory(rows: readonly FirefoxHistoryRow[]): ImportedVisit[] {
+export function parseFirefoxHistory(rows: Iterable<FirefoxHistoryRow>): ImportedVisit[] {
   return newestWebVisits(rows, (row) => firefoxTimeToUnixMs(row.last_visit_date));
 }
 
 export async function importFirefoxHistory(store: HistoryStore, file: string): Promise<HistoryImportResult> {
-  const visits = parseFirefoxHistory((await querySqliteCopy(file, FIREFOX_HISTORY_QUERY)) as FirefoxHistoryRow[]);
+  const visits = await querySqliteCopy(file, FIREFOX_HISTORY_QUERY, parseFirefoxHistory);
   const added = store.importVisits(visits);
   return { visits: added, skipped: visits.length - added };
 }

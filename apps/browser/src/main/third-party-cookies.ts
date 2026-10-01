@@ -7,7 +7,9 @@ function resolveSite(url: string, domains?: Map<string, string>): string | null 
     if (!['http:', 'https:', 'ws:', 'wss:'].includes(protocol) || hostname === '') return null;
     const cached = domains?.get(hostname);
     if (cached !== undefined) return cached;
-    const site = getDomain(hostname) ?? hostname;
+    // Hosted tenants (for example alice.github.io and bob.github.io) are separate
+    // sites, even though their provider's suffix is in the PSL's private section.
+    const site = getDomain(hostname, { allowPrivateDomains: true }) ?? hostname;
     if (domains) {
       // Bound retention even when a page requests many distinct hosts.
       if (domains.size >= 256) domains.delete(domains.keys().next().value!);
@@ -79,6 +81,8 @@ export function setThirdPartyCookieBlocking(session: Session, enabled: boolean):
   };
 
   webRequest.onBeforeSendHeaders((details, callback) => {
+    // Redirects keep the request id; classification belongs to the current hop.
+    existing.delete(details.id);
     const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
     const request = page ? resolveSite(details.url, domains) : null;
     if (!page || request === null || request === page.site) {

@@ -87,6 +87,78 @@ test('a failing engine rejects', async () => {
   await assert.rejects(translateTexts(async () => ({ ok: false, json: async () => null }), ['a'], 'tr'));
 });
 
+test('duplicate texts are translated once and mapped back in their original order', async () => {
+  const requests = [];
+  const input = Array.from({ length: 120 }, (_, index) => (index % 2 ? 'Two' : 'One'));
+  const result = await translateTexts(
+    async (_url, init) => {
+      requests.push(decodeURIComponent(init.body.slice(2)));
+      return reply(['Bir', 'İki']);
+    },
+    input,
+    'tr',
+  );
+  assert.deepEqual(requests, ['One\nTwo']);
+  assert.deepEqual(
+    result.texts,
+    input.map((text) => (text === 'One' ? 'Bir' : 'İki')),
+  );
+
+  const again = await translateTexts(async () => reply(['Un', 'Deux'], 'fr'), ['One', 'Two'], 'en');
+  assert.deepEqual(again.texts, ['Un', 'Deux']);
+});
+
+test('cancellation stops line-by-line retries after a reshaped batch', async () => {
+  let cancelled = false;
+  let calls = 0;
+  const result = await translateTexts(
+    async () => {
+      calls++;
+      cancelled = true;
+      return reply(['merged']);
+    },
+    ['a', 'b'],
+    'tr',
+    () => cancelled,
+  );
+  assert.equal(calls, 1);
+  assert.deepEqual(result.texts, ['a', 'b']);
+});
+
+test('cancellation during a single retry stops the rest of the batch', async () => {
+  let calls = 0;
+  const result = await translateTexts(
+    async () => {
+      calls++;
+      return reply([calls === 1 ? 'merged' : 'translated']);
+    },
+    ['a', 'b', 'c'],
+    'tr',
+    () => calls >= 2,
+  );
+  assert.equal(calls, 2);
+  assert.deepEqual(result.texts, ['a', 'b', 'c']);
+});
+
+test('a failed worker prevents other workers from retrying or starting queued chunks', async () => {
+  const pending = [];
+  let calls = 0;
+  const result = translateTexts(
+    async () => {
+      calls++;
+      if (calls === 1) throw new Error('engine failed');
+      return new Promise((resolve) => pending.push(resolve));
+    },
+    Array.from({ length: 250 }, (_, index) => `text ${index}`),
+    'tr',
+  );
+  await assert.rejects(result, /engine failed/);
+  assert.equal(calls, 4);
+  pending.forEach((resolve) => resolve(reply(['merged'])));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls, 4);
+});
+
 test('a cancelled run applies nothing', async () => {
   const scripts = [];
   const target = {
