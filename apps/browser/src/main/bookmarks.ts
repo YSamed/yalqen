@@ -7,6 +7,7 @@ import { BOOKMARKS_URL } from '../shared/types.js';
 import { JsonFile } from './json-file.js';
 import { escapeHtml } from './html.js';
 import { searchFieldMarkup } from './search-field-markup.js';
+import { searchKey } from './suggestions.js';
 
 export interface Bookmark {
   id: string;
@@ -80,7 +81,7 @@ export class BookmarkStore {
   }
 
   bookmarks(query = ''): Bookmark[] {
-    const term = query.trim().toLocaleLowerCase('tr').slice(0, 200);
+    const term = searchKey(query.trim()).slice(0, 200);
     return this.bookmarkList
       .filter((bookmark) => {
         if (!term) return true;
@@ -89,7 +90,7 @@ export class BookmarkStore {
           cached = {
             title: bookmark.title,
             url: bookmark.url,
-            text: `${bookmark.title} ${bookmark.url}`.toLocaleLowerCase('tr'),
+            text: searchKey(`${bookmark.title} ${bookmark.url}`),
           };
           this.searchTexts.set(bookmark, cached);
         }
