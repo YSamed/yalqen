@@ -483,6 +483,11 @@
     justify-content: flex-end;
   }
 
+  .trailing :global(.capsule) {
+    gap: 6px;
+    padding: 3px 5px;
+  }
+
   .tab-group {
     display: flex;
     flex: 0 1 auto;
