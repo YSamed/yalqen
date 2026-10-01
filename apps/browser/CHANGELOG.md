@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.15](https://github.com/YSamed/yalqen/compare/v0.2.14...v0.2.15) (2026-10-01)
+
+
+### Performance
+
+* reduce main process search and tab update work ([#71](https://github.com/YSamed/yalqen/issues/71)) ([8b79c92](https://github.com/YSamed/yalqen/commit/8b79c92dd64f34a3dfc8924ae598f25f7d2471a3))
+
 ## [0.2.14](https://github.com/YSamed/yalqen/compare/v0.2.13...v0.2.14) (2026-09-30)
 
 
