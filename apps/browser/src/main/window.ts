@@ -214,7 +214,7 @@ export class YalqenWindow {
           input,
           suggest(input, {
             tabs: this.tabs.suggestionTabs(),
-            bookmarks: app.bookmarks.bookmarks(),
+            bookmarks: app.bookmarks.suggestions(),
             history: this.tabs.activeIsPrivate ? EMPTY_HISTORY_INDEX : app.history.index(),
           }),
         );
@@ -670,7 +670,7 @@ export class YalqenWindow {
         tabs.openDevTools();
         break;
       case 'open-dev-menu': {
-        const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
+        const tab = tabs.snapshotFor();
         if (!tab) break;
         this.popup(
           devMenuTemplate(tab, { run: (id) => this.runDevCommand(id), openDevTools: () => tabs.openDevTools() }),
@@ -772,7 +772,7 @@ export class YalqenWindow {
 
   private async openSiteInfo(): Promise<void> {
     const { tabs, app } = this;
-    const tab = tabs.state().tabs.find((item) => item.id === tabs.activeTabId);
+    const tab = tabs.snapshotFor();
     if (!tab) return;
     const origin = permissionOrigin(tab.url);
     const store = app.permissionsFor(tab.isPrivate);
@@ -864,7 +864,7 @@ export class YalqenWindow {
 
   private openTabMenu(id: TabId): void {
     const tabs = this.tabs;
-    const tab = tabs.state().tabs.find((candidate) => candidate.id === id);
+    const tab = tabs.snapshotFor(id);
     if (!tab) return;
     const pinnable = tab.pinned || (!tab.isPrivate && /^https?:/.test(tab.url));
     const template: Electron.MenuItemConstructorOptions[] = [];
@@ -890,7 +890,7 @@ export class YalqenWindow {
     const tabs = this.tabs;
     const history = contents.navigationHistory;
     const isPrivate = tabs.isPrivateContents(contents);
-    const translation = tabs.state().tabs.find((tab) => tab.id === tabs.activeTabId)?.translation;
+    const translation = tabs.snapshotFor()?.translation;
     const template = contextMenuTemplate(params, {
       translation:
         translation?.available && translation.status !== 'translating'

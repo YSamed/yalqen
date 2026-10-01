@@ -393,7 +393,7 @@ function startBrowser(): void {
       suggestions: (query) =>
         suggest(query, {
           tabs: [],
-          bookmarks: bookmarks.bookmarks(),
+          bookmarks: bookmarks.suggestions(),
           history: isPrivate ? EMPTY_HISTORY_INDEX : history.index(),
         }),
     });

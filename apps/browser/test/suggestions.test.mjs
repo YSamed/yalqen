@@ -113,6 +113,24 @@ test('rebuilding an index reuses visits while reflecting title, address, and ico
   assert.equal(indexHistory([visit]).favicons.get('new.example'), visit.faviconUrl);
 });
 
+test('suggestion text follows tab and bookmark title and address changes', () => {
+  const tab = { id: 'tab', title: 'İstanbul', url: 'https://old.example/' };
+  const bookmark = { title: 'Isparta', url: 'https://saved.example/' };
+  const sources = { tabs: [tab], bookmarks: [bookmark], history: indexHistory([]) };
+  assert.equal(suggestFrom('İSTANBUL', sources)[0].tabId, 'tab');
+  assert.equal(suggestFrom('ISPARTA', sources)[0].kind, 'bookmark');
+  tab.title = 'İzmir';
+  tab.url = 'https://new.example/';
+  bookmark.title = 'Ankara';
+  bookmark.url = 'https://next.example/';
+  assert.deepEqual(suggestFrom('istanbul', sources), []);
+  assert.deepEqual(suggestFrom('ısparta', sources), []);
+  assert.deepEqual(suggestFrom('old.example', sources), []);
+  assert.deepEqual(suggestFrom('saved.example', sources), []);
+  assert.equal(suggestFrom('İZMİR', sources)[0].url, tab.url);
+  assert.equal(suggestFrom('next.example', sources)[0].title, 'Ankara');
+});
+
 test('bounded ranking matches the full ordering across sources, frequencies, and ties', () => {
   const history = indexHistory(
     Array.from({ length: 1000 }, (_, index) => ({

@@ -133,6 +133,116 @@ test('header lines set values, empty values remove, invalid names are skipped', 
   ]);
 });
 
+test('prepared mock responses follow body edits, metadata edits, and replacement rules', () => {
+  const edited = rule({ pattern: 'https://api.test/*', action: 'mock', body: 'İlk yanıt 🌍' });
+  const reply = () => pausedRequestCommand([edited], paused('https://api.test/data'));
+  assert.equal(Buffer.from(reply().params.body, 'base64').toString(), 'İlk yanıt 🌍');
+  assert.equal(reply().params.body, Buffer.from(edited.body).toString('base64'));
+
+  edited.body = 'Yeni yanıt';
+  edited.status = 202;
+  edited.contentType = 'text/plain';
+  const updated = reply();
+  assert.equal(Buffer.from(updated.params.body, 'base64').toString(), 'Yeni yanıt');
+  assert.equal(updated.params.responseCode, 202);
+  assert.deepEqual(updated.params.responseHeaders[0], { name: 'Content-Type', value: 'text/plain' });
+
+  edited.body = '';
+  assert.equal(reply().params.body, '');
+  const replacement = rule({ id: edited.id, pattern: edited.pattern, action: 'mock', body: 'Replacement' });
+  assert.equal(
+    Buffer.from(pausedRequestCommand([replacement], paused('https://api.test/data')).params.body, 'base64').toString(),
+    'Replacement',
+  );
+});
+
+test('mock body cache evicts at its budget and follows Unicode edits after eviction', () => {
+  const rules = ['ğ', 'ş', 'ü'].map((character) =>
+    rule({ pattern: 'https://api.test/*', action: 'mock', body: character.repeat(1024 * 1024) }),
+  );
+  const changedBody = 'Yeni yanıt 🌍';
+  const encodings = new Map([...rules.map(({ body }) => body), changedBody].map((body) => [body, 0]));
+  const from = Buffer.from;
+  Buffer.from = (value, ...args) => {
+    if (encodings.has(value)) encodings.set(value, encodings.get(value) + 1);
+    return from(value, ...args);
+  };
+  try {
+    const reply = (selected) => pausedRequestCommand([selected], paused('https://api.test/data')).params.body;
+    const first = reply(rules[0]);
+    assert.equal(reply(rules[0]), first);
+    assert.equal(encodings.get(rules[0].body), 1);
+    reply(rules[1]);
+    reply(rules[2]);
+    // Three 1 Mi-character two-byte UTF-8 bodies exceed the 8 Mi-character Base64 budget.
+    assert.equal(reply(rules[0]), first);
+    assert.equal(encodings.get(rules[0].body), 2);
+    rules[0].body = changedBody;
+    assert.equal(from(reply(rules[0]), 'base64').toString(), changedBody);
+    assert.equal(from(reply(rules[0]), 'base64').toString(), changedBody);
+    assert.equal(encodings.get(changedBody), 1);
+    assert.equal(from(reply(rules[2]), 'base64').toString(), rules[2].body);
+    assert.equal(encodings.get(rules[2].body), 1);
+  } finally {
+    Buffer.from = from;
+  }
+});
+
+test('a mock body larger than the cache budget is returned without retaining it', () => {
+  const large = rule({ pattern: 'https://api.test/*', action: 'mock', body: 'ğ'.repeat(4 * 1024 * 1024) });
+  const from = Buffer.from;
+  let encodings = 0;
+  Buffer.from = (value, ...args) => {
+    if (value === large.body) encodings++;
+    return from(value, ...args);
+  };
+  try {
+    for (let index = 0; index < 2; index++) {
+      const response = pausedRequestCommand([large], paused('https://api.test/data'));
+      assert.equal(from(response.params.body, 'base64').toString(), large.body);
+    }
+    assert.equal(encodings, 2);
+  } finally {
+    Buffer.from = from;
+  }
+});
+
+test('prepared header edits follow source changes and do not share output objects between requests', () => {
+  const edited = rule({
+    pattern: 'https://api.test/*',
+    action: 'headers',
+    headers: 'X-A: first\nx-a: last\nCookie:\nInvalid Header: ignored',
+  });
+  const requestHeaders = { Accept: '*/*', Cookie: 'secret=1' };
+  const reply = () => pausedRequestCommand([edited], paused('https://api.test/data', requestHeaders));
+  const expected = [
+    { name: 'Accept', value: '*/*' },
+    { name: 'x-a', value: 'last' },
+  ];
+  const first = reply();
+  assert.deepEqual(first.params.headers, expected);
+  first.params.headers[0].value = 'changed original header';
+  first.params.headers[1].value = 'changed rule header';
+  first.params.headers.push({ name: 'Injected', value: 'unexpected' });
+  assert.deepEqual(reply().params.headers, expected);
+  assert.deepEqual(requestHeaders, { Accept: '*/*', Cookie: 'secret=1' });
+
+  edited.headers = 'Accept:\nCookie: public=2\nX-B: next';
+  assert.deepEqual(reply().params.headers, [
+    { name: 'Cookie', value: 'public=2' },
+    { name: 'X-B', value: 'next' },
+  ]);
+  edited.headers = '';
+  assert.deepEqual(reply().params.headers, [
+    { name: 'Accept', value: '*/*' },
+    { name: 'Cookie', value: 'secret=1' },
+  ]);
+  const replacement = rule({ id: edited.id, pattern: edited.pattern, action: 'headers', headers: 'X-C: replacement' });
+  assert.deepEqual(pausedRequestCommand([replacement], paused('https://api.test/data')).params.headers, [
+    { name: 'X-C', value: 'replacement' },
+  ]);
+});
+
 test('rules persist across restarts', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-rules-'));
   const store = new RequestRuleStore(directory);

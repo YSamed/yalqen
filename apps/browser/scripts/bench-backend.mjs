@@ -13,7 +13,8 @@ const { values } = parseArgs({
 });
 const load = async (name) => (await import(pathToFileURL(path.join(values['module-dir'], `${name}.js`)))).default;
 const { HistoryStore } = await load('history');
-const { indexHistory, suggest } = await load('suggestions');
+const { EMPTY_HISTORY_INDEX, indexHistory, suggest } = await load('suggestions');
+const { BookmarkStore, bookmarksMenuTemplate } = await load('bookmarks');
 const { matchRequestRule } = await load('request-rules');
 const { tabListOrder } = await load('tab-shortcuts');
 const { setThirdPartyCookieBlocking } = await load('third-party-cookies');
@@ -26,6 +27,19 @@ const visits = Array.from({ length: 5000 }, (_, index) => ({
   faviconUrl: `https://site${index % 400}.example/favicon.ico`,
 }));
 const sources = { tabs: [], bookmarks: [], history: indexHistory(visits) };
+const suggestionTabs = visits.slice(0, 500).map(({ id, title, url }) => ({ id, title, url }));
+const bookmarkFolders = Array.from({ length: 250 }, (_, index) => ({
+  id: String(index),
+  title: `Folder ${index}`,
+  createdAt: index,
+}));
+const bookmarkList = visits.map(({ id, url, title, visitedAt }) => ({
+  id,
+  url,
+  title,
+  folderId: Number(id) % 100 === 0 ? null : String(Number(id) % bookmarkFolders.length),
+  createdAt: visitedAt,
+}));
 const rules = Array.from({ length: 100 }, (_, index) => ({
   id: String(index),
   enabled: true,
@@ -76,7 +90,12 @@ const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-backend-bench-')
 let results;
 try {
   fs.writeFileSync(path.join(directory, 'history.json'), JSON.stringify(visits));
+  fs.writeFileSync(
+    path.join(directory, 'bookmarks.json'),
+    JSON.stringify({ version: 1, folders: bookmarkFolders, bookmarks: bookmarkList }),
+  );
   const store = new HistoryStore(directory);
+  const bookmarkStore = new BookmarkStore(directory);
   results = [
     measure('history search, 5000 visits', 500, (index) => {
       checksum += store.list(['article', 'site12', 'missing'][index % 3]).length;
@@ -86,6 +105,25 @@ try {
     }),
     measure('suggestions, broad match, 5000 pages', 1000, () => {
       checksum += suggest('article', sources).length;
+    }),
+    measure('suggestions, broad match, 500 fresh tabs per input', 500, () => {
+      // Match suggestionTabs() in production: every input receives new records.
+      const freshTabs = suggestionTabs.map(({ id, title, url }) => ({ id, title, url }));
+      checksum += suggest('article', { tabs: freshTabs, bookmarks: [], history: EMPTY_HISTORY_INDEX }).length;
+    }),
+    measure('bookmark search, 5000 bookmarks', 200, (index) => {
+      checksum += bookmarkStore.bookmarks(['article', 'site12', 'missing'][index % 3]).length;
+    }),
+    measure('bookmark suggestions, 5000 bookmarks', 200, (index) => {
+      checksum += suggest(['article', 'site12', 'missing'][index % 3], {
+        tabs: [],
+        // The fallback allows measuring an older build with the same harness.
+        bookmarks: bookmarkStore.suggestions?.() ?? bookmarkStore.bookmarks(),
+        history: sources.history,
+      }).length;
+    }),
+    measure('bookmark menu, 5000 bookmarks, 250 folders', 200, () => {
+      checksum += bookmarksMenuTemplate(bookmarkFolders, bookmarkList, { open() {}, showAll() {} }).length;
     }),
     measure('request rules, last of 100 matches', 5000, () => {
       checksum += Number(matchRequestRule(rules, 'https://api99.example/v1/users').id);

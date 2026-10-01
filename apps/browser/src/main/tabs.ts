@@ -215,6 +215,11 @@ export class TabManager {
     };
   }
 
+  snapshotFor(id: TabId | null = this.activeId): TabSnapshot | null {
+    const tab = id ? this.find(id) : undefined;
+    return tab ? this.snapshot(tab) : null;
+  }
+
   setPageLayout(bounds: Rectangle, newTabCenterOffset: number): void {
     const boundsChanged =
       bounds.x !== this.pageBounds.x ||

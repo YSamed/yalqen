@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import bookmarks from '../dist/main/bookmarks.js';
+import suggestions from '../dist/main/suggestions.js';
 
 const { BookmarkStore, bookmarksMenuTemplate, canBookmark, renderBookmarks } = bookmarks;
 
@@ -78,6 +79,72 @@ test('bookmarked addresses are known after every change', () => {
   });
 });
 
+test('suggestion snapshots are reused, immutable, and follow bookmark changes', () => {
+  withDir((dir) => {
+    const store = new BookmarkStore(dir);
+    const first = store.add('https://first.example/', 'İstanbul');
+    const snapshot = store.suggestions();
+    assert.equal(store.suggestions(), snapshot);
+    assert.deepEqual(snapshot, [{ title: 'İstanbul', url: first.url }]);
+    assert.throws(() => snapshot.push({ title: 'Injected', url: 'https://injected.example/' }), TypeError);
+    assert.throws(() => {
+      snapshot[0].title = 'Changed';
+    }, TypeError);
+
+    const publicCopy = store.bookmarks();
+    publicCopy[0].title = 'Changed';
+    publicCopy.push({ ...first, url: 'https://injected.example/' });
+    const found = store.find(first.url);
+    found.title = 'Changed';
+    assert.equal(store.suggestions(), snapshot);
+    assert.equal(store.find(first.url).title, 'İstanbul');
+
+    const suggest = (term) =>
+      suggestions.suggest(term, {
+        tabs: [],
+        bookmarks: store.suggestions(),
+        history: suggestions.EMPTY_HISTORY_INDEX,
+      });
+    assert.equal(suggest('İSTANBUL')[0].title, 'İstanbul');
+    store.rename(first.id, 'İzmir');
+    assert.notEqual(store.suggestions(), snapshot);
+    assert.deepEqual(suggest('istanbul'), []);
+    assert.equal(suggest('İZMİR')[0].title, 'İzmir');
+    assert.equal(snapshot[0].title, 'İstanbul');
+    const second = store.add('https://second.example/', 'Isparta');
+    assert.equal(suggest('ISPARTA')[0].url, second.url);
+    store.remove(second.id);
+    assert.deepEqual(suggest('ISPARTA'), []);
+    store.saveNow();
+    assert.deepEqual(new BookmarkStore(dir).suggestions(), [{ title: 'İzmir', url: first.url }]);
+  });
+});
+
+test('cached bookmark searches reflect renamed and removed entries', () => {
+  withDir((dir) => {
+    const store = new BookmarkStore(dir);
+    const first = store.add('https://first.example/', 'İstanbul');
+    const second = store.add('https://second.example/', 'Isparta');
+    assert.deepEqual(
+      store.bookmarks('İSTANBUL').map(({ id }) => id),
+      [first.id],
+    );
+    assert.deepEqual(
+      store.bookmarks('ISPARTA').map(({ id }) => id),
+      [second.id],
+    );
+    store.rename(first.id, 'İzmir');
+    assert.equal(store.bookmarks('istanbul').length, 0);
+    assert.deepEqual(
+      store.bookmarks('İZMİR').map(({ id }) => id),
+      [first.id],
+    );
+    store.remove(second.id);
+    assert.equal(store.bookmarks('ısparta').length, 0);
+    store.saveNow();
+  });
+});
+
 test('damaged entries are dropped and missing folders are cleared', () => {
   withDir((dir) => {
     fs.writeFileSync(
@@ -134,6 +201,44 @@ test('the menu lists folders, then loose bookmarks', () => {
   items[4].click();
   assert.deepEqual(opened, ['https://a.com/', 'https://b.com/', 'all']);
   assert.equal(bookmarksMenuTemplate([], [], {})[0].label, 'Henüz yer imi yok');
+});
+
+test('folder grouping preserves folder, bookmark, and loose entry order', () => {
+  const folders = [
+    { id: 'b', title: 'Folder B', createdAt: 2 },
+    { id: 'a', title: 'Folder A', createdAt: 1 },
+  ];
+  const list = [
+    { id: '1', title: 'A first', url: 'https://a1.example/', folderId: 'a', createdAt: 1 },
+    { id: '2', title: 'Loose first', url: 'https://loose1.example/', folderId: null, createdAt: 2 },
+    { id: '3', title: 'B first', url: 'https://b1.example/', folderId: 'b', createdAt: 3 },
+    { id: '4', title: 'A second', url: 'https://a2.example/', folderId: 'a', createdAt: 4 },
+    { id: '5', title: 'Loose second', url: 'https://loose2.example/', folderId: null, createdAt: 5 },
+  ];
+  const menu = bookmarksMenuTemplate(folders, list, { open() {}, showAll() {} });
+  assert.deepEqual(
+    menu.slice(0, 4).map(({ label }) => label),
+    ['Folder B', 'Folder A', 'Loose first', 'Loose second'],
+  );
+  assert.deepEqual(
+    menu[0].submenu.map(({ label }) => label),
+    ['B first'],
+  );
+  assert.deepEqual(
+    menu[1].submenu.map(({ label }) => label),
+    ['A first', 'A second'],
+  );
+  const html = renderBookmarks(folders, list, '');
+  const positions = [
+    '<h2>Folder B</h2>',
+    '<strong>B first</strong>',
+    '<h2>Folder A</h2>',
+    '<strong>A first</strong>',
+    '<strong>A second</strong>',
+    '<strong>Loose first</strong>',
+    '<strong>Loose second</strong>',
+  ].map((marker) => html.indexOf(marker));
+  assert.ok(positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])));
 });
 
 test('the page escapes content and points its forms at commands', () => {
