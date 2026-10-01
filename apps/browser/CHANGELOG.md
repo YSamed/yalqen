@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.19](https://github.com/YSamed/yalqen/compare/v0.2.18...v0.2.19) (2026-10-01)
+
+
+### Features
+
+* add english interface that follows the system language ([#82](https://github.com/YSamed/yalqen/issues/82)) ([04557d5](https://github.com/YSamed/yalqen/commit/04557d52b6f57fe6340ecc976c424d5891fb6fb5))
+* add iphone 16 pro and pixel 9 device presets ([#90](https://github.com/YSamed/yalqen/issues/90)) ([7adecc0](https://github.com/YSamed/yalqen/commit/7adecc0fdae5d43a82639ea3ecff061b5b5be142)), closes [#56](https://github.com/YSamed/yalqen/issues/56)
+* add kagi as a built-in search engine ([#88](https://github.com/YSamed/yalqen/issues/88)) ([d28798d](https://github.com/YSamed/yalqen/commit/d28798d9650543fa795260afb4a386f297d4e540)), closes [#55](https://github.com/YSamed/yalqen/issues/55)
+* import bookmarks and history from firefox ([#95](https://github.com/YSamed/yalqen/issues/95)) ([87b6607](https://github.com/YSamed/yalqen/commit/87b660716acc10774de8c6d77f83a6fe77bccded))
+* import bookmarks from chrome, brave and edge ([87b6607](https://github.com/YSamed/yalqen/commit/87b660716acc10774de8c6d77f83a6fe77bccded))
+* import history from chrome, brave and edge ([87b6607](https://github.com/YSamed/yalqen/commit/87b660716acc10774de8c6d77f83a6fe77bccded))
+* radix-style switches and selects in settings ([#81](https://github.com/YSamed/yalqen/issues/81)) ([5eb1937](https://github.com/YSamed/yalqen/commit/5eb1937df7f755adb66eb653e0b53caeda055ee5))
+
+
+### Bug Fixes
+
+* keep the page attached to the sidebar while it animates ([#91](https://github.com/YSamed/yalqen/issues/91)) ([6283958](https://github.com/YSamed/yalqen/commit/628395897574d50bbfa9715e8f1008cb8839b326))
+* match dotted and dotless i in history, bookmark and address bar search ([#83](https://github.com/YSamed/yalqen/issues/83)) ([a034576](https://github.com/YSamed/yalqen/commit/a0345769a5f3b757e5549994173f4ab0f5cd3243))
+
 ## [0.2.18](https://github.com/YSamed/yalqen/compare/v0.2.17...v0.2.18) (2026-10-01)
 
 
