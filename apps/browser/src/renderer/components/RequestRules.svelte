@@ -75,11 +75,7 @@
         aria-label="Kural {index + 1} adres kalıbı"
         invalid={rule.enabled && rule.pattern.trim() === ''}
       />
-      <Select bind:value={rule.action} aria-label="Kural {index + 1} işlemi">
-        {#each ACTIONS as action (action.value)}
-          <option value={action.value}>{action.label}</option>
-        {/each}
-      </Select>
+      <Select options={ACTIONS} bind:value={rule.action} aria-label="Kural {index + 1} işlemi" />
       <IconButton
         icon="close"
         tone="muted"

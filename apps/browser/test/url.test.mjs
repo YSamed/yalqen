@@ -41,6 +41,7 @@ test('other text is searched with the selected engine', () => {
     brave: 'https://search.brave.com/search?q=hava%20durumu',
     ecosia: 'https://www.ecosia.org/search?q=hava%20durumu',
     startpage: 'https://www.startpage.com/do/search?q=hava%20durumu',
+    kagi: 'https://kagi.com/search?q=hava%20durumu',
   };
   assert.deepEqual(SEARCH_ENGINES.map((engine) => engine.id).sort(), Object.keys(cases).sort());
   for (const [id, expected] of Object.entries(cases)) {
