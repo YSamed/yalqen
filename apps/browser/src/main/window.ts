@@ -26,6 +26,14 @@ import {
   type WindowMaterial,
 } from '../shared/types.js';
 import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
+import {
+  chromiumProfiles,
+  firefoxProfiles,
+  historyImportMenu,
+  importErrorMessage,
+  type BookmarkImportResult,
+  type HistoryImportResult,
+} from './browser-import.js';
 import type { CertificateExceptions } from './certificates.js';
 import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
@@ -95,6 +103,8 @@ export interface AppContext {
   downloadsChanged(): void;
   toggleBookmark(url: string, title: string): void;
   runBookmarksCommand(command: string, params: URLSearchParams): void;
+  importBookmarks(file: string): Promise<BookmarkImportResult>;
+  importHistory(file: string): Promise<HistoryImportResult>;
   runDownloadsCommand(command: string, params: URLSearchParams): void;
   updateSettings(patch: unknown): void;
   pendingUpdate(): PendingUpdate | null;
@@ -132,6 +142,7 @@ export class YalqenWindow {
   private readonly preconnector: Preconnector;
   private layout: ChromeLayout = {
     panelWidth: 180,
+    panelSlide: 0,
     panelSide: 'left',
     chromeHeight: 44,
     pageInset: 8,
@@ -449,10 +460,16 @@ export class YalqenWindow {
   }
 
   setLayout(layout: ChromeLayout): void {
-    const changed = (Object.keys(layout) as (keyof ChromeLayout)[]).some((key) => layout[key] !== this.layout[key]);
-    if (changed) {
+    const changed = (Object.keys(layout) as (keyof ChromeLayout)[]).filter((key) => layout[key] !== this.layout[key]);
+    if (changed.length > 0) {
       this.layout = layout;
-      this.applyLayout();
+      // A sliding panel only moves the page, so it skips the window-wide relayout on every frame.
+      if (changed.length === 1 && changed[0] === 'panelSlide') {
+        const { width, height } = this.window.getContentBounds();
+        this.placePage(width, height);
+      } else {
+        this.applyLayout();
+      }
     }
     this.reveal();
   }
@@ -612,6 +629,66 @@ export class YalqenWindow {
     }
   }
 
+  private async importBookmarks(file?: string): Promise<void> {
+    if (!file) {
+      const { canceled, filePaths } = await dialog.showOpenDialog(this.window, {
+        title: 'Yer imi dosyasını seçin',
+        buttonLabel: 'İçe aktar',
+        defaultPath: app.getPath('appData'),
+        properties: ['openFile'],
+      });
+      if (canceled || !filePaths[0]) return;
+      file = filePaths[0];
+    }
+    try {
+      const { bookmarks, folders, skipped } = await this.app.importBookmarks(file);
+      const details = [
+        folders > 0 ? `${folders} yeni klasör oluşturuldu.` : '',
+        skipped > 0 ? `${skipped} yer imi zaten vardı ya da desteklenmiyor, atlandı.` : '',
+      ];
+      void dialog.showMessageBox(this.window, {
+        type: 'info',
+        message: bookmarks > 0 ? `${bookmarks} yer imi içe aktarıldı.` : 'İçe aktarılacak yeni yer imi bulunamadı.',
+        detail: details.filter(Boolean).join(' '),
+      });
+    } catch (error) {
+      console.warn('[bookmarks] could not import:', error);
+      void dialog.showMessageBox(this.window, {
+        type: 'error',
+        message: 'Yer imleri içe aktarılamadı.',
+        detail: importErrorMessage(error),
+      });
+    }
+  }
+
+  private async importHistory(file?: string): Promise<void> {
+    if (!file) {
+      const { canceled, filePaths } = await dialog.showOpenDialog(this.window, {
+        title: 'Geçmiş dosyasını seçin',
+        buttonLabel: 'İçe aktar',
+        defaultPath: app.getPath('appData'),
+        properties: ['openFile'],
+      });
+      if (canceled || !filePaths[0]) return;
+      file = filePaths[0];
+    }
+    try {
+      const { visits, skipped } = await this.app.importHistory(file);
+      void dialog.showMessageBox(this.window, {
+        type: 'info',
+        message: visits > 0 ? `${visits} ziyaret içe aktarıldı.` : 'İçe aktarılacak yeni ziyaret bulunamadı.',
+        detail: skipped > 0 ? `${skipped} ziyaret zaten vardı ya da çok eski olduğu için atlandı.` : '',
+      });
+    } catch (error) {
+      console.warn('[history] could not import:', error);
+      void dialog.showMessageBox(this.window, {
+        type: 'error',
+        message: 'Geçmiş içe aktarılamadı.',
+        detail: importErrorMessage(error, 'Geçmiş'),
+      });
+    }
+  }
+
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
     if (page && canViewSource(page.url)) clipboard.writeText(formatAddress(format, page.url, page.title));
   }
@@ -739,10 +816,20 @@ export class YalqenWindow {
         break;
       }
       case 'open-bookmarks-menu': {
-        const template = bookmarksMenuTemplate(app.bookmarks.folders(), app.bookmarks.bookmarks(), {
-          open: (url) => tabs.navigate(url),
-          showAll: () => tabs.openBookmarks(),
-        });
+        const firefox = firefoxProfiles();
+        const template = bookmarksMenuTemplate(
+          app.bookmarks.folders(),
+          app.bookmarks.bookmarks(),
+          {
+            open: (url) => tabs.navigate(url),
+            showAll: () => tabs.openBookmarks(),
+            importFrom: (file) => void this.importBookmarks(file),
+          },
+          [...chromiumProfiles('Bookmarks'), ...firefox],
+        );
+        template.push(
+          historyImportMenu([...chromiumProfiles('History'), ...firefox], (file) => void this.importHistory(file)),
+        );
         this.popup(template);
         break;
       }
@@ -956,13 +1043,17 @@ export class YalqenWindow {
     const { width, height } = this.window.getContentBounds();
     this.ui.setBounds({ x: 0, y: 0, width, height });
     this.commandBar.fitWindow(this.window);
-    const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
-    this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
-    this.tabs.setPageRadius(radius);
-    this.pageArea = bounds;
-    this.findBar.relayout(this.window);
+    this.tabs.setPageRadius(this.placePage(width, height));
     if (process.platform === 'darwin') {
       this.showWindowControls();
     }
+  }
+
+  private placePage(width: number, height: number): number {
+    const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
+    this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
+    this.pageArea = bounds;
+    this.findBar.relayout(this.window);
+    return radius;
   }
 }
