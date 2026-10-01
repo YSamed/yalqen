@@ -95,6 +95,8 @@ test('the responsive frame is emulated as a desktop page', async () => {
 test('phone presets apply their own viewport and user agent', async () => {
   const cases = {
     'iphone-15-pro-max': { size: [430, 932], scaleFactor: 3, userAgent: /iPhone/, platform: 'iPhone' },
+    'iphone-16-pro': { size: [402, 874], scaleFactor: 3, userAgent: /iPhone/, platform: 'iPhone' },
+    'pixel-9': { size: [412, 924], scaleFactor: 2.625, userAgent: /Android/, platform: 'Linux armv8l' },
     'galaxy-s24': { size: [360, 780], scaleFactor: 3, userAgent: /Android 10; K\)/, platform: 'Linux armv8l' },
   };
   for (const [deviceId, expected] of Object.entries(cases)) {
@@ -117,4 +119,6 @@ test('every device id resolves to its own preset', () => {
   assert.equal(new Set(devices.DEVICES.map((device) => device.id)).size, devices.DEVICES.length);
   assert.equal(devices.findDevice('galaxy-s24').label, 'Galaxy S24');
   assert.equal(devices.findDevice('iphone-15-pro-max').label, 'iPhone 15 Pro Max');
+  assert.equal(devices.findDevice('iphone-16-pro').label, 'iPhone 16 Pro');
+  assert.equal(devices.findDevice('pixel-9').label, 'Pixel 9');
 });

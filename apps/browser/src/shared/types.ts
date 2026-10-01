@@ -46,7 +46,15 @@ export interface TabSnapshot {
 }
 
 export type DeviceId =
-  'iphone-15' | 'iphone-15-pro-max' | 'iphone-se' | 'pixel-8' | 'galaxy-s24' | 'ipad-mini' | 'responsive';
+  | 'iphone-15'
+  | 'iphone-15-pro-max'
+  | 'iphone-16-pro'
+  | 'iphone-se'
+  | 'pixel-8'
+  | 'pixel-9'
+  | 'galaxy-s24'
+  | 'ipad-mini'
+  | 'responsive';
 
 export interface DeviceFrame {
   label: string;
