@@ -12,6 +12,7 @@
   import IconButton from './components/ui/IconButton.svelte';
   import SegmentedControl from './components/ui/SegmentedControl.svelte';
   import Select from './components/ui/Select.svelte';
+  import Switch from './components/ui/Switch.svelte';
   import TextField from './components/ui/TextField.svelte';
 
   const api = window.yalqenSettings;
@@ -51,14 +52,6 @@
     { value: 'left', label: 'Sol' },
     { value: 'right', label: 'Sağ' },
   ] as const;
-  const onOffOptions = [
-    { value: true, label: 'Açık' },
-    { value: false, label: 'Kapalı' },
-  ] as const;
-  const visibilityOptions = [
-    { value: true, label: 'Görünür' },
-    { value: false, label: 'Gizli' },
-  ] as const;
   const toolbarTabOptions = [
     { value: true, label: 'Tüm sekmeler' },
     { value: false, label: 'Yalnızca açık sayfa' },
@@ -94,7 +87,10 @@
     { value: 'large', label: 'Büyük' },
     { value: 'xlarge', label: 'Çok büyük' },
   ] as const;
-  const zoomOptions = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
+  const zoomOptions = [0.8, 0.9, 1, 1.1, 1.25, 1.5].map((factor) => ({
+    value: factor,
+    label: `%${Math.round(factor * 100)}`,
+  }));
   const languageOptions = [
     { value: 'tr', label: 'Türkçe' },
     { value: 'en', label: 'English' },
@@ -143,6 +139,10 @@
 
   const values = $derived(view?.values);
   const isCustom = $derived(values?.searchEngine === 'custom');
+  const engineOptions = $derived([
+    ...(view?.engines ?? []).map((engine) => ({ value: engine.id, label: engine.label })),
+    { value: 'custom' as const, label: 'Özel' },
+  ]);
   const templateInvalid = $derived(isCustom && !!values?.customSearchTemplate && !view?.customTemplateValid);
 
   $effect(() => {
@@ -240,15 +240,10 @@
             </label>
             <Select
               id="engine"
+              options={engineOptions}
               value={values.searchEngine}
-              onchange={(event) =>
-                update({ searchEngine: event.currentTarget.value as SettingsValues['searchEngine'] })}
-            >
-              {#each view.engines as engine (engine.id)}
-                <option value={engine.id}>{engine.label}</option>
-              {/each}
-              <option value="custom">Özel</option>
-            </Select>
+              onchange={(value) => update({ searchEngine: value })}
+            />
           </div>
           {#if isCustom}
             <div class="row stacked">
@@ -295,14 +290,10 @@
             </span>
             <Select
               aria-label="Tarayıcı açıldığında"
+              options={startupOptions}
               value={values.startupBehavior}
-              onchange={(event) =>
-                update({ startupBehavior: event.currentTarget.value as SettingsValues['startupBehavior'] })}
-            >
-              {#each startupOptions as option (option.value)}
-                <option value={option.value}>{option.label}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ startupBehavior: value })}
+            />
           </div>
 
           <h2>Dil</h2>
@@ -326,11 +317,10 @@
                 düğmeye bastığınızda.
               </span>
             </span>
-            <SegmentedControl
+            <Switch
               label="Sayfa çevirisi"
-              options={onOffOptions}
-              value={values.pageTranslation}
-              onchange={(value) => update({ pageTranslation: value })}
+              checked={values.pageTranslation}
+              onchange={(checked) => update({ pageTranslation: checked })}
             />
           </div>
 
@@ -366,11 +356,10 @@
                 gönderilmez.
               </span>
             </span>
-            <SegmentedControl
+            <Switch
               label="Güncellemeleri otomatik denetle"
-              options={onOffOptions}
-              value={values.autoUpdate}
-              onchange={(value) => update({ autoUpdate: value })}
+              checked={values.autoUpdate}
+              onchange={(checked) => update({ autoUpdate: checked })}
             />
           </div>
         {:else if pane === 'appearance'}
@@ -393,13 +382,10 @@
             </label>
             <Select
               id="font-size"
+              options={fontSizeOptions}
               value={values.fontSize}
-              onchange={(event) => update({ fontSize: event.currentTarget.value as SettingsValues['fontSize'] })}
-            >
-              {#each fontSizeOptions as option (option.value)}
-                <option value={option.value}>{option.label}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ fontSize: value })}
+            />
           </div>
           <div class="row">
             <label for="default-zoom" class="label">
@@ -408,22 +394,18 @@
             </label>
             <Select
               id="default-zoom"
+              options={zoomOptions}
               value={values.defaultZoom}
-              onchange={(event) => update({ defaultZoom: Number(event.currentTarget.value) })}
-            >
-              {#each zoomOptions as factor (factor)}
-                <option value={factor}>%{Math.round(factor * 100)}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ defaultZoom: value })}
+            />
           </div>
           <h2>Menüler</h2>
           <div class="row">
             <span class="label">Yan menü</span>
-            <SegmentedControl
+            <Switch
               label="Yan menü görünürlüğü"
-              options={visibilityOptions}
-              value={values.sidebarVisible}
-              onchange={(value) => update({ sidebarVisible: value })}
+              checked={values.sidebarVisible}
+              onchange={(checked) => update({ sidebarVisible: checked })}
             />
           </div>
           <div class="row">
@@ -431,11 +413,10 @@
               <span>Üst menü</span>
               <span class="hint">İki menü gizliyken Görünüm menüsünden yeniden açabilirsiniz.</span>
             </span>
-            <SegmentedControl
+            <Switch
               label="Üst menü görünürlüğü"
-              options={visibilityOptions}
-              value={values.toolbarVisible}
-              onchange={(value) => update({ toolbarVisible: value })}
+              checked={values.toolbarVisible}
+              onchange={(checked) => update({ toolbarVisible: checked })}
             />
           </div>
           <div class="row">
@@ -518,11 +499,10 @@
                 geçerli olur.</span
               >
             </span>
-            <SegmentedControl
+            <Switch
               label="Reklam engelleyici"
-              options={onOffOptions}
-              value={values.adBlocking}
-              onchange={(value) => update({ adBlocking: value })}
+              checked={values.adBlocking}
+              onchange={(checked) => update({ adBlocking: checked })}
             />
           </div>
 
@@ -534,11 +514,10 @@
                 ve IP adresleri hariç.</span
               >
             </span>
-            <SegmentedControl
+            <Switch
               label="Yalnızca HTTPS"
-              options={onOffOptions}
-              value={values.httpsOnly}
-              onchange={(value) => update({ httpsOnly: value })}
+              checked={values.httpsOnly}
+              onchange={(checked) => update({ httpsOnly: checked })}
             />
           </div>
           <div class="row">
@@ -549,11 +528,10 @@
                 açma ve yorum alanları çalışmayabilir.</span
               >
             </span>
-            <SegmentedControl
+            <Switch
               label="Üçüncü taraf çerezleri engelle"
-              options={onOffOptions}
-              value={values.blockThirdPartyCookies}
-              onchange={(value) => update({ blockThirdPartyCookies: value })}
+              checked={values.blockThirdPartyCookies}
+              onchange={(checked) => update({ blockThirdPartyCookies: checked })}
             />
           </div>
           <div class="row">
@@ -561,11 +539,10 @@
               <span>İndirmeden önce sor</span>
               <span class="hint">Bir site dosya indirmeye başlamadan önce onayınızı ister.</span>
             </span>
-            <SegmentedControl
+            <Switch
               label="İndirmeden önce sor"
-              options={onOffOptions}
-              value={values.askBeforeDownload}
-              onchange={(value) => update({ askBeforeDownload: value })}
+              checked={values.askBeforeDownload}
+              onchange={(checked) => update({ askBeforeDownload: checked })}
             />
           </div>
           <div class="row">
@@ -577,13 +554,10 @@
             </label>
             <Select
               id="secure-dns"
+              options={dnsOptions}
               value={values.secureDns}
-              onchange={(event) => update({ secureDns: event.currentTarget.value as SettingsValues['secureDns'] })}
-            >
-              {#each dnsOptions as option (option.value)}
-                <option value={option.value}>{option.label}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ secureDns: value })}
+            />
           </div>
           <h2>Tarama verileri</h2>
           <div class="row stacked">
@@ -595,11 +569,12 @@
               >
             </span>
             <div class="clear">
-              <Select aria-label="Zaman aralığı" bind:value={clearRange} onchange={() => (cleared = false)}>
-                {#each rangeOptions as option (option.value)}
-                  <option value={option.value}>{option.label}</option>
-                {/each}
-              </Select>
+              <Select
+                aria-label="Zaman aralığı"
+                options={rangeOptions}
+                bind:value={clearRange}
+                onchange={() => (cleared = false)}
+              />
               {#each clearOptions as option (option.key)}
                 <label class="check">
                   <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
@@ -629,11 +604,10 @@
                 >Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.</span
               >
             </span>
-            <SegmentedControl
+            <Switch
               label="Arka plan sekmelerini dondur"
-              options={onOffOptions}
-              value={values.freezeBackgroundTabs}
-              onchange={(value) => update({ freezeBackgroundTabs: value })}
+              checked={values.freezeBackgroundTabs}
+              onchange={(checked) => update({ freezeBackgroundTabs: checked })}
             />
           </div>
           <div class="row">
