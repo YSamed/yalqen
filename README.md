@@ -26,7 +26,8 @@
     <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Website</a> ·
     <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
     <a href="CONTRIBUTING.md">Contribute</a> ·
-    <a href="README.tr.md">Türkçe</a>
+    <a href="README.tr.md">Türkçe</a> ·
+    <a href="README.zh-CN.md">简体中文</a>
   </p>
 </div>
 
