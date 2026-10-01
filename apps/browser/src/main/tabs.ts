@@ -372,15 +372,17 @@ export class TabManager {
 
     if (this.activeId === id) {
       this.activeId = null;
-      const neighbor = this.tabs[Math.min(index, this.tabs.length - 1)];
-      if (neighbor) {
-        this.activate(neighbor.id);
-      } else {
-        this.open();
-      }
+      this.activateUnpinnedNear(index);
       return;
     }
     this.changed(true);
+  }
+
+  private activateUnpinnedNear(index: number): void {
+    const others = [...this.tabs.slice(index), ...this.tabs.slice(0, index).reverse()];
+    const next = others.find((item) => !item.pinnedUrl);
+    if (next) this.activate(next.id);
+    else this.open();
   }
 
   reopenClosed(): void {
@@ -485,11 +487,7 @@ export class TabManager {
       this.changed(true);
       return;
     }
-    const index = this.indexOf(tab.id);
-    const others = [...this.tabs.slice(index + 1), ...this.tabs.slice(0, index).reverse()];
-    const next = others.find((item) => !item.pinnedUrl) ?? others[0];
-    if (next) this.activate(next.id);
-    else this.open();
+    this.activateUnpinnedNear(this.indexOf(tab.id) + 1);
   }
 
   blockedPopups(): string[] {
