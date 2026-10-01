@@ -27,6 +27,7 @@
     pendingUpdate,
     leadingInset,
     trailingInset,
+    centerOffset,
     trailingOverhang = 0,
     trailingWidth,
   }: {
@@ -42,12 +43,17 @@
     pendingUpdate: PendingUpdate | null;
     leadingInset: number;
     trailingInset: number;
+    centerOffset: number;
     trailingOverhang?: number;
     trailingWidth: number;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
+  let toolbar: HTMLElement | undefined = $state();
+  let group: HTMLElement | undefined = $state();
   let strip: HTMLElement | undefined = $state();
+  let trailing: HTMLElement | undefined = $state();
+  let groupOffset = 0;
   const send = window.yalqen.send;
   const translateTitle: Record<TranslationStatus, string> = {
     idle: 'Sayfayı çevir',
@@ -92,6 +98,43 @@
   $effect(() => {
     void activeTabId;
     strip?.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  });
+
+  $effect(() => {
+    void activeTabId;
+    void tabs;
+    const targetOffset = centerOffset;
+    const inset = leadingInset;
+    if (!toolbar || !group || !strip || !trailing) return;
+    const header = toolbar;
+    const tabGroup = group;
+    const tabStrip = strip;
+    const controls = trailing.firstElementChild;
+    const active = tabStrip.querySelector('.chip.active');
+    if (!active || !controls) return;
+
+    const align = () => {
+      const headerBounds = header.getBoundingClientRect();
+      const groupBounds = tabGroup.getBoundingClientRect();
+      const activeBounds = active.getBoundingClientRect();
+      const activeCenter = activeBounds.left + activeBounds.width / 2 - groupBounds.left;
+      const targetLeft = headerBounds.left + headerBounds.width / 2 + targetOffset - activeCenter;
+      const leftLimit = headerBounds.left + inset + 8;
+      const rightLimit = controls.getBoundingClientRect().left - 8 - groupBounds.width;
+      // Keep the active address centered without moving the group into neighboring controls.
+      const left = Math.max(leftLimit, Math.min(targetLeft, rightLimit));
+      groupOffset = left - (groupBounds.left - groupOffset);
+      tabGroup.style.transform = `translateX(${groupOffset}px)`;
+    };
+
+    const observer = new ResizeObserver(align);
+    for (const node of [header, tabGroup, tabStrip, active, controls]) observer.observe(node);
+    tabStrip.addEventListener('scroll', align, { passive: true });
+    align();
+    return () => {
+      observer.disconnect();
+      tabStrip.removeEventListener('scroll', align);
+    };
   });
 </script>
 
@@ -151,10 +194,15 @@
   {/if}
 {/snippet}
 
-<header class="toolbar" style:padding-left="{leadingInset}px" style:padding-right="{trailingInset}px">
+<header
+  class="toolbar"
+  bind:this={toolbar}
+  style:padding-left="{leadingInset}px"
+  style:padding-right="{trailingInset}px"
+>
   <div class="side leading" aria-hidden="true"></div>
 
-  <div class="tab-group" style:transform="translateX({(trailingInset - leadingInset) / 2}px)">
+  <div class="tab-group" bind:this={group}>
     <Capsule as="nav" ariaLabel="Gezinme">
       <IconButton icon="back" label="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })} />
       <IconButton
@@ -346,7 +394,7 @@
     </div>
   </div>
 
-  <div class="side trailing" style:margin-right="{-trailingOverhang}px">
+  <div class="side trailing" bind:this={trailing} style:margin-right="{-trailingOverhang}px">
     <Capsule minWidth={roomy ? trailingWidth : undefined} spread={roomy}>
       {#if pendingUpdate?.state === 'ready'}
         <IconButton

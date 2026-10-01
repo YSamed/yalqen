@@ -182,6 +182,7 @@
             : WINDOW_CONTROLS_END
           : 0}
         trailingInset={PAGE_INSET}
+        centerOffset={(side === 'left' ? -shownWidth : shownWidth) / 2}
         trailingWidth={PANEL_WIDTH - 2 * PANEL_ROW_INSET}
         trailingOverhang={rightPanel
           ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET)
