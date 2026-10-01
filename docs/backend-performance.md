@@ -89,7 +89,9 @@ node scripts/bench.mjs --scenario startup,title --runs 3 --adblock off --idle 60
 
 ## Remaining profiling priorities
 
+The [second performance pass](interface-performance.md) measures full renderer updates, adds bounded session-scoped cookie classification caches, and checks startup with ad blocking both enabled and disabled.
+
 1. Measure cold startup with the ad blocker enabled, separating module loading, filter deserialization and the first page. Deferred loading needs to preserve blocking on early requests.
 2. Profile full state snapshots and IPC serialization during sustained events with hundreds of live tabs before considering incremental state delivery.
 3. Measure long-session memory and idle CPU with repeated runs and warmed operating-system services. This pass does not claim reduced total browser memory or battery drain.
-4. Profile third-party cookie classification on request-heavy pages before adding a session-scoped domain cache.
+4. Profile cookie cache misses, native request overhead and diverse-host retention on real request-heavy pages.

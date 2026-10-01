@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import type { BrowserState } from '../shared/types';
+  import { reuseBrowserState } from '../shared/browser-state';
   import { isNewTab } from './format';
   import DeviceControls from './components/DeviceControls.svelte';
   import TabPanel from './components/TabPanel.svelte';
@@ -44,6 +45,9 @@
 
   const windowControls = navigator.userAgent.includes('Macintosh');
   const activeTab = $derived(browser.tabs.find((tab) => tab.id === browser.activeTabId) ?? null);
+  const tabs = $derived(browser.tabs);
+  const showToolbarTabs = $derived(browser.toolbarTabs);
+  const toolbarTabs = $derived(showToolbarTabs ? tabs : activeTab ? [activeTab] : []);
   const collapsed = $derived(browser.panelCollapsed);
   // Each field gets its own signal so the effects below run only when their value changes,
   // not on every state push (a title or favicon update replaces the whole state).
@@ -109,12 +113,12 @@
 
   onMount(() => {
     void window.yalqen.getState().then((next) => {
-      browser = next;
+      browser = reuseBrowserState(browser, next);
       stateReceived = true;
       requestAnimationFrame(() => (animateModeChanges = true));
     });
     const offState = window.yalqen.onState((next) => {
-      browser = next;
+      browser = reuseBrowserState(browser, next);
       stateReceived = true;
     });
     const offWallpaper = window.yalqen.onWallpaper((wallpaper) => {
@@ -163,7 +167,7 @@
     {#if browser.toolbarVisible}
       <Toolbar
         developer={browser.developer}
-        tabs={browser.toolbarTabs ? browser.tabs : browser.tabs.filter((tab) => tab.id === browser.activeTabId)}
+        tabs={toolbarTabs}
         activeTabId={browser.activeTabId}
         zoom={browser.zoom}
         defaultZoom={browser.defaultZoom}

@@ -20,6 +20,7 @@
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
     "bench": "npm run build && node scripts/bench.mjs",
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
+    "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
     "package:mac": "npm run build && electron-builder --mac"
   },
