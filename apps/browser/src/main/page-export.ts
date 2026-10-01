@@ -1,3 +1,5 @@
+import { t } from '../shared/i18n.js';
+
 const MAX_NAME = 120;
 
 export function pageFileName(title: string, url: string, extension: 'pdf' | 'png'): string {
@@ -16,7 +18,7 @@ export function pageFileName(title: string, url: string, extension: 'pdf' | 'png
     .replace(/^[.\s]+|[.\s]+$/g, '')
     .slice(0, MAX_NAME)
     .trim();
-  return `${safe || 'sayfa'}.${extension}`;
+  return `${safe || t('pageExport.fallbackFileName')}.${extension}`;
 }
 
 export function canViewSource(url: string): boolean {

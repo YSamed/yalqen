@@ -1,4 +1,5 @@
 import type { MenuItemConstructorOptions } from 'electron';
+import { t } from '../shared/i18n.js';
 
 export const ACTIVATION_MS = 5000;
 export const MAX_BLOCKED = 10;
@@ -28,12 +29,12 @@ export function blockedPopupsTemplate(
   actions: BlockedPopupsActions,
 ): MenuItemConstructorOptions[] {
   return [
-    { label: 'Açılır pencere engellendi', enabled: false },
+    { label: t('popups.blocked'), enabled: false },
     ...blocked.map((url) => ({
       label: url.length > LABEL_LENGTH ? `${url.slice(0, LABEL_LENGTH - 1)}…` : url,
       click: () => actions.open(url),
     })),
     { type: 'separator' },
-    { label: `${host} için açılır pencerelere her zaman izin ver`, click: actions.allowSite },
+    { label: t('popups.alwaysAllow', { host }), click: actions.allowSite },
   ];
 }

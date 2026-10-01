@@ -3,6 +3,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import type { ClearDataRange, SettingsValues, SettingsView, ToolbarButtonId, UpdateStatus } from '../shared/types';
   import { REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../shared/types';
+  import { t } from '../shared/i18n';
   import Extensions from './components/Extensions.svelte';
   import Icon, { type IconName } from './components/Icon.svelte';
   import Passwords from './components/Passwords.svelte';
@@ -19,13 +20,13 @@
 
   type PaneId = 'general' | 'appearance' | 'privacy' | 'passwords' | 'performance' | 'extensions' | 'developer';
   const panes: { id: PaneId; label: string; icon: IconName }[] = [
-    { id: 'general', label: 'Genel', icon: 'settings' },
-    { id: 'appearance', label: 'Görünüm', icon: 'appearance' },
-    { id: 'privacy', label: 'Gizlilik', icon: 'lock' },
-    { id: 'passwords', label: 'Şifreler', icon: 'key' },
-    { id: 'performance', label: 'Performans', icon: 'gauge' },
-    { id: 'extensions', label: 'Uzantılar', icon: 'extensions' },
-    { id: 'developer', label: 'Geliştirici', icon: 'sparkle' },
+    { id: 'general', label: t('settings.paneGeneral'), icon: 'settings' },
+    { id: 'appearance', label: t('settings.paneAppearance'), icon: 'appearance' },
+    { id: 'privacy', label: t('settings.panePrivacy'), icon: 'lock' },
+    { id: 'passwords', label: t('settings.panePasswords'), icon: 'key' },
+    { id: 'performance', label: t('settings.panePerformance'), icon: 'gauge' },
+    { id: 'extensions', label: t('settings.paneExtensions'), icon: 'extensions' },
+    { id: 'developer', label: t('settings.paneDeveloper'), icon: 'sparkle' },
   ];
   const paneFromPath = panes.find((item) => `/${item.id}` === location.pathname)?.id;
   let pane = $state<PaneId>(paneFromPath ?? 'general');
@@ -45,75 +46,75 @@
   }
 
   const panelOptions = [
-    { value: false, label: 'Geniş' },
-    { value: true, label: 'Dar' },
+    { value: false, label: t('settings.panelWide') },
+    { value: true, label: t('settings.panelNarrow') },
   ] as const;
   const sideOptions = [
-    { value: 'left', label: 'Sol' },
-    { value: 'right', label: 'Sağ' },
+    { value: 'left', label: t('settings.left') },
+    { value: 'right', label: t('settings.right') },
   ] as const;
   const toolbarTabOptions = [
-    { value: true, label: 'Tüm sekmeler' },
-    { value: false, label: 'Yalnızca açık sayfa' },
+    { value: true, label: t('settings.allTabs') },
+    { value: false, label: t('settings.currentPageOnly') },
   ] as const;
   const toolbarButtonLabels: Record<ToolbarButtonId, { label: string; icon: IconName }> = {
-    bookmarks: { label: 'Yer imleri', icon: 'bookmarks' },
-    history: { label: 'Geçmiş', icon: 'history' },
-    extensions: { label: 'Uzantılar', icon: 'extensions' },
-    profile: { label: 'Profil', icon: 'profile' },
-    settings: { label: 'Ayarlar', icon: 'settings' },
-    downloads: { label: 'İndirilenler', icon: 'download' },
+    bookmarks: { label: t('settings.bookmarks'), icon: 'bookmarks' },
+    history: { label: t('settings.history'), icon: 'history' },
+    extensions: { label: t('settings.paneExtensions'), icon: 'extensions' },
+    profile: { label: t('settings.profile'), icon: 'profile' },
+    settings: { label: t('settings.toolbarSettings'), icon: 'settings' },
+    downloads: { label: t('settings.downloads'), icon: 'download' },
   };
   const discardOptions = [
-    { value: 0, label: 'Kapalı' },
-    { value: 15, label: '15 dk' },
-    { value: 30, label: '30 dk' },
-    { value: 60, label: '1 sa' },
-    { value: 120, label: '2 sa' },
+    { value: 0, label: t('settings.off') },
+    { value: 15, label: t('settings.minutes15') },
+    { value: 30, label: t('settings.minutes30') },
+    { value: 60, label: t('settings.hours1') },
+    { value: 120, label: t('settings.hours2') },
   ] as const;
   const themeOptions = [
-    { value: 'system', label: 'Sistem' },
-    { value: 'light', label: 'Açık' },
-    { value: 'dark', label: 'Koyu' },
+    { value: 'system', label: t('settings.themeSystem') },
+    { value: 'light', label: t('settings.themeLight') },
+    { value: 'dark', label: t('settings.themeDark') },
   ] as const;
   const startupOptions = [
-    { value: 'restore', label: 'Kaldığım yerden devam et' },
-    { value: 'new-tab', label: 'Yeni sekmeyle başla' },
+    { value: 'restore', label: t('settings.startupRestore') },
+    { value: 'new-tab', label: t('settings.startupNewTab') },
   ] as const;
 
   const fontSizeOptions = [
-    { value: 'small', label: 'Küçük' },
-    { value: 'medium', label: 'Orta' },
-    { value: 'large', label: 'Büyük' },
-    { value: 'xlarge', label: 'Çok büyük' },
+    { value: 'small', label: t('settings.fontSmall') },
+    { value: 'medium', label: t('settings.fontMedium') },
+    { value: 'large', label: t('settings.fontLarge') },
+    { value: 'xlarge', label: t('settings.fontXLarge') },
   ] as const;
   const zoomOptions = [0.8, 0.9, 1, 1.1, 1.25, 1.5].map((factor) => ({
     value: factor,
-    label: `%${Math.round(factor * 100)}`,
+    label: t('settings.zoomPercent', { percent: Math.round(factor * 100) }),
   }));
   const languageOptions = [
     { value: 'tr', label: 'Türkçe' },
     { value: 'en', label: 'English' },
   ] as const;
   const dnsOptions = [
-    { value: 'automatic', label: 'Otomatik' },
+    { value: 'automatic', label: t('settings.dnsAutomatic') },
     { value: 'cloudflare', label: 'Cloudflare' },
     { value: 'google', label: 'Google' },
     { value: 'quad9', label: 'Quad9' },
-    { value: 'off', label: 'Kapalı' },
+    { value: 'off', label: t('settings.off') },
   ] as const;
   const rangeOptions: { value: ClearDataRange; label: string }[] = [
-    { value: 'hour', label: 'Son 1 saat' },
-    { value: 'day', label: 'Son 24 saat' },
-    { value: 'week', label: 'Son 7 gün' },
-    { value: 'month', label: 'Son 4 hafta' },
-    { value: 'all', label: 'Tüm zamanlar' },
+    { value: 'hour', label: t('settings.rangeHour') },
+    { value: 'day', label: t('settings.rangeDay') },
+    { value: 'week', label: t('settings.rangeWeek') },
+    { value: 'month', label: t('settings.rangeMonth') },
+    { value: 'all', label: t('settings.rangeAll') },
   ];
   const clearOptions = [
-    { key: 'history', label: 'Tarama geçmişi' },
-    { key: 'downloads', label: 'İndirme listesi' },
-    { key: 'siteData', label: 'Çerezler ve site verileri' },
-    { key: 'cache', label: 'Önbellek' },
+    { key: 'history', label: t('settings.clearHistory') },
+    { key: 'downloads', label: t('settings.clearDownloads') },
+    { key: 'siteData', label: t('settings.clearSiteData') },
+    { key: 'cache', label: t('settings.clearCache') },
   ] as const;
 
   let clearRange = $state<ClearDataRange>('hour');
@@ -141,7 +142,7 @@
   const isCustom = $derived(values?.searchEngine === 'custom');
   const engineOptions = $derived([
     ...(view?.engines ?? []).map((engine) => ({ value: engine.id, label: engine.label })),
-    { value: 'custom' as const, label: 'Özel' },
+    { value: 'custom' as const, label: t('settings.custom') },
   ]);
   const templateInvalid = $derived(isCustom && !!values?.customSearchTemplate && !view?.customTemplateValid);
 
@@ -177,19 +178,19 @@
   function updateMessage(status: UpdateStatus): string {
     switch (status.state) {
       case 'unavailable':
-        return 'Geliştirme sürümü kendini güncellemez.';
+        return t('settings.updateUnavailable');
       case 'idle':
-        return 'Yeni sürüm henüz denetlenmedi.';
+        return t('settings.updateIdle');
       case 'checking':
-        return 'Yeni sürüm denetleniyor…';
+        return t('settings.updateChecking');
       case 'up-to-date':
-        return 'Yalqen güncel.';
+        return t('settings.updateUpToDate');
       case 'downloading':
-        return `Yalqen ${status.version} indiriliyor… %${status.percent}`;
+        return t('settings.updateDownloading', { version: status.version, percent: status.percent });
       case 'ready':
-        return `Yalqen ${status.version} hazır. Yeniden başlatınca yüklenir, açık sekmeler geri gelir.`;
+        return t('settings.updateReady', { version: status.version });
       case 'failed':
-        return 'Güncelleme denetlenemedi. Bağlantınızı kontrol edip tekrar deneyin.';
+        return t('settings.updateFailed');
     }
   }
 
@@ -210,9 +211,9 @@
 
 {#if view && values}
   <div class="settings">
-    <h1>Ayarlar</h1>
+    <h1>{t('settings.pageTitle')}</h1>
     <div class="layout">
-      <div class="panes" role="tablist" aria-orientation="vertical" aria-label="Ayarlar bölümleri">
+      <div class="panes" role="tablist" aria-orientation="vertical" aria-label={t('settings.sections')}>
         {#each panes as item (item.id)}
           <Button
             size="lg"
@@ -232,11 +233,11 @@
       </div>
       <div id="pane" class="pane" role="tabpanel" aria-labelledby="tab-{pane}">
         {#if pane === 'general'}
-          <h2>Arama</h2>
+          <h2>{t('settings.search')}</h2>
           <div class="row">
             <label for="engine" class="label">
-              <span>Arama motoru</span>
-              <span class="hint">Adres çubuğuna adres dışında bir şey yazıldığında kullanılır.</span>
+              <span>{t('settings.searchEngine')}</span>
+              <span class="hint">{t('settings.searchEngineHint')}</span>
             </label>
             <Select
               id="engine"
@@ -248,17 +249,15 @@
           {#if isCustom}
             <div class="row stacked">
               <label for="engine-url" class="label">
-                <span>Arama adresi</span>
-                <span class="hint"
-                  >Aranan metin %s yerine yazılır. Geçerli bir adres girilene kadar Google kullanılır.</span
-                >
+                <span>{t('settings.searchUrl')}</span>
+                <span class="hint">{t('settings.searchUrlHint')}</span>
               </label>
               <TextField
                 id="engine-url"
                 type="url"
                 spellcheck="false"
                 autocomplete="off"
-                placeholder="https://ornek.com/search?q=%s"
+                placeholder={t('settings.searchUrlPlaceholder')}
                 invalid={templateInvalid}
                 bind:value={templateDraft}
                 onfocus={() => (editingTemplate = true)}
@@ -266,44 +265,46 @@
                 onblur={() => (editingTemplate = false)}
               />
               {#if templateInvalid}
-                <span class="error" role="alert">Adres http(s) ile başlamalı ve %s içermeli.</span>
+                <span class="error" role="alert">{t('settings.searchUrlError')}</span>
               {/if}
             </div>
           {/if}
 
-          <h2>Varsayılan tarayıcı</h2>
+          <h2>{t('settings.defaultBrowser')}</h2>
           <div class="row">
             <span class="label">
-              <span>{view.defaultBrowser ? 'Yalqen varsayılan tarayıcınız' : 'Yalqen varsayılan tarayıcı değil'}</span>
-              <span class="hint">Diğer uygulamalardaki bağlantılar varsayılan tarayıcıda açılır.</span>
+              <span>{view.defaultBrowser ? t('settings.defaultBrowserYes') : t('settings.defaultBrowserNo')}</span>
+              <span class="hint">{t('settings.defaultBrowserHint')}</span>
             </span>
             {#if !view.defaultBrowser}
-              <Button variant="primary" onclick={async () => (view = await api.makeDefault())}>Varsayılan yap</Button>
+              <Button variant="primary" onclick={async () => (view = await api.makeDefault())}
+                >{t('settings.makeDefault')}</Button
+              >
             {/if}
           </div>
 
-          <h2>Açılış</h2>
+          <h2>{t('settings.startup')}</h2>
           <div class="row">
             <span class="label">
-              <span>Tarayıcı açıldığında</span>
-              <span class="hint">Yeni sekmeyle başla seçilirse, tarayıcı kapandığında açık sekmeler kaydedilmez.</span>
+              <span>{t('settings.whenBrowserOpens')}</span>
+              <span class="hint">{t('settings.startupHint')}</span>
             </span>
             <Select
-              aria-label="Tarayıcı açıldığında"
+              aria-label={t('settings.whenBrowserOpens')}
               options={startupOptions}
               value={values.startupBehavior}
               onchange={(value) => update({ startupBehavior: value })}
             />
           </div>
 
-          <h2>Dil</h2>
+          <h2>{t('settings.language')}</h2>
           <div class="row">
             <span class="label">
-              <span>Sayfa dili</span>
-              <span class="hint">Sitelerden önce bu dilde içerik istenir; yazım denetimi de bu sırayı izler.</span>
+              <span>{t('settings.pageLanguage')}</span>
+              <span class="hint">{t('settings.pageLanguageHint')}</span>
             </span>
             <SegmentedControl
-              label="Sayfa dili"
+              label={t('settings.pageLanguage')}
               options={languageOptions}
               value={values.pageLanguage}
               onchange={(value) => update({ pageLanguage: value })}
@@ -311,20 +312,17 @@
           </div>
           <div class="row">
             <span class="label">
-              <span>Sayfa çevirisi</span>
-              <span class="hint">
-                Sayfa dili farklıysa çevir düğmesi görünür. Çevirirken sayfa metni Google Çeviri'ye gönderilir; yalnızca
-                düğmeye bastığınızda.
-              </span>
+              <span>{t('settings.pageTranslation')}</span>
+              <span class="hint">{t('settings.pageTranslationHint')}</span>
             </span>
             <Switch
-              label="Sayfa çevirisi"
+              label={t('settings.pageTranslation')}
               checked={values.pageTranslation}
               onchange={(checked) => update({ pageTranslation: checked })}
             />
           </div>
 
-          <h2>Güncellemeler</h2>
+          <h2>{t('settings.updates')}</h2>
           <div class="row">
             <span class="label">
               <span>Yalqen {view.version}</span>
@@ -332,53 +330,53 @@
                 {updateMessage(view.update)}
               </span>
               {#if view.update.state === 'downloading'}
-                <span class="progress" role="progressbar" aria-valuenow={view.update.percent} aria-label="İndirme">
+                <span
+                  class="progress"
+                  role="progressbar"
+                  aria-valuenow={view.update.percent}
+                  aria-label={t('settings.download')}
+                >
                   <span style:width="{Math.max(2, view.update.percent)}%"></span>
                 </span>
               {/if}
             </span>
             {#if view.update.state === 'ready'}
-              <Button variant="primary" onclick={() => api.installUpdate()}>Yeniden başlat</Button>
+              <Button variant="primary" onclick={() => api.installUpdate()}>{t('settings.restart')}</Button>
             {:else if view.update.state !== 'unavailable'}
               <Button
                 disabled={view.update.state === 'checking' || view.update.state === 'downloading'}
-                onclick={() => api.checkForUpdates()}
+                onclick={() => api.checkForUpdates()}>{t('settings.checkNow')}</Button
               >
-                Şimdi denetle
-              </Button>
             {/if}
           </div>
           <div class="row">
             <span class="label">
-              <span>Güncellemeleri otomatik denetle</span>
-              <span class="hint">
-                Birkaç saatte bir GitHub'dan yeni sürüm olup olmadığına bakılır ve arka planda indirilir. Tarama verisi
-                gönderilmez.
-              </span>
+              <span>{t('settings.autoUpdate')}</span>
+              <span class="hint">{t('settings.autoUpdateHint')}</span>
             </span>
             <Switch
-              label="Güncellemeleri otomatik denetle"
+              label={t('settings.autoUpdate')}
               checked={values.autoUpdate}
               onchange={(checked) => update({ autoUpdate: checked })}
             />
           </div>
         {:else if pane === 'appearance'}
-          <h2>Tema</h2>
+          <h2>{t('settings.theme')}</h2>
           <div class="row">
-            <span class="label">Renk düzeni</span>
+            <span class="label">{t('settings.colorScheme')}</span>
             <SegmentedControl
-              label="Tema"
+              label={t('settings.theme')}
               options={themeOptions}
               value={values.theme}
               onchange={(value) => update({ theme: value })}
             />
           </div>
 
-          <h2>Sayfalar</h2>
+          <h2>{t('settings.pages')}</h2>
           <div class="row">
             <label for="font-size" class="label">
-              <span>Yazı boyutu</span>
-              <span class="hint">Sitenin kendi boyutu yoksa kullanılır. Yeni açılan sekmelerde geçerli olur.</span>
+              <span>{t('settings.fontSize')}</span>
+              <span class="hint">{t('settings.fontSizeHint')}</span>
             </label>
             <Select
               id="font-size"
@@ -389,8 +387,8 @@
           </div>
           <div class="row">
             <label for="default-zoom" class="label">
-              <span>Sayfa yakınlaştırma</span>
-              <span class="hint">Kendi yakınlaştırması kaydedilmemiş sayfalara uygulanır.</span>
+              <span>{t('settings.pageZoom')}</span>
+              <span class="hint">{t('settings.pageZoomHint')}</span>
             </label>
             <Select
               id="default-zoom"
@@ -399,41 +397,41 @@
               onchange={(value) => update({ defaultZoom: value })}
             />
           </div>
-          <h2>Menüler</h2>
+          <h2>{t('settings.menus')}</h2>
           <div class="row">
-            <span class="label">Yan menü</span>
+            <span class="label">{t('settings.sidebar')}</span>
             <Switch
-              label="Yan menü görünürlüğü"
+              label={t('settings.sidebarVisibility')}
               checked={values.sidebarVisible}
               onchange={(checked) => update({ sidebarVisible: checked })}
             />
           </div>
           <div class="row">
             <span class="label">
-              <span>Üst menü</span>
-              <span class="hint">İki menü gizliyken Görünüm menüsünden yeniden açabilirsiniz.</span>
+              <span>{t('settings.toolbar')}</span>
+              <span class="hint">{t('settings.toolbarHint')}</span>
             </span>
             <Switch
-              label="Üst menü görünürlüğü"
+              label={t('settings.toolbarVisibility')}
               checked={values.toolbarVisible}
               onchange={(checked) => update({ toolbarVisible: checked })}
             />
           </div>
           <div class="row">
             <span class="label">
-              <span>Üst menüdeki sekmeler</span>
-              <span class="hint">Yalnızca açık sayfanın adresini göstererek üst menüyü sadeleştirir.</span>
+              <span>{t('settings.toolbarTabs')}</span>
+              <span class="hint">{t('settings.toolbarTabsHint')}</span>
             </span>
             <SegmentedControl
-              label="Üst menüdeki sekmeler"
+              label={t('settings.toolbarTabs')}
               options={toolbarTabOptions}
               value={values.toolbarTabs}
               onchange={(value) => update({ toolbarTabs: value })}
             />
           </div>
 
-          <h2>Üst menü düğmeleri</h2>
-          <ul class="buttons" aria-label="Üst menü düğmeleri">
+          <h2>{t('settings.toolbarButtons')}</h2>
+          <ul class="buttons" aria-label={t('settings.toolbarButtons')}>
             {#each toolbarButtons as id, index (id)}
               {@const item = toolbarButtonLabels[id]}
               <li class="row">
@@ -448,20 +446,20 @@
                   <span class="label">
                     <span>{item.label}</span>
                     {#if id === REQUIRED_TOOLBAR_BUTTON}
-                      <span class="hint">Ayarlara erişmek için her zaman görünür kalır.</span>
+                      <span class="hint">{t('settings.settingsAlwaysVisible')}</span>
                     {/if}
                   </span>
                 </label>
                 <span class="move">
                   <IconButton
                     icon="up"
-                    label="{item.label} düğmesini öne al"
+                    label={t('settings.moveEarlier', { label: item.label })}
                     disabled={index === 0}
                     onclick={() => moveToolbarButton(id, -1)}
                   />
                   <IconButton
                     icon="down"
-                    label="{item.label} düğmesini sona al"
+                    label={t('settings.moveLater', { label: item.label })}
                     disabled={index === toolbarButtons.length - 1}
                     onclick={() => moveToolbarButton(id, 1)}
                   />
@@ -470,37 +468,34 @@
             {/each}
           </ul>
 
-          <h2>Sekme paneli</h2>
+          <h2>{t('settings.tabPanel')}</h2>
           <div class="row">
-            <span class="label">Görünüm</span>
+            <span class="label">{t('settings.panelAppearance')}</span>
             <SegmentedControl
-              label="Panel görünümü"
+              label={t('settings.panelAppearanceLabel')}
               options={panelOptions}
               value={values.panelCollapsed}
               onchange={(value) => update({ panelCollapsed: value })}
             />
           </div>
           <div class="row">
-            <span class="label">Konum</span>
+            <span class="label">{t('settings.position')}</span>
             <SegmentedControl
-              label="Panel konumu"
+              label={t('settings.panelPosition')}
               options={sideOptions}
               value={values.panelSide}
               onchange={(value) => update({ panelSide: value })}
             />
           </div>
         {:else if pane === 'privacy'}
-          <h2>Koruma</h2>
+          <h2>{t('settings.protection')}</h2>
           <div class="row">
             <span class="label">
-              <span>Reklam engelleyici</span>
-              <span class="hint"
-                >EasyList ve uBlock Origin filtreleriyle reklamları engeller. Değişiklik yeni yüklenen sayfalarda
-                geçerli olur.</span
-              >
+              <span>{t('settings.adBlocker')}</span>
+              <span class="hint">{t('settings.adBlockerHint')}</span>
             </span>
             <Switch
-              label="Reklam engelleyici"
+              label={t('settings.adBlocker')}
               checked={values.adBlocking}
               onchange={(checked) => update({ adBlocking: checked })}
             />
@@ -508,49 +503,41 @@
 
           <div class="row">
             <span class="label">
-              <span>Yalnızca HTTPS</span>
-              <span class="hint"
-                >HTTP sayfalarını HTTPS ile açar; site desteklemiyorsa HTTP ile devam etmeden önce sorar. Yerel adresler
-                ve IP adresleri hariç.</span
-              >
+              <span>{t('settings.httpsOnly')}</span>
+              <span class="hint">{t('settings.httpsOnlyHint')}</span>
             </span>
             <Switch
-              label="Yalnızca HTTPS"
+              label={t('settings.httpsOnly')}
               checked={values.httpsOnly}
               onchange={(checked) => update({ httpsOnly: checked })}
             />
           </div>
           <div class="row">
             <span class="label">
-              <span>Üçüncü taraf çerezleri engelle</span>
-              <span class="hint"
-                >Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum
-                açma ve yorum alanları çalışmayabilir.</span
-              >
+              <span>{t('settings.blockThirdPartyCookies')}</span>
+              <span class="hint">{t('settings.blockThirdPartyCookiesHint')}</span>
             </span>
             <Switch
-              label="Üçüncü taraf çerezleri engelle"
+              label={t('settings.blockThirdPartyCookies')}
               checked={values.blockThirdPartyCookies}
               onchange={(checked) => update({ blockThirdPartyCookies: checked })}
             />
           </div>
           <div class="row">
             <span class="label">
-              <span>İndirmeden önce sor</span>
-              <span class="hint">Bir site dosya indirmeye başlamadan önce onayınızı ister.</span>
+              <span>{t('settings.askBeforeDownload')}</span>
+              <span class="hint">{t('settings.askBeforeDownloadHint')}</span>
             </span>
             <Switch
-              label="İndirmeden önce sor"
+              label={t('settings.askBeforeDownload')}
               checked={values.askBeforeDownload}
               onchange={(checked) => update({ askBeforeDownload: checked })}
             />
           </div>
           <div class="row">
             <label for="secure-dns" class="label">
-              <span>Güvenli DNS</span>
-              <span class="hint"
-                >Site adlarını şifreli sorgularla çözer. Otomatik, sistemin DNS sağlayıcısı destekliyorsa kullanır.</span
-              >
+              <span>{t('settings.secureDns')}</span>
+              <span class="hint">{t('settings.secureDnsHint')}</span>
             </label>
             <Select
               id="secure-dns"
@@ -559,18 +546,15 @@
               onchange={(value) => update({ secureDns: value })}
             />
           </div>
-          <h2>Tarama verileri</h2>
+          <h2>{t('settings.browsingData')}</h2>
           <div class="row stacked">
             <span class="label">
-              <span>Tarama verilerini temizle</span>
-              <span class="hint"
-                >Geçmiş ve indirme listesi seçilen aralıktan silinir. Çerezler, site verileri ve önbellek her zaman
-                tümüyle silinir.</span
-              >
+              <span>{t('settings.clearBrowsingData')}</span>
+              <span class="hint">{t('settings.clearBrowsingDataHint')}</span>
             </span>
             <div class="clear">
               <Select
-                aria-label="Zaman aralığı"
+                aria-label={t('settings.timeRange')}
                 options={rangeOptions}
                 bind:value={clearRange}
                 onchange={() => (cleared = false)}
@@ -583,9 +567,9 @@
               {/each}
               <div class="clear-actions">
                 <Button variant="primary" disabled={!clearSelected || clearing} onclick={clearData}>
-                  {clearing ? 'Temizleniyor…' : 'Verileri temizle'}
+                  {clearing ? t('settings.clearing') : t('settings.clearData')}
                 </Button>
-                {#if cleared}<span class="hint" role="status">Temizlendi.</span>{/if}
+                {#if cleared}<span class="hint" role="status">{t('settings.cleared')}</span>{/if}
               </div>
             </div>
           </div>
@@ -596,31 +580,25 @@
         {:else if pane === 'developer'}
           <RequestRules />
         {:else}
-          <h2>Bellek</h2>
+          <h2>{t('settings.memory')}</h2>
           <div class="row">
             <span class="label">
-              <span>Arka plan sekmelerini dondur</span>
-              <span class="hint"
-                >Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.</span
-              >
+              <span>{t('settings.freezeBackgroundTabs')}</span>
+              <span class="hint">{t('settings.freezeBackgroundTabsHint')}</span>
             </span>
             <Switch
-              label="Arka plan sekmelerini dondur"
+              label={t('settings.freezeBackgroundTabs')}
               checked={values.freezeBackgroundTabs}
               onchange={(checked) => update({ freezeBackgroundTabs: checked })}
             />
           </div>
           <div class="row">
             <span class="label">
-              <span>Kullanılmayan sekmeleri bellekten çıkar</span>
-              <span class="hint"
-                >Bu süre boyunca açılmayan sekmeler belleği boşaltır; sistem belleği azalınca en eski arka plan
-                sekmeleri daha erken boşaltılır. Tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı
-                yazılan sekmelere dokunulmaz.</span
-              >
+              <span>{t('settings.discardUnusedTabs')}</span>
+              <span class="hint">{t('settings.discardUnusedTabsHint')}</span>
             </span>
             <SegmentedControl
-              label="Kullanılmayan sekmeleri bellekten çıkar"
+              label={t('settings.discardUnusedTabs')}
               options={discardOptions}
               value={values.discardAfterMinutes}
               onchange={(value) => update({ discardAfterMinutes: value })}

@@ -7,6 +7,9 @@ import changeFeed from '../dist/main/change-feed.js';
 import downloadsModule from '../dist/main/downloads.js';
 import internalPages from '../dist/main/internal-pages.js';
 import suggestionModule from '../dist/main/suggestions.js';
+import i18n from '../dist/shared/i18n.js';
+
+i18n.setLocale('tr');
 
 const { loadInternalPages, serveInternalPages } = internalPages;
 const { indexHistory, suggest } = suggestionModule;

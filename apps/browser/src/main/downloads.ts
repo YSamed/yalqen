@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
 import { hostOf } from '../shared/hosts.js';
+import { getLocale, t } from '../shared/i18n.js';
 import { DOWNLOADS_URL, type DownloadsSummary } from '../shared/types.js';
 import { JsonFile } from './json-file.js';
 import { escapeHtml } from './html.js';
@@ -25,7 +26,7 @@ const MENU_ENTRIES = 8;
 const STATES = new Set<string>(['progressing', 'paused', 'completed', 'cancelled', 'interrupted']);
 
 export function uniquePath(directory: string, filename: string, taken: (file: string) => boolean): string {
-  const name = path.basename(filename).replace(/^\.+/, '') || 'indirme';
+  const name = path.basename(filename).replace(/^\.+/, '') || t('downloads.defaultFilename');
   const ext = path.extname(name);
   const stem = name.slice(0, name.length - ext.length);
   let candidate = path.join(directory, name);
@@ -33,7 +34,14 @@ export function uniquePath(directory: string, filename: string, taken: (file: st
   return candidate;
 }
 
-const number = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 });
+let numberFormat: { locale: string; format: Intl.NumberFormat } | undefined;
+function formatNumber(value: number): string {
+  const locale = getLocale();
+  if (numberFormat?.locale !== locale) {
+    numberFormat = { locale, format: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }) };
+  }
+  return numberFormat.format.format(value);
+}
 
 export function formatBytes(bytes: number): string {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -43,7 +51,7 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     unit++;
   }
-  return `${number.format(unit === 0 ? value : Math.round(value * 10) / 10)} ${units[unit]}`;
+  return `${formatNumber(unit === 0 ? value : Math.round(value * 10) / 10)} ${units[unit]}`;
 }
 
 export function downloadStatus(entry: DownloadEntry): string {
@@ -53,15 +61,17 @@ export function downloadStatus(entry: DownloadEntry): string {
       : formatBytes(entry.receivedBytes);
   switch (entry.state) {
     case 'progressing':
-      return entry.totalBytes > 0 ? `%${Math.floor((entry.receivedBytes / entry.totalBytes) * 100)} · ${size}` : size;
+      return entry.totalBytes > 0
+        ? t('downloads.progress', { percent: Math.floor((entry.receivedBytes / entry.totalBytes) * 100), size })
+        : size;
     case 'paused':
-      return `Duraklatıldı · ${size}`;
+      return t('downloads.paused', { size });
     case 'completed':
-      return `Tamamlandı · ${formatBytes(entry.totalBytes || entry.receivedBytes)}`;
+      return t('downloads.completed', { size: formatBytes(entry.totalBytes || entry.receivedBytes) });
     case 'cancelled':
-      return 'İptal edildi';
+      return t('downloads.cancelled');
     case 'interrupted':
-      return 'Başarısız';
+      return t('downloads.failed');
   }
 }
 
@@ -187,25 +197,25 @@ export function downloadCommands(entry: DownloadEntry): [keyof DownloadActions &
   switch (entry.state) {
     case 'progressing':
       return [
-        ['pause', 'Duraklat'],
-        ['cancel', 'İptal et'],
+        ['pause', t('downloads.pause')],
+        ['cancel', t('downloads.cancel')],
       ];
     case 'paused':
       return [
-        ['resume', 'Devam et'],
-        ['cancel', 'İptal et'],
+        ['resume', t('downloads.resume')],
+        ['cancel', t('downloads.cancel')],
       ];
     case 'completed':
       return [
-        ['open', 'Aç'],
-        ['show', 'Klasörde göster'],
-        ['remove', 'Listeden kaldır'],
+        ['open', t('downloads.open')],
+        ['show', t('downloads.showInFolder')],
+        ['remove', t('downloads.removeFromList')],
       ];
     case 'cancelled':
     case 'interrupted':
       return [
-        ['retry', 'Yeniden dene'],
-        ['remove', 'Listeden kaldır'],
+        ['retry', t('downloads.retry')],
+        ['remove', t('downloads.removeFromList')],
       ];
   }
 }
@@ -217,7 +227,7 @@ export function downloadsMenuTemplate(
   const recent = entries.slice(0, MENU_ENTRIES);
   return [
     ...(recent.length === 0
-      ? [{ label: 'Henüz indirme yok', enabled: false }]
+      ? [{ label: t('downloads.menuNone'), enabled: false }]
       : recent.map((entry) => ({
           label: `${entry.filename} — ${downloadStatus(entry)}`,
           submenu: downloadCommands(entry).map(([action, label]) => ({
@@ -226,13 +236,13 @@ export function downloadsMenuTemplate(
           })),
         }))),
     { type: 'separator' },
-    { label: 'Tüm indirilenler', click: actions.showAll },
-    { label: 'İndirilenler klasörünü aç', click: actions.openFolder },
+    { label: t('downloads.menuAll'), click: actions.showAll },
+    { label: t('downloads.menuOpenFolder'), click: actions.openFolder },
   ];
 }
 
 export function renderDownloads(entries: readonly DownloadEntry[]): string {
-  if (entries.length === 0) return '<p class="empty">Henüz indirilen bir dosya yok.</p>';
+  if (entries.length === 0) return `<p class="empty">${t('downloads.empty')}</p>`;
   const rows = entries
     .map((entry) => {
       const commands = downloadCommands(entry)
@@ -249,6 +259,6 @@ export function renderDownloads(entries: readonly DownloadEntry[]): string {
     })
     .join('');
   const finished = entries.some((entry) => !isActive(entry));
-  const clear = finished ? `<a class="clear" href="${DOWNLOADS_URL}clear">Listeyi temizle</a>` : '';
-  return `<div class="summary"><span>${entries.length} indirme</span>${clear}</div><ol>${rows}</ol>`;
+  const clear = finished ? `<a class="clear" href="${DOWNLOADS_URL}clear">${t('downloads.clearList')}</a>` : '';
+  return `<div class="summary"><span>${t('downloads.count', { count: entries.length })}</span>${clear}</div><ol>${rows}</ol>`;
 }

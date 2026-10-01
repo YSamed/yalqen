@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
 import { displayHost } from '../shared/hosts.js';
+import { t } from '../shared/i18n.js';
 import { BOOKMARKS_URL } from '../shared/types.js';
 import type { ImportSource } from './browser-import.js';
 import { JsonFile } from './json-file.js';
@@ -161,7 +162,11 @@ export class BookmarkStore {
   }
 
   addFolder(title: string): BookmarkFolder {
-    const folder: BookmarkFolder = { id: randomUUID(), title: cleanTitle(title, 'Yeni klasör'), createdAt: Date.now() };
+    const folder: BookmarkFolder = {
+      id: randomUUID(),
+      title: cleanTitle(title, t('bookmarks.newFolder')),
+      createdAt: Date.now(),
+    };
     this.folderList.push(folder);
     this.save();
     return { ...folder };
@@ -196,7 +201,7 @@ export class BookmarkStore {
       urls.add(item.url);
       let folderId: string | null = null;
       if (item.folder !== null) {
-        const title = cleanTitle(item.folder, 'Yeni klasör');
+        const title = cleanTitle(item.folder, t('bookmarks.newFolder'));
         folderId = folderIds.get(title) ?? null;
         if (!folderId) {
           folderId = randomUUID();
@@ -294,24 +299,24 @@ export function bookmarksMenuTemplate(
     const children = groups.get(folder.id) ?? [];
     return {
       label: menuTitle(folder.title),
-      submenu: children.length > 0 ? children.map(item) : [{ label: 'Boş', enabled: false }],
+      submenu: children.length > 0 ? children.map(item) : [{ label: t('bookmarks.menuEmpty'), enabled: false }],
     };
   });
   const loose = (groups.get(null) ?? []).map(item);
   const entries = [...inFolders, ...loose];
   return [
-    ...(entries.length > 0 ? entries : [{ label: 'Henüz yer imi yok', enabled: false }]),
+    ...(entries.length > 0 ? entries : [{ label: t('bookmarks.menuNone'), enabled: false }]),
     { type: 'separator' },
-    { label: 'Tüm yer imleri', click: actions.showAll },
+    { label: t('bookmarks.menuAll'), click: actions.showAll },
     {
-      label: 'Yer imlerini içe aktar',
+      label: t('bookmarks.menuImport'),
       submenu: [
         ...importSources.map((source): MenuItemConstructorOptions => ({
           label: menuTitle(source.label),
           click: () => actions.importFrom(source.file),
         })),
         ...(importSources.length > 0 ? [{ type: 'separator' as const }] : []),
-        { label: 'Bookmarks dosyası seç…', click: () => actions.importFrom() },
+        { label: t('bookmarks.menuImportFile'), click: () => actions.importFrom() },
       ],
     },
   ];
@@ -324,14 +329,14 @@ export function renderBookmarks(
 ): string {
   const search = query.trim().slice(0, 200);
   const header =
-    searchFieldMarkup({ action: BOOKMARKS_URL, label: 'Yer imlerinde ara', valueHtml: escapeHtml(search) }) +
+    searchFieldMarkup({ action: BOOKMARKS_URL, label: t('bookmarks.search'), valueHtml: escapeHtml(search) }) +
     (search
       ? ''
-      : `<form class="new-folder" action="${BOOKMARKS_URL}new-folder" method="get"><input class="field lg" name="title" placeholder="Yeni klasör adı" aria-label="Yeni klasör adı" required /><button class="btn lg primary">Klasör ekle</button></form>`);
+      : `<form class="new-folder" action="${BOOKMARKS_URL}new-folder" method="get"><input class="field lg" name="title" placeholder="${t('bookmarks.newFolderName')}" aria-label="${t('bookmarks.newFolderName')}" required /><button class="btn lg primary">${t('bookmarks.addFolder')}</button></form>`);
 
   const folderOptions = (current: string | null) =>
     [
-      `<option value=""${current === null ? ' selected' : ''}>Klasör yok</option>`,
+      `<option value=""${current === null ? ' selected' : ''}>${t('bookmarks.noFolder')}</option>`,
       ...folders.map(
         (folder) =>
           `<option value="${escapeHtml(folder.id)}"${folder.id === current ? ' selected' : ''}>${escapeHtml(folder.title)}</option>`,
@@ -342,31 +347,33 @@ export function renderBookmarks(
     const id = escapeHtml(bookmark.id);
     return (
       `<li><a class="visit" href="${escapeHtml(bookmark.url)}"><strong>${escapeHtml(bookmark.title)}</strong><span>${escapeHtml(displayHost(bookmark.url))}</span></a>` +
-      `<details><summary>Düzenle</summary>` +
-      `<form action="${BOOKMARKS_URL}rename" method="get"><input type="hidden" name="id" value="${id}" /><input class="field" name="title" value="${escapeHtml(bookmark.title)}" aria-label="Ad" required /><button class="btn tonal">Kaydet</button></form>` +
+      `<details><summary>${t('bookmarks.edit')}</summary>` +
+      `<form action="${BOOKMARKS_URL}rename" method="get"><input type="hidden" name="id" value="${id}" /><input class="field" name="title" value="${escapeHtml(bookmark.title)}" aria-label="${t('bookmarks.name')}" required /><button class="btn tonal">${t('bookmarks.save')}</button></form>` +
       (folders.length > 0
-        ? `<form action="${BOOKMARKS_URL}move" method="get"><input type="hidden" name="id" value="${id}" /><select class="field" name="folder" aria-label="Klasör">${folderOptions(bookmark.folderId)}</select><button class="btn tonal">Taşı</button></form>`
+        ? `<form action="${BOOKMARKS_URL}move" method="get"><input type="hidden" name="id" value="${id}" /><select class="field" name="folder" aria-label="${t('bookmarks.folder')}">${folderOptions(bookmark.folderId)}</select><button class="btn tonal">${t('bookmarks.move')}</button></form>`
         : '') +
-      `<a class="danger" href="${BOOKMARKS_URL}remove?id=${encodeURIComponent(bookmark.id)}">Sil</a></details></li>`
+      `<a class="danger" href="${BOOKMARKS_URL}remove?id=${encodeURIComponent(bookmark.id)}">${t('bookmarks.delete')}</a></details></li>`
     );
   };
 
   if (search) {
     return bookmarks.length === 0
-      ? `${header}<p class="empty">Eşleşen yer imi bulunamadı.</p>`
+      ? `${header}<p class="empty">${t('bookmarks.noMatches')}</p>`
       : `${header}<ol>${bookmarks.map(row).join('')}</ol>`;
   }
   if (bookmarks.length === 0 && folders.length === 0) {
-    return `${header}<p class="empty">Henüz yer imi yok. Bir sayfayı eklemek için adres çubuğundaki yıldıza bas veya ⌘D kullan.</p>`;
+    return `${header}<p class="empty">${t('bookmarks.empty')}</p>`;
   }
   const groups = bookmarksByFolder(bookmarks);
   const sections = folders.map((folder) => {
     const children = groups.get(folder.id) ?? [];
     return (
-      `<section><div class="folder"><h2>${escapeHtml(folder.title)}</h2><details><summary>Düzenle</summary>` +
-      `<form action="${BOOKMARKS_URL}rename-folder" method="get"><input type="hidden" name="id" value="${escapeHtml(folder.id)}" /><input class="field" name="title" value="${escapeHtml(folder.title)}" aria-label="Klasör adı" required /><button class="btn tonal">Kaydet</button></form>` +
-      `<a class="danger" href="${BOOKMARKS_URL}remove-folder?id=${encodeURIComponent(folder.id)}">Klasörü sil</a></details></div>` +
-      (children.length > 0 ? `<ol>${children.map(row).join('')}</ol>` : '<p class="empty-folder">Bu klasör boş.</p>') +
+      `<section><div class="folder"><h2>${escapeHtml(folder.title)}</h2><details><summary>${t('bookmarks.edit')}</summary>` +
+      `<form action="${BOOKMARKS_URL}rename-folder" method="get"><input type="hidden" name="id" value="${escapeHtml(folder.id)}" /><input class="field" name="title" value="${escapeHtml(folder.title)}" aria-label="${t('bookmarks.folderName')}" required /><button class="btn tonal">${t('bookmarks.save')}</button></form>` +
+      `<a class="danger" href="${BOOKMARKS_URL}remove-folder?id=${encodeURIComponent(folder.id)}">${t('bookmarks.deleteFolder')}</a></details></div>` +
+      (children.length > 0
+        ? `<ol>${children.map(row).join('')}</ol>`
+        : `<p class="empty-folder">${t('bookmarks.folderEmpty')}</p>`) +
       '</section>'
     );
   });

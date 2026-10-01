@@ -1,6 +1,7 @@
 import type { MenuItemConstructorOptions } from 'electron';
+import { t } from '../shared/i18n.js';
 import type { SecurityState } from '../shared/types.js';
-import { PERMISSION_LABELS, type Decision, type SitePermission } from './permissions.js';
+import { permissionLabel, type Decision, type SitePermission } from './permissions.js';
 import { siteDataItems, type SiteData, type SiteDataActions } from './site-data.js';
 
 export function securityState(url: string, certificateException = false): SecurityState {
@@ -12,12 +13,7 @@ export function securityState(url: string, certificateException = false): Securi
   return 'local';
 }
 
-const STATE_TEXT: Record<SecurityState, string> = {
-  secure: 'Bağlantı güvenli',
-  insecure: 'Bu siteye bağlantı güvenli değil',
-  dangerous: 'Geçersiz sertifika yok sayılarak bağlanıldı',
-  local: 'Bu sayfa bir siteden yüklenmedi',
-};
+const stateText = (state: SecurityState): string => t(`siteInfo.${state}`);
 
 export interface SiteInfo {
   url: string;
@@ -31,7 +27,7 @@ export interface SiteInfoActions extends SiteDataActions {
   setPermission(kind: SitePermission, decision: Decision | null): void;
 }
 
-const DECISION_TEXT: Record<Decision, string> = { allow: 'İzin verildi', deny: 'Engellendi' };
+const decisionText = (decision: Decision): string => t(decision === 'allow' ? 'siteInfo.allowed' : 'siteInfo.blocked');
 
 export function siteInfoTemplate(info: SiteInfo, actions: SiteInfoActions): MenuItemConstructorOptions[] {
   let host = info.url;
@@ -40,24 +36,24 @@ export function siteInfoTemplate(info: SiteInfo, actions: SiteInfoActions): Menu
   } catch {}
   return [
     { label: host, enabled: false },
-    { label: STATE_TEXT[info.security], enabled: false },
+    { label: stateText(info.security), enabled: false },
     ...(info.security === 'dangerous'
       ? [
           { type: 'separator' as const },
-          { label: 'Sertifika uyarılarını yeniden aç', click: actions.revokeCertificateException },
+          { label: t('siteInfo.reenableCertificateWarnings'), click: actions.revokeCertificateException },
         ]
       : []),
     ...(info.permissions.length > 0 ? [{ type: 'separator' as const }] : []),
     ...info.permissions.map(({ kind, decision }): MenuItemConstructorOptions => ({
-      label: `${PERMISSION_LABELS[kind]}: ${DECISION_TEXT[decision]}`,
+      label: t('siteInfo.permissionStatus', { permission: permissionLabel(kind), decision: decisionText(decision) }),
       submenu: (
         [
-          ['Sor', null],
-          ['İzin ver', 'allow'],
-          ['Engelle', 'deny'],
+          [t('siteInfo.ask'), null],
+          [t('siteInfo.allow'), 'allow'],
+          [t('siteInfo.block'), 'deny'],
         ] as const
       ).map(([label, choice]) => ({
-        label: choice === null && kind === 'popups' ? 'Varsayılan (engelle)' : label,
+        label: choice === null && kind === 'popups' ? t('siteInfo.defaultBlock') : label,
         type: 'radio' as const,
         checked: choice === decision,
         click: () => actions.setPermission(kind, choice),

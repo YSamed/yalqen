@@ -29,7 +29,7 @@ test('kagi resolves and builds kagi search urls', () => {
   const kagi = resolveSearchEngine('kagi', null);
   assert.equal(kagi.id, 'kagi');
   assert.equal(kagi.label, 'Kagi');
-  assert.equal(kagi.placeholder, "Kagi'de ara veya adres yaz");
+  assert.equal(kagi.placeholder, 'Search Kagi or enter address');
   assert.equal(buildSearchUrl(kagi, 'hava durumu'), 'https://kagi.com/search?q=hava%20durumu');
 });
 

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { protocol, type Session } from 'electron';
 import { displayHost } from '../shared/hosts.js';
+import { getLocale, t, type MessageKey } from '../shared/i18n.js';
 import { HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL } from '../shared/types.js';
 import { renderBookmarks, type Bookmark, type BookmarkFolder } from './bookmarks.js';
 import type { ChangeFeed } from './change-feed.js';
@@ -22,7 +23,6 @@ const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
 const PINNED_MARKER = '__YALQEN_PINNED_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
 const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
-const VERSION_MARKER = '__YALQEN_VERSION_SLOT__';
 const REPO_PROMPT_MARKER = '__YALQEN_REPO_PROMPT_SLOT__';
 const HISTORY_MARKER = '__YALQEN_HISTORY_SLOT__';
 const DOWNLOADS_MARKER = '__YALQEN_DOWNLOADS_SLOT__';
@@ -32,8 +32,18 @@ const FORGET_ICON =
   '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg>';
 const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
 // toLocaleDateString builds a new formatter per call, which made a full history page block the main process.
-const DAY_FORMAT = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-const TIME_FORMAT = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
+let dateFormats: { locale: string; day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } | undefined;
+function getDateFormats() {
+  const locale = getLocale();
+  if (dateFormats?.locale !== locale) {
+    dateFormats = {
+      locale,
+      day: new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }),
+      time: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }),
+    };
+  }
+  return dateFormats;
+}
 
 export function registerInternalScheme(): void {
   protocol.registerSchemesAsPrivileged([
@@ -51,11 +61,11 @@ export function renderRecent(pages: RecentPage[]): string {
       const forget = `yalqen://newtab/forget?url=${encodeURIComponent(page.url)}`;
       return (
         `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(displayHost(page.url))}</span></a>` +
-        `<a class="icon-btn sm tone-muted forget" href="${escapeHtml(forget)}" aria-label="Listeden kaldır: ${escapeHtml(displayHost(page.url))}">${SMALL_FORGET_ICON}</a></li>`
+        `<a class="icon-btn sm tone-muted forget" href="${escapeHtml(forget)}" aria-label="${t('internalPages.removeFromList', { host: escapeHtml(displayHost(page.url)) })}">${SMALL_FORGET_ICON}</a></li>`
       );
     })
     .join('');
-  return `<section class="recent" aria-labelledby="recent-title"><h2 id="recent-title">Son kapatılanlar</h2><ul>${items}</ul></section>`;
+  return `<section class="recent" aria-labelledby="recent-title"><h2 id="recent-title">${t('internalPages.recentlyClosed')}</h2><ul>${items}</ul></section>`;
 }
 
 export function renderPinned(pages: RecentPage[]): string {
@@ -65,36 +75,36 @@ export function renderPinned(pages: RecentPage[]): string {
       const host = displayHost(page.url);
       const icon = page.faviconUrl?.startsWith('https:')
         ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="24" height="24" />`
-        : `<span class="letter">${escapeHtml(host.charAt(0).toLocaleUpperCase('tr'))}</span>`;
+        : `<span class="letter">${escapeHtml(host.charAt(0).toLocaleUpperCase(getLocale()))}</span>`;
       return `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title || host)}"><span class="tile">${icon}</span><span class="name">${escapeHtml(host)}</span></a></li>`;
     })
     .join('');
-  return `<nav class="pinned" aria-label="Sabitlenenler"><ul>${items}</ul></nav>`;
+  return `<nav class="pinned" aria-label="${t('internalPages.pinned')}"><ul>${items}</ul></nav>`;
 }
 
 function renderWelcome(): string {
   return `<section class="welcome" aria-labelledby="welcome-title">
-    <h1 id="welcome-title">Yalqen'e hoş geldin.</h1>
-    <p>İnternette kendi yolunu aç. Aramak ya da bir adres yazmak için başlayabilirsin.</p>
+    <h1 id="welcome-title">${t('internalPages.welcomeTitle')}</h1>
+    <p>${t('internalPages.welcomeText')}</p>
   </section>`;
 }
 
 function renderTips(): string {
-  return `<ul class="tips" aria-label="İpuçları">
-    <li><strong>Sekmeler solda</strong><small>Açık sayfalarını yan panelde düzenle.</small></li>
-    <li><strong>Sık kullandıklarını sabitle</strong><small>Bir sekmeyi canlı tutmak için iğneye bas.</small></li>
-    <li><strong>Daha az reklam</strong><small>Reklam engelleme varsayılan olarak açık.</small></li>
+  return `<ul class="tips" aria-label="${t('internalPages.tips')}">
+    <li><strong>${t('internalPages.tipTabsTitle')}</strong><small>${t('internalPages.tipTabsText')}</small></li>
+    <li><strong>${t('internalPages.tipPinTitle')}</strong><small>${t('internalPages.tipPinText')}</small></li>
+    <li><strong>${t('internalPages.tipAdsTitle')}</strong><small>${t('internalPages.tipAdsText')}</small></li>
   </ul>`;
 }
 
 function renderRepoPrompt(): string {
   return `<aside class="repo-prompt" aria-labelledby="repo-prompt-title">
-    <a class="icon-btn sm tone-muted repo-prompt-close" href="${NEW_TAB_URL}repo?action=close" aria-label="Kapat">${SMALL_FORGET_ICON}</a>
-    <strong id="repo-prompt-title">Yalqen'i beğendin mi?</strong>
-    <p>GitHub'da yıldız vermen projenin görünür olmasına yardım eder.</p>
+    <a class="icon-btn sm tone-muted repo-prompt-close" href="${NEW_TAB_URL}repo?action=close" aria-label="${t('internalPages.close')}">${SMALL_FORGET_ICON}</a>
+    <strong id="repo-prompt-title">${t('internalPages.repoTitle')}</strong>
+    <p>${t('internalPages.repoText')}</p>
     <div class="repo-prompt-actions">
-      <a class="btn primary" href="${NEW_TAB_URL}repo?action=star">Yıldızla</a>
-      <a class="btn ghost" href="${NEW_TAB_URL}repo?action=later">Sonra</a>
+      <a class="btn primary" href="${NEW_TAB_URL}repo?action=star">${t('internalPages.repoStar')}</a>
+      <a class="btn ghost" href="${NEW_TAB_URL}repo?action=later">${t('internalPages.repoLater')}</a>
     </div>
   </aside>`;
 }
@@ -103,29 +113,32 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
   const search = query.trim().slice(0, 200);
   const form = searchFieldMarkup({
     action: HISTORY_URL,
-    label: 'Geçmişte ara',
+    label: t('internalPages.searchHistory'),
     valueHtml: escapeHtml(search),
     autofocus: true,
   });
   if (entries.length === 0) {
-    const message = search ? 'Eşleşen sayfa bulunamadı.' : 'Henüz ziyaret edilen bir sayfa yok.';
+    const message = search ? t('internalPages.noMatchingPages') : t('internalPages.noHistory');
     return `${form}<p class="empty">${message}</p>`;
   }
+  const formats = getDateFormats();
   let previousDay = '';
   const rows = entries
     .map((entry) => {
       const visitedAt = new Date(entry.visitedAt);
-      const day = DAY_FORMAT.format(visitedAt);
+      const day = formats.day.format(visitedAt);
       const heading = day === previousDay ? '' : `<li class="day"><h2>${escapeHtml(day)}</h2></li>`;
       previousDay = day;
-      const time = TIME_FORMAT.format(visitedAt);
+      const time = formats.time.format(visitedAt);
       const host = displayHost(entry.url);
       const remove = `${HISTORY_URL}delete?id=${encodeURIComponent(entry.id)}`;
-      return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="Geçmişten kaldır: ${escapeHtml(entry.title || host)}" title="Geçmişten kaldır">${FORGET_ICON}</a></li>`;
+      return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="${t('internalPages.removeFromHistoryNamed', { title: escapeHtml(entry.title || host) })}" title="${t('internalPages.removeFromHistory')}">${FORGET_ICON}</a></li>`;
     })
     .join('');
-  const clear = search ? '' : `<a class="clear" href="${HISTORY_URL}confirm-clear">Tüm geçmişi temizle</a>`;
-  return `${form}<div class="results"><div class="summary"><span>${entries.length} ziyaret</span>${clear}</div><ol>${rows}</ol></div>`;
+  const clear = search
+    ? ''
+    : `<a class="clear" href="${HISTORY_URL}confirm-clear">${t('internalPages.clearAllHistory')}</a>`;
+  return `${form}<div class="results"><div class="summary"><span>${t('internalPages.visitCount', { count: entries.length })}</span>${clear}</div><ol>${rows}</ol></div>`;
 }
 
 const ASSET_TYPES: Record<string, string> = {
@@ -167,10 +180,17 @@ export interface InternalPages {
   settingsAsset: (name: string) => Buffer<ArrayBuffer> | null;
 }
 
+// The locale is fixed for the whole run, so page templates are translated once when loaded.
+export function localizePage(page: string): string {
+  return page
+    .replace('<html lang="en">', `<html lang="${getLocale()}">`)
+    .replace(/\{\{([\w.]+)\}\}/g, (_match, key: string) => escapeHtml(t(key as MessageKey)));
+}
+
 export function loadInternalPages(files: InternalPageFiles): InternalPages {
   const publicDir = path.dirname(files.newTab);
   const controlsCss = fs.readFileSync(path.join(publicDir, 'controls.css'), 'utf8');
-  const readPage = (file: string) => fs.readFileSync(file, 'utf8').replace(CONTROLS_MARKER, controlsCss);
+  const readPage = (file: string) => localizePage(fs.readFileSync(file, 'utf8').replace(CONTROLS_MARKER, controlsCss));
   const settingsAssets = path.join(path.dirname(files.settings), 'assets');
   const assetCache = new Map<string, Buffer<ArrayBuffer>>();
   return {
@@ -181,7 +201,7 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
     downloads: readPage(files.downloads),
     downloadsScript: fs.readFileSync(path.join(path.dirname(files.downloads), 'downloads.js'), 'utf8'),
     bookmarks: readPage(files.bookmarks),
-    settings: fs.readFileSync(files.settings, 'utf8'),
+    settings: localizePage(fs.readFileSync(files.settings, 'utf8')),
     updatePopup: readPage(files.updatePopup),
     settingsAsset: (name) => {
       const cached = assetCache.get(name);
@@ -229,7 +249,7 @@ function serveHistory(pathname: string, query: string, pages: InternalPages, sou
   if (pathname === '/') {
     content = renderHistory(sources.visits(query), query);
   } else if (pathname === '/confirm-clear') {
-    content = `<div class="confirm"><h2>Tüm geçmiş temizlensin mi?</h2><p>Bu işlem ziyaret kayıtlarını kalıcı olarak siler.</p><div class="confirm-actions"><a class="btn lg tonal" href="${HISTORY_URL}">Vazgeç</a><a class="btn lg primary danger" href="${HISTORY_URL}clear">Geçmişi temizle</a></div></div>`;
+    content = `<div class="confirm"><h2>${t('internalPages.confirmClearTitle')}</h2><p>${t('internalPages.confirmClearText')}</p><div class="confirm-actions"><a class="btn lg tonal" href="${HISTORY_URL}">${t('internalPages.cancel')}</a><a class="btn lg primary danger" href="${HISTORY_URL}clear">${t('internalPages.clearHistory')}</a></div></div>`;
   } else {
     return notFound();
   }
@@ -304,10 +324,7 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
       case 'update':
         return url.pathname === '/'
           ? html(
-              pages.updatePopup.replace(
-                VERSION_MARKER,
-                escapeHtml(updatePopupVersion(url.searchParams.get('version'))),
-              ),
+              pages.updatePopup.replace('{version}', escapeHtml(updatePopupVersion(url.searchParams.get('version')))),
               INTERNAL_CSP,
             )
           : notFound();

@@ -1,4 +1,5 @@
 import type { SearchEngineId } from '../shared/types.js';
+import { t } from '../shared/i18n.js';
 
 export type { SearchEngineId };
 
@@ -15,54 +16,68 @@ export const SEARCH_ENGINES: readonly SearchEngine[] = [
   {
     id: 'google',
     label: 'Google',
-    placeholder: "Google'da ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderGoogle');
+    },
     template: 'https://www.google.com/search?q=%s',
   },
   {
     id: 'yandex',
     label: 'Yandex',
-    placeholder: "Yandex'te ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderYandex');
+    },
     template: 'https://yandex.com.tr/search/?text=%s',
   },
   {
     id: 'duckduckgo',
     label: 'DuckDuckGo',
-    placeholder: "DuckDuckGo'da ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderDuckduckgo');
+    },
     template: 'https://duckduckgo.com/?q=%s',
   },
   {
     id: 'bing',
     label: 'Bing',
-    placeholder: "Bing'de ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderBing');
+    },
     template: 'https://www.bing.com/search?q=%s',
   },
   {
     id: 'brave',
     label: 'Brave Search',
-    placeholder: "Brave Search'te ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderBrave');
+    },
     template: 'https://search.brave.com/search?q=%s',
   },
   {
     id: 'ecosia',
     label: 'Ecosia',
-    placeholder: "Ecosia'da ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderEcosia');
+    },
     template: 'https://www.ecosia.org/search?q=%s',
   },
   {
     id: 'startpage',
     label: 'Startpage',
-    placeholder: "Startpage'de ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderStartpage');
+    },
     template: 'https://www.startpage.com/do/search?q=%s',
   },
   {
     id: 'kagi',
     label: 'Kagi',
-    placeholder: "Kagi'de ara veya adres yaz",
+    get placeholder() {
+      return t('search.placeholderKagi');
+    },
     template: 'https://kagi.com/search?q=%s',
   },
 ];
-
-const CUSTOM_PLACEHOLDER = 'Ara veya adres yaz';
 
 export function isValidSearchTemplate(template: string | null | undefined): template is string {
   if (!template || !template.includes('%s')) return false;
@@ -76,7 +91,12 @@ export function isValidSearchTemplate(template: string | null | undefined): temp
 
 export function resolveSearchEngine(id: SearchEngineId, customTemplate: string | null): SearchEngine {
   if (id === 'custom' && isValidSearchTemplate(customTemplate)) {
-    return { id: 'custom', label: 'Özel', placeholder: CUSTOM_PLACEHOLDER, template: customTemplate };
+    return {
+      id: 'custom',
+      label: t('search.customLabel'),
+      placeholder: t('search.placeholderCustom'),
+      template: customTemplate,
+    };
   }
   return SEARCH_ENGINES.find((engine) => engine.id === id) ?? defaultEngine();
 }

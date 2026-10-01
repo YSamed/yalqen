@@ -66,12 +66,12 @@ import { securityState } from './site-info.js';
 import { withoutHash } from './url.js';
 import { detectLanguage, restorePage, translatePage, translateSelection, type FetchLike } from './translate.js';
 import { stepZoom } from './zoom.js';
+import { t } from '../shared/i18n.js';
 
 const MAX_CLOSED_TABS = 20;
 const STORAGE_WORLD_ID = 1001;
 // Past this the badge reads "99+", so further errors need not re-render the chrome.
 const MAX_CONSOLE_ERRORS = 99;
-const NEW_TAB_TITLE = 'Yeni sekme';
 
 interface Tab {
   id: TabId;
@@ -927,7 +927,7 @@ export class TabManager {
       id: saved.id ?? randomUUID(),
       view: null,
       url: saved.url,
-      title: saved.title ?? NEW_TAB_TITLE,
+      title: saved.title ?? t('tabs.newTab'),
       faviconUrl: saved.faviconUrl ?? null,
       pinnedUrl: saved.pinnedUrl ?? (saved.keepAlive ? saved.url : null),
       muted: false,

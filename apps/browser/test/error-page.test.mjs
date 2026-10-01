@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import errorPage from '../dist/main/error-page.js';
+import i18n from '../dist/shared/i18n.js';
+
+i18n.setLocale('tr');
 
 const { describeError, errorPageHtml, errorPageScript } = errorPage;
 

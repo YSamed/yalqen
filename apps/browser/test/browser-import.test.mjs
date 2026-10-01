@@ -7,6 +7,9 @@ import { test } from 'node:test';
 import bookmarks from '../dist/main/bookmarks.js';
 import browserImport from '../dist/main/browser-import.js';
 import historyModule from '../dist/main/history.js';
+import i18n from '../dist/shared/i18n.js';
+
+i18n.setLocale('tr');
 
 const { BookmarkStore } = bookmarks;
 const {
@@ -291,7 +294,7 @@ test('files that are not Chromium history are rejected with a clear message', as
       try {
         await importChromiumHistory(store, file);
       } catch (error) {
-        return importErrorMessage(error, 'Geçmiş');
+        return importErrorMessage(error, 'history');
       }
       return 'imported';
     };
@@ -307,7 +310,7 @@ test('files that are not Chromium history are rejected with a clear message', as
     assert.equal(
       importErrorMessage(
         Object.assign(new Error('database disk image is malformed'), { code: 'ERR_SQLITE_ERROR' }),
-        'Geçmiş',
+        'history',
       ),
       'Geçmiş dosyası okunamadı. Tarayıcıyı kapatıp yeniden deneyin.',
     );

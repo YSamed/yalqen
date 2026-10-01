@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../../shared/i18n';
   import type { ExtensionInfo } from '../../shared/types';
   import Icon from './Icon.svelte';
   import Button from './ui/Button.svelte';
@@ -37,12 +38,8 @@
   });
 </script>
 
-<h2>Uzantılar</h2>
-<p class="hint intro">
-  Chrome Web Mağazası'ndan adres veya kimlikle uzantı ekleyin ya da paketlenmemiş bir uzantıyı klasöründen yükleyin.
-  Uzantılar gizli sekmelerde ve geliştirici pencerelerinde çalışmaz. Chrome'un uzantı arayüzlerinin yalnızca bir kısmı
-  desteklenir; bazı uzantılar beklendiği gibi çalışmayabilir.
-</p>
+<h2>{t('extensionsPanel.title')}</h2>
+<p class="hint intro">{t('extensionsPanel.intro')}</p>
 
 {#each extensions as extension (extension.path)}
   <div class="extension" class:disabled={!extension.enabled}>
@@ -57,49 +54,54 @@
       <span class="name">{extension.name} <span class="hint">{extension.version}</span></span>
       {#if extension.description}<span class="hint">{extension.description}</span>{/if}
       <span class="hint path" title={extension.path}>{extension.path}</span>
-      {#if extension.error}<span class="error" role="alert">Yüklenemedi: {extension.error}</span>{/if}
+      {#if extension.error}<span class="error" role="alert"
+          >{t('extensionsPanel.loadFailed', { error: extension.error })}</span
+        >{/if}
     </div>
     <div class="controls">
       {#if extension.hasOptions}
-        <Button size="sm" onclick={() => api.openExtensionOptions(extension.path)}>Seçenekler</Button>
+        <Button size="sm" onclick={() => api.openExtensionOptions(extension.path)}
+          >{t('extensionsPanel.options')}</Button
+        >
       {/if}
       <input
         type="checkbox"
         checked={extension.enabled}
-        aria-label="{extension.name} etkin"
-        title={extension.enabled ? 'Devre dışı bırak' : 'Etkinleştir'}
+        aria-label={t('extensionsPanel.enabledLabel', { name: extension.name })}
+        title={extension.enabled ? t('extensionsPanel.disable') : t('extensionsPanel.enable')}
         onchange={(event) => api.setExtensionEnabled(extension.path, event.currentTarget.checked)}
       />
       <IconButton
         icon="close"
         tone="muted"
-        label="{extension.name} kaldır"
+        label={t('extensionsPanel.removeLabel', { name: extension.name })}
         onclick={() => api.removeExtension(extension.path)}
       />
     </div>
   </div>
 {:else}
-  <p class="hint empty">Yüklü uzantı yok.</p>
+  <p class="hint empty">{t('extensionsPanel.empty')}</p>
 {/each}
 
 <form class="store" onsubmit={installFromStore}>
   <TextField
     bind:value={storeInput}
-    placeholder="Chrome Web Mağazası adresi veya uzantı kimliği"
-    aria-label="Chrome Web Mağazası adresi veya uzantı kimliği"
+    placeholder={t('extensionsPanel.storePlaceholder')}
+    aria-label={t('extensionsPanel.storePlaceholder')}
     spellcheck="false"
     autocomplete="off"
     disabled={installing}
   />
   <Button type="submit" icon="plus" disabled={installing || storeInput.trim() === ''}>
-    {installing ? 'Ekleniyor…' : 'Mağazadan ekle'}
+    {installing ? t('extensionsPanel.adding') : t('extensionsPanel.addFromStore')}
   </Button>
 </form>
 
 <div class="actions">
-  <Button icon="extensions" onclick={() => api.openExtensionStore()}>Chrome Web Mağazası’nı aç</Button>
-  <Button icon="plus" disabled={installing} onclick={install}>Klasörden yükle…</Button>
-  {#if installError}<span class="error" role="alert">Yüklenemedi: {installError}</span>{/if}
+  <Button icon="extensions" onclick={() => api.openExtensionStore()}>{t('extensionsPanel.openStore')}</Button>
+  <Button icon="plus" disabled={installing} onclick={install}>{t('extensionsPanel.loadFromFolder')}</Button>
+  {#if installError}<span class="error" role="alert">{t('extensionsPanel.loadFailed', { error: installError })}</span
+    >{/if}
 </div>
 
 <style>

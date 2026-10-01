@@ -1,5 +1,6 @@
 import type { Rectangle, WebContents } from 'electron';
 import type { DeviceFrame, DeviceId } from '../shared/types.js';
+import { t } from '../shared/i18n.js';
 
 export interface Device {
   id: DeviceId;
@@ -115,7 +116,9 @@ export const DEVICES: readonly Device[] = [
   },
   {
     id: 'responsive',
-    label: 'Duyarlı',
+    get label() {
+      return t('devices.responsive');
+    },
     width: 1024,
     height: 768,
     deviceScaleFactor: 1,

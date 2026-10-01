@@ -1,6 +1,7 @@
 import type { NetworkPreset, PageOverrides, RequestRule, UserAgentPreset } from '../shared/types.js';
 import { ANDROID_UA, IOS_UA } from './devices.js';
 import { interceptPatterns } from './request-rules.js';
+import { t } from '../shared/i18n.js';
 
 export const NO_OVERRIDES: PageOverrides = {
   cacheDisabled: false,
@@ -23,17 +24,28 @@ const UNTHROTTLED: NetworkConditions = { offline: false, latency: 0, downloadThr
 
 // Same figures as the Chrome DevTools presets, in milliseconds and bytes per second.
 export const NETWORK_CONDITIONS: Record<NetworkPreset, { label: string; conditions: NetworkConditions }> = {
-  offline: { label: 'Çevrimdışı', conditions: { ...UNTHROTTLED, offline: true } },
+  offline: {
+    get label() {
+      return t('pageOverrides.offline');
+    },
+    conditions: { ...UNTHROTTLED, offline: true },
+  },
   'slow-3g': {
-    label: 'Yavaş 3G',
+    get label() {
+      return t('pageOverrides.slow3g');
+    },
     conditions: { offline: false, latency: 2000, downloadThroughput: 50000, uploadThroughput: 50000 },
   },
   'fast-3g': {
-    label: 'Hızlı 3G',
+    get label() {
+      return t('pageOverrides.fast3g');
+    },
     conditions: { offline: false, latency: 562.5, downloadThroughput: 180000, uploadThroughput: 84375 },
   },
   'fast-4g': {
-    label: 'Hızlı 4G',
+    get label() {
+      return t('pageOverrides.fast4g');
+    },
     conditions: { offline: false, latency: 165, downloadThroughput: 1012500, uploadThroughput: 168750 },
   },
 };

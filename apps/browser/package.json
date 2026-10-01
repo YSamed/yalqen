@@ -66,6 +66,10 @@
       {
         "from": "../../design/brand/png/fitted/icon-512.png",
         "to": "brand/icon-512.png"
+      },
+      {
+        "from": "build/tr.lproj/InfoPlist.strings",
+        "to": "tr.lproj/InfoPlist.strings"
       }
     ],
     "publish": [
@@ -96,10 +100,10 @@
       "entitlementsInherit": "build/entitlements.mac.plist",
       "sign": "./scripts/sign.mjs",
       "extendInfo": {
-        "NSCameraUsageDescription": "Web siteleri izin verdiğinizde kameranızı kullanabilir.",
-        "NSMicrophoneUsageDescription": "Web siteleri izin verdiğinizde mikrofonunuzu kullanabilir.",
-        "NSLocationUsageDescription": "Web siteleri izin verdiğinizde konumunuzu öğrenebilir.",
-        "NSLocationWhenInUseUsageDescription": "Web siteleri izin verdiğinizde konumunuzu öğrenebilir."
+        "NSCameraUsageDescription": "Websites can use your camera when you allow it.",
+        "NSMicrophoneUsageDescription": "Websites can use your microphone when you allow it.",
+        "NSLocationUsageDescription": "Websites can see your location when you allow it.",
+        "NSLocationWhenInUseUsageDescription": "Websites can see your location when you allow it."
       },
       "artifactName": "Yalqen-${version}-${arch}.${ext}"
     },

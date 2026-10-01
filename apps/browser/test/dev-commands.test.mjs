@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import devCommands from '../dist/main/dev-commands.js';
+import i18n from '../dist/shared/i18n.js';
 
-const { DEV_COMMANDS, autoReloadSeconds, isDevCommandId, isDevCommandInput, matchDevCommands } = devCommands;
+i18n.setLocale('tr');
+
+const { devCommands: commands, autoReloadSeconds, isDevCommandId, isDevCommandInput, matchDevCommands } = devCommands;
 
 test('only input starting with > is a command', () => {
   assert.equal(isDevCommandInput('>cache'), true);
@@ -14,7 +17,7 @@ test('only input starting with > is a command', () => {
 test('a bare prefix lists every command', () => {
   assert.deepEqual(
     matchDevCommands('>').map((item) => item.commandId),
-    DEV_COMMANDS.map((command) => command.id),
+    commands().map((command) => command.id),
   );
 });
 
@@ -51,7 +54,7 @@ test('suggestions carry a unique key and the shortcut hint', () => {
     commandId: 'hard-reload',
     hint: '⇧⌘R',
   });
-  assert.equal(new Set(matchDevCommands('>').map((item) => item.url)).size, DEV_COMMANDS.length);
+  assert.equal(new Set(matchDevCommands('>').map((item) => item.url)).size, commands().length);
 });
 
 test('command ids are validated', () => {

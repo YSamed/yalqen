@@ -6,6 +6,7 @@ import {
   type PermissionStore,
   type SitePermission,
 } from './permissions.js';
+import { t } from '../shared/i18n.js';
 
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 
@@ -33,8 +34,8 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
       const options: MessageBoxOptions = {
         type: 'question',
         message: permissionQuestion(new URL(origin).host, kinds),
-        detail: 'Bu kararı daha sonra adres çubuğundaki site bilgisinden değiştirebilirsiniz.',
-        buttons: ['İzin ver', 'Bu seferlik izin ver', 'Engelle'],
+        detail: t('permissionHandlers.detail'),
+        buttons: [t('permissionHandlers.allow'), t('permissionHandlers.allowOnce'), t('permissionHandlers.block')],
         defaultId: 2,
         cancelId: 2,
         noLink: true,

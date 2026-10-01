@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../shared/i18n';
   import type { DeviceFrame } from '../../shared/types';
   import Button from './ui/Button.svelte';
 
@@ -74,22 +75,24 @@
 
 <div class="controls" style:top="{device.y - bezel - 26}px">
   <span class="size">
-    {device.width}×{device.height}{device.scale < 1 ? ` · %${Math.round(device.scale * 100)}` : ''}
+    {device.width}×{device.height}{device.scale < 1
+      ? ` · ${t('deviceControls.scale', { percent: Math.round(device.scale * 100) })}`
+      : ''}
   </span>
-  <div class="group" role="group" aria-label="Kırılım noktaları">
+  <div class="group" role="group" aria-label={t('deviceControls.breakpoints')}>
     {#each BREAKPOINTS as width (width)}
       <Button
         size="sm"
         variant={device.width === width ? 'tonal' : 'ghost'}
         aria-pressed={device.width === width}
-        title="{width} piksel genişlik"
+        title={t('deviceControls.pixelWidth', { width })}
         onclick={() => resize(width, device.height)}
       >
         {width}
       </Button>
     {/each}
   </div>
-  <div class="group" role="group" aria-label="Piksel oranı">
+  <div class="group" role="group" aria-label={t('deviceControls.pixelRatio')}>
     {#each SCALE_FACTORS as value (value)}
       <Button
         size="sm"
@@ -110,7 +113,7 @@
   style:height="{device.viewHeight}px"
   role="slider"
   tabindex="0"
-  aria-label="Genişlik"
+  aria-label={t('deviceControls.width')}
   aria-orientation="horizontal"
   aria-valuenow={device.width}
   onpointerdown={(event) => startDrag(event, true, false)}
@@ -126,7 +129,7 @@
   style:width="{device.viewWidth}px"
   role="slider"
   tabindex="0"
-  aria-label="Yükseklik"
+  aria-label={t('deviceControls.height')}
   aria-orientation="vertical"
   aria-valuenow={device.height}
   onpointerdown={(event) => startDrag(event, false, true)}

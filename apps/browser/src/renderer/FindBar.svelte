@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { FindResult } from '../shared/types';
+  import { t } from '../shared/i18n';
   import IconButton from './components/ui/IconButton.svelte';
   import SearchField from './components/ui/SearchField.svelte';
 
@@ -9,7 +10,11 @@
   let result = $state<FindResult | null>(null);
 
   const status = $derived(
-    value === '' || result === null ? '' : result.matches === 0 ? 'Sonuç yok' : `${result.active}/${result.matches}`,
+    value === '' || result === null
+      ? ''
+      : result.matches === 0
+        ? t('findBar.noResults')
+        : `${result.active}/${result.matches}`,
   );
 
   function search(): void {
@@ -46,30 +51,38 @@
   });
 </script>
 
+<svelte:head><title>{t('findBar.pageTitle')}</title></svelte:head>
+
 <svelte:window onkeydown={onKeydown} />
 
 <div class="find" role="search">
-  <SearchField bind:value bind:ref={input} oninput={search} placeholder="Sayfada bul" aria-label="Sayfada bul">
+  <SearchField
+    bind:value
+    bind:ref={input}
+    oninput={search}
+    placeholder={t('findBar.placeholder')}
+    aria-label={t('findBar.placeholder')}
+  >
     {#snippet trailing()}
       <span class="status" class:empty={result?.matches === 0} aria-live="polite">{status}</span>
       <IconButton
         icon="up"
-        label="Önceki"
-        title="Önceki (⇧↩)"
+        label={t('findBar.previous')}
+        title={t('findBar.previousTitle')}
         disabled={!result?.matches}
         onclick={() => step(false)}
       />
       <IconButton
         icon="down"
-        label="Sonraki"
-        title="Sonraki (↩)"
+        label={t('findBar.next')}
+        title={t('findBar.nextTitle')}
         disabled={!result?.matches}
         onclick={() => step(true)}
       />
       <IconButton
         icon="close"
-        label="Kapat"
-        title="Kapat (Esc)"
+        label={t('findBar.close')}
+        title={t('findBar.closeTitle')}
         onclick={() => window.yalqenFind.send({ type: 'close' })}
       />
     {/snippet}

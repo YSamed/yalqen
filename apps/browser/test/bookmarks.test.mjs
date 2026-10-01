@@ -5,6 +5,9 @@ import path from 'node:path';
 import { test } from 'node:test';
 import bookmarks from '../dist/main/bookmarks.js';
 import suggestions from '../dist/main/suggestions.js';
+import i18n from '../dist/shared/i18n.js';
+
+i18n.setLocale('tr');
 
 const { BookmarkStore, bookmarksMenuTemplate, canBookmark, renderBookmarks } = bookmarks;
 

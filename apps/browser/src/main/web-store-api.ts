@@ -7,6 +7,7 @@ import {
   type Session,
   type WebContents,
 } from 'electron';
+import { t } from '../shared/i18n.js';
 import {
   WEB_STORE_CALL,
   WEB_STORE_EVENT,
@@ -63,10 +64,12 @@ export function isSupportedManifest(manifest: Manifest): boolean {
 
 export function permissionSummary(manifest: Manifest): string {
   const permissions = [...strings(manifest.permissions), ...strings(manifest.host_permissions)];
-  if (permissions.length === 0) return 'Bu uzantı özel bir izin istemiyor.';
+  if (permissions.length === 0) return t('webStoreApi.noPermissions');
   const shown = permissions.slice(0, MAX_LISTED_PERMISSIONS).join(', ');
   const more = permissions.length - MAX_LISTED_PERMISSIONS;
-  return `İstediği izinler: ${shown}${more > 0 ? ` ve ${more} tane daha` : ''}`;
+  return more > 0
+    ? t('webStoreApi.permissionsMore', { list: shown, count: more })
+    : t('webStoreApi.permissions', { list: shown });
 }
 
 export function installPrompt(
@@ -136,7 +139,7 @@ export function registerWebStoreApi(host: WebStoreHost): void {
     const manifest = parseManifest(details.manifest);
     if (!manifest) return { result: WebStoreResult.MANIFEST_ERROR };
     if (!isSupportedManifest(manifest)) {
-      return { result: WebStoreResult.MANIFEST_ERROR, message: 'Bu uzantı eski bir manifest sürümü kullanıyor' };
+      return { result: WebStoreResult.MANIFEST_ERROR, message: t('webStoreApi.oldManifest') };
     }
     const status = host.extensions.storeStatus(id);
     if (status === 'installing') return { result: WebStoreResult.INSTALL_IN_PROGRESS };
@@ -145,9 +148,9 @@ export function registerWebStoreApi(host: WebStoreHost): void {
     const { name, detail } = installPrompt(details, manifest, id);
     const options: Electron.MessageBoxOptions = {
       type: 'question',
-      message: `“${name}” uzantısı eklensin mi?`,
+      message: t('webStoreApi.addPrompt', { name }),
       detail,
-      buttons: ['Uzantıyı ekle', 'İptal'],
+      buttons: [t('webStoreApi.addButton'), t('webStoreApi.cancel')],
       defaultId: 1,
       cancelId: 1,
     };
@@ -168,8 +171,8 @@ export function registerWebStoreApi(host: WebStoreHost): void {
       const parent = host.parentWindow(event.sender);
       const options: Electron.MessageBoxOptions = {
         type: 'question',
-        message: 'Uzantı kaldırılsın mı?',
-        buttons: ['Kaldır', 'İptal'],
+        message: t('webStoreApi.removePrompt'),
+        buttons: [t('webStoreApi.remove'), t('webStoreApi.cancel')],
         defaultId: 1,
         cancelId: 1,
       };

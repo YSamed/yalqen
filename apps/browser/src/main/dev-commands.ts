@@ -8,6 +8,7 @@ import {
   type PageOverrides,
 } from '../shared/types.js';
 import { NETWORK_CONDITIONS, NO_OVERRIDES, USER_AGENTS } from './page-overrides.js';
+import { getLocale, t } from '../shared/i18n.js';
 
 export const DEV_COMMAND_PREFIX = '>';
 
@@ -19,89 +20,120 @@ interface DevCommand {
 }
 
 function autoReloadLabel(seconds: AutoReloadSeconds): string {
-  return seconds < 60 ? `${seconds} sn` : `${seconds / 60} dk`;
+  return seconds < 60
+    ? t('devCommands.intervalSeconds', { seconds })
+    : t('devCommands.intervalMinutes', { minutes: seconds / 60 });
 }
 
-export const DEV_COMMANDS: readonly DevCommand[] = [
-  { id: 'hard-reload', title: 'Önbelleği yok sayarak yenile', shortcut: '⇧⌘R', keywords: 'hard reload cache' },
-  {
-    id: 'toggle-cache',
-    title: 'Bu sekmede önbelleği kapat/aç',
-    keywords: 'disable cache no-cache önbellek devre dışı',
-  },
-  ...AUTO_RELOAD_SECONDS.map((seconds): DevCommand => ({
-    id: `auto-reload-${seconds}`,
-    title: `Otomatik yenile: ${autoReloadLabel(seconds)}`,
-    keywords: 'auto reload refresh interval yenileme',
-  })),
-  { id: 'auto-reload-off', title: 'Otomatik yenilemeyi durdur', keywords: 'auto reload refresh stop kapat' },
-  ...NETWORK_PRESETS.map((preset): DevCommand => ({
-    id: `network-${preset}`,
-    title: `Ağ: ${NETWORK_CONDITIONS[preset].label}`,
-    keywords: 'network throttle offline slow ağ kısıtla bağlantı',
-  })),
-  { id: 'network-online', title: 'Ağ kısıtlamasını kaldır', keywords: 'network throttle online ağ kısıtla' },
-  { id: 'color-scheme-dark', title: 'Koyu temayı taklit et', keywords: 'dark mode prefers-color-scheme tema' },
-  { id: 'color-scheme-light', title: 'Açık temayı taklit et', keywords: 'light mode prefers-color-scheme tema' },
-  { id: 'color-scheme-auto', title: 'Sistem temasına dön', keywords: 'color scheme reset prefers-color-scheme tema' },
-  {
-    id: 'toggle-reduced-motion',
-    title: 'Azaltılmış hareketi taklit et/kapat',
-    keywords: 'prefers-reduced-motion animation animasyon',
-  },
-  { id: 'toggle-print-media', title: 'Yazdırma görünümünü aç/kapat', keywords: 'print media css yazdır' },
-  ...USER_AGENT_PRESETS.map((preset): DevCommand => ({
-    id: `user-agent-${preset}`,
-    title: `User-Agent: ${USER_AGENTS[preset].label}`,
-    keywords: 'user agent ua tarayıcı browser',
-  })),
-  { id: 'user-agent-default', title: "User-Agent'ı varsayılana döndür", keywords: 'user agent ua reset' },
-  {
-    id: 'developer-window',
-    title: 'Yeni geliştirici penceresi',
-    keywords: 'developer profile window clean session temiz oturum profil',
-  },
-  {
-    id: 'toggle-request-rules',
-    title: 'Bu sekmede istek kurallarını uygula/kaldır',
-    keywords: 'request rules mock block redirect header intercept istek kural',
-  },
-  {
-    id: 'edit-request-rules',
-    title: 'İstek kurallarını düzenle',
-    keywords: 'request rules mock block redirect header istek kural ayar',
-  },
-  {
-    id: 'reset-overrides',
-    title: 'Tüm sayfa taklitlerini sıfırla',
-    keywords: 'reset overrides emulation network media user agent cache sıfırla',
-  },
-  {
-    id: 'devtools',
-    title: 'Geliştirici araçlarını aç/kapat',
-    shortcut: '⌥⌘I',
-    keywords: 'devtools inspect console konsol',
-  },
-  { id: 'view-source', title: 'Sayfa kaynağını görüntüle', shortcut: '⌥⌘U', keywords: 'view source html kaynak' },
-  { id: 'device', title: 'Telefon görünümünü aç/kapat', shortcut: '⌥⌘M', keywords: 'device mobile cihaz mobil' },
-  { id: 'responsive', title: 'Duyarlı tasarım modu', keywords: 'responsive breakpoint viewport boyut genişlik' },
-  { id: 'rotate-device', title: 'Cihazı döndür', shortcut: '⇧⌥⌘M', keywords: 'rotate landscape portrait yatay dikey' },
-  { id: 'screenshot', title: 'Görünür alanın ekran görüntüsünü al', keywords: 'screenshot capture png görüntü' },
-  {
-    id: 'full-page-screenshot',
-    title: 'Tam sayfa ekran görüntüsü al',
-    keywords: 'screenshot full page capture png görüntü',
-  },
-  { id: 'copy-address', title: 'Adresi kopyala', keywords: 'copy url link bağlantı' },
-  { id: 'copy-markdown', title: 'Adresi Markdown bağlantısı olarak kopyala', keywords: 'copy markdown link md' },
-  { id: 'copy-curl', title: 'Adresi curl komutu olarak kopyala', keywords: 'copy curl terminal shell' },
-  { id: 'clear-cache', title: 'Önbelleği temizle ve yenile', keywords: 'clear cache empty' },
-  {
-    id: 'clear-site-data',
-    title: 'Bu sitenin verilerini temizle',
-    keywords: 'clear site data cookies storage çerez depolama localstorage',
-  },
-];
+export function devCommands(): readonly DevCommand[] {
+  return [
+    {
+      id: 'hard-reload',
+      title: t('devCommands.hardReload'),
+      shortcut: '⇧⌘R',
+      keywords: t('devCommands.hardReloadKeywords'),
+    },
+    { id: 'toggle-cache', title: t('devCommands.toggleCache'), keywords: t('devCommands.toggleCacheKeywords') },
+    ...AUTO_RELOAD_SECONDS.map((seconds): DevCommand => ({
+      id: `auto-reload-${seconds}`,
+      title: t('devCommands.autoReload', { interval: autoReloadLabel(seconds) }),
+      keywords: t('devCommands.autoReloadKeywords'),
+    })),
+    { id: 'auto-reload-off', title: t('devCommands.autoReloadOff'), keywords: t('devCommands.autoReloadOffKeywords') },
+    ...NETWORK_PRESETS.map((preset): DevCommand => ({
+      id: `network-${preset}`,
+      title: t('devCommands.network', { label: NETWORK_CONDITIONS[preset].label }),
+      keywords: t('devCommands.networkKeywords'),
+    })),
+    { id: 'network-online', title: t('devCommands.networkOnline'), keywords: t('devCommands.networkOnlineKeywords') },
+    {
+      id: 'color-scheme-dark',
+      title: t('devCommands.colorSchemeDark'),
+      keywords: t('devCommands.colorSchemeDarkKeywords'),
+    },
+    {
+      id: 'color-scheme-light',
+      title: t('devCommands.colorSchemeLight'),
+      keywords: t('devCommands.colorSchemeLightKeywords'),
+    },
+    {
+      id: 'color-scheme-auto',
+      title: t('devCommands.colorSchemeAuto'),
+      keywords: t('devCommands.colorSchemeAutoKeywords'),
+    },
+    {
+      id: 'toggle-reduced-motion',
+      title: t('devCommands.toggleReducedMotion'),
+      keywords: t('devCommands.toggleReducedMotionKeywords'),
+    },
+    {
+      id: 'toggle-print-media',
+      title: t('devCommands.togglePrintMedia'),
+      keywords: t('devCommands.togglePrintMediaKeywords'),
+    },
+    ...USER_AGENT_PRESETS.map((preset): DevCommand => ({
+      id: `user-agent-${preset}`,
+      title: t('devCommands.userAgent', { label: USER_AGENTS[preset].label }),
+      keywords: t('devCommands.userAgentKeywords'),
+    })),
+    {
+      id: 'user-agent-default',
+      title: t('devCommands.userAgentDefault'),
+      keywords: t('devCommands.userAgentDefaultKeywords'),
+    },
+    {
+      id: 'developer-window',
+      title: t('devCommands.developerWindow'),
+      keywords: t('devCommands.developerWindowKeywords'),
+    },
+    {
+      id: 'toggle-request-rules',
+      title: t('devCommands.toggleRequestRules'),
+      keywords: t('devCommands.toggleRequestRulesKeywords'),
+    },
+    {
+      id: 'edit-request-rules',
+      title: t('devCommands.editRequestRules'),
+      keywords: t('devCommands.editRequestRulesKeywords'),
+    },
+    {
+      id: 'reset-overrides',
+      title: t('devCommands.resetOverrides'),
+      keywords: t('devCommands.resetOverridesKeywords'),
+    },
+    {
+      id: 'devtools',
+      title: t('devCommands.devtools'),
+      shortcut: '⌥⌘I',
+      keywords: t('devCommands.devtoolsKeywords'),
+    },
+    {
+      id: 'view-source',
+      title: t('devCommands.viewSource'),
+      shortcut: '⌥⌘U',
+      keywords: t('devCommands.viewSourceKeywords'),
+    },
+    { id: 'device', title: t('devCommands.device'), shortcut: '⌥⌘M', keywords: t('devCommands.deviceKeywords') },
+    { id: 'responsive', title: t('devCommands.responsive'), keywords: t('devCommands.responsiveKeywords') },
+    {
+      id: 'rotate-device',
+      title: t('devCommands.rotateDevice'),
+      shortcut: '⇧⌥⌘M',
+      keywords: t('devCommands.rotateDeviceKeywords'),
+    },
+    { id: 'screenshot', title: t('devCommands.screenshot'), keywords: t('devCommands.screenshotKeywords') },
+    {
+      id: 'full-page-screenshot',
+      title: t('devCommands.fullPageScreenshot'),
+      keywords: t('devCommands.fullPageScreenshotKeywords'),
+    },
+    { id: 'copy-address', title: t('devCommands.copyAddress'), keywords: t('devCommands.copyAddressKeywords') },
+    { id: 'copy-markdown', title: t('devCommands.copyMarkdown'), keywords: t('devCommands.copyMarkdownKeywords') },
+    { id: 'copy-curl', title: t('devCommands.copyCurl'), keywords: t('devCommands.copyCurlKeywords') },
+    { id: 'clear-cache', title: t('devCommands.clearCache'), keywords: t('devCommands.clearCacheKeywords') },
+    { id: 'clear-site-data', title: t('devCommands.clearSiteData'), keywords: t('devCommands.clearSiteDataKeywords') },
+  ];
+}
 
 export function isDevCommandInput(input: string): boolean {
   return input.trimStart().startsWith(DEV_COMMAND_PREFIX);
@@ -143,19 +175,26 @@ export function overridePatch(id: DevCommandId, current: PageOverrides): Partial
 }
 
 export function isDevCommandId(value: unknown): value is DevCommandId {
-  return DEV_COMMANDS.some((command) => command.id === value);
+  return devCommands().some((command) => command.id === value);
 }
 
 export function matchDevCommands(input: string): AddressSuggestion[] {
-  const terms = input.trimStart().slice(DEV_COMMAND_PREFIX.length).toLocaleLowerCase('tr').split(/\s+/).filter(Boolean);
-  return DEV_COMMANDS.filter((command) => {
-    const text = `${command.title} ${command.keywords}`.toLocaleLowerCase('tr');
-    return terms.every((term) => text.includes(term));
-  }).map((command) => ({
-    kind: 'command',
-    title: command.title,
-    url: `${DEV_COMMAND_PREFIX}${command.id}`,
-    commandId: command.id,
-    ...(command.shortcut ? { hint: command.shortcut } : {}),
-  }));
+  const terms = input
+    .trimStart()
+    .slice(DEV_COMMAND_PREFIX.length)
+    .toLocaleLowerCase(getLocale())
+    .split(/\s+/)
+    .filter(Boolean);
+  return devCommands()
+    .filter((command) => {
+      const text = `${command.title} ${command.keywords}`.toLocaleLowerCase(getLocale());
+      return terms.every((term) => text.includes(term));
+    })
+    .map((command) => ({
+      kind: 'command',
+      title: command.title,
+      url: `${DEV_COMMAND_PREFIX}${command.id}`,
+      commandId: command.id,
+      ...(command.shortcut ? { hint: command.shortcut } : {}),
+    }));
 }

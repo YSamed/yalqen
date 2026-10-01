@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { DownloadsSummary, PanelSide, PendingUpdate, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
   import { devStates } from '../format';
@@ -54,9 +55,9 @@
       .filter((tab): tab is TabSnapshot => tab !== undefined && (!collapsed || !tab.pinned)),
   );
   const profiles: { id: ProfileKind; name: string }[] = [
-    { id: 'personal', name: 'Kişisel' },
-    { id: 'developer', name: 'Geliştirici' },
-    { id: 'private', name: 'Gizli' },
+    { id: 'personal', name: t('tabPanel.profilePersonal') },
+    { id: 'developer', name: t('tabPanel.profileDeveloper') },
+    { id: 'private', name: t('tabPanel.profilePrivate') },
   ];
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -76,12 +77,12 @@
 
   function label(tab: TabSnapshot): string {
     const states = [
-      tab.id === activeTabId ? 'aktif' : null,
-      developer ? 'geliştirici' : tab.isPrivate ? 'gizli' : null,
-      tab.live ? null : 'bellekten çıkarılmış',
-      tab.frozen ? 'dondurulmuş' : null,
-      tab.pinned ? 'sabitlendi' : null,
-      tab.muted ? 'sessiz' : tab.audible ? 'ses çalıyor' : null,
+      tab.id === activeTabId ? t('tabPanel.stateActive') : null,
+      developer ? t('tabPanel.stateDeveloper') : tab.isPrivate ? t('tabPanel.statePrivate') : null,
+      tab.live ? null : t('tabPanel.stateUnloaded'),
+      tab.frozen ? t('tabPanel.stateFrozen') : null,
+      tab.pinned ? t('tabPanel.statePinned') : null,
+      tab.muted ? t('tabPanel.stateMuted') : tab.audible ? t('tabPanel.stateAudible') : null,
       ...devStates(tab),
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
@@ -161,7 +162,7 @@
         size="sm"
         tone="muted"
         icon="close"
-        label="Kapat"
+        label={t('tabPanel.close')}
         onclick={() => send({ type: 'close-tab', id: tab.id })}
       />
     </span>
@@ -178,8 +179,10 @@
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
     <span class="title">{tab.title}</span>
-    {#if developer}<span class="mark" title="Geliştirici sekmesi"><Icon name="gauge" size={13} /></span
-      >{:else if tab.isPrivate}<span class="mark" title="Gizli sekme"><Icon name="private" size={13} /></span>{/if}
+    {#if developer}<span class="mark" title={t('tabPanel.developerTab')}><Icon name="gauge" size={13} /></span
+      >{:else if tab.isPrivate}<span class="mark" title={t('tabPanel.privateTab')}
+        ><Icon name="private" size={13} /></span
+      >{/if}
   </button>
   {#if tab.audible || tab.muted}
     <IconButton
@@ -187,7 +190,7 @@
       tone="muted"
       icon={tab.muted ? 'muted' : 'sound'}
       class="audio"
-      label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+      label={tab.muted ? t('tabPanel.unmute') : t('tabPanel.mute')}
       aria-pressed={tab.muted}
       onclick={() => send({ type: 'toggle-mute', id: tab.id })}
     />
@@ -199,7 +202,7 @@
   class:collapsed
   class:shrinking
   class:right={side === 'right'}
-  aria-label="Sekmeler"
+  aria-label={t('tabPanel.tabs')}
   style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px; --panel-full-width: ${fullWidth}px`}
 >
   <div class="top" style:height="{topInset}px"></div>
@@ -211,7 +214,7 @@
           <ul
             class="favorites"
             class:rows={collapsed}
-            aria-label="Sabitlenenler"
+            aria-label={t('tabPanel.pinned')}
             ondrop={(e) => onDrop(e, pinned)}
             ondragover={(e) => draggingPinned && e.preventDefault()}
           >
@@ -305,9 +308,10 @@
           <button class="card" onclick={() => send({ type: 'open-downloads' })}>
             <span class="card-line">
               <Icon name="download" size={15} />
-              <span class="card-title">{downloads.active} indirme sürüyor</span>
+              <span class="card-title">{t('tabPanel.downloadsActive', { count: downloads.active })}</span>
               {#if downloads.progress !== null}
-                <span class="card-meta">%{Math.round(downloads.progress * 100)}</span>
+                <span class="card-meta">{t('tabPanel.percent', { percent: Math.round(downloads.progress * 100) })}</span
+                >
               {/if}
             </span>
             <span class="meter" class:indeterminate={downloads.progress === null}>
@@ -318,16 +322,16 @@
           <button class="card" onclick={openUpdatePopup}>
             <span class="card-line">
               <Icon name="sparkle" size={15} />
-              <span class="card-title">Yalqen {pendingUpdate.version} hazır</span>
-              <span class="card-action">Güncelle</span>
+              <span class="card-title">{t('tabPanel.updateReady', { version: pendingUpdate.version })}</span>
+              <span class="card-action">{t('tabPanel.update')}</span>
             </span>
           </button>
         {:else if pendingUpdate}
           <button class="card" onclick={() => send({ type: 'open-settings' })}>
             <span class="card-line">
               <Icon name="update" size={15} />
-              <span class="card-title">Güncelleme indiriliyor</span>
-              <span class="card-meta">%{pendingUpdate.percent}</span>
+              <span class="card-title">{t('tabPanel.updateDownloading')}</span>
+              <span class="card-meta">{t('tabPanel.percent', { percent: pendingUpdate.percent })}</span>
             </span>
             <span class="meter"><span style:width="{Math.max(4, pendingUpdate.percent)}%"></span></span>
           </button>
@@ -335,13 +339,15 @@
       {/if}
 
       <footer class="footer" class:compact={collapsed}>
-        <div class="profiles" role="group" aria-label="Profiller">
+        <div class="profiles" role="group" aria-label={t('tabPanel.profiles')}>
           {#each profiles as item (item.id)}
             <button
               class="profile {item.id}"
               aria-pressed={item.id === profile}
-              aria-label="{item.name} profili"
-              title={item.id === profile ? `${item.name} (açık)` : `${item.name} profiline geç`}
+              aria-label={t('tabPanel.profileLabel', { name: item.name })}
+              title={item.id === profile
+                ? t('tabPanel.profileCurrent', { name: item.name })
+                : t('tabPanel.profileSwitch', { name: item.name })}
               onclick={() => send({ type: 'switch-profile', profile: item.id })}
             >
               <Icon name={item.id === 'developer' ? 'code' : item.id === 'private' ? 'private' : 'profile'} size={14} />
@@ -359,8 +365,8 @@
             : collapsed
               ? 'panel-expand-right'
               : 'panel-close-right'}
-          label={collapsed ? 'Yan paneli genişlet' : 'Yan paneli daralt'}
-          title={collapsed ? 'Yan paneli genişlet (⌘S)' : 'Yan paneli daralt (⌘S)'}
+          label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
+          title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
           aria-expanded={!collapsed}
           onclick={() => send({ type: 'toggle-panel' })}
         />

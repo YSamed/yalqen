@@ -11,6 +11,9 @@ import webStoreApi from '../dist/main/web-store-api.js';
 import manifests from '../dist/main/extension-manifest.js';
 import popup from '../dist/main/extension-popup.js';
 import extensions from '../dist/main/extensions.js';
+import i18n from '../dist/shared/i18n.js';
+
+i18n.setLocale('tr');
 
 const {
   actionTitle,

@@ -1,0 +1,4 @@
+NSCameraUsageDescription = "Web siteleri izin verdiğinizde kameranızı kullanabilir.";
+NSMicrophoneUsageDescription = "Web siteleri izin verdiğinizde mikrofonunuzu kullanabilir.";
+NSLocationUsageDescription = "Web siteleri izin verdiğinizde konumunuzu öğrenebilir.";
+NSLocationWhenInUseUsageDescription = "Web siteleri izin verdiğinizde konumunuzu öğrenebilir.";

@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
 import { canBookmark, menuTitle, type BookmarkStore, type ImportedBookmark } from './bookmarks.js';
 import { isWebUrl, MAX_VISITS, type HistoryStore, type ImportedVisit } from './history.js';
+import { t } from '../shared/i18n.js';
 
 export interface ImportSource {
   label: string;
@@ -335,27 +336,29 @@ export function historyImportMenu(
   importFrom: (file?: string) => void,
 ): MenuItemConstructorOptions {
   return {
-    label: 'Geçmişi içe aktar',
+    label: t('browserImport.historyMenu'),
     submenu: [
       ...sources.map((source): MenuItemConstructorOptions => ({
         label: menuTitle(source.label),
         click: () => importFrom(source.file),
       })),
       ...(sources.length > 0 ? [{ type: 'separator' as const }] : []),
-      { label: 'History dosyası seç…', click: () => importFrom() },
+      { label: t('browserImport.historyMenuFile'), click: () => importFrom() },
     ],
   };
 }
 
-export function importErrorMessage(error: unknown, kind = 'Yer imi'): string {
+export function importErrorMessage(error: unknown, kind: 'bookmarks' | 'history' = 'bookmarks'): string {
   const code = (error as NodeJS.ErrnoException | null)?.code;
-  if (code === 'ENOENT') return `${kind} dosyası bulunamadı.`;
-  if (code === 'EACCES' || code === 'EPERM') {
-    return "Dosyayı okuma izni yok. Sistem Ayarları > Gizlilik ve Güvenlik > Tam Disk Erişimi bölümünden Yalqen'e izin verebilirsiniz.";
+  if (code === 'ENOENT') {
+    return t(kind === 'history' ? 'browserImport.historyNotFound' : 'browserImport.bookmarksNotFound');
   }
+  if (code === 'EACCES' || code === 'EPERM') return t('browserImport.noPermission');
   if (error instanceof SyntaxError) {
-    return `Bu dosya Chrome, Brave, Edge ya da Firefox ${kind.toLocaleLowerCase('tr')} dosyası değil.`;
+    return t(kind === 'history' ? 'browserImport.historyUnsupported' : 'browserImport.bookmarksUnsupported');
   }
-  if (code === 'ERR_SQLITE_ERROR') return `${kind} dosyası okunamadı. Tarayıcıyı kapatıp yeniden deneyin.`;
+  if (code === 'ERR_SQLITE_ERROR') {
+    return t(kind === 'history' ? 'browserImport.historyUnreadable' : 'browserImport.bookmarksUnreadable');
+  }
   return error instanceof Error ? error.message : String(error);
 }

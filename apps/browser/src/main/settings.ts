@@ -138,10 +138,11 @@ export class SettingsStore {
   private readonly json: JsonFile;
   private current: Settings;
 
-  constructor(directory: string) {
+  // A fresh profile asks websites for the interface language.
+  constructor(directory: string, pageLanguage: PageLanguage = DEFAULTS.pageLanguage) {
     this.file = path.join(directory, 'settings.json');
     this.json = new JsonFile(this.file, 'settings');
-    this.current = this.load();
+    this.current = this.load({ ...DEFAULTS, pageLanguage });
   }
 
   get(): Settings {
@@ -156,11 +157,11 @@ export class SettingsStore {
     return next;
   }
 
-  private load(): Settings {
+  private load(defaults: Settings): Settings {
     try {
-      return sanitizeSettings(JSON.parse(fs.readFileSync(this.file, 'utf8')));
+      return sanitizeSettings(JSON.parse(fs.readFileSync(this.file, 'utf8')), defaults);
     } catch {
-      return { ...DEFAULTS };
+      return defaults;
     }
   }
 }

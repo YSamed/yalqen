@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Güncelleme</title>
+    <title>{{updatePopup.title}}</title>
     <style>
       __YALQEN_CONTROLS_SLOT__
     </style>
@@ -108,13 +108,13 @@
           <path d="M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 10.5v-5M5.8 7.7 8 5.5l2.2 2.2" />
         </svg>
       </span>
-      <strong>Yalqen __YALQEN_VERSION_SLOT__ hazır</strong>
+      <strong>{{updatePopup.ready}}</strong>
     </header>
-    <p>Yeniden başlatınca yüklenir, açık sekmeler geri gelir.</p>
+    <p>{{updatePopup.text}}</p>
     <div class="actions">
-      <a class="btn primary" href="yalqen://update/install">Yeniden başlat</a>
-      <a class="btn ghost" href="yalqen://update/notes">Yenilikler</a>
-      <a class="btn ghost" href="yalqen://update/later">Sonra</a>
+      <a class="btn primary" href="yalqen://update/install">{{updatePopup.restart}}</a>
+      <a class="btn ghost" href="yalqen://update/notes">{{updatePopup.whatsNew}}</a>
+      <a class="btn ghost" href="yalqen://update/later">{{updatePopup.later}}</a>
     </div>
   </body>
 </html>

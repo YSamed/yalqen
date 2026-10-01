@@ -1,5 +1,6 @@
 import { ipcMain, type BaseWindow, type IpcMainEvent, type WebContentsView, type Rectangle } from 'electron';
 import { FindBarChannel, type FindBarAction, type FindResult } from '../shared/types.js';
+import { getLocale } from '../shared/i18n.js';
 import { createOverlayView, raiseToTop } from './overlay-view.js';
 
 const WIDTH = 380;
@@ -98,7 +99,7 @@ export class FindBar {
     const view = createOverlayView(this.options.preload);
     const contents = view.webContents;
     this.view = view;
-    this.loaded = contents.loadFile(this.options.page).catch((error: unknown) => {
+    this.loaded = contents.loadFile(this.options.page, { query: { lang: getLocale() } }).catch((error: unknown) => {
       console.warn('[find] could not load the find bar:', error);
     });
     return view;
