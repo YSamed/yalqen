@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { nativeImage, net, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
+import { t } from '../shared/i18n.js';
 import type { ExtensionInfo } from '../shared/types.js';
 import {
   actionTitle,
@@ -59,8 +60,8 @@ export function extensionsMenuTemplate(
   return [
     ...items,
     ...(items.length > 0 ? [{ type: 'separator' as const }] : []),
-    { label: 'Chrome Web Mağazası’nı aç', click: handlers.openStore },
-    { label: 'Uzantıları yönet…', click: handlers.manage },
+    { label: t('extensions.openStore'), click: handlers.openStore },
+    { label: t('extensions.manage'), click: handlers.manage },
   ];
 }
 
@@ -188,7 +189,7 @@ export class ExtensionManager {
 
   async installFromStore(input: string): Promise<string | null> {
     const id = parseStoreId(input);
-    if (!id) return 'Geçerli bir Chrome Web Mağazası adresi veya uzantı kimliği girin';
+    if (!id) return t('extensions.invalidStoreId');
     if (this.installing.has(id)) return null;
     this.installing.add(id);
     this.onChange();

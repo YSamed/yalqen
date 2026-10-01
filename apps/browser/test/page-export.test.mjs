@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import pageExport from '../dist/main/page-export.js';
+import i18n from '../dist/shared/i18n.js';
+
+i18n.setLocale('tr');
 
 const { canViewSource, formatAddress, fullPageClip, pageFileName } = pageExport;
 const pdfFileName = (title, url) => pageFileName(title, url, 'pdf');

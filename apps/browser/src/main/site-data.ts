@@ -1,4 +1,5 @@
 import type { Cookie, MenuItemConstructorOptions, Session } from 'electron';
+import { getLocale, t } from '../shared/i18n.js';
 
 export interface StorageUsage {
   localStorage: number;
@@ -59,7 +60,7 @@ export function formatBytes(value: number): string {
     unit++;
   }
   const digits = unit === 0 || size >= 100 ? 0 : 1;
-  return `${size.toLocaleString('tr-TR', { maximumFractionDigits: digits })} ${UNITS[unit]}`;
+  return `${size.toLocaleString(getLocale(), { maximumFractionDigits: digits })} ${UNITS[unit]}`;
 }
 
 export function cookieUrl(cookie: Pick<Cookie, 'domain' | 'path' | 'secure'>): string {
@@ -79,26 +80,27 @@ export function cookiesForHost<T extends Pick<Cookie, 'domain' | 'hostOnly'>>(
 
 export function siteDataItems(data: SiteData, actions: SiteDataActions): MenuItemConstructorOptions[] {
   const { storage } = data;
+  const localLabel = t('siteData.localStorage');
   const sizes: [string, number][] = storage
     ? [
-        ['Yerel depolama', storage.localStorage],
+        [localLabel, storage.localStorage],
         ['IndexedDB', storage.indexedDb],
-        ['Önbellek deposu', storage.cacheStorage],
+        [t('siteData.cacheStorage'), storage.cacheStorage],
         ['Service worker', storage.serviceWorkers],
       ]
     : [];
   return [
     { type: 'separator' },
-    { label: `Çerezler: ${data.cookies}`, enabled: false },
+    { label: t('siteData.cookies', { count: data.cookies }), enabled: false },
     ...sizes
-      .filter(([label, size]) => size > 0 || label === 'Yerel depolama')
+      .filter(([label, size]) => size > 0 || label === localLabel)
       .map(([label, size]): MenuItemConstructorOptions => ({
-        label: `${label}: ${formatBytes(size)}`,
+        label: t('siteData.usage', { label, size: formatBytes(size) }),
         enabled: false,
       })),
-    ...(storage ? [] : [{ label: 'Depolama boyutu ölçülemedi', enabled: false }]),
-    { label: 'Çerezleri sil', enabled: data.cookies > 0, click: actions.clearCookies },
-    { label: 'Site verilerini temizle', click: actions.clearSiteData },
+    ...(storage ? [] : [{ label: t('siteData.unmeasurable'), enabled: false }]),
+    { label: t('siteData.deleteCookies'), enabled: data.cookies > 0, click: actions.clearCookies },
+    { label: t('siteData.clear'), click: actions.clearSiteData },
   ];
 }
 

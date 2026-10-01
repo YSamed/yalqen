@@ -10,6 +10,7 @@ import {
   type MessageBoxOptions,
   type WebContents,
 } from 'electron';
+import { t } from '../shared/i18n.js';
 import { PageChannel, PasswordsChannel, type SubmittedCredential } from '../shared/types.js';
 import { passwordOrigin, sanitizeCredential, type Cipher, type PasswordStore, type SaveOffer } from './passwords.js';
 
@@ -47,22 +48,24 @@ async function confirmOwner(reason: string): Promise<boolean> {
 
 function promptOptions(offer: SaveOffer, { origin, credential }: Submission): MessageBoxOptions {
   const host = new URL(origin).host;
-  const detail = credential.username ? `Kullanıcı adı: ${credential.username}` : 'Kullanıcı adı yok';
+  const detail = credential.username
+    ? t('passwordHandlers.username', { username: credential.username })
+    : t('passwordHandlers.noUsername');
   return offer === 'save'
     ? {
         type: 'question',
-        message: `${host} için şifre kaydedilsin mi?`,
+        message: t('passwordHandlers.savePrompt', { host }),
         detail,
-        buttons: ['Kaydet', 'Bu sitede asla', 'Şimdi değil'],
+        buttons: [t('passwordHandlers.save'), t('passwordHandlers.never'), t('passwordHandlers.notNow')],
         defaultId: 0,
         cancelId: 2,
         noLink: true,
       }
     : {
         type: 'question',
-        message: `${host} için kayıtlı şifre güncellensin mi?`,
+        message: t('passwordHandlers.updatePrompt', { host }),
         detail,
-        buttons: ['Güncelle', 'Şimdi değil'],
+        buttons: [t('passwordHandlers.update'), t('passwordHandlers.notNow')],
         defaultId: 0,
         cancelId: 1,
         noLink: true,
@@ -143,11 +146,11 @@ export function installPasswordHandlers({
   ipcMain.handle(PasswordsChannel.list, (event) => (isSettingsFrame(event) ? store.view() : null));
   ipcMain.handle(PasswordsChannel.reveal, async (event, id: unknown) => {
     if (!isSettingsFrame(event) || typeof id !== 'string') return null;
-    return (await confirmOwner('kayıtlı şifreyi göstermek')) ? store.reveal(id) : null;
+    return (await confirmOwner(t('passwordHandlers.revealReason'))) ? store.reveal(id) : null;
   });
   ipcMain.handle(PasswordsChannel.copy, async (event, id: unknown) => {
     if (!isSettingsFrame(event) || typeof id !== 'string') return false;
-    if (!(await confirmOwner('kayıtlı şifreyi kopyalamak'))) return false;
+    if (!(await confirmOwner(t('passwordHandlers.copyReason')))) return false;
     const password = store.reveal(id);
     if (password === null) return false;
     clipboard.writeText(password);

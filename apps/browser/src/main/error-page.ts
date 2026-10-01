@@ -1,5 +1,6 @@
 import { NEW_TAB_URL } from '../shared/types.js';
 import { hostOf } from '../shared/hosts.js';
+import { t } from '../shared/i18n.js';
 import { escapeHtml } from './html.js';
 
 export const ERR_ABORTED = -3;
@@ -17,38 +18,38 @@ export function describeError(code: number, url: string): ErrorText {
   const host = hostOf(url) ?? url;
   switch (code) {
     case -106:
-      return { title: 'İnternet bağlantısı yok', message: 'Ağ bağlantınızı kontrol edip yeniden deneyin.' };
+      return { title: t('errorPage.noInternetTitle'), message: t('errorPage.noInternetMessage') };
     case -105:
     case -137:
-      return { title: 'Bu siteye ulaşılamıyor', message: `${host} sunucusunun adresi bulunamadı.` };
+      return { title: t('errorPage.unreachableTitle'), message: t('errorPage.hostNotFound', { host }) };
     case -102:
-      return { title: 'Bu siteye ulaşılamıyor', message: `${host} bağlanmayı reddetti.` };
+      return { title: t('errorPage.unreachableTitle'), message: t('errorPage.refused', { host }) };
     case -7:
     case -118:
-      return { title: 'Bu siteye ulaşılamıyor', message: `${host} çok uzun süre yanıt vermedi.` };
+      return { title: t('errorPage.unreachableTitle'), message: t('errorPage.timedOut', { host }) };
     case -100:
     case -101:
     case -324:
-      return { title: 'Bu siteye ulaşılamıyor', message: `${host} ile bağlantı beklenmedik biçimde kesildi.` };
+      return { title: t('errorPage.unreachableTitle'), message: t('errorPage.connectionClosed', { host }) };
     case -20:
-      return { title: 'Bu sayfa engellendi', message: `${host} reklam engelleyici tarafından engellendi.` };
+      return { title: t('errorPage.blockedPageTitle'), message: t('errorPage.blockedByAdBlocker', { host }) };
     case -312:
-      return { title: 'Bu adres engellendi', message: 'Bu adrese güvenlik nedeniyle erişilemez.' };
+      return { title: t('errorPage.blockedAddressTitle'), message: t('errorPage.blockedAddressMessage') };
     default:
       if (isCertificateError(code)) {
         return {
-          title: 'Bağlantı güvenli değil',
-          message: `${host} için güvenli bir bağlantı kurulamadı. Saldırganlar bu siteden parola, mesaj veya kart bilgilerinizi çalmaya çalışıyor olabilir.`,
+          title: t('errorPage.insecureTitle'),
+          message: t('errorPage.insecureMessage', { host }),
         };
       }
-      return { title: 'Bu sayfa açılamadı', message: `${host} yüklenirken bir hata oluştu.` };
+      return { title: t('errorPage.genericTitle'), message: t('errorPage.genericMessage', { host }) };
   }
 }
 
 export function describeHttpsOnly(url: string): ErrorText {
   return {
-    title: 'Bu site güvenli bağlantıyı desteklemiyor',
-    message: `${hostOf(url) ?? url} HTTPS ile açılamadı. HTTP ile devam ederseniz bu sitedeki bilgileriniz şifrelenmeden gönderilir ve başkaları tarafından görülebilir.`,
+    title: t('errorPage.httpsOnlyTitle'),
+    message: t('errorPage.httpsOnlyMessage', { host: hostOf(url) ?? url }),
   };
 }
 
@@ -60,7 +61,7 @@ export function errorPageHtml(
   httpsOnly = false,
 ): string {
   const { title, message } = httpsOnly ? describeHttpsOnly(url) : describeError(code, url);
-  const proceedLabel = httpsOnly ? 'HTTP ile devam et (güvenli değil)' : 'Yine de devam et (güvenli değil)';
+  const proceedLabel = escapeHtml(httpsOnly ? t('errorPage.continueHttp') : t('errorPage.continueAnyway'));
   return `<head><meta charset="utf-8"><title>${escapeHtml(hostOf(url) ?? url)}</title><style>
 :root { color-scheme: light dark; --text: #1a1b1e; --muted: #6b6e75; --accent: #f28c28; --page: #fff; }
 @media (prefers-color-scheme: dark) { :root { --text: #eceef1; --muted: #9a9ea6; --page: #1f2124; } }
@@ -80,8 +81,8 @@ button.link { display: block; margin-top: 12px; padding: 0; background: none; co
 <code>${escapeHtml(name)}</code><br>
 ${
   proceedUrl
-    ? `<button id="back" type="button">Güvenliğe dön</button><button id="proceed" class="link" type="button">${proceedLabel}</button>`
-    : '<button id="retry" type="button">Yeniden dene</button>'
+    ? `<button id="back" type="button">${escapeHtml(t('errorPage.backToSafety'))}</button><button id="proceed" class="link" type="button">${proceedLabel}</button>`
+    : `<button id="retry" type="button">${escapeHtml(t('errorPage.retry'))}</button>`
 }
 </main></body>`;
 }

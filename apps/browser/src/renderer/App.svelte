@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { t } from '../shared/i18n';
   import type { BrowserState } from '../shared/types';
   import { reuseBrowserState } from '../shared/browser-state';
   import { isNewTab } from './format';
@@ -25,7 +26,7 @@
     activeTabId: null,
     pageFullScreen: false,
     windowFullScreen: false,
-    addressPlaceholder: 'Ara veya adres yaz',
+    addressPlaceholder: t('app.addressPlaceholder'),
     panelCollapsed: false,
     panelSide: 'left',
     sidebarVisible: true,

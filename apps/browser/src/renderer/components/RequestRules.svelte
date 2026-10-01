@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../../shared/i18n';
   import type { RequestRule, RequestRuleAction } from '../../shared/types';
   import Button from './ui/Button.svelte';
   import IconButton from './ui/IconButton.svelte';
@@ -9,10 +10,10 @@
   const api = window.yalqenSettings;
 
   const ACTIONS: { value: RequestRuleAction; label: string }[] = [
-    { value: 'block', label: 'Engelle' },
-    { value: 'mock', label: 'Sahte yanıt' },
-    { value: 'redirect', label: 'Yönlendir' },
-    { value: 'headers', label: 'İstek başlıklarını değiştir' },
+    { value: 'block', label: t('requestRulesPanel.actionBlock') },
+    { value: 'mock', label: t('requestRulesPanel.actionMock') },
+    { value: 'redirect', label: t('requestRulesPanel.actionRedirect') },
+    { value: 'headers', label: t('requestRulesPanel.actionHeaders') },
   ];
 
   const HEADERS_PLACEHOLDER = ['Authorization: Bearer test', 'X-Debug: 1', 'X-Requested-With:'].join('\n');
@@ -55,27 +56,29 @@
   });
 </script>
 
-<h2>İstek kuralları</h2>
-<p class="hint intro">
-  Kurallar yalnızca geliştirici menüsünden ya da <code>&gt;istek kuralları</code> komutuyla uygulanmaya başlanan
-  sekmelerde çalışır. Adreste <code>*</code> herhangi bir metinle eşleşir; ilk eşleşen kural uygulanır.
-</p>
+<h2>{t('requestRulesPanel.title')}</h2>
+<!-- eslint-disable-next-line svelte/no-at-html-tags -- static dictionary text, no user data -->
+<p class="hint intro">{@html t('requestRulesPanel.intro')}</p>
 
 {#each rules as rule, index (rule.id)}
   <fieldset class="rule" class:disabled={!rule.enabled}>
-    <legend class="visually-hidden">Kural {index + 1}</legend>
+    <legend class="visually-hidden">{t('requestRulesPanel.rule', { number: index + 1 })}</legend>
     <div class="line">
-      <input type="checkbox" bind:checked={rule.enabled} aria-label="Kural {index + 1} etkin" />
+      <input
+        type="checkbox"
+        bind:checked={rule.enabled}
+        aria-label={t('requestRulesPanel.ruleEnabled', { number: index + 1 })}
+      />
       <TextField
         class="pattern"
         bind:value={rule.pattern}
         spellcheck="false"
         autocomplete="off"
-        placeholder="https://api.ornek.com/*"
-        aria-label="Kural {index + 1} adres kalıbı"
+        placeholder={t('requestRulesPanel.patternPlaceholder')}
+        aria-label={t('requestRulesPanel.rulePattern', { number: index + 1 })}
         invalid={rule.enabled && rule.pattern.trim() === ''}
       />
-      <Select bind:value={rule.action} aria-label="Kural {index + 1} işlemi">
+      <Select bind:value={rule.action} aria-label={t('requestRulesPanel.ruleAction', { number: index + 1 })}>
         {#each ACTIONS as action (action.value)}
           <option value={action.value}>{action.label}</option>
         {/each}
@@ -83,18 +86,18 @@
       <IconButton
         icon="close"
         tone="muted"
-        label="Kural {index + 1} sil"
+        label={t('requestRulesPanel.ruleDelete', { number: index + 1 })}
         onclick={() => (rules = rules.filter((item) => item.id !== rule.id))}
       />
     </div>
     {#if rule.action === 'mock'}
       <div class="line">
         <label class="inline">
-          <span class="hint">Durum</span>
+          <span class="hint">{t('requestRulesPanel.status')}</span>
           <input class="field status" type="number" min="200" max="599" bind:value={rule.status} />
         </label>
         <label class="inline grow">
-          <span class="hint">İçerik türü</span>
+          <span class="hint">{t('requestRulesPanel.contentType')}</span>
           <TextField class="grow" bind:value={rule.contentType} spellcheck="false" />
         </label>
       </div>
@@ -104,14 +107,14 @@
         bind:value={rule.body}
         spellcheck="false"
         placeholder={'{ "ok": true }'}
-        aria-label="Kural {index + 1} yanıt gövdesi"></textarea>
+        aria-label={t('requestRulesPanel.ruleResponseBody', { number: index + 1 })}></textarea>
     {:else if rule.action === 'redirect'}
       <TextField
         bind:value={rule.redirectUrl}
         type="url"
         spellcheck="false"
         placeholder="http://localhost:3000/api"
-        aria-label="Kural {index + 1} hedef adres"
+        aria-label={t('requestRulesPanel.ruleTargetUrl', { number: index + 1 })}
         invalid={rule.enabled && !/^https?:\/\//i.test(rule.redirectUrl)}
       />
     {:else if rule.action === 'headers'}
@@ -121,24 +124,23 @@
         bind:value={rule.headers}
         spellcheck="false"
         placeholder={HEADERS_PLACEHOLDER}
-        aria-label="Kural {index + 1} başlıklar"></textarea>
-      <span class="hint"
-        >Her satıra bir başlık yazın. Değeri boş bırakılan başlık istekten çıkarılır; tarayıcının kendi eklediği Cookie
-        ve Accept-Language gibi başlıklar yalnızca yeni bir değerle değiştirilebilir.</span
-      >
+        aria-label={t('requestRulesPanel.ruleHeaders', { number: index + 1 })}></textarea>
+      <span class="hint">{t('requestRulesPanel.headersHint')}</span>
     {/if}
   </fieldset>
 {:else}
-  <p class="hint empty">Henüz kural yok.</p>
+  <p class="hint empty">{t('requestRulesPanel.empty')}</p>
 {/each}
 
 <div class="actions">
-  <Button icon="plus" onclick={add}>Kural ekle</Button>
+  <Button icon="plus" onclick={add}>{t('requestRulesPanel.addRule')}</Button>
   <span class="spacer"></span>
   {#if dirty}
-    <Button onclick={() => load(JSON.parse(saved))}>Vazgeç</Button>
+    <Button onclick={() => load(JSON.parse(saved))}>{t('requestRulesPanel.cancel')}</Button>
   {/if}
-  <Button variant="primary" disabled={!dirty || saving} onclick={save}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</Button>
+  <Button variant="primary" disabled={!dirty || saving} onclick={save}
+    >{saving ? t('requestRulesPanel.saving') : t('requestRulesPanel.save')}</Button
+  >
 </div>
 
 <style>
@@ -164,7 +166,7 @@
     margin: 8px 0;
   }
 
-  code {
+  .intro :global(code) {
     font-size: 0.95em;
   }
 

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { t, type MessageKey } from '../shared/i18n.js';
 import { JsonFile } from './json-file.js';
 
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
@@ -13,13 +14,9 @@ export const SITE_PERMISSIONS: readonly SitePermission[] = [
   'popups',
 ];
 
-export const PERMISSION_LABELS: Record<SitePermission, string> = {
-  camera: 'Kamera',
-  microphone: 'Mikrofon',
-  geolocation: 'Konum',
-  notifications: 'Bildirimler',
-  popups: 'Açılır pencereler',
-};
+export function permissionLabel(kind: SitePermission): string {
+  return t(`permissions.${kind}` satisfies MessageKey);
+}
 
 export function requestedPermissions(permission: string, mediaTypes: readonly string[] = []): SitePermission[] | null {
   switch (permission) {
@@ -49,13 +46,12 @@ export function permissionOrigin(url: string | undefined): string | null {
 }
 
 export function permissionQuestion(host: string, kinds: readonly SitePermission[]): string {
-  if (kinds.includes('geolocation')) return `${host} konumunuzu öğrenmek istiyor.`;
-  if (kinds.includes('notifications')) return `${host} bildirim göstermek istiyor.`;
-  const devices = [
-    kinds.includes('camera') ? 'kameranızı' : null,
-    kinds.includes('microphone') ? 'mikrofonunuzu' : null,
-  ];
-  return `${host} ${devices.filter(Boolean).join(' ve ')} kullanmak istiyor.`;
+  if (kinds.includes('geolocation')) return t('permissions.askLocation', { host });
+  if (kinds.includes('notifications')) return t('permissions.askNotifications', { host });
+  if (kinds.includes('camera')) {
+    return t(kinds.includes('microphone') ? 'permissions.askCameraAndMicrophone' : 'permissions.askCamera', { host });
+  }
+  return t('permissions.askMicrophone', { host });
 }
 
 interface SavedPermissions {

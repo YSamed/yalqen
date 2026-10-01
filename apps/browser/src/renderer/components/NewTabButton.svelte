@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../shared/i18n';
   import Button from './ui/Button.svelte';
   import IconButton from './ui/IconButton.svelte';
 
@@ -12,13 +13,19 @@
     size="lg"
     variant="surface"
     icon="plus"
-    label="Yeni sekme"
-    title="Yeni sekme (⌘T)"
+    label={t('newTabButton.label')}
+    title={t('newTabButton.title')}
     onclick={() => send({ type: 'new-tab' })}
   />
 {:else}
-  <Button size="lg" icon="plus" class="new-tab-wide" title="Yeni sekme (⌘T)" onclick={() => send({ type: 'new-tab' })}>
-    Yeni sekme
+  <Button
+    size="lg"
+    icon="plus"
+    class="new-tab-wide"
+    title={t('newTabButton.title')}
+    onclick={() => send({ type: 'new-tab' })}
+  >
+    {t('newTabButton.label')}
   </Button>
 {/if}
 

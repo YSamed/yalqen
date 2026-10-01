@@ -7,6 +7,7 @@ import {
   type PageOverrides,
 } from '../shared/types.js';
 import { NETWORK_CONDITIONS, USER_AGENTS, hasOverrides } from './page-overrides.js';
+import { t } from '../shared/i18n.js';
 
 export interface DevMenuState {
   consoleErrors: number;
@@ -29,27 +30,35 @@ export function devMenuTemplate(state: DevMenuState, actions: DevMenuActions): M
   return [
     ...(consoleErrors > 0
       ? [
-          { label: `Konsolda ${consoleErrors > 99 ? '99+' : consoleErrors} hata`, click: actions.openDevTools },
+          {
+            label: t('devMenu.consoleErrors', { count: consoleErrors > 99 ? '99+' : consoleErrors }),
+            click: actions.openDevTools,
+          },
           { type: 'separator' as const },
         ]
       : []),
-    { label: 'Önbelleği kapat', type: 'checkbox', checked: overrides.cacheDisabled, click: run('toggle-cache') },
     {
-      label: 'Ağ',
+      label: t('devMenu.disableCache'),
+      type: 'checkbox',
+      checked: overrides.cacheDisabled,
+      click: run('toggle-cache'),
+    },
+    {
+      label: t('devMenu.network'),
       submenu: [
-        radio('Kısıtlama yok', overrides.network === null, run('network-online')),
+        radio(t('devMenu.noThrottling'), overrides.network === null, run('network-online')),
         ...NETWORK_PRESETS.map((preset) =>
           radio(NETWORK_CONDITIONS[preset].label, overrides.network === preset, run(`network-${preset}`)),
         ),
       ],
     },
     {
-      label: 'Otomatik yenile',
+      label: t('devMenu.autoReload'),
       submenu: [
-        radio('Kapalı', state.autoReloadSeconds === null, run('auto-reload-off')),
+        radio(t('devMenu.autoReloadOff'), state.autoReloadSeconds === null, run('auto-reload-off')),
         ...AUTO_RELOAD_SECONDS.map((seconds) =>
           radio(
-            seconds < 60 ? `${seconds} saniye` : `${seconds / 60} dakika`,
+            seconds < 60 ? t('devMenu.seconds', { seconds }) : t('devMenu.minutes', { count: seconds / 60 }),
             state.autoReloadSeconds === seconds,
             run(`auto-reload-${seconds}`),
           ),
@@ -58,24 +67,29 @@ export function devMenuTemplate(state: DevMenuState, actions: DevMenuActions): M
     },
     { type: 'separator' },
     {
-      label: 'Tema',
+      label: t('devMenu.theme'),
       submenu: [
-        radio('Sistem', overrides.colorScheme === null, run('color-scheme-auto')),
-        radio('Açık', overrides.colorScheme === 'light', run('color-scheme-light')),
-        radio('Koyu', overrides.colorScheme === 'dark', run('color-scheme-dark')),
+        radio(t('devMenu.themeSystem'), overrides.colorScheme === null, run('color-scheme-auto')),
+        radio(t('devMenu.themeLight'), overrides.colorScheme === 'light', run('color-scheme-light')),
+        radio(t('devMenu.themeDark'), overrides.colorScheme === 'dark', run('color-scheme-dark')),
       ],
     },
     {
-      label: 'Azaltılmış hareket',
+      label: t('devMenu.reducedMotion'),
       type: 'checkbox',
       checked: overrides.reducedMotion,
       click: run('toggle-reduced-motion'),
     },
-    { label: 'Yazdırma görünümü', type: 'checkbox', checked: overrides.printMedia, click: run('toggle-print-media') },
+    {
+      label: t('devMenu.printView'),
+      type: 'checkbox',
+      checked: overrides.printMedia,
+      click: run('toggle-print-media'),
+    },
     {
       label: 'User-Agent',
       submenu: [
-        radio('Varsayılan', overrides.userAgent === null, run('user-agent-default')),
+        radio(t('devMenu.userAgentDefault'), overrides.userAgent === null, run('user-agent-default')),
         ...USER_AGENT_PRESETS.map((preset) =>
           radio(USER_AGENTS[preset].label, overrides.userAgent === preset, run(`user-agent-${preset}`)),
         ),
@@ -83,13 +97,13 @@ export function devMenuTemplate(state: DevMenuState, actions: DevMenuActions): M
     },
     { type: 'separator' },
     {
-      label: 'İstek kurallarını uygula',
+      label: t('devMenu.applyRequestRules'),
       type: 'checkbox',
       checked: overrides.requestRules,
       click: run('toggle-request-rules'),
     },
-    { label: 'İstek kurallarını düzenle…', click: run('edit-request-rules') },
+    { label: t('devMenu.editRequestRules'), click: run('edit-request-rules') },
     { type: 'separator' },
-    { label: 'Taklitleri sıfırla', enabled: hasOverrides(overrides), click: run('reset-overrides') },
+    { label: t('devMenu.resetOverrides'), enabled: hasOverrides(overrides), click: run('reset-overrides') },
   ];
 }

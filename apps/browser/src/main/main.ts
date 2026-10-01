@@ -38,6 +38,7 @@ import { externalUrls } from './launch.js';
 import { DISCARD_CHECK_MS, pressureVictim, readMemoryPressure } from './memory-saver.js';
 import { LAZY_SAVE_DELAY_MS } from './json-file.js';
 import { buildMenu } from './menu.js';
+import { getLocale, pickLocale, setLocale, t } from '../shared/i18n.js';
 import { installPasswordHandlers, safeStorageCipher } from './password-handlers.js';
 import { PasswordStore } from './passwords.js';
 import { installPermissionHandlers } from './permission-handlers.js';
@@ -69,6 +70,7 @@ const appIcon = app.isPackaged
 
 registerInternalScheme();
 app.setName('Yalqen');
+setLocale(pickLocale(app.getPreferredSystemLanguages()));
 
 const primary = app.requestSingleInstanceLock();
 const isFile = (file: string) => {
@@ -103,7 +105,7 @@ function startBrowser(): void {
   const daily = session.fromPartition(DAILY_PARTITION);
   const privateBrowsing = session.fromPartition(PRIVATE_PARTITION);
   const developer = session.fromPartition(DEVELOPER_PARTITION);
-  const settings = new SettingsStore(userData);
+  const settings = new SettingsStore(userData, getLocale());
   const history = new HistoryStore(userData);
   const repoPrompt = new RepoPrompt(userData);
   const downloads = new DownloadStore(userData);
@@ -482,8 +484,8 @@ function startBrowser(): void {
     if (!isSettingsFrame(event)) return null;
     const parent = windowOf(event.sender)?.window;
     const options: Electron.OpenDialogOptions = {
-      title: 'Uzantı klasörünü seçin',
-      buttonLabel: 'Yükle',
+      title: t('main.chooseExtensionFolder'),
+      buttonLabel: t('main.installExtension'),
       properties: ['openDirectory'],
     };
     const { canceled, filePaths } = parent
@@ -650,7 +652,7 @@ function startBrowser(): void {
 app.setAboutPanelOptions({
   applicationName: 'Yalqen',
   applicationVersion: app.getVersion(),
-  version: `Faz 0 prototipi · Electron ${process.versions.electron}`,
+  version: t('main.aboutVersion', { electron: process.versions.electron }),
   iconPath: appIcon,
 });
 

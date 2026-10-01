@@ -1,3 +1,4 @@
+import './locale';
 import { mount } from 'svelte';
 import Settings from './Settings.svelte';
 import './app.css';

@@ -4,6 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import permissions from '../dist/main/permissions.js';
+import i18n from '../dist/shared/i18n.js';
+
+i18n.setLocale('tr');
 
 const { PermissionStore, permissionOrigin, permissionQuestion, requestedPermissions } = permissions;
 const SITE = 'https://meet.example.com';

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import type { AddressSuggestion, CommandBarAction } from '../shared/types';
+  import { t } from '../shared/i18n';
   import { displayHost } from '../shared/hosts';
   import Icon from './components/Icon.svelte';
   import SearchField from './components/ui/SearchField.svelte';
@@ -9,7 +10,7 @@
 
   let input: HTMLInputElement | undefined = $state();
   let value = $state('');
-  let placeholder = $state('Ara veya adres yaz');
+  let placeholder = $state(t('commandBar.placeholder'));
   let suggestions: AddressSuggestion[] = $state([]);
   let selected = $state(-1);
 
@@ -28,7 +29,7 @@
 
   function detail(suggestion: AddressSuggestion): string {
     if (suggestion.kind === 'command') return suggestion.hint ?? '';
-    return suggestion.kind === 'tab' ? 'Sekmeye geç' : displayHost(suggestion.url);
+    return suggestion.kind === 'tab' ? t('commandBar.switchToTab') : displayHost(suggestion.url);
   }
 
   function submit(event: SubmitEvent): void {
@@ -88,6 +89,8 @@
   });
 </script>
 
+<svelte:head><title>{t('commandBar.pageTitle')}</title></svelte:head>
+
 <svelte:window onkeydown={onKeydown} onmousedown={onBackdropMouseDown} />
 
 <div class="backdrop">
@@ -99,7 +102,7 @@
         bind:value
         oninput={onInput}
         {placeholder}
-        aria-label="Ara veya adres yaz"
+        aria-label={t('commandBar.placeholder')}
         role="combobox"
         aria-expanded={suggestions.length > 0}
         aria-controls="suggestions"
@@ -107,7 +110,7 @@
       />
     </form>
     {#if suggestions.length > 0}
-      <ul class="suggestions" id="suggestions" role="listbox" aria-label="Öneriler">
+      <ul class="suggestions" id="suggestions" role="listbox" aria-label={t('commandBar.suggestions')}>
         {#each suggestions as suggestion, index (suggestion.url)}
           <li
             id="suggestion-{index}"

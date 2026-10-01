@@ -14,6 +14,7 @@ import {
 import { hostOf } from '../shared/hosts.js';
 import { ChangeFeed } from './change-feed.js';
 import { formatBytes, uniquePath, type DownloadActions, type DownloadEntry, type DownloadStore } from './downloads.js';
+import { t } from '../shared/i18n.js';
 
 const STATE_PUSH_MS = 250;
 const PAGE_PUSH_MS = 500;
@@ -164,9 +165,9 @@ export class DownloadManager {
       const size = item.getTotalBytes() > 0 ? ` · ${formatBytes(item.getTotalBytes())}` : '';
       const options: MessageBoxOptions = {
         type: 'question',
-        message: `“${path.basename(savePath)}” indirilsin mi?`,
-        detail: `Kaynak: ${hostOf(item.getURL()) ?? item.getURL()}${size}`,
-        buttons: ['İndir', 'İptal'],
+        message: t('downloadManager.confirm', { name: path.basename(savePath) }),
+        detail: t('downloadManager.source', { source: hostOf(item.getURL()) ?? item.getURL(), size }),
+        buttons: [t('downloadManager.download'), t('downloadManager.cancel')],
         defaultId: 0,
         cancelId: 1,
         noLink: true,

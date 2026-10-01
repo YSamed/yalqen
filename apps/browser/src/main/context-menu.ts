@@ -1,5 +1,6 @@
 import type { ContextMenuParams, MenuItemConstructorOptions } from 'electron';
 import type { AddressFormat } from './page-export.js';
+import { t } from '../shared/i18n.js';
 
 const SNIPPET_LENGTH = 30;
 
@@ -59,24 +60,24 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
     groups.push([
       ...(canOpen(link)
         ? [
-            { label: 'Bağlantıyı yeni sekmede aç', click: () => actions.openInNewTab(link) },
-            { label: 'Bağlantıyı yeni pencerede aç', click: () => actions.openInNewWindow(link) },
-            { label: 'Bağlantıyı indir', click: () => actions.download(link) },
+            { label: t('contextMenu.openLinkInNewTab'), click: () => actions.openInNewTab(link) },
+            { label: t('contextMenu.openLinkInNewWindow'), click: () => actions.openInNewWindow(link) },
+            { label: t('contextMenu.downloadLink'), click: () => actions.download(link) },
           ]
         : []),
-      { label: 'Bağlantı adresini kopyala', click: () => actions.copyText(link) },
+      { label: t('contextMenu.copyLinkAddress'), click: () => actions.copyText(link) },
     ]);
   }
   if (image) {
     groups.push([
       ...(canOpen(image)
         ? [
-            { label: 'Resmi yeni sekmede aç', click: () => actions.openInNewTab(image) },
-            { label: 'Resmi indir', click: () => actions.download(image) },
+            { label: t('contextMenu.openImageInNewTab'), click: () => actions.openInNewTab(image) },
+            { label: t('contextMenu.downloadImage'), click: () => actions.download(image) },
           ]
         : []),
-      { label: 'Resmi kopyala', click: actions.copyImage },
-      { label: 'Resim adresini kopyala', click: () => actions.copyText(image) },
+      { label: t('contextMenu.copyImage'), click: actions.copyImage },
+      { label: t('contextMenu.copyImageAddress'), click: () => actions.copyText(image) },
     ]);
   }
   if (context.isEditable && context.misspelledWord) {
@@ -85,60 +86,60 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
     groups.push([
       ...(suggestions.length > 0
         ? suggestions.map((suggestion) => ({ label: suggestion, click: () => actions.replaceMisspelling(suggestion) }))
-        : [{ label: 'Yazım önerisi yok', enabled: false }]),
-      { label: `“${snippet(word)}” sözlüğe ekle`, click: () => actions.addToDictionary(word) },
+        : [{ label: t('contextMenu.noSpellingSuggestions'), enabled: false }]),
+      { label: t('contextMenu.addToDictionary', { word: snippet(word) }), click: () => actions.addToDictionary(word) },
     ]);
   }
   if (context.isEditable) {
     const flags = context.editFlags;
     groups.push(
       [
-        { label: 'Geri al', role: 'undo', enabled: flags.canUndo },
-        { label: 'Yinele', role: 'redo', enabled: flags.canRedo },
+        { label: t('contextMenu.undo'), role: 'undo', enabled: flags.canUndo },
+        { label: t('contextMenu.redo'), role: 'redo', enabled: flags.canRedo },
       ],
       [
-        { label: 'Kes', role: 'cut', enabled: flags.canCut },
-        { label: 'Kopyala', role: 'copy', enabled: flags.canCopy },
-        { label: 'Yapıştır', role: 'paste', enabled: flags.canPaste },
-        { label: 'Tümünü seç', role: 'selectAll', enabled: flags.canSelectAll },
+        { label: t('contextMenu.cut'), role: 'cut', enabled: flags.canCut },
+        { label: t('contextMenu.copy'), role: 'copy', enabled: flags.canCopy },
+        { label: t('contextMenu.paste'), role: 'paste', enabled: flags.canPaste },
+        { label: t('contextMenu.selectAll'), role: 'selectAll', enabled: flags.canSelectAll },
       ],
     );
   } else if (selection) {
-    groups.push([{ label: 'Kopyala', role: 'copy' }]);
+    groups.push([{ label: t('contextMenu.copy'), role: 'copy' }]);
   }
   if (selection) {
     groups.push([
-      { label: `“${snippet(selection)}” için ara`, click: () => actions.search(selection) },
+      { label: t('contextMenu.searchFor', { text: snippet(selection) }), click: () => actions.search(selection) },
       ...(actions.translateSelection && !context.isEditable
-        ? [{ label: 'Seçili metni çevir', click: actions.translateSelection }]
+        ? [{ label: t('contextMenu.translateSelection'), click: actions.translateSelection }]
         : []),
     ]);
   }
   if (groups.length === 0) {
     groups.push([
-      { label: 'Geri', enabled: actions.canGoBack, click: actions.goBack },
-      { label: 'İleri', enabled: actions.canGoForward, click: actions.goForward },
-      { label: 'Yenile', click: actions.reload },
+      { label: t('contextMenu.back'), enabled: actions.canGoBack, click: actions.goBack },
+      { label: t('contextMenu.forward'), enabled: actions.canGoForward, click: actions.goForward },
+      { label: t('contextMenu.reload'), click: actions.reload },
     ]);
     groups.push([
       ...(actions.translation ? [{ label: actions.translation.label, click: actions.translation.run }] : []),
-      { label: 'Yazdır…', click: actions.print },
+      { label: t('contextMenu.print'), click: actions.print },
       ...(actions.canViewSource
         ? [
-            { label: 'Sayfa kaynağını görüntüle', click: actions.viewSource },
+            { label: t('contextMenu.viewSource'), click: actions.viewSource },
             {
-              label: 'Sayfa adresini kopyala',
+              label: t('contextMenu.copyPageAddress'),
               submenu: [
-                { label: 'Adres', click: () => actions.copyAddress('url') },
-                { label: 'Markdown bağlantısı', click: () => actions.copyAddress('markdown') },
-                { label: 'curl komutu', click: () => actions.copyAddress('curl') },
+                { label: t('contextMenu.address'), click: () => actions.copyAddress('url') },
+                { label: t('contextMenu.markdownLink'), click: () => actions.copyAddress('markdown') },
+                { label: t('contextMenu.curlCommand'), click: () => actions.copyAddress('curl') },
               ],
             },
           ]
         : []),
     ]);
   }
-  groups.push([{ label: 'İncele', click: actions.inspect }]);
+  groups.push([{ label: t('contextMenu.inspect'), click: actions.inspect }]);
 
   return groups.flatMap((group, index) => (index === 0 ? group : [{ type: 'separator' as const }, ...group]));
 }

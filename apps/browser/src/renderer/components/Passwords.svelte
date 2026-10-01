@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../../shared/i18n';
   import type { PasswordsView, SavedPasswordInfo } from '../../shared/types';
   import Button from './ui/Button.svelte';
   import IconButton from './ui/IconButton.svelte';
@@ -46,20 +47,21 @@
   });
 </script>
 
-<h2>Şifreler</h2>
-<p class="hint intro">
-  Bir sitede oturum açtığınızda Yalqen şifreyi kaydetmeyi önerir. Şifreler macOS Anahtar Zinciri'nde tutulan bir
-  anahtarla şifrelenir; gizli sekmelerde ve geliştirici pencerelerinde kaydetme önerilmez.
-</p>
+<h2>{t('passwordsPanel.title')}</h2>
+<p class="hint intro">{t('passwordsPanel.intro')}</p>
 
 {#if view}
   {#if !view.available}
-    <p class="error" role="alert">Bu Mac'te şifreleme kullanılamıyor; şifreler kaydedilemez.</p>
+    <p class="error" role="alert">{t('passwordsPanel.unavailable')}</p>
   {/if}
 
   {#if view.passwords.length > 0}
     <div class="search">
-      <SearchField bind:value={query} placeholder="Site veya kullanıcı adı ara" aria-label="Şifrelerde ara" />
+      <SearchField
+        bind:value={query}
+        placeholder={t('passwordsPanel.searchPlaceholder')}
+        aria-label={t('passwordsPanel.searchLabel')}
+      />
     </div>
   {/if}
 
@@ -67,33 +69,37 @@
     <div class="entry">
       <div class="details">
         <span class="name">{host(entry.origin)}</span>
-        <span class="hint">{entry.username || 'Kullanıcı adı yok'}</span>
+        <span class="hint">{entry.username || t('passwordsPanel.noUsername')}</span>
       </div>
-      <code class="secret" aria-label="Şifre">{revealed[entry.id] ?? '••••••••'}</code>
+      <code class="secret" aria-label={t('passwordsPanel.password')}>{revealed[entry.id] ?? '••••••••'}</code>
       <div class="controls">
-        <Button size="sm" onclick={() => toggleReveal(entry.id)}>{entry.id in revealed ? 'Gizle' : 'Göster'}</Button>
-        <Button size="sm" onclick={() => copy(entry.id)}>{copiedId === entry.id ? 'Kopyalandı' : 'Kopyala'}</Button>
+        <Button size="sm" onclick={() => toggleReveal(entry.id)}
+          >{entry.id in revealed ? t('passwordsPanel.hide') : t('passwordsPanel.show')}</Button
+        >
+        <Button size="sm" onclick={() => copy(entry.id)}
+          >{copiedId === entry.id ? t('passwordsPanel.copied') : t('passwordsPanel.copy')}</Button
+        >
         <IconButton
           icon="close"
           tone="muted"
-          label="{host(entry.origin)} şifresini sil"
+          label={t('passwordsPanel.deleteLabel', { host: host(entry.origin) })}
           onclick={() => api.removePassword(entry.id)}
         />
       </div>
     </div>
   {:else}
-    <p class="hint empty">{view.passwords.length > 0 ? 'Eşleşen şifre yok.' : 'Kayıtlı şifre yok.'}</p>
+    <p class="hint empty">{view.passwords.length > 0 ? t('passwordsPanel.noMatches') : t('passwordsPanel.empty')}</p>
   {/each}
 
   {#if view.neverSave.length > 0}
-    <h2>Hiç kaydedilmeyenler</h2>
+    <h2>{t('passwordsPanel.neverSaved')}</h2>
     {#each view.neverSave as origin (origin)}
       <div class="entry">
         <span class="details name">{host(origin)}</span>
         <IconButton
           icon="close"
           tone="muted"
-          label="{host(origin)} listeden çıkar"
+          label={t('passwordsPanel.removeFromList', { host: host(origin) })}
           onclick={() => api.allowSaving(origin)}
         />
       </div>

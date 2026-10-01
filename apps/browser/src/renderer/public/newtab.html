@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Yeni sekme</title>
+    <title>{{newTab.title}}</title>
     <style>
       __YALQEN_CONTROLS_SLOT__
     </style>
@@ -516,8 +516,8 @@
             id="q"
             name="q"
             type="text"
-            placeholder="Ara veya adres yaz…"
-            aria-label="Ara veya adres yaz"
+            placeholder="{{newTab.searchPlaceholder}}"
+            aria-label="{{newTab.searchLabel}}"
             autocomplete="off"
             spellcheck="false"
             autofocus
@@ -526,7 +526,7 @@
             aria-controls="suggestions"
           />
           <span class="search-actions">
-            <button class="icon-btn lg accent submit" type="submit" aria-label="Git">
+            <button class="icon-btn lg accent submit" type="submit" aria-label="{{newTab.go}}">
               <svg
                 width="16"
                 height="16"
@@ -543,7 +543,7 @@
             </button>
           </span>
         </form>
-        <ul id="suggestions" class="suggestions" role="listbox" aria-label="Öneriler" hidden></ul>
+        <ul id="suggestions" class="suggestions" role="listbox" aria-label="{{newTab.suggestions}}" hidden></ul>
       </div>
       __YALQEN_PINNED_SLOT__ __YALQEN_TIPS_SLOT__ __YALQEN_RECENT_SLOT__
     </main>

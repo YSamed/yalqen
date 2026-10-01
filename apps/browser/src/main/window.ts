@@ -11,6 +11,7 @@ import {
   type Rectangle,
   type Session,
 } from 'electron';
+import { getLocale, t } from '../shared/i18n.js';
 import {
   NEW_TAB_URL,
   IpcChannel,
@@ -160,7 +161,7 @@ export class YalqenWindow {
       ...(from ? { x: from.x + CASCADE_OFFSET, y: from.y + CASCADE_OFFSET } : {}),
       minWidth: 640,
       minHeight: 400,
-      title: this.isDeveloper ? 'Yalqen (geliştirici)' : this.isPrivate ? 'Yalqen (gizli)' : 'Yalqen',
+      title: this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen',
       icon: app.icon,
       titleBarStyle: 'hiddenInset',
       transparent: glassAvailable,
@@ -302,9 +303,9 @@ export class YalqenWindow {
       confirmHttpRedirect: async (url) => {
         const { response } = await dialog.showMessageBox(this.window, {
           type: 'warning',
-          message: 'Sayfa güvenli olmayan bir adrese yönlendiriyor',
-          detail: `${new URL(url).host} HTTPS yerine HTTP ile açılmak istiyor. Bu sitedeki bilgileriniz şifrelenmeden gönderilir.`,
-          buttons: ['Geri dön', 'HTTP ile devam et'],
+          message: t('window.httpRedirectMessage'),
+          detail: t('window.httpRedirectDetail', { host: new URL(url).host }),
+          buttons: [t('window.goBack'), t('window.continueWithHttp')],
           defaultId: 0,
           cancelId: 0,
           noLink: true,
@@ -369,7 +370,7 @@ export class YalqenWindow {
     else if (options.saved && options.saved.tabs.length > 0) this.tabs.restore(options.saved, options.url);
     else this.tabs.open(options.url);
 
-    void this.uiContents.loadFile(path.join(__dirname, '../renderer/index.html'));
+    void this.uiContents.loadFile(path.join(__dirname, '../renderer/index.html'), { query: { lang: getLocale() } });
     app.onWindowFocus(this);
   }
 
@@ -574,7 +575,7 @@ export class YalqenWindow {
     const contents = this.tabs.activeContents();
     if (!contents) return;
     const { canceled, filePath } = await dialog.showSaveDialog(this.window, {
-      title: 'PDF olarak kaydet',
+      title: t('window.savePdfTitle'),
       defaultPath: path.join(app.getPath('downloads'), pageFileName(contents.getTitle(), contents.getURL(), 'pdf')),
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
     });
@@ -585,7 +586,7 @@ export class YalqenWindow {
       console.warn('[print] could not save the page as PDF:', error);
       void dialog.showMessageBox(this.window, {
         type: 'error',
-        message: 'Sayfa PDF olarak kaydedilemedi.',
+        message: t('window.savePdfFailed'),
         detail: String(error),
       });
     }
@@ -596,7 +597,7 @@ export class YalqenWindow {
       const capture = await this.tabs.captureActive(fullPage);
       if (!capture) return;
       const { canceled, filePath } = await dialog.showSaveDialog(this.window, {
-        title: fullPage ? 'Tam sayfa ekran görüntüsünü kaydet' : 'Ekran görüntüsünü kaydet',
+        title: fullPage ? t('window.saveFullPageScreenshotTitle') : t('window.saveScreenshotTitle'),
         defaultPath: path.join(app.getPath('downloads'), pageFileName(capture.title, capture.url, 'png')),
         filters: [{ name: 'PNG', extensions: ['png'] }],
       });
@@ -606,7 +607,7 @@ export class YalqenWindow {
       console.warn('[screenshot] could not save the screenshot:', error);
       void dialog.showMessageBox(this.window, {
         type: 'error',
-        message: 'Ekran görüntüsü kaydedilemedi.',
+        message: t('window.saveScreenshotFailed'),
         detail: String(error),
       });
     }
@@ -723,14 +724,14 @@ export class YalqenWindow {
         break;
       case 'open-profile-menu':
         this.popup([
-          { label: 'Yalqen profili', enabled: false },
+          { label: t('window.profileMenuTitle'), enabled: false },
           { type: 'separator' },
-          { label: 'Yeni pencere', click: () => app.openWindow({ from: this }) },
-          { label: 'Yeni gizli pencere', click: () => app.openWindow({ isPrivate: true, from: this }) },
-          { label: 'Yeni gizli sekme', click: () => tabs.open(NEW_TAB_URL, { isPrivate: true }) },
-          { label: 'Yeni geliştirici penceresi', click: () => app.openWindow({ developer: true, from: this }) },
+          { label: t('window.newWindow'), click: () => app.openWindow({ from: this }) },
+          { label: t('window.newPrivateWindow'), click: () => app.openWindow({ isPrivate: true, from: this }) },
+          { label: t('window.newPrivateTab'), click: () => tabs.open(NEW_TAB_URL, { isPrivate: true }) },
+          { label: t('window.newDeveloperWindow'), click: () => app.openWindow({ developer: true, from: this }) },
           { type: 'separator' },
-          { label: 'Ayarlar…', click: () => tabs.openSettings() },
+          { label: t('window.settings'), click: () => tabs.openSettings() },
         ]);
         break;
       case 'toggle-bookmark': {
@@ -869,16 +870,19 @@ export class YalqenWindow {
     const pinnable = tab.pinned || (!tab.isPrivate && /^https?:/.test(tab.url));
     const template: Electron.MenuItemConstructorOptions[] = [];
     if (pinnable) {
-      template.push({ label: tab.pinned ? 'Sabitlemeyi kaldır' : 'Sabitle', click: () => tabs.togglePin(id) });
+      template.push({ label: tab.pinned ? t('window.unpinTab') : t('window.pinTab'), click: () => tabs.togglePin(id) });
     }
     if (tab.audible || tab.muted) {
-      template.push({ label: tab.muted ? 'Sesi aç' : 'Sessize al', click: () => tabs.toggleMute(id) });
+      template.push({
+        label: tab.muted ? t('window.unmuteTab') : t('window.muteTab'),
+        click: () => tabs.toggleMute(id),
+      });
     }
     if (tab.live && id !== tabs.activeTabId) {
-      template.push({ label: 'Bellekten çıkar', click: () => tabs.discard(id) });
+      template.push({ label: t('window.unloadTab'), click: () => tabs.discard(id) });
     }
     if (template.length > 0) template.push({ type: 'separator' });
-    template.push({ label: 'Sekmeyi kapat', click: () => tabs.close(id) });
+    template.push({ label: t('window.closeTab'), click: () => tabs.close(id) });
     this.popup(template);
   }
 
@@ -895,7 +899,7 @@ export class YalqenWindow {
       translation:
         translation?.available && translation.status !== 'translating'
           ? {
-              label: translation.status === 'translated' ? 'Özgün sayfayı göster' : 'Sayfayı çevir',
+              label: translation.status === 'translated' ? t('window.showOriginalPage') : t('window.translatePage'),
               run: () => tabs.toggleTranslation(),
             }
           : undefined,

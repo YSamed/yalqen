@@ -7,6 +7,7 @@
     ToolbarButtonId,
     TranslationStatus,
   } from '../../shared/types';
+  import { t } from '../../shared/i18n';
   import { consoleErrorCount, devStates, isNewTab, siteLabel } from '../format';
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
@@ -56,10 +57,10 @@
   let groupOffset = 0;
   const send = window.yalqen.send;
   const translateTitle: Record<TranslationStatus, string> = {
-    idle: 'Sayfayı çevir',
-    translating: 'Sayfa çevriliyor…',
-    translated: 'Özgün sayfayı göster',
-    failed: 'Çeviri başarısız, tekrar dene',
+    idle: t('toolbar.translatePage'),
+    translating: t('toolbar.translatingPage'),
+    translated: t('toolbar.showOriginalPage'),
+    failed: t('toolbar.translationFailed'),
   };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
@@ -152,23 +153,33 @@
 
 {#snippet button(id: ToolbarButtonId)}
   {#if id === 'bookmarks'}
-    <IconButton icon="bookmarks" label="Yer imleri" onclick={() => send({ type: 'open-bookmarks-menu' })} />
+    <IconButton icon="bookmarks" label={t('toolbar.bookmarks')} onclick={() => send({ type: 'open-bookmarks-menu' })} />
   {:else if id === 'history'}
-    <IconButton icon="history" label="Geçmiş" title="Geçmiş (⌘Y)" onclick={() => send({ type: 'open-history' })} />
+    <IconButton
+      icon="history"
+      label={t('toolbar.history')}
+      title={t('toolbar.historyTitle')}
+      onclick={() => send({ type: 'open-history' })}
+    />
   {:else if id === 'extensions'}
     {#if extensions}
-      <IconButton icon="extensions" label="Uzantılar" onclick={openExtensionsMenu} />
+      <IconButton icon="extensions" label={t('toolbar.extensions')} onclick={openExtensionsMenu} />
     {/if}
   {:else if id === 'profile'}
-    <IconButton icon="profile" label="Profil" onclick={() => send({ type: 'open-profile-menu' })} />
+    <IconButton icon="profile" label={t('toolbar.profile')} onclick={() => send({ type: 'open-profile-menu' })} />
   {:else if id === 'settings'}
-    <IconButton icon="settings" label="Ayarlar" title="Ayarlar (⌘,)" onclick={() => send({ type: 'open-settings' })} />
+    <IconButton
+      icon="settings"
+      label={t('toolbar.settings')}
+      title={t('toolbar.settingsTitle')}
+      onclick={() => send({ type: 'open-settings' })}
+    />
   {:else}
     <IconButton
       icon="download"
       tone={downloads.active > 0 ? 'accent' : 'default'}
-      label={downloads.active > 0 ? `İndirilenler, ${downloads.active} indirme sürüyor` : 'İndirilenler'}
-      title="İndirilenler"
+      label={downloads.active > 0 ? t('toolbar.downloadsActive', { count: downloads.active }) : t('toolbar.downloads')}
+      title={t('toolbar.downloads')}
       onclick={() => send({ type: 'open-downloads' })}
     >
       {#if downloads.active > 0}
@@ -203,23 +214,38 @@
   <div class="side leading" aria-hidden="true"></div>
 
   <div class="tab-group" bind:this={group}>
-    <Capsule as="nav" ariaLabel="Gezinme">
-      <IconButton icon="back" label="Geri" disabled={!activeTab?.canGoBack} onclick={() => send({ type: 'go-back' })} />
+    <Capsule as="nav" ariaLabel={t('toolbar.navigation')}>
+      <IconButton
+        icon="back"
+        label={t('toolbar.back')}
+        disabled={!activeTab?.canGoBack}
+        onclick={() => send({ type: 'go-back' })}
+      />
       <IconButton
         icon="forward"
-        label="İleri"
+        label={t('toolbar.forward')}
         disabled={!activeTab?.canGoForward}
         onclick={() => send({ type: 'go-forward' })}
       />
     </Capsule>
-    <Capsule ariaLabel="Sayfa yükleme">
+    <Capsule ariaLabel={t('toolbar.pageLoading')}>
       {#if activeTab?.loading}
-        <IconButton icon="close" label="Durdur" title="Durdur (Esc)" onclick={() => send({ type: 'stop' })} />
+        <IconButton
+          icon="close"
+          label={t('toolbar.stop')}
+          title={t('toolbar.stopTitle')}
+          onclick={() => send({ type: 'stop' })}
+        />
       {:else}
-        <IconButton icon="reload" label="Yenile" title="Yenile (⌘R)" onclick={() => send({ type: 'reload' })} />
+        <IconButton
+          icon="reload"
+          label={t('toolbar.reload')}
+          title={t('toolbar.reloadTitle')}
+          onclick={() => send({ type: 'reload' })}
+        />
       {/if}
     </Capsule>
-    <ol class="strip" bind:this={strip} aria-label="Açık sekmeler">
+    <ol class="strip" bind:this={strip} aria-label={t('toolbar.openTabs')}>
       {#each tabs as tab (tab.id)}
         {@const active = tab.id === activeTabId}
         <li class="chip" class:active>
@@ -230,34 +256,26 @@
                   size="sm"
                   icon={tab.security === 'secure' ? 'lock' : tab.security === 'dangerous' ? 'warning' : 'info'}
                   class={['site', tab.security]}
-                  title="Site bilgisi"
-                  aria-label={tab.security === 'secure'
-                    ? 'Bağlantı güvenli, site bilgisi'
-                    : 'Güvenli değil, site bilgisi'}
+                  title={t('toolbar.siteInfo')}
+                  aria-label={tab.security === 'secure' ? t('toolbar.siteInfoSecure') : t('toolbar.siteInfoNotSecure')}
                   onclick={() => send({ type: 'open-site-info' })}
                 >
-                  {#if tab.security === 'insecure' || tab.security === 'dangerous'}Güvenli değil{/if}
+                  {#if tab.security === 'insecure' || tab.security === 'dangerous'}{t('toolbar.notSecure')}{/if}
                 </Button>
               {/if}
               {#if developer}
-                <span
-                  class="private-badge developer"
-                  title="Geliştirici penceresi: temiz oturum, reklam ve üçüncü taraf çerez engeli kapalı, pencereler kapanınca silinir"
-                >
+                <span class="private-badge developer" title={t('toolbar.developerWindow')}>
                   <Icon name="gauge" size={14} />
                 </span>
               {:else if tab.isPrivate}
-                <span
-                  class="private-badge"
-                  title="Gizli sekme: geçmiş kaydedilmez, çerezler sekmeler kapanınca silinir"
-                >
+                <span class="private-badge" title={t('toolbar.privateTab')}>
                   <Icon name="private" size={14} />
                 </span>
               {/if}
               <button
                 class="address"
                 class:after-site={tab.security !== 'local' || tab.isPrivate}
-                title="Ara veya adres yaz (⌘L)"
+                title={t('toolbar.addressTitle')}
                 aria-current="page"
                 onclick={() => send({ type: 'open-address' })}
               >
@@ -269,20 +287,20 @@
                   size="sm"
                   icon={tab.muted ? 'muted' : 'sound'}
                   tone="muted"
-                  label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+                  label={tab.muted ? t('toolbar.unmute') : t('toolbar.mute')}
                   aria-pressed={tab.muted}
                   onclick={() => send({ type: 'toggle-mute', id: tab.id })}
                 />
               {/if}
               {#if activeTab && hasActions}
-                <span class="page-actions" role="group" aria-label="Sayfa işlemleri">
+                <span class="page-actions" role="group" aria-label={t('toolbar.pageActions')}>
                   {#if bookmarkable}
                     <IconButton
                       icon="star"
                       tone={activeTab.bookmarked ? 'accent' : 'muted'}
                       class="star"
-                      label={activeTab.bookmarked ? 'Yer iminden kaldır' : 'Yer imlerine ekle'}
-                      title={activeTab.bookmarked ? 'Yer iminden kaldır (⌘D)' : 'Yer imlerine ekle (⌘D)'}
+                      label={activeTab.bookmarked ? t('toolbar.removeBookmark') : t('toolbar.addBookmark')}
+                      title={activeTab.bookmarked ? t('toolbar.removeBookmarkTitle') : t('toolbar.addBookmarkTitle')}
                       aria-pressed={activeTab.bookmarked}
                       onclick={() => send({ type: 'toggle-bookmark' })}
                     />
@@ -305,7 +323,9 @@
                         title={translateTitle[activeTab.translation.status]}
                         onclick={() => send({ type: 'toggle-translation' })}
                       >
-                        {activeTab.translation.status === 'translating' ? 'Çevriliyor…' : 'Çevrildi'}
+                        {activeTab.translation.status === 'translating'
+                          ? t('toolbar.translating')
+                          : t('toolbar.translated')}
                       </Button>
                     {/if}
                   {/if}
@@ -314,8 +334,8 @@
                       icon="popup-blocked"
                       variant="tonal"
                       tone="warn"
-                      label="{activeTab.blockedPopups} açılır pencere engellendi"
-                      title="Açılır pencere engellendi"
+                      label={t('toolbar.popupsBlocked', { count: activeTab.blockedPopups })}
+                      title={t('toolbar.popupBlocked')}
                       onclick={() => send({ type: 'open-blocked-popups' })}
                     />
                   {/if}
@@ -325,7 +345,7 @@
                       variant="tonal"
                       icon={activeTab.consoleErrors > 0 ? 'warning' : 'gauge'}
                       class={['dev-state', activeTab.consoleErrors > 0 && 'has-errors']}
-                      aria-label="Geliştirici durumu: {states.join(', ')}"
+                      aria-label={t('toolbar.developerStatus', { states: states.join(', ') })}
                       title={states.join(' · ')}
                       onclick={() => send({ type: 'open-dev-menu' })}
                     >
@@ -337,10 +357,10 @@
                       size="sm"
                       variant="tonal"
                       class="zoom"
-                      title="Varsayılan yakınlaştırmaya dön (⌘0)"
+                      title={t('toolbar.resetZoomTitle')}
                       onclick={() => send({ type: 'reset-zoom' })}
                     >
-                      %{Math.round(zoom * 100)}
+                      {t('toolbar.zoomPercent', { percent: Math.round(zoom * 100) })}
                     </Button>
                   {/if}
                 </span>
@@ -350,16 +370,16 @@
                 icon="close"
                 tone="muted"
                 class="close"
-                label="Kapat"
+                label={t('toolbar.close')}
                 onclick={() => send({ type: 'close-tab', id: tab.id })}
               />
-              {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
+              {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}
             </div>
           {:else}
             <button
               class="select"
               class:private={tab.isPrivate}
-              title={tab.isPrivate ? `${tab.title} (gizli)` : tab.title}
+              title={tab.isPrivate ? t('toolbar.privateTabTitle', { title: tab.title }) : tab.title}
               onclick={() => send({ type: 'activate-tab', id: tab.id })}
               onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
             >
@@ -371,7 +391,7 @@
                 size="sm"
                 icon={tab.muted ? 'muted' : 'sound'}
                 tone="muted"
-                label={tab.muted ? 'Sesi aç' : 'Sessize al'}
+                label={tab.muted ? t('toolbar.unmute') : t('toolbar.mute')}
                 aria-pressed={tab.muted}
                 onclick={() => send({ type: 'toggle-mute', id: tab.id })}
               />
@@ -381,10 +401,10 @@
               icon="close"
               tone="muted"
               class="close"
-              label="Kapat"
+              label={t('toolbar.close')}
               onclick={() => send({ type: 'close-tab', id: tab.id })}
             />
-            {#if tab.loading}<span class="loading" aria-label="Yükleniyor"></span>{/if}
+            {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}
           {/if}
         </li>
       {/each}
@@ -400,7 +420,7 @@
         <IconButton
           icon="update"
           tone="accent"
-          label="Yalqen {pendingUpdate.version} hazır, güncelleme seçenekleri"
+          label={t('toolbar.updateReady', { version: pendingUpdate.version })}
           onclick={openUpdatePopup}
         >
           <span class="update-dot" aria-hidden="true"></span>
@@ -409,7 +429,7 @@
         <IconButton
           icon="update"
           tone="muted"
-          label="Yalqen {pendingUpdate.version} indiriliyor %{pendingUpdate.percent}"
+          label={t('toolbar.updateDownloading', { version: pendingUpdate.version, percent: pendingUpdate.percent })}
           onclick={() => send({ type: 'open-settings' })}
         >
           <svg class="ring" class:indeterminate={pendingUpdate.percent === 0} viewBox="0 0 28 28" aria-hidden="true">
