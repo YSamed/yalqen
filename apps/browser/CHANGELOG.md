@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.21](https://github.com/YSamed/yalqen/compare/v0.2.20...v0.2.21) (2026-10-01)
+
+
+### Bug Fixes
+
+* even out spacing of right toolbar buttons ([ec3aad9](https://github.com/YSamed/yalqen/commit/ec3aad9c314f7ba313889ed9ba3edda77d8c951b))
+
 ## [0.2.20](https://github.com/YSamed/yalqen/compare/v0.2.19...v0.2.20) (2026-10-01)
 
 
