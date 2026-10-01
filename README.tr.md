@@ -14,7 +14,8 @@
     <a href="apps/browser/CHANGELOG.md">Değişiklik günlüğü</a> ·
     <a href="CONTRIBUTING.md">Katkıda bulun</a> ·
     <a href="https://github.com/YSamed/yalqen/issues">Hata bildir</a> ·
-    <a href="README.md">English</a>
+    <a href="README.md">English</a> ·
+    <a href="README.zh-CN.md">简体中文</a>
   </p>
 </div>
 
