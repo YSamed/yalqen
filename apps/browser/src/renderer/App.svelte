@@ -163,7 +163,6 @@
         rowInset={PANEL_ROW_INSET}
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={PANEL_WIDTH}
-        downloads={browser.downloads}
         pendingUpdate={browser.pendingUpdate}
         profile={browser.profile}
       />

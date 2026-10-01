@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DownloadsSummary, PanelSide, PendingUpdate, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import type { PanelSide, PendingUpdate, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
@@ -20,7 +20,6 @@
     rowInset,
     edgeInset,
     fullWidth,
-    downloads,
     pendingUpdate,
     profile,
   }: {
@@ -35,7 +34,6 @@
     rowInset: number;
     edgeInset: number;
     fullWidth: number;
-    downloads: DownloadsSummary;
     pendingUpdate: PendingUpdate | null;
     profile: ProfileKind;
   } = $props();
@@ -303,22 +301,8 @@
         {/if}
       </div>
 
-      {#if !collapsed && (downloads.active > 0 || pendingUpdate)}
-        {#if downloads.active > 0}
-          <button class="card" onclick={() => send({ type: 'open-downloads' })}>
-            <span class="card-line">
-              <Icon name="download" size={15} />
-              <span class="card-title">{t('tabPanel.downloadsActive', { count: downloads.active })}</span>
-              {#if downloads.progress !== null}
-                <span class="card-meta">{t('tabPanel.percent', { percent: Math.round(downloads.progress * 100) })}</span
-                >
-              {/if}
-            </span>
-            <span class="meter" class:indeterminate={downloads.progress === null}>
-              <span style:width="{downloads.progress === null ? 30 : Math.max(4, downloads.progress * 100)}%"></span>
-            </span>
-          </button>
-        {:else if pendingUpdate?.state === 'ready'}
+      {#if !collapsed && pendingUpdate}
+        {#if pendingUpdate.state === 'ready'}
           <button class="card" onclick={openUpdatePopup}>
             <span class="card-line">
               <Icon name="sparkle" size={15} />
@@ -326,7 +310,7 @@
               <span class="card-action">{t('tabPanel.update')}</span>
             </span>
           </button>
-        {:else if pendingUpdate}
+        {:else}
           <button class="card" onclick={() => send({ type: 'open-settings' })}>
             <span class="card-line">
               <Icon name="update" size={15} />
@@ -771,25 +755,6 @@
     border-radius: 999px;
     background: var(--accent);
     transition: width 300ms var(--ease-out);
-  }
-
-  .meter.indeterminate > span {
-    animation: slide 1.2s var(--ease-in-out) infinite;
-  }
-
-  @keyframes slide {
-    from {
-      transform: translateX(-100%);
-    }
-    to {
-      transform: translateX(340%);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .meter.indeterminate > span {
-      animation: none;
-    }
   }
 
   .footer {

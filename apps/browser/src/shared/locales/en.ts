@@ -187,8 +187,6 @@ export const en = {
   'tabPanel.mute': 'Mute',
   'tabPanel.tabs': 'Tabs',
   'tabPanel.pinned': 'Pinned',
-  'tabPanel.downloadsActive': '{count} downloads in progress',
-  'tabPanel.downloadsActive.one': '{count} download in progress',
   'tabPanel.percent': '{percent}%',
   'tabPanel.updateReady': 'Yalqen {version} is ready',
   'tabPanel.update': 'Update',

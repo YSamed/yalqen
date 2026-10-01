@@ -189,8 +189,6 @@ export const tr: Record<MessageKey, string> = {
   'tabPanel.mute': 'Sessize al',
   'tabPanel.tabs': 'Sekmeler',
   'tabPanel.pinned': 'Sabitlenenler',
-  'tabPanel.downloadsActive': '{count} indirme sürüyor',
-  'tabPanel.downloadsActive.one': '{count} indirme sürüyor',
   'tabPanel.percent': '%{percent}',
   'tabPanel.updateReady': 'Yalqen {version} hazır',
   'tabPanel.update': 'Güncelle',
