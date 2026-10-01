@@ -103,6 +103,9 @@ export interface DownloadsSummary {
 
 export interface ChromeLayout {
   panelWidth: number;
+  // While the panel animates, how far it still is from panelWidth. The page slides by this much
+  // instead of resizing, so it moves with the panel without reflowing every frame.
+  panelSlide: number;
   panelSide: PanelSide;
   chromeHeight: number;
   pageInset: number;

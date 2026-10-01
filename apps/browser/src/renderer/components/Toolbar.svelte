@@ -7,6 +7,7 @@
     ToolbarButtonId,
     TranslationStatus,
   } from '../../shared/types';
+  import { untrack } from 'svelte';
   import { consoleErrorCount, devStates, isNewTab, siteLabel } from '../format';
   import Capsule from './Capsule.svelte';
   import Icon from './Icon.svelte';
@@ -100,11 +101,12 @@
     strip?.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
 
+  // Read on each alignment instead of tracked by the observer effect, so a sliding panel
+  // re-aligns the group without rebuilding the observer on every frame.
+  let alignGroup: (() => void) | null = null;
   $effect(() => {
     void activeTabId;
     void tabs;
-    const targetOffset = centerOffset;
-    const inset = leadingInset;
     if (!toolbar || !group || !strip || !trailing) return;
     const header = toolbar;
     const tabGroup = group;
@@ -118,23 +120,32 @@
       const groupBounds = tabGroup.getBoundingClientRect();
       const activeBounds = active.getBoundingClientRect();
       const activeCenter = activeBounds.left + activeBounds.width / 2 - groupBounds.left;
-      const targetLeft = headerBounds.left + headerBounds.width / 2 + targetOffset - activeCenter;
-      const leftLimit = headerBounds.left + inset + 8;
+      const targetLeft = headerBounds.left + headerBounds.width / 2 + centerOffset - activeCenter;
+      const leftLimit = headerBounds.left + leadingInset + 8;
       const rightLimit = controls.getBoundingClientRect().left - 8 - groupBounds.width;
       // Keep the active address centered without moving the group into neighboring controls.
       const left = Math.max(leftLimit, Math.min(targetLeft, rightLimit));
-      groupOffset = left - (groupBounds.left - groupOffset);
+      // Whole device pixels keep the address text from shimmering while the panel moves.
+      groupOffset = Math.round((left - (groupBounds.left - groupOffset)) * devicePixelRatio) / devicePixelRatio;
       tabGroup.style.transform = `translateX(${groupOffset}px)`;
     };
 
     const observer = new ResizeObserver(align);
     for (const node of [header, tabGroup, tabStrip, active, controls]) observer.observe(node);
     tabStrip.addEventListener('scroll', align, { passive: true });
-    align();
+    untrack(align);
+    alignGroup = align;
     return () => {
+      alignGroup = null;
       observer.disconnect();
       tabStrip.removeEventListener('scroll', align);
     };
+  });
+
+  $effect(() => {
+    void centerOffset;
+    void leadingInset;
+    untrack(() => alignGroup?.());
   });
 </script>
 
