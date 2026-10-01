@@ -28,6 +28,7 @@ import {
 import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
 import {
   chromiumProfiles,
+  firefoxProfiles,
   historyImportMenu,
   importErrorMessage,
   type BookmarkImportResult,
@@ -808,6 +809,7 @@ export class YalqenWindow {
         break;
       }
       case 'open-bookmarks-menu': {
+        const firefox = firefoxProfiles();
         const template = bookmarksMenuTemplate(
           app.bookmarks.folders(),
           app.bookmarks.bookmarks(),
@@ -816,9 +818,11 @@ export class YalqenWindow {
             showAll: () => tabs.openBookmarks(),
             importFrom: (file) => void this.importBookmarks(file),
           },
-          chromiumProfiles('Bookmarks'),
+          [...chromiumProfiles('Bookmarks'), ...firefox],
         );
-        template.push(historyImportMenu(chromiumProfiles('History'), (file) => void this.importHistory(file)));
+        template.push(
+          historyImportMenu([...chromiumProfiles('History'), ...firefox], (file) => void this.importHistory(file)),
+        );
         this.popup(template);
         break;
       }

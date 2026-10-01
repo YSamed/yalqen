@@ -11,12 +11,20 @@ import historyModule from '../dist/main/history.js';
 const { BookmarkStore } = bookmarks;
 const {
   chromiumProfiles,
+  firefoxProfiles,
+  firefoxTimeToUnixMs,
   historyImportMenu,
   importChromiumBookmarks,
   importChromiumHistory,
   importErrorMessage,
+  importFirefoxBookmarks,
+  importFirefoxHistory,
+  isFirefoxPlaces,
   parseChromiumBookmarks,
   parseChromiumHistory,
+  parseFirefoxBookmarks,
+  parseFirefoxHistory,
+  parseFirefoxProfiles,
   webkitTimeToUnixMs,
 } = browserImport;
 const { HistoryStore, MAX_VISITS } = historyModule;
@@ -290,7 +298,10 @@ test('files that are not Chromium history are rejected with a clear message', as
     touch(path.join(dir, 'text'), 'not a database at all, just some text that is long enough');
     new DatabaseSync(path.join(dir, 'Cookies')).exec('CREATE TABLE cookies(name TEXT)');
     for (const file of ['text', 'Cookies']) {
-      assert.equal(await message(path.join(dir, file)), 'Bu dosya Chrome, Brave ya da Edge geçmiş dosyası değil.');
+      assert.equal(
+        await message(path.join(dir, file)),
+        'Bu dosya Chrome, Brave, Edge ya da Firefox geçmiş dosyası değil.',
+      );
     }
     assert.equal(await message(path.join(dir, 'missing')), 'Geçmiş dosyası bulunamadı.');
     assert.equal(
@@ -321,4 +332,300 @@ test('the history import menu offers detected browsers and a file', () => {
     historyImportMenu([], () => {}).submenu.map((item) => item.label),
     ['History dosyası seç…'],
   );
+});
+
+const NEW_YEAR_FIREFOX = BigInt(NEW_YEAR) * 1000n;
+
+test('Firefox timestamps are microseconds since 1970, not since 1601', () => {
+  assert.equal(firefoxTimeToUnixMs(NEW_YEAR_FIREFOX), NEW_YEAR);
+  assert.equal(firefoxTimeToUnixMs(String(NEW_YEAR_FIREFOX + 123_456n)), NEW_YEAR + 123);
+  assert.equal(firefoxTimeToUnixMs(Number(NEW_YEAR_FIREFOX)), NEW_YEAR);
+  for (const missing of [0n, '', 'abc', undefined, null, {}]) assert.equal(firefoxTimeToUnixMs(missing), null);
+  assert.equal(webkitTimeToUnixMs(NEW_YEAR_FIREFOX), null);
+});
+
+test('Firefox profiles are read from profiles.ini and listed when they have places.sqlite', async () => {
+  await withDir(async (dir) => {
+    const root = path.join(dir, 'Firefox');
+    const elsewhere = path.join(dir, 'elsewhere');
+    const ini = [
+      '[Install4F96D1932A9F858E]',
+      'Default=Profiles/abcd.default-release',
+      'Locked=1',
+      '',
+      '[Profile1]',
+      'Name=default',
+      'IsRelative=1',
+      'Path=Profiles/xyz.default',
+      'Default=1',
+      '',
+      '[Profile0]',
+      'Name=default-release',
+      'IsRelative=1',
+      'Path=Profiles/abcd.default-release',
+      '',
+      '[Profile2]',
+      'Name=İş',
+      'IsRelative=0',
+      `Path=${elsewhere}`,
+      '',
+      '[Profile3]',
+      'IsRelative=1',
+      'Path=Profiles/efgh.unnamed',
+      '',
+      '[Profile4]',
+      'Name=broken',
+      '',
+      '[BackgroundTasksProfiles]',
+      'MozillaBackgroundTask-4F96D1932A9F858E-backgroundupdate=ijkl.backgroundupdate',
+      '',
+      '[General]',
+      'StartWithLastProfile=1',
+      'Version=2',
+    ].join('\r\n');
+
+    assert.deepEqual(parseFirefoxProfiles(ini, root), [
+      { name: 'default', dir: path.join(root, 'Profiles/xyz.default') },
+      { name: 'default-release', dir: path.join(root, 'Profiles/abcd.default-release') },
+      { name: 'İş', dir: elsewhere },
+      { name: 'efgh.unnamed', dir: path.join(root, 'Profiles/efgh.unnamed') },
+    ]);
+    assert.deepEqual(parseFirefoxProfiles('', root), []);
+
+    assert.deepEqual(firefoxProfiles(dir), []);
+    touch(path.join(root, 'profiles.ini'), ini);
+    touch(path.join(root, 'Profiles/abcd.default-release/places.sqlite'), '');
+    touch(path.join(elsewhere, 'places.sqlite'), '');
+    fs.mkdirSync(path.join(root, 'Profiles/xyz.default'), { recursive: true });
+    assert.deepEqual(firefoxProfiles(dir), [
+      {
+        label: 'Firefox — default-release',
+        file: path.join(root, 'Profiles/abcd.default-release/places.sqlite'),
+      },
+      { label: 'Firefox — İş', file: path.join(elsewhere, 'places.sqlite') },
+    ]);
+    assert.ok(isFirefoxPlaces(path.join(elsewhere, 'places.sqlite')));
+    assert.ok(!isFirefoxPlaces('/chrome/Default/History'));
+  });
+});
+
+const bookmarkRow = (id, type, parent, title, extra = {}) => ({
+  id,
+  type,
+  parent,
+  title,
+  guid: null,
+  dateAdded: null,
+  url: null,
+  ...extra,
+});
+const FIREFOX_ROOT_ROWS = [
+  bookmarkRow(1, 2, 0, '', { guid: 'root________' }),
+  bookmarkRow(2, 2, 1, 'menu', { guid: 'menu________' }),
+  bookmarkRow(3, 2, 1, 'toolbar', { guid: 'toolbar_____' }),
+  bookmarkRow(4, 2, 1, 'tags', { guid: 'tags________' }),
+  bookmarkRow(5, 2, 1, 'unfiled', { guid: 'unfiled_____' }),
+  bookmarkRow(6, 2, 1, 'mobile', { guid: 'mobile______' }),
+];
+
+test('Firefox bookmark rows skip the built-in roots and tags and flatten nested folders', () => {
+  const rows = [
+    ...FIREFOX_ROOT_ROWS,
+    bookmarkRow(10, 1, 3, 'Bar', { url: 'https://bar.example/', dateAdded: NEW_YEAR_FIREFOX }),
+    bookmarkRow(11, 2, 3, 'Work'),
+    bookmarkRow(12, 1, 11, 'Mail', { url: 'https://mail.example/', dateAdded: NEW_YEAR_FIREFOX + 123_456n }),
+    bookmarkRow(13, 2, 11, 'Docs'),
+    bookmarkRow(14, 2, 13, ' Old '),
+    bookmarkRow(15, 1, 14, 'Spec', { url: 'https://spec.example/', dateAdded: 0 }),
+    bookmarkRow(16, 1, 3, 'Most Visited', { url: 'place:sort=8&maxResults=10' }),
+    bookmarkRow(17, 3, 3, null),
+    bookmarkRow(20, 1, 2, null, { url: 'https://menu.example/', dateAdded: String(NEW_YEAR_FIREFOX) }),
+    bookmarkRow(21, 1, 2, 'Bar again', { url: 'https://bar.example/' }),
+    bookmarkRow(30, 2, 4, 'okunacak'),
+    bookmarkRow(31, 1, 30, null, { url: 'https://tagged.example/' }),
+    bookmarkRow(40, 1, 5, 'File', { url: 'file:///tmp/a.html' }),
+    bookmarkRow(50, 2, 6, 'Phone'),
+    bookmarkRow(51, 1, 50, 'Mobile', { url: 'https://mobile.example/' }),
+    bookmarkRow(60, 1, 99, 'Orphan', { url: 'https://orphan.example/' }),
+  ];
+  const expected = {
+    bookmarks: [
+      { title: 'Bar', url: 'https://bar.example/', folder: null, createdAt: NEW_YEAR },
+      { title: 'Mail', url: 'https://mail.example/', folder: 'Work', createdAt: NEW_YEAR + 123 },
+      { title: 'Spec', url: 'https://spec.example/', folder: 'Work / Docs / Old', createdAt: null },
+      { title: '', url: 'https://menu.example/', folder: null, createdAt: NEW_YEAR },
+      { title: 'File', url: 'file:///tmp/a.html', folder: null, createdAt: null },
+      { title: 'Mobile', url: 'https://mobile.example/', folder: 'Phone', createdAt: null },
+    ],
+    skipped: 2,
+  };
+  assert.deepEqual(parseFirefoxBookmarks(rows), expected);
+  const bigints = rows.map((row) => ({
+    ...row,
+    id: BigInt(row.id),
+    type: BigInt(row.type),
+    parent: BigInt(row.parent),
+  }));
+  assert.deepEqual(parseFirefoxBookmarks(bigints), expected);
+  assert.deepEqual(parseFirefoxBookmarks([]), { bookmarks: [], skipped: 0 });
+});
+
+const firefoxVisit = (url, last_visit_date = NEW_YEAR_FIREFOX, title = 'Sayfa') => ({ url, title, last_visit_date });
+
+test('Firefox history rows become web visits, newest first, up to the history cap', () => {
+  assert.deepEqual(
+    parseFirefoxHistory([
+      firefoxVisit('https://old.example/', NEW_YEAR_FIREFOX, 'Eski'),
+      firefoxVisit('http://new.example/', NEW_YEAR_FIREFOX + 123_456n, null),
+      firefoxVisit('https://earlier.example/', Number(NEW_YEAR_FIREFOX) - 1_000_000),
+      firefoxVisit('place:sort=8&maxResults=10'),
+      firefoxVisit('about:config'),
+      firefoxVisit('file:///tmp/a.html'),
+      firefoxVisit('https://never.example/', null),
+      firefoxVisit('https://zero.example/', 0n),
+      {},
+    ]),
+    [
+      { url: 'http://new.example/', title: '', visitedAt: NEW_YEAR + 123 },
+      { url: 'https://old.example/', title: 'Eski', visitedAt: NEW_YEAR },
+      { url: 'https://earlier.example/', title: 'Sayfa', visitedAt: NEW_YEAR - 1000 },
+    ],
+  );
+  const visits = parseFirefoxHistory(
+    Array.from({ length: MAX_VISITS + 10 }, (_, index) =>
+      firefoxVisit(`https://site.example/${index}`, NEW_YEAR_FIREFOX + BigInt(index) * 1000n),
+    ),
+  );
+  assert.equal(visits.length, MAX_VISITS);
+  assert.equal(visits[0].url, `https://site.example/${MAX_VISITS + 9}`);
+  assert.equal(visits[0].visitedAt, NEW_YEAR + MAX_VISITS + 9);
+  assert.equal(visits.at(-1).url, 'https://site.example/10');
+});
+
+// Columns and root guids as Firefox creates them (nsPlacesTables.h, Bookmarks.sys.mjs).
+const PLACES_SCHEMA = `
+  CREATE TABLE moz_places (id INTEGER PRIMARY KEY, url LONGVARCHAR, title LONGVARCHAR, rev_host LONGVARCHAR,
+    visit_count INTEGER DEFAULT 0, hidden INTEGER DEFAULT 0 NOT NULL, typed INTEGER DEFAULT 0 NOT NULL,
+    frecency INTEGER DEFAULT -1 NOT NULL, last_visit_date INTEGER, guid TEXT,
+    foreign_count INTEGER DEFAULT 0 NOT NULL, url_hash INTEGER DEFAULT 0 NOT NULL, description TEXT,
+    preview_image_url TEXT, site_name TEXT, origin_id INTEGER, recalc_frecency INTEGER NOT NULL DEFAULT 0,
+    alt_frecency INTEGER, recalc_alt_frecency INTEGER NOT NULL DEFAULT 0);
+  CREATE TABLE moz_bookmarks (id INTEGER PRIMARY KEY, type INTEGER, fk INTEGER DEFAULT NULL, parent INTEGER,
+    position INTEGER, title LONGVARCHAR, keyword_id INTEGER, folder_type TEXT, dateAdded INTEGER,
+    lastModified INTEGER, guid TEXT, syncStatus INTEGER NOT NULL DEFAULT 0,
+    syncChangeCounter INTEGER NOT NULL DEFAULT 1);
+  INSERT INTO moz_bookmarks (id, type, parent, position, title, guid) VALUES
+    (1, 2, 0, 0, '', 'root________'), (2, 2, 1, 0, 'menu', 'menu________'),
+    (3, 2, 1, 1, 'toolbar', 'toolbar_____'), (4, 2, 1, 2, 'tags', 'tags________'),
+    (5, 2, 1, 3, 'unfiled', 'unfiled_____'), (6, 2, 1, 4, 'mobile', 'mobile______');`;
+
+function placesDb(file, wal = false) {
+  const db = new DatabaseSync(file);
+  // Like a running Firefox: one exclusive WAL connection that keeps recent writes out of the main file.
+  if (wal) db.exec('PRAGMA locking_mode = EXCLUSIVE; PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0');
+  db.exec(PLACES_SCHEMA);
+  let guids = 0;
+  const place = (url, title, lastVisit = null, hidden = 0) =>
+    db
+      .prepare('INSERT INTO moz_places (url, title, last_visit_date, hidden) VALUES (?, ?, ?, ?)')
+      .run(url, title, lastVisit, hidden).lastInsertRowid;
+  const add = (type, parent, title = null, fk = null) =>
+    db
+      .prepare(
+        `INSERT INTO moz_bookmarks (type, fk, parent, position, title, dateAdded, guid)
+         VALUES (?, ?, ?, (SELECT count(*) FROM moz_bookmarks WHERE parent = ?), ?, ?, 'fixture_' || ?)`,
+      )
+      .run(type, fk, parent, parent, title, NEW_YEAR_FIREFOX, String(++guids).padStart(4, '0')).lastInsertRowid;
+
+  const start = place('https://www.mozilla.org/firefox/central/', 'Getting Started', NEW_YEAR_FIREFOX + 5000n);
+  const mail = place('https://mail.example/', 'Posta', NEW_YEAR_FIREFOX);
+  const spec = place('https://spec.example/', 'Şartname');
+  const mostVisited = place('place:sort=8&maxResults=10', 'Most Visited', null, 1);
+  const tagged = place('https://tagged.example/', 'Etiketli', NEW_YEAR_FIREFOX - 1_000_000n);
+  const phone = place('https://mobile.example/', 'Telefon');
+  place('http://plain.example/', 'Düz', NEW_YEAR_FIREFOX - 2_000_000n);
+  place('https://frame.example/', 'Çerçeve', NEW_YEAR_FIREFOX, 1);
+  place('about:preferences', 'Ayarlar', NEW_YEAR_FIREFOX);
+
+  add(1, 3, 'Getting Started', start);
+  add(1, 3, 'Most Visited', mostVisited);
+  const work = add(2, 3, 'İş');
+  add(1, work, 'Posta', mail);
+  add(1, add(2, work, 'Belgeler'), 'Şartname', spec);
+  add(1, add(2, 2, 'Mozilla Firefox'), 'Başlarken', start);
+  add(3, 2);
+  add(1, add(2, 4, 'okunacak'), null, tagged);
+  add(1, 6, 'Telefon', phone);
+  return db;
+}
+
+test('Firefox bookmarks and history are read from a temporary copy of places.sqlite', async () => {
+  await withDir(async (dir) => {
+    const source = path.join(dir, 'places.sqlite');
+    placesDb(source).close();
+    const before = fs.readFileSync(source);
+    const copies = tempCopies();
+    const bookmarkStore = new BookmarkStore(path.join(dir, 'yalqen'));
+    const historyStore = new HistoryStore(path.join(dir, 'yalqen'));
+
+    assert.deepEqual(await importFirefoxBookmarks(bookmarkStore, source), { bookmarks: 4, folders: 2, skipped: 2 });
+    const folders = new Map(bookmarkStore.folders().map(({ id, title }) => [id, title]));
+    assert.deepEqual(
+      bookmarkStore
+        .bookmarks()
+        .map(({ title, url, folderId, createdAt }) => [title, url, folders.get(folderId), createdAt]),
+      [
+        ['Getting Started', 'https://www.mozilla.org/firefox/central/', undefined, NEW_YEAR],
+        ['Posta', 'https://mail.example/', 'İş', NEW_YEAR],
+        ['Şartname', 'https://spec.example/', 'İş / Belgeler', NEW_YEAR],
+        ['Telefon', 'https://mobile.example/', undefined, NEW_YEAR],
+      ],
+    );
+    assert.deepEqual(await importFirefoxHistory(historyStore, source), { visits: 4, skipped: 0 });
+    assert.deepEqual(
+      historyStore.list().map(({ url, title, visitedAt }) => [url, title, visitedAt]),
+      [
+        ['https://www.mozilla.org/firefox/central/', 'Getting Started', NEW_YEAR + 5],
+        ['https://mail.example/', 'Posta', NEW_YEAR],
+        ['https://tagged.example/', 'Etiketli', NEW_YEAR - 1000],
+        ['http://plain.example/', 'Düz', NEW_YEAR - 2000],
+      ],
+    );
+
+    assert.deepEqual(await importFirefoxBookmarks(bookmarkStore, source), { bookmarks: 0, folders: 0, skipped: 6 });
+    assert.deepEqual(await importFirefoxHistory(historyStore, source), { visits: 0, skipped: 4 });
+    assert.deepEqual(fs.readFileSync(source), before);
+    assert.equal(tempCopies(), copies);
+
+    const chrome = path.join(dir, 'History');
+    historyDb(chrome).close();
+    await assert.rejects(importFirefoxBookmarks(bookmarkStore, chrome), SyntaxError);
+    await assert.rejects(importFirefoxHistory(historyStore, chrome), SyntaxError);
+  });
+});
+
+test('places.sqlite is read while Firefox has it open with recent writes still in the WAL', async () => {
+  await withDir(async (dir) => {
+    const source = path.join(dir, 'places.sqlite');
+    const firefox = placesDb(source, true);
+    firefox.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    const recent = firefox
+      .prepare('INSERT INTO moz_places (url, title, last_visit_date) VALUES (?, ?, ?)')
+      .run('https://recent.example/', 'Yeni', NEW_YEAR_FIREFOX + 9000n).lastInsertRowid;
+    firefox
+      .prepare(
+        "INSERT INTO moz_bookmarks (type, fk, parent, position, title, guid) VALUES (1, ?, 5, 0, 'Yeni', 'recent______')",
+      )
+      .run(recent);
+    assert.ok(fs.statSync(`${source}-wal`).size > 0);
+    assert.ok(!fs.existsSync(`${source}-shm`));
+
+    const bookmarkStore = new BookmarkStore(path.join(dir, 'yalqen'));
+    const historyStore = new HistoryStore(path.join(dir, 'yalqen'));
+    assert.deepEqual(await importFirefoxBookmarks(bookmarkStore, source), { bookmarks: 5, folders: 2, skipped: 2 });
+    assert.equal(bookmarkStore.find('https://recent.example/').title, 'Yeni');
+    assert.deepEqual(await importFirefoxHistory(historyStore, source), { visits: 5, skipped: 0 });
+    assert.equal(historyStore.list()[0].url, 'https://recent.example/');
+    firefox.close();
+  });
 });

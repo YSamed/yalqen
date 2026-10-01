@@ -42,6 +42,11 @@ const PROFILE_DIR = /^(Default|Profile \d+)$/;
 const CHROMIUM_ROOTS = ['bookmark_bar', 'other', 'synced'] as const;
 // Milliseconds between 1601-01-01 (WebKit epoch) and 1970-01-01.
 const WEBKIT_EPOCH_OFFSET_MS = 11_644_473_600_000;
+const FIREFOX_PLACES = 'places.sqlite';
+// Root guids from Firefox's Bookmarks.sys.mjs. The tags root (`tags________`) holds tags, not bookmarks.
+const FIREFOX_ROOTS = ['toolbar_____', 'menu________', 'unfiled_____', 'mobile______'] as const;
+const FIREFOX_BOOKMARK = 1;
+const FIREFOX_FOLDER = 2;
 
 interface ChromiumNode {
   type?: unknown;
@@ -51,11 +56,41 @@ interface ChromiumNode {
   children?: unknown;
 }
 
-export function webkitTimeToUnixMs(value: unknown): number | null {
+interface FirefoxBookmarkRow {
+  id?: unknown;
+  type?: unknown;
+  parent?: unknown;
+  title?: unknown;
+  guid?: unknown;
+  dateAdded?: unknown;
+  url?: unknown;
+}
+
+interface FirefoxHistoryRow {
+  url?: unknown;
+  title?: unknown;
+  last_visit_date?: unknown;
+}
+
+interface FirefoxProfile {
+  name: string;
+  dir: string;
+}
+
+function microsToUnixMs(value: unknown, epochOffsetMs: number): number | null {
   const micros =
     typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint' ? Number(value) : 0;
-  const ms = Math.floor(micros / 1000) - WEBKIT_EPOCH_OFFSET_MS;
+  const ms = Math.floor(micros / 1000) - epochOffsetMs;
   return Number.isFinite(ms) && ms > 0 ? ms : null;
+}
+
+export function webkitTimeToUnixMs(value: unknown): number | null {
+  return microsToUnixMs(value, WEBKIT_EPOCH_OFFSET_MS);
+}
+
+// Firefox counts microseconds from 1970-01-01, unlike Chromium.
+export function firefoxTimeToUnixMs(value: unknown): number | null {
+  return microsToUnixMs(value, 0);
 }
 
 // Yalqen folders are flat, so a nested source folder becomes one `Parent / Child` folder.
@@ -146,11 +181,18 @@ export async function importChromiumBookmarks(store: BookmarkStore, file: string
 const CHROMIUM_HISTORY_QUERY = 'SELECT url, title, last_visit_time FROM urls WHERE hidden = 0';
 
 export function parseChromiumHistory(rows: readonly ChromiumHistoryRow[]): ImportedVisit[] {
+  return newestWebVisits(rows, (row) => webkitTimeToUnixMs(row.last_visit_time));
+}
+
+function newestWebVisits<Row extends { url?: unknown; title?: unknown }>(
+  rows: readonly Row[],
+  visitedAt: (row: Row) => number | null,
+): ImportedVisit[] {
   return rows
     .map((row) => ({
       url: typeof row.url === 'string' ? row.url : '',
       title: typeof row.title === 'string' ? row.title : '',
-      visitedAt: webkitTimeToUnixMs(row.last_visit_time),
+      visitedAt: visitedAt(row),
     }))
     .filter((visit): visit is ImportedVisit => visit.visitedAt !== null && isWebUrl(visit.url))
     .sort((a, b) => b.visitedAt - a.visitedAt)
@@ -192,6 +234,102 @@ export async function importChromiumHistory(store: HistoryStore, file: string): 
   return { visits: added, skipped: visits.length - added };
 }
 
+// Only `[ProfileN]` sections list profiles; `[Install…]` and `[BackgroundTasksProfiles]` point at them again.
+export function parseFirefoxProfiles(ini: string, root: string): FirefoxProfile[] {
+  const profiles: Record<string, string>[] = [];
+  let section: Record<string, string> | null = null;
+  for (const line of ini.split(/\r?\n/).map((text) => text.trim())) {
+    const header = /^\[(.+)\]$/.exec(line);
+    if (header) {
+      section = /^Profile\d+$/.test(header[1]) ? {} : null;
+      if (section) profiles.push(section);
+    } else if (section && line.includes('=')) {
+      const at = line.indexOf('=');
+      section[line.slice(0, at).trim()] = line.slice(at + 1).trim();
+    }
+  }
+  return profiles
+    .filter((profile) => profile.Path)
+    .map((profile) => ({
+      name: profile.Name || path.basename(profile.Path),
+      dir: profile.IsRelative === '1' ? path.join(root, profile.Path) : profile.Path,
+    }));
+}
+
+// Each Firefox profile keeps bookmarks and history together in one places.sqlite.
+export function firefoxProfiles(appSupport = APP_SUPPORT): ImportSource[] {
+  const root = path.join(appSupport, 'Firefox');
+  let ini: string;
+  try {
+    ini = fs.readFileSync(path.join(root, 'profiles.ini'), 'utf8');
+  } catch {
+    return [];
+  }
+  return parseFirefoxProfiles(ini, root)
+    .map(({ name, dir }) => ({ label: `Firefox — ${name}`, file: path.join(dir, FIREFOX_PLACES) }))
+    .filter((source) => fs.existsSync(source.file));
+}
+
+export function isFirefoxPlaces(file: string): boolean {
+  return path.basename(file) === FIREFOX_PLACES;
+}
+
+const FIREFOX_BOOKMARKS_QUERY = `SELECT b.id, b.type, b.parent, b.title, b.guid, b.dateAdded, p.url
+  FROM moz_bookmarks b LEFT JOIN moz_places p ON p.id = b.fk ORDER BY b.parent, b.position`;
+
+export function parseFirefoxBookmarks(rows: readonly FirefoxBookmarkRow[]): ParsedBookmarks {
+  const children = new Map<string, FirefoxBookmarkRow[]>();
+  for (const row of rows) {
+    const siblings = children.get(String(row.parent));
+    if (siblings) siblings.push(row);
+    else children.set(String(row.parent), [row]);
+  }
+  const bookmarks: ImportedBookmark[] = [];
+  const seen = new Set<string>();
+  let skipped = 0;
+  const walk = (id: string, folders: readonly string[]): void => {
+    for (const row of children.get(id) ?? []) {
+      const title = typeof row.title === 'string' ? row.title : '';
+      const type = Number(row.type);
+      if (type === FIREFOX_FOLDER) {
+        walk(String(row.id), [...folders, title]);
+      } else if (type === FIREFOX_BOOKMARK) {
+        const url = typeof row.url === 'string' ? row.url : '';
+        if (!canBookmark(url) || seen.has(url)) {
+          skipped++;
+          continue;
+        }
+        seen.add(url);
+        bookmarks.push({ title, url, folder: folderTitle(folders), createdAt: firefoxTimeToUnixMs(row.dateAdded) });
+      }
+    }
+  };
+  for (const guid of FIREFOX_ROOTS) {
+    const root = rows.find((row) => row.guid === guid);
+    if (root) walk(String(root.id), []);
+  }
+  return { bookmarks, skipped };
+}
+
+export async function importFirefoxBookmarks(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
+  const parsed = parseFirefoxBookmarks((await querySqliteCopy(file, FIREFOX_BOOKMARKS_QUERY)) as FirefoxBookmarkRow[]);
+  const added = store.importBookmarks(parsed.bookmarks);
+  return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
+}
+
+// Hidden rows are frames and redirect sources that Firefox leaves out of its own history.
+const FIREFOX_HISTORY_QUERY = 'SELECT url, title, last_visit_date FROM moz_places WHERE hidden = 0';
+
+export function parseFirefoxHistory(rows: readonly FirefoxHistoryRow[]): ImportedVisit[] {
+  return newestWebVisits(rows, (row) => firefoxTimeToUnixMs(row.last_visit_date));
+}
+
+export async function importFirefoxHistory(store: HistoryStore, file: string): Promise<HistoryImportResult> {
+  const visits = parseFirefoxHistory((await querySqliteCopy(file, FIREFOX_HISTORY_QUERY)) as FirefoxHistoryRow[]);
+  const added = store.importVisits(visits);
+  return { visits: added, skipped: visits.length - added };
+}
+
 export function historyImportMenu(
   sources: readonly ImportSource[],
   importFrom: (file?: string) => void,
@@ -216,7 +354,7 @@ export function importErrorMessage(error: unknown, kind = 'Yer imi'): string {
     return "Dosyayı okuma izni yok. Sistem Ayarları > Gizlilik ve Güvenlik > Tam Disk Erişimi bölümünden Yalqen'e izin verebilirsiniz.";
   }
   if (error instanceof SyntaxError) {
-    return `Bu dosya Chrome, Brave ya da Edge ${kind.toLocaleLowerCase('tr')} dosyası değil.`;
+    return `Bu dosya Chrome, Brave, Edge ya da Firefox ${kind.toLocaleLowerCase('tr')} dosyası değil.`;
   }
   if (code === 'ERR_SQLITE_ERROR') return `${kind} dosyası okunamadı. Tarayıcıyı kapatıp yeniden deneyin.`;
   return error instanceof Error ? error.message : String(error);
