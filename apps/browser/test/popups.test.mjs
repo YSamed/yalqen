@@ -5,7 +5,8 @@ import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');
 
-const { ACTIVATION_MS, MAX_BLOCKED, blockedPopupsTemplate, isActivation, mayOpenWindow, recordBlocked } = popups;
+const { ACTIVATION_MS, MAX_BLOCKED, blockedPopupsTemplate, isActivation, mayOpenWindow, opensInPlace, recordBlocked } =
+  popups;
 
 test('a recent click or key press lets a page open a window', () => {
   assert.equal(mayOpenWindow(0, 10_000, false), false);
@@ -16,6 +17,14 @@ test('a recent click or key press lets a page open a window', () => {
   assert.equal(isActivation('rawKeyDown'), true);
   assert.equal(isActivation('mouseMove'), false);
   assert.equal(isActivation('mouseWheel'), false);
+});
+
+test('web and blank popups keep their opener, internal pages open as plain tabs', () => {
+  assert.equal(opensInPlace('https://accounts.google.com/o/oauth2/auth'), true);
+  assert.equal(opensInPlace('http://example.com/'), true);
+  assert.equal(opensInPlace('about:blank'), true);
+  assert.equal(opensInPlace('yalqen://newtab/'), false);
+  assert.equal(opensInPlace('javascript:alert(1)'), false);
 });
 
 test('blocked addresses are kept newest last, without duplicates or scripts', () => {

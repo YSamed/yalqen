@@ -13,6 +13,10 @@ export function mayOpenWindow(activatedAt: number, now: number, allowedForSite: 
   return allowedForSite || (activatedAt > 0 && now - activatedAt <= ACTIVATION_MS);
 }
 
+export function opensInPlace(url: string): boolean {
+  return /^(https?:|about:blank$)/i.test(url);
+}
+
 export function recordBlocked(blocked: readonly string[], url: string): string[] {
   if (!/^https?:/i.test(url)) return [...blocked];
   return [...blocked.filter((item) => item !== url), url].slice(-MAX_BLOCKED);

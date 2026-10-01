@@ -59,7 +59,7 @@ import {
   type SavedTab,
   type SavedWindow,
 } from './persistence.js';
-import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
+import { isActivation, mayOpenWindow, opensInPlace, recordBlocked } from './popups.js';
 import { REPO_URL, type RepoPromptAction } from './repo-prompt.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { securityState } from './site-info.js';
@@ -100,6 +100,7 @@ interface Tab {
   history: SavedHistory | null;
   emulation: Emulation | null;
   visitId: string | null;
+  openerId: TabId | null;
 }
 
 export interface TabManagerOptions {
@@ -370,11 +371,14 @@ export class TabManager {
     this.syncAutoReloadTimer();
     if (tab.isPrivate && !this.tabs.some((item) => item.isPrivate)) this.options.onPrivateEnded();
 
+    const opener = tab.openerId ? this.find(tab.openerId) : undefined;
     if (this.activeId === id) {
       this.activeId = null;
-      this.activateUnpinnedNear(index);
+      if (opener) this.activate(opener.id);
+      else this.activateUnpinnedNear(index);
       return;
     }
+    if (opener) this.maybeFreeze(opener);
     this.changed(true);
   }
 
@@ -950,6 +954,7 @@ export class TabManager {
       history: saved.history ?? null,
       emulation: null,
       visitId: null,
+      openerId: null,
     };
   }
 
@@ -966,11 +971,7 @@ export class TabManager {
         nodeIntegration: false,
       },
     });
-    view.setBackgroundColor(tab.url === NEW_TAB_URL ? '#00000000' : '#ffffff');
-    if (tab.muted) view.webContents.setAudioMuted(true);
-    tab.view = view;
-    this.attachListeners(tab, view);
-    const emulated = this.layoutView(tab, view);
+    const emulated = this.mount(tab, view);
     if (emulated) {
       void emulated.then(() => {
         if (tab.view === view) this.load(tab, view);
@@ -979,6 +980,26 @@ export class TabManager {
       this.load(tab, view);
     }
     return view;
+  }
+
+  private mount(tab: Tab, view: WebContentsView): Promise<void> | null {
+    view.setBackgroundColor(tab.url === NEW_TAB_URL ? '#00000000' : '#ffffff');
+    if (tab.muted) view.webContents.setAudioMuted(true);
+    tab.view = view;
+    this.attachListeners(tab, view);
+    return this.layoutView(tab, view);
+  }
+
+  // Sign-in popups (Google and other OAuth providers) report back through window.opener,
+  // so the tab must host the contents Chromium created for the popup instead of a fresh load.
+  private openChild(url: string, opener: Tab, webContents: WebContents): WebContents {
+    const tab = this.createRecord({ url }, opener.isPrivate);
+    tab.openerId = opener.id;
+    this.mount(tab, new WebContentsView({ webContents }));
+    const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
+    this.tabs.splice(index, 0, tab);
+    this.activate(tab.id);
+    return webContents;
   }
 
   private load(tab: Tab, view: WebContentsView): void {
@@ -1126,12 +1147,29 @@ export class TabManager {
     contents.setWindowOpenHandler(({ url }) => {
       if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
         tab.activatedAt = 0;
+        if (opensInPlace(url) && !this.options.upgradeHttp(url)) {
+          return {
+            action: 'allow',
+            outlivesOpener: true,
+            // Electron passes the popup's contents in the options, though its typings omit them.
+            createWindow: (options) => this.openChild(url, tab, (options as { webContents: WebContents }).webContents),
+          };
+        }
         this.open(url, { isPrivate: tab.isPrivate });
-      } else {
-        tab.blockedPopups = recordBlocked(tab.blockedPopups, url);
-        this.changed();
+        return { action: 'deny' };
       }
+      tab.blockedPopups = recordBlocked(tab.blockedPopups, url);
+      this.changed();
       return { action: 'deny' };
+    });
+    listen('destroyed', () => {
+      setImmediate(() => {
+        if (tab.view !== view || this.find(tab.id) !== tab) return;
+        // The listeners went away with the contents; removing them would touch the destroyed debugger.
+        tab.detachListeners = null;
+        this.destroyView(tab);
+        this.close(tab.id);
+      });
     });
     listen('page-title-updated', (_event, title) => {
       if (tab.url === contents.getURL()) this.options.onVisitTitle(tab.visitId, title);
@@ -1302,6 +1340,8 @@ export class TabManager {
     if (!contents || contents.isDestroyed() || tab.frozen || tab.loading) return;
     if (!this.options.freezeBackground() || tab.id === this.activeId || tab.pinnedUrl || tab.autoReload) return;
     if (contents.isCurrentlyAudible() || contents.isDevToolsOpened()) return;
+    // A frozen opener misses the messages its sign-in popup posts back.
+    if (this.tabs.some((item) => item.openerId === tab.id && item.view)) return;
     tab.frozen = true;
     this.setLifecycleState(tab, 'frozen');
     this.changed();
@@ -1361,7 +1401,9 @@ export class TabManager {
     tab.overrides = NO_OVERRIDES;
     this.resetTranslation(tab);
     this.options.window.contentView.removeChildView(view);
-    if (!view.webContents.isDestroyed()) view.webContents.close();
+    // A view drops its contents once a page closes itself, despite the typings.
+    const contents = view.webContents as WebContents | undefined;
+    if (contents && !contents.isDestroyed()) contents.close();
   }
 
   private toSaved(tab: Tab): SavedTab {
