@@ -73,7 +73,9 @@ Electron 没有 Chrome 那样的标签页丢弃机制，所以我自己做了：
 
 策略是定时卸载（默认 30 分钟，可选 15/30/60/120 分钟或关闭），同时响应 macOS 的内存压力：压力大时，优先卸载最久没用的闲置标签页。
 
-【待补充：卸载后如何保留滚动位置和历史。】
+卸载时并不是简单地销毁页面：先把标签页的导航历史（所有条目和当前位置）保存下来，再销毁视图；用户切回来时，通过 `navigationHistory.restore` 把历史还原，这样后退/前进列表还在。如果还原失败，就退回到重新加载该标签页的地址。
+
+"有未提交输入"这个判断也很朴素：监听页面的 `char` 键盘输入，只要用户在页面里打过字就标记为"已编辑"，页面导航后清除标记。宁可少卸载，也不丢用户正在写的内容。
 
 ### 实测数据（初步）
 
@@ -98,7 +100,13 @@ Electron 没有 Chrome 那样的标签页丢弃机制，所以我自己做了：
 
 Electron 只实现了 Chrome 扩展 API 的一个子集。从应用商店安装扩展，意味着自己下载并解包 CRX 文件。内容拦截器和简单的扩展可以用，依赖 Electron 没有的 API 的扩展就不行。
 
-【待补充："添加到 Chrome"按钮的处理过程，以及目前能用和不能用的扩展清单。】
+应用商店页面上的"添加到 Chrome"按钮依赖 `chrome.webstorePrivate` 这组只有 Chrome 才有的私有 API，Electron 里并不存在。我的做法是：
+
+- 在应用商店页面注入一个 preload，用 `contextBridge` 暴露一个桥，在页面里补上 `chrome.webstorePrivate` 的垫片（shim），按钮点击后走自己的安装流程。
+- 校验扩展 ID（32 位 a–p 字符），再从 Google 的更新服务按 `crx3` 格式下载。
+- 解析 CRX 文件头（支持 CRX2 和 CRX3），去掉签名头只保留 ZIP 内容，限制大小为 128 MB，解包后加载。
+
+【待补充：你实际测试过的扩展里，哪些能用、哪些不能用。】
 
 ## 5. 签名、公证和自动更新
 
@@ -114,7 +122,7 @@ Electron 只实现了 Chrome 扩展 API 的一个子集。从应用商店安装�
 
 打包后的应用使用 Electron fuses：禁用 `runAsNode`、`NODE_OPTIONS` 和 `--inspect`，并且只加载经过完整性校验的 `app.asar`。
 
-【待补充：preload 与 context isolation 的设计——网页和界面各自能访问什么。】
+所有 WebContents（标签页、界面、浮层、扩展弹窗）都开启了 `sandbox: true` 和 `contextIsolation: true`，并且关闭了 `nodeIntegration`。网页只拿到一个很小的 page preload，界面、命令栏、查找栏、应用商店各有自己独立的 preload，只通过 `contextBridge` 暴露需要的少量接口，互不共享。
 
 ## Electron 的真实代价
 
