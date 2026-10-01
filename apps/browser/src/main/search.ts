@@ -54,6 +54,12 @@ export const SEARCH_ENGINES: readonly SearchEngine[] = [
     placeholder: "Startpage'de ara veya adres yaz",
     template: 'https://www.startpage.com/do/search?q=%s',
   },
+  {
+    id: 'kagi',
+    label: 'Kagi',
+    placeholder: "Kagi'de ara veya adres yaz",
+    template: 'https://kagi.com/search?q=%s',
+  },
 ];
 
 const CUSTOM_PLACEHOLDER = 'Ara veya adres yaz';

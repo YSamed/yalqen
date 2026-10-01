@@ -8,7 +8,8 @@ export const BOOKMARKS_URL = 'yalqen://bookmarks/';
 export const SETTINGS_URL = 'yalqen://settings/';
 export type CommandPage = 'downloads' | 'bookmarks';
 
-export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'startpage' | 'custom';
+export type SearchEngineId =
+  'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'startpage' | 'kagi' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
 export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
 export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
