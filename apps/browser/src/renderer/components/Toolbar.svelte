@@ -222,20 +222,16 @@
   <div class="side leading" aria-hidden="true"></div>
 
   <div class="tab-group" bind:this={group}>
-    <Capsule as="nav" ariaLabel={t('toolbar.navigation')}>
-      <IconButton
-        icon="back"
-        label={t('toolbar.back')}
-        disabled={!activeTab?.canGoBack}
-        onclick={() => send({ type: 'go-back' })}
-      />
-      <IconButton
-        icon="forward"
-        label={t('toolbar.forward')}
-        disabled={!activeTab?.canGoForward}
-        onclick={() => send({ type: 'go-forward' })}
-      />
-    </Capsule>
+    {#if activeTab?.canGoBack || activeTab?.canGoForward}
+      <Capsule as="nav" ariaLabel={t('toolbar.navigation')}>
+        {#if activeTab.canGoBack}
+          <IconButton icon="back" label={t('toolbar.back')} onclick={() => send({ type: 'go-back' })} />
+        {/if}
+        {#if activeTab.canGoForward}
+          <IconButton icon="forward" label={t('toolbar.forward')} onclick={() => send({ type: 'go-forward' })} />
+        {/if}
+      </Capsule>
+    {/if}
     <Capsule ariaLabel={t('toolbar.pageLoading')}>
       {#if activeTab?.loading}
         <IconButton
@@ -481,11 +477,6 @@
 
   .trailing {
     justify-content: flex-end;
-  }
-
-  .trailing :global(.capsule) {
-    gap: 6px;
-    padding: 3px 5px;
   }
 
   .tab-group {
