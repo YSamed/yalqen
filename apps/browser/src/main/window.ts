@@ -26,6 +26,7 @@ import {
   type WindowMaterial,
 } from '../shared/types.js';
 import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
+import { chromiumProfiles, importErrorMessage, type BookmarkImportResult } from './browser-import.js';
 import type { CertificateExceptions } from './certificates.js';
 import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
@@ -95,6 +96,7 @@ export interface AppContext {
   downloadsChanged(): void;
   toggleBookmark(url: string, title: string): void;
   runBookmarksCommand(command: string, params: URLSearchParams): void;
+  importBookmarks(file: string): Promise<BookmarkImportResult>;
   runDownloadsCommand(command: string, params: URLSearchParams): void;
   updateSettings(patch: unknown): void;
   pendingUpdate(): PendingUpdate | null;
@@ -612,6 +614,38 @@ export class YalqenWindow {
     }
   }
 
+  private async importBookmarks(file?: string): Promise<void> {
+    if (!file) {
+      const { canceled, filePaths } = await dialog.showOpenDialog(this.window, {
+        title: 'Yer imi dosyasını seçin',
+        buttonLabel: 'İçe aktar',
+        defaultPath: app.getPath('appData'),
+        properties: ['openFile'],
+      });
+      if (canceled || !filePaths[0]) return;
+      file = filePaths[0];
+    }
+    try {
+      const { bookmarks, folders, skipped } = await this.app.importBookmarks(file);
+      const details = [
+        folders > 0 ? `${folders} yeni klasör oluşturuldu.` : '',
+        skipped > 0 ? `${skipped} yer imi zaten vardı ya da desteklenmiyor, atlandı.` : '',
+      ];
+      void dialog.showMessageBox(this.window, {
+        type: 'info',
+        message: bookmarks > 0 ? `${bookmarks} yer imi içe aktarıldı.` : 'İçe aktarılacak yeni yer imi bulunamadı.',
+        detail: details.filter(Boolean).join(' '),
+      });
+    } catch (error) {
+      console.warn('[bookmarks] could not import:', error);
+      void dialog.showMessageBox(this.window, {
+        type: 'error',
+        message: 'Yer imleri içe aktarılamadı.',
+        detail: importErrorMessage(error),
+      });
+    }
+  }
+
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
     if (page && canViewSource(page.url)) clipboard.writeText(formatAddress(format, page.url, page.title));
   }
@@ -739,10 +773,16 @@ export class YalqenWindow {
         break;
       }
       case 'open-bookmarks-menu': {
-        const template = bookmarksMenuTemplate(app.bookmarks.folders(), app.bookmarks.bookmarks(), {
-          open: (url) => tabs.navigate(url),
-          showAll: () => tabs.openBookmarks(),
-        });
+        const template = bookmarksMenuTemplate(
+          app.bookmarks.folders(),
+          app.bookmarks.bookmarks(),
+          {
+            open: (url) => tabs.navigate(url),
+            showAll: () => tabs.openBookmarks(),
+            importFrom: (file) => void this.importBookmarks(file),
+          },
+          chromiumProfiles('Bookmarks'),
+        );
         this.popup(template);
         break;
       }

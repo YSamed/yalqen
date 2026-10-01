@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
 import { displayHost } from '../shared/hosts.js';
 import { BOOKMARKS_URL } from '../shared/types.js';
+import type { ImportSource } from './browser-import.js';
 import { JsonFile } from './json-file.js';
 import { escapeHtml } from './html.js';
 import { searchFieldMarkup } from './search-field-markup.js';
@@ -20,6 +21,13 @@ export interface BookmarkFolder {
   id: string;
   title: string;
   createdAt: number;
+}
+
+export interface ImportedBookmark {
+  title: string;
+  url: string;
+  folder: string | null;
+  createdAt: number | null;
 }
 
 interface SavedBookmarks {
@@ -175,6 +183,42 @@ export class BookmarkStore {
     this.save();
   }
 
+  // Imports only add: known addresses are skipped and folders with the same title are reused.
+  importBookmarks(items: readonly ImportedBookmark[]): { bookmarks: number; folders: number } {
+    const urls = new Set(this.bookmarkList.map((bookmark) => bookmark.url));
+    const folderIds = new Map<string, string>();
+    for (const folder of this.folderList) if (!folderIds.has(folder.title)) folderIds.set(folder.title, folder.id);
+    const before = { bookmarks: this.bookmarkList.length, folders: this.folderList.length };
+    const now = Date.now();
+    for (const item of items) {
+      if (!canBookmark(item.url) || urls.has(item.url)) continue;
+      urls.add(item.url);
+      let folderId: string | null = null;
+      if (item.folder !== null) {
+        const title = cleanTitle(item.folder, 'Yeni klasör');
+        folderId = folderIds.get(title) ?? null;
+        if (!folderId) {
+          folderId = randomUUID();
+          folderIds.set(title, folderId);
+          this.folderList.push({ id: folderId, title, createdAt: now });
+        }
+      }
+      this.bookmarkList.push({
+        id: randomUUID(),
+        title: cleanTitle(item.title, item.url),
+        url: item.url,
+        folderId,
+        createdAt: item.createdAt ?? now,
+      });
+    }
+    const added = {
+      bookmarks: this.bookmarkList.length - before.bookmarks,
+      folders: this.folderList.length - before.folders,
+    };
+    if (added.bookmarks > 0) this.save();
+    return added;
+  }
+
   saveNow(): void {
     this.json.flush();
   }
@@ -230,12 +274,15 @@ function menuTitle(title: string): string {
 export interface BookmarksMenuActions {
   open(url: string): void;
   showAll(): void;
+  // Without a file, the user picks one.
+  importFrom(file?: string): void;
 }
 
 export function bookmarksMenuTemplate(
   folders: readonly BookmarkFolder[],
   bookmarks: readonly Bookmark[],
   actions: BookmarksMenuActions,
+  importSources: readonly ImportSource[] = [],
 ): MenuItemConstructorOptions[] {
   const groups = bookmarksByFolder(bookmarks);
   const item = (bookmark: Bookmark): MenuItemConstructorOptions => ({
@@ -255,6 +302,17 @@ export function bookmarksMenuTemplate(
     ...(entries.length > 0 ? entries : [{ label: 'Henüz yer imi yok', enabled: false }]),
     { type: 'separator' },
     { label: 'Tüm yer imleri', click: actions.showAll },
+    {
+      label: 'Yer imlerini içe aktar',
+      submenu: [
+        ...importSources.map((source): MenuItemConstructorOptions => ({
+          label: menuTitle(source.label),
+          click: () => actions.importFrom(source.file),
+        })),
+        ...(importSources.length > 0 ? [{ type: 'separator' as const }] : []),
+        { label: 'Bookmarks dosyası seç…', click: () => actions.importFrom() },
+      ],
+    },
   ];
 }
 
