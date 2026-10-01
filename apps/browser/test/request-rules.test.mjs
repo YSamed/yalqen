@@ -45,6 +45,21 @@ test('wildcards match whole addresses, first active rule wins', () => {
   assert.equal(matchRequestRule([rule({ pattern: 'https://a.test/x.js' })], 'https://a.test/xxjs'), null);
 });
 
+test('cached matchers follow edits, disabling, and rule replacement', () => {
+  const edited = rule({ pattern: 'https://old.test/*' });
+  assert.equal(matchRequestRule([edited], 'https://old.test/one'), edited);
+  assert.equal(matchRequestRule([edited], 'HTTPS://OLD.TEST/two'), edited);
+  edited.pattern = 'https://new.test/?literal=*';
+  assert.equal(matchRequestRule([edited], 'https://old.test/one'), null);
+  assert.equal(matchRequestRule([edited], 'https://new.test/?literal=yes'), edited);
+  assert.equal(matchRequestRule([edited], 'https://new.test/xliteral=yes'), null);
+  edited.enabled = false;
+  assert.equal(matchRequestRule([edited], 'https://new.test/?literal=yes'), null);
+  const replacement = rule({ id: edited.id, pattern: 'https://replacement.test/*' });
+  assert.equal(matchRequestRule([replacement], 'https://replacement.test/one'), replacement);
+  assert.equal(matchRequestRule([replacement], 'https://new.test/?literal=yes'), null);
+});
+
 test('only active rules become interception patterns, with protocol wildcards escaped', () => {
   assert.deepEqual(
     interceptPatterns([

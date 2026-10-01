@@ -109,3 +109,65 @@ test('in-page moves to another fragment stay in the same visit', () => {
   assert.equal(isSameVisit('https://a.com/doc', 'https://a.com/other'), false);
   assert.equal(isSameVisit('https://a.com/doc?page=1', 'https://a.com/doc?page=2'), false);
 });
+
+test('cached searches follow renamed, deleted, and time-cleared visits', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
+  try {
+    fs.writeFileSync(
+      path.join(directory, 'history.json'),
+      JSON.stringify([
+        { id: 'new', title: 'İstanbul', url: 'https://new.example/', visitedAt: 200 },
+        { id: 'old', title: 'Isparta', url: 'https://old.example/', visitedAt: 100 },
+      ]),
+    );
+    const store = new HistoryStore(directory);
+    assert.deepEqual(
+      store.list('İSTANBUL').map(({ id }) => id),
+      ['new'],
+    );
+    assert.deepEqual(
+      store.list('ISPARTA').map(({ id }) => id),
+      ['old'],
+    );
+    store.setTitle('new', 'İzmir');
+    assert.equal(store.list('istanbul').length, 0);
+    assert.deepEqual(
+      store.list('İZMİR').map(({ id }) => id),
+      ['new'],
+    );
+    store.clearSince(150);
+    assert.equal(store.list('izmir').length, 0);
+    store.remove('old');
+    assert.equal(store.list('ısparta').length, 0);
+    store.saveNow();
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('cached searches and suggestions forget visits beyond the history cap', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
+  try {
+    fs.writeFileSync(
+      path.join(directory, 'history.json'),
+      JSON.stringify(
+        Array.from({ length: 5000 }, (_, index) => ({
+          id: String(index),
+          title: index === 4999 ? 'Evicted' : 'Retained',
+          url: `https://example.com/${index}`,
+          visitedAt: 5000 - index,
+        })),
+      ),
+    );
+    const store = new HistoryStore(directory);
+    assert.equal(store.list('evicted').length, 1);
+    assert.equal(store.index().pages.length, 5000);
+    store.visit('https://new.example/', 'Newest');
+    assert.equal(store.list().length, 5000);
+    assert.equal(store.list('evicted').length, 0);
+    assert.ok(!store.index().pages.some(({ title }) => title === 'Evicted'));
+    store.clear();
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});

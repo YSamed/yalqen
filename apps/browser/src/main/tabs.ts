@@ -51,7 +51,14 @@ import { canViewSource } from './page-export.js';
 import { NO_OVERRIDES, hasOverrides, overrideCommands } from './page-overrides.js';
 import { pausedRequestCommand, type PausedRequest } from './request-rules.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from './site-data.js';
-import { trimHistory, type PersistChange, type SavedHistory, type SavedTab, type SavedWindow } from './persistence.js';
+import {
+  captureSavedHistory,
+  trimHistory,
+  type PersistChange,
+  type SavedHistory,
+  type SavedTab,
+  type SavedWindow,
+} from './persistence.js';
 import { isActivation, mayOpenWindow, recordBlocked } from './popups.js';
 import { REPO_URL, type RepoPromptAction } from './repo-prompt.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
@@ -1352,14 +1359,15 @@ export class TabManager {
   }
 
   private toSaved(tab: Tab): SavedTab {
-    const history = this.captureHistory(tab);
+    const navigation = tab.view?.webContents.navigationHistory;
+    const history = navigation ? captureSavedHistory(navigation) : tab.history && trimHistory(tab.history);
     return {
       id: tab.id,
       url: tab.url,
       title: tab.title,
       faviconUrl: tab.faviconUrl,
       pinnedUrl: tab.pinnedUrl,
-      history: history && trimHistory(history),
+      history,
     };
   }
 

@@ -67,8 +67,19 @@ function patternRegExp(pattern: string): RegExp {
   return new RegExp(`^${source}$`, 'i');
 }
 
+const matchers = new WeakMap<RequestRule, { pattern: string; regexp: RegExp }>();
+
+function matches(rule: RequestRule, url: string): boolean {
+  let cached = matchers.get(rule);
+  if (!cached || cached.pattern !== rule.pattern) {
+    cached = { pattern: rule.pattern, regexp: patternRegExp(rule.pattern) };
+    matchers.set(rule, cached);
+  }
+  return cached.regexp.test(url);
+}
+
 export function matchRequestRule(rules: readonly RequestRule[], url: string): RequestRule | null {
-  return rules.find((rule) => isRuleActive(rule) && patternRegExp(rule.pattern).test(url)) ?? null;
+  return rules.find((rule) => isRuleActive(rule) && matches(rule, url)) ?? null;
 }
 
 // Fetch.enable treats an empty pattern list as "intercept everything", so callers disable it instead.

@@ -45,9 +45,10 @@
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
   const listed = $derived(tabs.filter((tab) => !tab.pinned));
+  const tabsById = $derived(new Map(tabs.map((tab) => [tab.id, tab])));
   const entries = $derived(
     listOrder
-      .map((id) => tabs.find((tab) => tab.id === id))
+      .map((id) => tabsById.get(id))
       .filter((tab): tab is TabSnapshot => tab !== undefined && (!collapsed || !tab.pinned)),
   );
   const profiles: { id: ProfileKind; name: string }[] = [

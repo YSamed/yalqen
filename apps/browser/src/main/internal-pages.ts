@@ -236,17 +236,27 @@ function serveHistory(pathname: string, query: string, pages: InternalPages, sou
   return html(pages.history.replace(HISTORY_MARKER, content), INTERNAL_CSP);
 }
 
-function serveDownloads(url: URL, pages: InternalPages, sources: InternalPageSources): Response | Promise<Response> {
+function serveDownloads(
+  url: URL,
+  pages: InternalPages,
+  sources: InternalPageSources,
+  signal?: AbortSignal,
+): Response | Promise<Response> {
   const { list, changes } = sources.downloads;
   switch (url.pathname) {
     case '/downloads.js':
       return script(pages.downloadsScript);
-    case '/changes':
+    case '/changes': {
+      const since = Number(url.searchParams.get('since'));
       return changes
-        .next(Number(url.searchParams.get('since')))
+        .next(since, undefined, signal)
         .then((version) =>
-          Response.json({ version, html: renderDownloads(list()) }, { headers: { 'cache-control': 'no-store' } }),
+          Response.json(
+            { version, ...(version !== since && { html: renderDownloads(list()) }) },
+            { headers: { 'cache-control': 'no-store' } },
+          ),
         );
+    }
     case '/': {
       const content = `<div id="downloads" data-version="${changes.version}">${renderDownloads(list())}</div>`;
       return html(pages.downloads.replace(DOWNLOADS_MARKER, content), DOWNLOADS_CSP);
@@ -302,7 +312,7 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
             )
           : notFound();
       case 'downloads':
-        return serveDownloads(url, pages, sources);
+        return serveDownloads(url, pages, sources, request.signal);
       case 'history':
         return serveHistory(url.pathname, url.searchParams.get('q') ?? '', pages, sources);
       case 'bookmarks': {

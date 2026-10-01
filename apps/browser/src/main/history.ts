@@ -24,6 +24,7 @@ export class HistoryStore {
   private readonly json: JsonFile;
   private cachedIndex: HistoryIndex | null = null;
   private readonly titleChanges = new WeakMap<HistoryEntry, number>();
+  private readonly searchTexts = new WeakMap<HistoryEntry, { title: string; url: string; text: string }>();
 
   constructor(directory: string) {
     this.file = path.join(directory, 'history.json');
@@ -39,7 +40,14 @@ export class HistoryStore {
   list(query = ''): HistoryEntry[] {
     const term = query.trim().toLocaleLowerCase('tr').slice(0, 200);
     if (!term) return [...this.entries];
-    return this.entries.filter((entry) => `${entry.title} ${entry.url}`.toLocaleLowerCase('tr').includes(term));
+    return this.entries.filter((entry) => {
+      let cached = this.searchTexts.get(entry);
+      if (!cached || cached.title !== entry.title || cached.url !== entry.url) {
+        cached = { title: entry.title, url: entry.url, text: `${entry.title} ${entry.url}`.toLocaleLowerCase('tr') };
+        this.searchTexts.set(entry, cached);
+      }
+      return cached.text.includes(term);
+    });
   }
 
   index(): HistoryIndex {

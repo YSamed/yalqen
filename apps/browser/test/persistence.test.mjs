@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import persistence from '../dist/main/persistence.js';
 
-const { SessionStore, pinnedOnly, trimHistory } = persistence;
+const { SessionStore, captureSavedHistory, pinnedOnly, trimHistory } = persistence;
 const tab = (url) => ({ id: 'tab', url, title: url, faviconUrl: null, pinnedUrl: null, history: null });
 const session = (url) => ({ version: 2, windows: [{ activeTabId: null, tabs: [tab(url)] }] });
 
@@ -131,6 +131,40 @@ test('saved navigation keeps a window of entries around the current page', () =>
   assert.equal(end.entries[end.index].title, '29');
   const short = trimHistory({ entries: entries.slice(0, 3), index: 1 });
   assert.deepEqual(short, { entries: entries.slice(0, 3), index: 1 });
+});
+
+test('session capture reads only the entries that survive trimming', () => {
+  const entries = Array.from({ length: 10000 }, (_, index) => ({
+    url: `https://example.com/${index}`,
+    title: String(index),
+    pageState: `state-${index}`,
+  }));
+  for (const active of [0, 2, 5000, 9999]) {
+    const reads = [];
+    const saved = captureSavedHistory({
+      length: () => entries.length,
+      getActiveIndex: () => active,
+      getEntryAtIndex: (index) => {
+        reads.push(index);
+        return entries[index];
+      },
+    });
+    assert.deepEqual(saved, trimHistory({ entries, index: active }));
+    assert.ok(reads.length <= 13);
+    assert.equal(saved.entries[saved.index].pageState, `state-${active}`);
+  }
+  assert.equal(
+    captureSavedHistory({
+      length: () => 0,
+      getActiveIndex: () => {
+        throw new Error('empty history has no active entry');
+      },
+      getEntryAtIndex: () => {
+        throw new Error('empty history must not be read');
+      },
+    }),
+    null,
+  );
 });
 
 test('without session restore only pinned tabs are kept, reset to their pinned page', () => {
