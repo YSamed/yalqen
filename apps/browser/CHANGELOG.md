@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.22](https://github.com/YSamed/yalqen/compare/v0.2.21...v0.2.22) (2026-10-01)
+
+
+### Bug Fixes
+
+* remove downloads card from the sidebar ([a0d1440](https://github.com/YSamed/yalqen/commit/a0d1440df670681b227f60d1fdba87539105f1b2))
+* show back and forward only when usable and match right capsule spacing ([beacd10](https://github.com/YSamed/yalqen/commit/beacd10e12bb17551677f8c7ea432ab7ba189e4f))
+
+
+### Performance
+
+* bound runtime work and clean up browser resources ([8b29650](https://github.com/YSamed/yalqen/commit/8b29650a9aca2795bad1a99c09c9748c68054c40))
+
 ## [0.2.21](https://github.com/YSamed/yalqen/compare/v0.2.20...v0.2.21) (2026-10-01)
 
 
