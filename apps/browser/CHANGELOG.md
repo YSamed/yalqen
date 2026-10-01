@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.17](https://github.com/YSamed/yalqen/compare/v0.2.16...v0.2.17) (2026-10-01)
+
+
+### Performance
+
+* reduce main process preparation costs ([#78](https://github.com/YSamed/yalqen/issues/78)) ([c2d74a5](https://github.com/YSamed/yalqen/commit/c2d74a530962a70d47af80adca401eb5ebd50c52))
+
 ## [0.2.16](https://github.com/YSamed/yalqen/compare/v0.2.15...v0.2.16) (2026-10-01)
 
 
