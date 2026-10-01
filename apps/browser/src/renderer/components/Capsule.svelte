@@ -5,24 +5,14 @@
     children,
     as = 'div',
     ariaLabel,
-    minWidth,
-    spread = false,
   }: {
     children: Snippet;
     as?: 'div' | 'nav';
     ariaLabel?: string;
-    minWidth?: number;
-    spread?: boolean;
   } = $props();
 </script>
 
-<svelte:element
-  this={as}
-  class="capsule"
-  class:spread
-  aria-label={ariaLabel}
-  style:min-width={minWidth !== undefined ? `${minWidth}px` : null}
->
+<svelte:element this={as} class="capsule" aria-label={ariaLabel}>
   {@render children()}
 </svelte:element>
 
@@ -40,10 +30,6 @@
     box-shadow: var(--shadow);
     color: var(--text);
     -webkit-app-region: no-drag;
-  }
-
-  .capsule.spread {
-    justify-content: space-between;
   }
 
   :global([data-material='glass']) .capsule {

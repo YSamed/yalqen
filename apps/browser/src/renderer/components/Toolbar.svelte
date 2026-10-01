@@ -31,7 +31,6 @@
     trailingInset,
     centerOffset,
     trailingOverhang = 0,
-    trailingWidth,
   }: {
     tabs: TabSnapshot[];
     developer: boolean;
@@ -47,7 +46,6 @@
     trailingInset: number;
     centerOffset: number;
     trailingOverhang?: number;
-    trailingWidth: number;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -65,7 +63,6 @@
   };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
-  const roomy = $derived(buttons.length >= 4);
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
   const bookmarkable = $derived(
     activeTab !== null && (activeTab.url.startsWith('http') || activeTab.url.startsWith('file:')),
@@ -426,7 +423,7 @@
   </div>
 
   <div class="side trailing" bind:this={trailing} style:margin-right="{-trailingOverhang}px">
-    <Capsule minWidth={roomy ? trailingWidth : undefined} spread={roomy}>
+    <Capsule>
       {#if pendingUpdate?.state === 'ready'}
         <IconButton
           icon="update"
