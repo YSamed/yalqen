@@ -45,6 +45,8 @@ export class BookmarkStore {
   private folderList: BookmarkFolder[] = [];
   private bookmarkList: Bookmark[] = [];
   private urls: Set<string> | null = null;
+  private suggestionList: readonly Readonly<Pick<Bookmark, 'title' | 'url'>>[] | null = null;
+  private readonly searchTexts = new WeakMap<Bookmark, { title: string; url: string; text: string }>();
 
   constructor(directory: string) {
     this.file = path.join(directory, 'bookmarks.json');
@@ -80,8 +82,27 @@ export class BookmarkStore {
   bookmarks(query = ''): Bookmark[] {
     const term = query.trim().toLocaleLowerCase('tr').slice(0, 200);
     return this.bookmarkList
-      .filter((bookmark) => !term || `${bookmark.title} ${bookmark.url}`.toLocaleLowerCase('tr').includes(term))
+      .filter((bookmark) => {
+        if (!term) return true;
+        let cached = this.searchTexts.get(bookmark);
+        if (!cached || cached.title !== bookmark.title || cached.url !== bookmark.url) {
+          cached = {
+            title: bookmark.title,
+            url: bookmark.url,
+            text: `${bookmark.title} ${bookmark.url}`.toLocaleLowerCase('tr'),
+          };
+          this.searchTexts.set(bookmark, cached);
+        }
+        return cached.text.includes(term);
+      })
       .map((bookmark) => ({ ...bookmark }));
+  }
+
+  // Suggestions read only title/address snapshots. Reuse them while bookmarks are
+  // unchanged, and freeze both levels so callers cannot modify store data.
+  suggestions(): readonly Readonly<Pick<Bookmark, 'title' | 'url'>>[] {
+    this.suggestionList ??= Object.freeze(this.bookmarkList.map(({ title, url }) => Object.freeze({ title, url })));
+    return this.suggestionList;
   }
 
   has(url: string): boolean {
@@ -160,8 +181,19 @@ export class BookmarkStore {
 
   private save(): void {
     this.urls = null;
+    this.suggestionList = null;
     this.json.schedule((): SavedBookmarks => ({ version: 1, folders: this.folderList, bookmarks: this.bookmarkList }));
   }
+}
+
+function bookmarksByFolder(bookmarks: readonly Bookmark[]): Map<string | null, Bookmark[]> {
+  const groups = new Map<string | null, Bookmark[]>();
+  for (const bookmark of bookmarks) {
+    const group = groups.get(bookmark.folderId);
+    if (group) group.push(bookmark);
+    else groups.set(bookmark.folderId, [bookmark]);
+  }
+  return groups;
 }
 
 export function runBookmarksCommand(store: BookmarkStore, command: string, params: URLSearchParams): boolean {
@@ -205,18 +237,19 @@ export function bookmarksMenuTemplate(
   bookmarks: readonly Bookmark[],
   actions: BookmarksMenuActions,
 ): MenuItemConstructorOptions[] {
+  const groups = bookmarksByFolder(bookmarks);
   const item = (bookmark: Bookmark): MenuItemConstructorOptions => ({
     label: menuTitle(bookmark.title),
     click: () => actions.open(bookmark.url),
   });
   const inFolders = folders.map((folder): MenuItemConstructorOptions => {
-    const children = bookmarks.filter((bookmark) => bookmark.folderId === folder.id);
+    const children = groups.get(folder.id) ?? [];
     return {
       label: menuTitle(folder.title),
       submenu: children.length > 0 ? children.map(item) : [{ label: 'Boş', enabled: false }],
     };
   });
-  const loose = bookmarks.filter((bookmark) => bookmark.folderId === null).map(item);
+  const loose = (groups.get(null) ?? []).map(item);
   const entries = [...inFolders, ...loose];
   return [
     ...(entries.length > 0 ? entries : [{ label: 'Henüz yer imi yok', enabled: false }]),
@@ -267,8 +300,9 @@ export function renderBookmarks(
   if (bookmarks.length === 0 && folders.length === 0) {
     return `${header}<p class="empty">Henüz yer imi yok. Bir sayfayı eklemek için adres çubuğundaki yıldıza bas veya ⌘D kullan.</p>`;
   }
+  const groups = bookmarksByFolder(bookmarks);
   const sections = folders.map((folder) => {
-    const children = bookmarks.filter((bookmark) => bookmark.folderId === folder.id);
+    const children = groups.get(folder.id) ?? [];
     return (
       `<section><div class="folder"><h2>${escapeHtml(folder.title)}</h2><details><summary>Düzenle</summary>` +
       `<form action="${BOOKMARKS_URL}rename-folder" method="get"><input type="hidden" name="id" value="${escapeHtml(folder.id)}" /><input class="field" name="title" value="${escapeHtml(folder.title)}" aria-label="Klasör adı" required /><button class="btn tonal">Kaydet</button></form>` +
@@ -277,7 +311,7 @@ export function renderBookmarks(
       '</section>'
     );
   });
-  const loose = bookmarks.filter((bookmark) => bookmark.folderId === null);
+  const loose = groups.get(null) ?? [];
   const looseSection = loose.length > 0 ? `<section><ol>${loose.map(row).join('')}</ol></section>` : '';
   return `${header}${sections.join('')}${looseSection}`;
 }

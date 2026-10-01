@@ -1,13 +1,47 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ElectronBlocker } from '@ghostery/adblocker-electron';
 import adblock from '../dist/main/adblock.js';
 
 const { loadEngine } = adblock;
+
+test('disabled startup leaves the ad blocking engine unloaded until it is requested', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-adblock-'));
+  const cache = path.join(dir, 'filters.bin');
+  try {
+    fs.writeFileSync(cache, ElectronBlocker.empty().serialize());
+    const result = spawnSync(
+      process.execPath,
+      [
+        '-e',
+        `const assert = require('node:assert/strict');
+        const adblock = require(process.argv[1]);
+        const loadedEngines = () => Object.keys(require.cache).filter((file) => file.includes('/@ghostery/'));
+        const blocker = new adblock.AdBlocker([], process.argv[2]);
+        blocker.setEnabled(false);
+        assert.deepEqual(loadedEngines(), []);
+        blocker.setEnabled(true);
+        assert.ok(loadedEngines().length > 0, 'enabled loading starts before the first await');
+        blocker.whenReady().then(() => {
+          blocker.destroy();
+          assert.ok(loadedEngines().length > 0);
+        });`,
+        fileURLToPath(new URL('../dist/main/adblock.js', import.meta.url)),
+        cache,
+      ],
+      { encoding: 'utf8', timeout: 10_000 },
+    );
+    assert.equal(result.status, 0, result.stderr || String(result.error));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('an old filter cache is usable immediately without downloading lists', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-adblock-'));

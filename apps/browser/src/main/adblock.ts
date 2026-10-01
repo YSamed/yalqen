@@ -1,23 +1,16 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { ElectronBlocker, adsLists } from '@ghostery/adblocker-electron';
+import type { ElectronBlocker } from '@ghostery/adblocker-electron';
 import { ipcMain, powerMonitor, type Session } from 'electron';
 
-const FILTER_LISTS = adsLists.filter((url) => !url.includes('/peter-lowe/'));
-const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const CACHE_REFRESH_DELAY_MS = 30_000;
 const MIN_IDLE_SECONDS = 10;
 const COSMETIC_FILTERS_CHANNEL = '@ghostery/adblocker/inject-cosmetic-filters';
 const MUTATION_OBSERVER_CHANNEL = '@ghostery/adblocker/is-mutation-observer-enabled';
 
-// Scriptlets declare shared helpers (e.g. `proxyApplyFn`) as globals. Injected one by one, a later
-// scriptlet redeclares them and wraps the earlier Function.prototype.toString proxy, which then
-// recurses forever (seen on chatgpt.com). A function scope per scriptlet keeps their state apart.
-class ScopedScriptletBlocker extends ElectronBlocker {
-  override getCosmeticsFilters(...args: Parameters<ElectronBlocker['getCosmeticsFilters']>) {
-    const filters = super.getCosmeticsFilters(...args);
-    return { ...filters, scripts: filters.scripts.map((script) => `(function () {\n${script}\n})();`) };
-  }
+// Keep Ghostery's module graph out of disabled startup. A synchronous require starts enabled
+// loading before the first cache I/O await, preserving the existing initialization order.
+function engineModule(): typeof import('./adblock-engine.js') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- load only when blocking is requested
+  return require('./adblock-engine.js') as typeof import('./adblock-engine.js');
 }
 
 export class AdBlocker {
@@ -87,7 +80,7 @@ export class AdBlocker {
   private async refresh(): Promise<void> {
     this.refreshing = true;
     try {
-      const next = await fetchEngine(this.cacheFile);
+      const next = await engineModule().fetchEngine(this.cacheFile);
       if (this.destroyed) return;
       for (const session of this.sessions) {
         if (this.blocker?.isBlockingEnabled(session)) this.blocker.disableBlockingInSession(session);
@@ -123,21 +116,6 @@ export class AdBlocker {
   }
 }
 
-export async function loadEngine(cacheFile: string): Promise<{ blocker: ElectronBlocker; stale: boolean }> {
-  try {
-    const { mtimeMs } = await fs.stat(cacheFile);
-    const blocker = ScopedScriptletBlocker.deserialize(await fs.readFile(cacheFile));
-    return { blocker, stale: Date.now() - mtimeMs > CACHE_MAX_AGE_MS };
-  } catch {
-    return { blocker: await fetchEngine(cacheFile), stale: false };
-  }
-}
-
-async function fetchEngine(cacheFile: string): Promise<ElectronBlocker> {
-  const blocker = await ScopedScriptletBlocker.fromLists(fetch, FILTER_LISTS);
-  const temp = `${cacheFile}.tmp`;
-  await fs.mkdir(path.dirname(cacheFile), { recursive: true });
-  await fs.writeFile(temp, blocker.serialize());
-  await fs.rename(temp, cacheFile);
-  return blocker;
+export function loadEngine(cacheFile: string): Promise<{ blocker: ElectronBlocker; stale: boolean }> {
+  return engineModule().loadEngine(cacheFile);
 }

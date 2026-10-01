@@ -8,6 +8,11 @@ export interface Visit {
   faviconUrl?: string;
 }
 
+interface PageTextSource {
+  title: string;
+  url: string;
+}
+
 interface IndexedPage {
   url: string;
   title: string;
@@ -27,16 +32,16 @@ interface VisitText {
   host?: string;
 }
 
-// Visit objects survive title/favicon changes and index rebuilds. Weak keys let evicted
-// visits disappear without retaining their browsing data in a separate cache.
-const visitTexts = new WeakMap<Visit, VisitText>();
+// Stable bookmark snapshots and visits can reuse normalized text across keystrokes
+// and index rebuilds. Weak keys let removed pages disappear with their browsing data.
+const pageTexts = new WeakMap<PageTextSource, VisitText>();
 
-function textOf(visit: Visit): VisitText {
-  let text = visitTexts.get(visit);
-  if (!text || text.title !== visit.title || text.url !== visit.url) {
-    const name = visit.title.toLocaleLowerCase('tr');
-    text = { title: visit.title, url: visit.url, address: bareUrl(visit.url), name, words: wordsOf(name) };
-    visitTexts.set(visit, text);
+function textOf(page: PageTextSource): VisitText {
+  let text = pageTexts.get(page);
+  if (!text || text.title !== page.title || text.url !== page.url) {
+    const name = page.title.toLocaleLowerCase('tr');
+    text = { title: page.title, url: page.url, address: bareUrl(page.url), name, words: wordsOf(name) };
+    pageTexts.set(page, text);
   }
   return text;
 }
@@ -76,6 +81,11 @@ function matchText(term: string, address: string, name: string, words: readonly 
 function matchScore(term: string, title: string, url: string): number {
   const name = title.toLocaleLowerCase('tr');
   return matchText(term, bareUrl(url), name, wordsOf(name));
+}
+
+function matchCachedScore(term: string, page: PageTextSource): number {
+  const { address, name, words } = textOf(page);
+  return matchText(term, address, name, words);
 }
 
 export function indexHistory(history: readonly Visit[]): HistoryIndex {
@@ -134,12 +144,13 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
   };
 
   for (const tab of sources.tabs) {
+    // Tab snapshots are fresh on each input, so weak caching would only add work.
     const score = matchScore(term, tab.title, tab.url);
     if (score > 0)
       offer({ kind: 'tab', title: tab.title, url: tab.url, tabId: tab.id, score, visits: 0, lastVisit: 0 });
   }
   for (const bookmark of sources.bookmarks) {
-    const score = matchScore(term, bookmark.title, bookmark.url);
+    const score = matchCachedScore(term, bookmark);
     if (score > 0)
       offer({ kind: 'bookmark', title: bookmark.title, url: bookmark.url, score, visits: 0, lastVisit: 0 });
   }

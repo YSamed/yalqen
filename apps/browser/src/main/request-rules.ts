@@ -10,6 +10,7 @@ const MAX_RULES = 100;
 const MAX_PATTERN = 2048;
 const MAX_BODY = 1024 * 1024;
 const MAX_HEADERS = 8192;
+const MAX_CACHED_BODY_CHARS = 8 * 1024 * 1024;
 
 export function newRequestRule(): RequestRule {
   return {
@@ -100,6 +101,45 @@ export function parseHeaderLines(lines: string): { name: string; value: string |
   });
 }
 
+let mockBodies = new WeakMap<RequestRule, { source: string; encoded: string }>();
+let cachedBodyChars = 0;
+const headerEdits = new WeakMap<
+  RequestRule,
+  { source: string; entries: { key: string; name: string; value: string | null }[] }
+>();
+
+function mockBody(rule: RequestRule): string {
+  const cached = mockBodies.get(rule);
+  if (cached?.source === rule.body) return cached.encoded;
+  if (cached) {
+    mockBodies.delete(rule);
+    cachedBodyChars -= cached.encoded.length;
+  }
+  const encoded = Buffer.from(rule.body).toString('base64');
+  if (encoded.length > MAX_CACHED_BODY_CHARS) return encoded;
+  if (cachedBodyChars + encoded.length > MAX_CACHED_BODY_CHARS) {
+    // Weak keys avoid retaining removed rules. Collected entries may remain in the
+    // budget estimate until this reset, causing only conservative early eviction.
+    mockBodies = new WeakMap();
+    cachedBodyChars = 0;
+  }
+  mockBodies.set(rule, { source: rule.body, encoded });
+  cachedBodyChars += encoded.length;
+  return encoded;
+}
+
+function editsFor(rule: RequestRule): { key: string; name: string; value: string | null }[] {
+  let cached = headerEdits.get(rule);
+  if (!cached || cached.source !== rule.headers) {
+    cached = {
+      source: rule.headers,
+      entries: parseHeaderLines(rule.headers).map(({ name, value }) => ({ key: name.toLowerCase(), name, value })),
+    };
+    headerEdits.set(rule, cached);
+  }
+  return cached.entries;
+}
+
 export interface PausedRequest {
   requestId: string;
   request: { url: string; headers: Record<string, string> };
@@ -123,7 +163,7 @@ export function pausedRequestCommand(rules: readonly RequestRule[], paused: Paus
             { name: 'Access-Control-Allow-Origin', value: '*' },
             { name: 'Cache-Control', value: 'no-store' },
           ],
-          body: Buffer.from(rule.body).toString('base64'),
+          body: mockBody(rule),
         },
       };
     case 'redirect':
@@ -142,9 +182,9 @@ export function pausedRequestCommand(rules: readonly RequestRule[], paused: Paus
       const headers = new Map(
         Object.entries(request.headers).map(([name, value]) => [name.toLowerCase(), { name, value }]),
       );
-      for (const { name, value } of parseHeaderLines(rule.headers)) {
-        if (value === null) headers.delete(name.toLowerCase());
-        else headers.set(name.toLowerCase(), { name, value });
+      for (const { key, name, value } of editsFor(rule)) {
+        if (value === null) headers.delete(key);
+        else headers.set(key, { name, value });
       }
       return { method: 'Fetch.continueRequest', params: { requestId, headers: [...headers.values()] } };
     }

@@ -84,3 +84,5 @@ node scripts/bench.mjs --scenario startup --runs 3 --adblock both --out /tmp/sta
 For comparisons, preserve the baseline's built renderer and point the same interface script at it with `--renderer-dir /path/to/baseline/renderer`. Preserve `dist/main` and `dist/shared` together for `bench-backend.mjs --module-dir /path/to/baseline/main`; its dependencies must remain resolvable from that location.
 
 The next profiling priorities are main-process snapshot/native-query costs, IPC transfer size during sustained tab events, and repeated long-session CPU and memory measurements. Incremental state delivery needs a separate compatible protocol and recovery strategy before implementation.
+
+The [next main-process pass](main-process-performance.md) measures bookmark and request preparation, targeted native tab reads, and disabled ad-block module loading.
