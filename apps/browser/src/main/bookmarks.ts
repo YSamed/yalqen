@@ -267,7 +267,7 @@ export function runBookmarksCommand(store: BookmarkStore, command: string, param
   }
 }
 
-function menuTitle(title: string): string {
+export function menuTitle(title: string): string {
   return title.length > MENU_TITLE ? `${title.slice(0, MENU_TITLE - 1)}…` : title;
 }
 

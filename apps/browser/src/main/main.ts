@@ -17,7 +17,7 @@ import {
 import { AdBlocker } from './adblock.js';
 import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench-driver.js';
 import { BookmarkStore, runBookmarksCommand } from './bookmarks.js';
-import { importChromiumBookmarks } from './browser-import.js';
+import { importChromiumBookmarks, importChromiumHistory } from './browser-import.js';
 import { CertificateExceptions } from './certificates.js';
 import { clearSince, sanitizeClearRequest } from './clear-data.js';
 import { CommandBar } from './command-bar.js';
@@ -305,6 +305,11 @@ function startBrowser(): void {
     importBookmarks: async (file) => {
       const result = await importChromiumBookmarks(bookmarks, file);
       if (result.bookmarks > 0) bookmarksChanged();
+      return result;
+    },
+    importHistory: async (file) => {
+      const result = await importChromiumHistory(history, file);
+      if (result.visits > 0) reloadPages(HISTORY_URL);
       return result;
     },
     runDownloadsCommand: (command, params) => downloadManager.runCommand(command, params),

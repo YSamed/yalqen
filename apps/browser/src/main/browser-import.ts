@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { canBookmark, type BookmarkStore, type ImportedBookmark } from './bookmarks.js';
+import type { MenuItemConstructorOptions } from 'electron';
+import { canBookmark, menuTitle, type BookmarkStore, type ImportedBookmark } from './bookmarks.js';
+import { isWebUrl, MAX_VISITS, type HistoryStore, type ImportedVisit } from './history.js';
 
 export interface ImportSource {
   label: string;
@@ -17,6 +19,17 @@ export interface BookmarkImportResult {
   bookmarks: number;
   folders: number;
   skipped: number;
+}
+
+export interface HistoryImportResult {
+  visits: number;
+  skipped: number;
+}
+
+interface ChromiumHistoryRow {
+  url?: unknown;
+  title?: unknown;
+  last_visit_time?: unknown;
 }
 
 const APP_SUPPORT = path.join(os.homedir(), 'Library/Application Support');
@@ -129,12 +142,82 @@ export async function importChromiumBookmarks(store: BookmarkStore, file: string
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
 
-export function importErrorMessage(error: unknown): string {
+// Chromium keeps one row per address with its latest visit; hidden rows are subframes the user never opened.
+const CHROMIUM_HISTORY_QUERY = 'SELECT url, title, last_visit_time FROM urls WHERE hidden = 0';
+
+export function parseChromiumHistory(rows: readonly ChromiumHistoryRow[]): ImportedVisit[] {
+  return rows
+    .map((row) => ({
+      url: typeof row.url === 'string' ? row.url : '',
+      title: typeof row.title === 'string' ? row.title : '',
+      visitedAt: webkitTimeToUnixMs(row.last_visit_time),
+    }))
+    .filter((visit): visit is ImportedVisit => visit.visitedAt !== null && isWebUrl(visit.url))
+    .sort((a, b) => b.visitedAt - a.visitedAt)
+    .slice(0, MAX_VISITS);
+}
+
+// The source browser may be running and writing, so SQLite only ever opens a private copy.
+async function querySqliteCopy(file: string, query: string): Promise<unknown[]> {
+  const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'yalqen-sqlite-'));
+  try {
+    const copy = path.join(dir, 'source.sqlite');
+    await fs.promises.copyFile(file, copy);
+    for (const suffix of ['-wal', '-journal']) {
+      await fs.promises.copyFile(file + suffix, copy + suffix).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ENOENT') throw error;
+      });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- load SQLite only when importing
+    const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite');
+    // Not read-only: a journal copied mid-write must be rolled back, and that only touches the copy.
+    const db = new DatabaseSync(copy, { readBigInts: true });
+    try {
+      return db.prepare(query).all();
+    } catch (error) {
+      // SQLITE_ERROR (missing table or column) and SQLITE_NOTADB mean some other kind of file.
+      const errcode = (error as { errcode?: unknown } | null)?.errcode;
+      throw errcode === 1 || errcode === 26 ? new SyntaxError('Unexpected database') : error;
+    } finally {
+      db.close();
+    }
+  } finally {
+    await fs.promises.rm(dir, { recursive: true, force: true });
+  }
+}
+
+export async function importChromiumHistory(store: HistoryStore, file: string): Promise<HistoryImportResult> {
+  const visits = parseChromiumHistory((await querySqliteCopy(file, CHROMIUM_HISTORY_QUERY)) as ChromiumHistoryRow[]);
+  const added = store.importVisits(visits);
+  return { visits: added, skipped: visits.length - added };
+}
+
+export function historyImportMenu(
+  sources: readonly ImportSource[],
+  importFrom: (file?: string) => void,
+): MenuItemConstructorOptions {
+  return {
+    label: 'Geçmişi içe aktar',
+    submenu: [
+      ...sources.map((source): MenuItemConstructorOptions => ({
+        label: menuTitle(source.label),
+        click: () => importFrom(source.file),
+      })),
+      ...(sources.length > 0 ? [{ type: 'separator' as const }] : []),
+      { label: 'History dosyası seç…', click: () => importFrom() },
+    ],
+  };
+}
+
+export function importErrorMessage(error: unknown, kind = 'Yer imi'): string {
   const code = (error as NodeJS.ErrnoException | null)?.code;
-  if (code === 'ENOENT') return 'Yer imi dosyası bulunamadı.';
+  if (code === 'ENOENT') return `${kind} dosyası bulunamadı.`;
   if (code === 'EACCES' || code === 'EPERM') {
     return "Dosyayı okuma izni yok. Sistem Ayarları > Gizlilik ve Güvenlik > Tam Disk Erişimi bölümünden Yalqen'e izin verebilirsiniz.";
   }
-  if (error instanceof SyntaxError) return 'Bu dosya Chrome, Brave ya da Edge yer imi dosyası değil.';
+  if (error instanceof SyntaxError) {
+    return `Bu dosya Chrome, Brave ya da Edge ${kind.toLocaleLowerCase('tr')} dosyası değil.`;
+  }
+  if (code === 'ERR_SQLITE_ERROR') return `${kind} dosyası okunamadı. Tarayıcıyı kapatıp yeniden deneyin.`;
   return error instanceof Error ? error.message : String(error);
 }

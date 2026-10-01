@@ -5,7 +5,7 @@ import { JsonFile, LAZY_SAVE_DELAY_MS } from './json-file.js';
 import { indexHistory, type HistoryIndex } from './suggestions.js';
 import { withoutHash } from './url.js';
 
-const MAX_VISITS = 5000;
+export const MAX_VISITS = 5000;
 // Pages that keep retitling themselves (unread counters, clocks) would otherwise rewrite the
 // history file for as long as they stay open; like Chrome, only a visit's first titles are kept.
 export const MAX_TITLE_CHANGES = 5;
@@ -17,6 +17,8 @@ export interface HistoryEntry {
   visitedAt: number;
   faviconUrl?: string;
 }
+
+export type ImportedVisit = Pick<HistoryEntry, 'url' | 'title' | 'visitedAt'>;
 
 export class HistoryStore {
   private readonly file: string;
@@ -62,6 +64,27 @@ export class HistoryStore {
     if (this.entries.length > MAX_VISITS) this.entries.length = MAX_VISITS;
     this.changed();
     return entry.id;
+  }
+
+  // Keeps the original visit times. A visit is skipped when its address already has one at least as recent.
+  importVisits(visits: readonly ImportedVisit[]): number {
+    const newest = new Map<string, HistoryEntry>();
+    for (const entry of this.entries) {
+      const known = newest.get(entry.url);
+      if (!known || known.visitedAt < entry.visitedAt) newest.set(entry.url, entry);
+    }
+    const added = new Set<HistoryEntry>();
+    for (const { url, title, visitedAt } of visits) {
+      const known = newest.get(url);
+      if (!isWebUrl(url) || !Number.isFinite(visitedAt) || (known && known.visitedAt >= visitedAt)) continue;
+      const entry = { id: randomUUID(), url, title: title || known?.title || url, visitedAt };
+      newest.set(url, entry);
+      added.add(entry);
+    }
+    if (added.size === 0) return 0;
+    this.entries = [...this.entries, ...added].sort((a, b) => b.visitedAt - a.visitedAt).slice(0, MAX_VISITS);
+    this.changed();
+    return this.entries.filter((entry) => added.has(entry)).length;
   }
 
   setTitle(id: string | null, title: string): void {
@@ -116,7 +139,7 @@ export function isSameVisit(previousUrl: string, nextUrl: string): boolean {
   return withoutHash(previousUrl) === withoutHash(nextUrl);
 }
 
-function isWebUrl(url: string): boolean {
+export function isWebUrl(url: string): boolean {
   try {
     return ['http:', 'https:'].includes(new URL(url).protocol);
   } catch {

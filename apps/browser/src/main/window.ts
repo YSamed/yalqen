@@ -26,7 +26,13 @@ import {
   type WindowMaterial,
 } from '../shared/types.js';
 import { bookmarksMenuTemplate, type BookmarkStore } from './bookmarks.js';
-import { chromiumProfiles, importErrorMessage, type BookmarkImportResult } from './browser-import.js';
+import {
+  chromiumProfiles,
+  historyImportMenu,
+  importErrorMessage,
+  type BookmarkImportResult,
+  type HistoryImportResult,
+} from './browser-import.js';
 import type { CertificateExceptions } from './certificates.js';
 import type { CommandBar, CommandBarHost } from './command-bar.js';
 import { contextMenuTemplate } from './context-menu.js';
@@ -97,6 +103,7 @@ export interface AppContext {
   toggleBookmark(url: string, title: string): void;
   runBookmarksCommand(command: string, params: URLSearchParams): void;
   importBookmarks(file: string): Promise<BookmarkImportResult>;
+  importHistory(file: string): Promise<HistoryImportResult>;
   runDownloadsCommand(command: string, params: URLSearchParams): void;
   updateSettings(patch: unknown): void;
   pendingUpdate(): PendingUpdate | null;
@@ -646,6 +653,34 @@ export class YalqenWindow {
     }
   }
 
+  private async importHistory(file?: string): Promise<void> {
+    if (!file) {
+      const { canceled, filePaths } = await dialog.showOpenDialog(this.window, {
+        title: 'Geçmiş dosyasını seçin',
+        buttonLabel: 'İçe aktar',
+        defaultPath: app.getPath('appData'),
+        properties: ['openFile'],
+      });
+      if (canceled || !filePaths[0]) return;
+      file = filePaths[0];
+    }
+    try {
+      const { visits, skipped } = await this.app.importHistory(file);
+      void dialog.showMessageBox(this.window, {
+        type: 'info',
+        message: visits > 0 ? `${visits} ziyaret içe aktarıldı.` : 'İçe aktarılacak yeni ziyaret bulunamadı.',
+        detail: skipped > 0 ? `${skipped} ziyaret zaten vardı ya da çok eski olduğu için atlandı.` : '',
+      });
+    } catch (error) {
+      console.warn('[history] could not import:', error);
+      void dialog.showMessageBox(this.window, {
+        type: 'error',
+        message: 'Geçmiş içe aktarılamadı.',
+        detail: importErrorMessage(error, 'Geçmiş'),
+      });
+    }
+  }
+
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
     if (page && canViewSource(page.url)) clipboard.writeText(formatAddress(format, page.url, page.title));
   }
@@ -783,6 +818,7 @@ export class YalqenWindow {
           },
           chromiumProfiles('Bookmarks'),
         );
+        template.push(historyImportMenu(chromiumProfiles('History'), (file) => void this.importHistory(file)));
         this.popup(template);
         break;
       }
