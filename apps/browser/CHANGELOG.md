@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.16](https://github.com/YSamed/yalqen/compare/v0.2.15...v0.2.16) (2026-10-01)
+
+
+### Performance
+
+* reuse renderer snapshots and cache cookie classification ([#73](https://github.com/YSamed/yalqen/issues/73)) ([710f7d0](https://github.com/YSamed/yalqen/commit/710f7d0fa73535192b7dbc6e1731c99ab9c21a83))
+
 ## [0.2.15](https://github.com/YSamed/yalqen/compare/v0.2.14...v0.2.15) (2026-10-01)
 
 
