@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import suggestions from '../dist/main/suggestions.js';
 
-const { MAX_SUGGESTIONS, indexHistory, suggest: suggestFrom } = suggestions;
+const { MAX_SUGGESTIONS, indexHistory, searchKey, suggest: suggestFrom } = suggestions;
 
 const suggest = (input, { history, ...rest }) => suggestFrom(input, { ...rest, history: indexHistory(history) });
 
@@ -105,7 +105,7 @@ test('rebuilding an index reuses visits while reflecting title, address, and ico
   visit.faviconUrl = 'https://new.example/new.ico';
   const history = indexHistory([visit, older]);
   assert.equal(history.pages.length, 2);
-  assert.equal(history.pages[0].name, 'yeni başlık');
+  assert.equal(history.pages[0].name, 'yeni başlik');
   assert.equal(history.pages[0].address, 'new.example/');
   assert.equal(history.pages[0].visits, 1);
   assert.equal(history.favicons.get('new.example'), visit.faviconUrl);
@@ -181,4 +181,23 @@ test('match quality ranks ahead of source priority and equal history ties stay s
     list.map(({ url }) => url),
     ['https://match.example/', tabs[0].url, 'https://first.example/'],
   );
+});
+
+test('Turkish and English typing find the same titles regardless of dotted or dotless i', () => {
+  assert.equal(searchKey('İstanbul Instagram ılık IŞIK'), 'istanbul instagram ilik işik');
+  const titles = (input) =>
+    suggest(input, {
+      tabs: [],
+      bookmarks: [{ title: 'Instagram', url: 'https://www.instagram.com/' }],
+      history: [
+        { title: 'Isparta', url: 'https://isparta.gov.tr/', visitedAt: 2 },
+        { title: 'İstanbul', url: 'https://istanbul.gov.tr/Index', visitedAt: 1 },
+      ],
+    }).map((item) => item.title);
+  assert.deepEqual(titles('insta'), ['Instagram']);
+  assert.deepEqual(titles('INSTA'), ['Instagram']);
+  assert.deepEqual(titles('ısparta'), ['Isparta']);
+  assert.deepEqual(titles('isparta'), ['Isparta']);
+  assert.deepEqual(titles('İSTANBUL'), ['İstanbul']);
+  assert.deepEqual(titles('gov.tr/index'), ['İstanbul']);
 });

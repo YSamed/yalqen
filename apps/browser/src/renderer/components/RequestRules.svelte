@@ -78,11 +78,11 @@
         aria-label={t('requestRulesPanel.rulePattern', { number: index + 1 })}
         invalid={rule.enabled && rule.pattern.trim() === ''}
       />
-      <Select bind:value={rule.action} aria-label={t('requestRulesPanel.ruleAction', { number: index + 1 })}>
-        {#each ACTIONS as action (action.value)}
-          <option value={action.value}>{action.label}</option>
-        {/each}
-      </Select>
+      <Select
+        options={ACTIONS}
+        bind:value={rule.action}
+        aria-label={t('requestRulesPanel.ruleAction', { number: index + 1 })}
+      />
       <IconButton
         icon="close"
         tone="muted"

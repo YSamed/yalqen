@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import historyModule from '../dist/main/history.js';
 import internalPages from '../dist/main/internal-pages.js';
 
-const { HistoryStore, MAX_TITLE_CHANGES, isSameVisit } = historyModule;
+const { HistoryStore, MAX_TITLE_CHANGES, MAX_VISITS, isSameVisit } = historyModule;
 const { renderHistory } = internalPages;
 
 test('visits survive restart, can be searched, removed, and cleared', () => {
@@ -167,6 +167,75 @@ test('cached searches and suggestions forget visits beyond the history cap', () 
     assert.equal(store.list('evicted').length, 0);
     assert.ok(!store.index().pages.some(({ title }) => title === 'Evicted'));
     store.clear();
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('imported visits keep their times, skip known ones and stay newest first', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
+  try {
+    fs.writeFileSync(
+      path.join(directory, 'history.json'),
+      JSON.stringify([
+        { id: 'both', title: 'Yalqen', url: 'https://both.example/', visitedAt: 300 },
+        { id: 'stale', title: 'Eski başlık', url: 'https://stale.example/', visitedAt: 100 },
+      ]),
+    );
+    const store = new HistoryStore(directory);
+    const visits = [
+      { url: 'https://both.example/', title: 'Chrome', visitedAt: 200 },
+      { url: 'https://stale.example/', title: '', visitedAt: 400 },
+      { url: 'https://new.example/', title: 'Yeni', visitedAt: 250 },
+      { url: 'https://new.example/', title: 'Yeni', visitedAt: 250 },
+      { url: 'https://untitled.example/', title: '', visitedAt: 50 },
+      { url: 'ftp://files.example/', title: 'FTP', visitedAt: 500 },
+      { url: 'https://nan.example/', title: 'NaN', visitedAt: Number.NaN },
+    ];
+    const rows = () => store.list().map(({ url, title, visitedAt }) => [url, title, visitedAt]);
+
+    assert.equal(store.importVisits(visits), 3);
+    assert.deepEqual(rows(), [
+      ['https://stale.example/', 'Eski başlık', 400],
+      ['https://both.example/', 'Yalqen', 300],
+      ['https://new.example/', 'Yeni', 250],
+      ['https://stale.example/', 'Eski başlık', 100],
+      ['https://untitled.example/', 'https://untitled.example/', 50],
+    ]);
+    assert.ok(store.index().pages.some(({ url }) => url === 'https://new.example/'));
+
+    assert.equal(store.importVisits(visits), 0);
+    store.saveNow();
+    assert.equal(new HistoryStore(directory).list().length, 5);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('imported visits share the history cap with the newest visits winning', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
+  try {
+    fs.writeFileSync(
+      path.join(directory, 'history.json'),
+      JSON.stringify(
+        Array.from({ length: MAX_VISITS }, (_, index) => ({
+          id: String(index),
+          title: 'Kayıt',
+          url: `https://example.com/${index}`,
+          visitedAt: 1000 + MAX_VISITS - index,
+        })),
+      ),
+    );
+    const store = new HistoryStore(directory);
+    const imported = [
+      { url: 'https://newest.example/', title: 'En yeni', visitedAt: 100_000 },
+      { url: 'https://oldest.example/', title: 'En eski', visitedAt: 1 },
+    ];
+    assert.equal(store.importVisits(imported), 1);
+    assert.equal(store.list().length, MAX_VISITS);
+    assert.equal(store.list()[0].url, 'https://newest.example/');
+    assert.equal(store.list().at(-1).url, `https://example.com/${MAX_VISITS - 2}`);
+    assert.equal(store.list('en eski').length, 0);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

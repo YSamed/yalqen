@@ -4,6 +4,7 @@ import { pageFrame } from '../dist/main/page-layout.js';
 
 const layout = {
   panelWidth: 220,
+  panelSlide: 0,
   panelSide: 'left',
   chromeHeight: 44,
   pageInset: 8,
@@ -49,6 +50,25 @@ test('hidden menus leave no panel rail', () => {
     x: 8,
     y: 44,
     width: 1264,
+    height: 768,
+    radius: 16,
+  });
+});
+
+test('a sliding panel moves the page at its final size so it never reflows mid-animation', () => {
+  const collapsing = { ...layout, panelWidth: 44, panelSlide: 100 };
+  assert.deepEqual(pageFrame(1280, 820, collapsing, false), { x: 144, y: 44, width: 1228, height: 768, radius: 16 });
+  assert.deepEqual(pageFrame(1280, 820, { ...collapsing, panelSide: 'right' }, false), {
+    x: -92,
+    y: 44,
+    width: 1228,
+    height: 768,
+    radius: 16,
+  });
+  assert.deepEqual(pageFrame(1280, 820, { ...layout, panelWidth: 180, panelSlide: -136 }, false), {
+    x: 44,
+    y: 44,
+    width: 1092,
     height: 768,
     radius: 16,
   });

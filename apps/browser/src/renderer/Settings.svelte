@@ -13,6 +13,7 @@
   import IconButton from './components/ui/IconButton.svelte';
   import SegmentedControl from './components/ui/SegmentedControl.svelte';
   import Select from './components/ui/Select.svelte';
+  import Switch from './components/ui/Switch.svelte';
   import TextField from './components/ui/TextField.svelte';
 
   const api = window.yalqenSettings;
@@ -52,14 +53,6 @@
     { value: 'left', label: t('settings.left') },
     { value: 'right', label: t('settings.right') },
   ] as const;
-  const onOffOptions = [
-    { value: true, label: t('settings.on') },
-    { value: false, label: t('settings.off') },
-  ] as const;
-  const visibilityOptions = [
-    { value: true, label: t('settings.visible') },
-    { value: false, label: t('settings.hidden') },
-  ] as const;
   const toolbarTabOptions = [
     { value: true, label: t('settings.allTabs') },
     { value: false, label: t('settings.currentPageOnly') },
@@ -95,7 +88,10 @@
     { value: 'large', label: t('settings.fontLarge') },
     { value: 'xlarge', label: t('settings.fontXLarge') },
   ] as const;
-  const zoomOptions = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
+  const zoomOptions = [0.8, 0.9, 1, 1.1, 1.25, 1.5].map((factor) => ({
+    value: factor,
+    label: t('settings.zoomPercent', { percent: Math.round(factor * 100) }),
+  }));
   const languageOptions = [
     { value: 'tr', label: 'Türkçe' },
     { value: 'en', label: 'English' },
@@ -144,6 +140,10 @@
 
   const values = $derived(view?.values);
   const isCustom = $derived(values?.searchEngine === 'custom');
+  const engineOptions = $derived([
+    ...(view?.engines ?? []).map((engine) => ({ value: engine.id, label: engine.label })),
+    { value: 'custom' as const, label: t('settings.custom') },
+  ]);
   const templateInvalid = $derived(isCustom && !!values?.customSearchTemplate && !view?.customTemplateValid);
 
   $effect(() => {
@@ -241,15 +241,10 @@
             </label>
             <Select
               id="engine"
+              options={engineOptions}
               value={values.searchEngine}
-              onchange={(event) =>
-                update({ searchEngine: event.currentTarget.value as SettingsValues['searchEngine'] })}
-            >
-              {#each view.engines as engine (engine.id)}
-                <option value={engine.id}>{engine.label}</option>
-              {/each}
-              <option value="custom">{t('settings.custom')}</option>
-            </Select>
+              onchange={(value) => update({ searchEngine: value })}
+            />
           </div>
           {#if isCustom}
             <div class="row stacked">
@@ -296,14 +291,10 @@
             </span>
             <Select
               aria-label={t('settings.whenBrowserOpens')}
+              options={startupOptions}
               value={values.startupBehavior}
-              onchange={(event) =>
-                update({ startupBehavior: event.currentTarget.value as SettingsValues['startupBehavior'] })}
-            >
-              {#each startupOptions as option (option.value)}
-                <option value={option.value}>{option.label}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ startupBehavior: value })}
+            />
           </div>
 
           <h2>{t('settings.language')}</h2>
@@ -324,11 +315,10 @@
               <span>{t('settings.pageTranslation')}</span>
               <span class="hint">{t('settings.pageTranslationHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.pageTranslation')}
-              options={onOffOptions}
-              value={values.pageTranslation}
-              onchange={(value) => update({ pageTranslation: value })}
+              checked={values.pageTranslation}
+              onchange={(checked) => update({ pageTranslation: checked })}
             />
           </div>
 
@@ -364,11 +354,10 @@
               <span>{t('settings.autoUpdate')}</span>
               <span class="hint">{t('settings.autoUpdateHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.autoUpdate')}
-              options={onOffOptions}
-              value={values.autoUpdate}
-              onchange={(value) => update({ autoUpdate: value })}
+              checked={values.autoUpdate}
+              onchange={(checked) => update({ autoUpdate: checked })}
             />
           </div>
         {:else if pane === 'appearance'}
@@ -391,13 +380,10 @@
             </label>
             <Select
               id="font-size"
+              options={fontSizeOptions}
               value={values.fontSize}
-              onchange={(event) => update({ fontSize: event.currentTarget.value as SettingsValues['fontSize'] })}
-            >
-              {#each fontSizeOptions as option (option.value)}
-                <option value={option.value}>{option.label}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ fontSize: value })}
+            />
           </div>
           <div class="row">
             <label for="default-zoom" class="label">
@@ -406,22 +392,18 @@
             </label>
             <Select
               id="default-zoom"
+              options={zoomOptions}
               value={values.defaultZoom}
-              onchange={(event) => update({ defaultZoom: Number(event.currentTarget.value) })}
-            >
-              {#each zoomOptions as factor (factor)}
-                <option value={factor}>{t('settings.zoomPercent', { percent: Math.round(factor * 100) })}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ defaultZoom: value })}
+            />
           </div>
           <h2>{t('settings.menus')}</h2>
           <div class="row">
             <span class="label">{t('settings.sidebar')}</span>
-            <SegmentedControl
+            <Switch
               label={t('settings.sidebarVisibility')}
-              options={visibilityOptions}
-              value={values.sidebarVisible}
-              onchange={(value) => update({ sidebarVisible: value })}
+              checked={values.sidebarVisible}
+              onchange={(checked) => update({ sidebarVisible: checked })}
             />
           </div>
           <div class="row">
@@ -429,11 +411,10 @@
               <span>{t('settings.toolbar')}</span>
               <span class="hint">{t('settings.toolbarHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.toolbarVisibility')}
-              options={visibilityOptions}
-              value={values.toolbarVisible}
-              onchange={(value) => update({ toolbarVisible: value })}
+              checked={values.toolbarVisible}
+              onchange={(checked) => update({ toolbarVisible: checked })}
             />
           </div>
           <div class="row">
@@ -513,11 +494,10 @@
               <span>{t('settings.adBlocker')}</span>
               <span class="hint">{t('settings.adBlockerHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.adBlocker')}
-              options={onOffOptions}
-              value={values.adBlocking}
-              onchange={(value) => update({ adBlocking: value })}
+              checked={values.adBlocking}
+              onchange={(checked) => update({ adBlocking: checked })}
             />
           </div>
 
@@ -526,11 +506,10 @@
               <span>{t('settings.httpsOnly')}</span>
               <span class="hint">{t('settings.httpsOnlyHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.httpsOnly')}
-              options={onOffOptions}
-              value={values.httpsOnly}
-              onchange={(value) => update({ httpsOnly: value })}
+              checked={values.httpsOnly}
+              onchange={(checked) => update({ httpsOnly: checked })}
             />
           </div>
           <div class="row">
@@ -538,11 +517,10 @@
               <span>{t('settings.blockThirdPartyCookies')}</span>
               <span class="hint">{t('settings.blockThirdPartyCookiesHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.blockThirdPartyCookies')}
-              options={onOffOptions}
-              value={values.blockThirdPartyCookies}
-              onchange={(value) => update({ blockThirdPartyCookies: value })}
+              checked={values.blockThirdPartyCookies}
+              onchange={(checked) => update({ blockThirdPartyCookies: checked })}
             />
           </div>
           <div class="row">
@@ -550,11 +528,10 @@
               <span>{t('settings.askBeforeDownload')}</span>
               <span class="hint">{t('settings.askBeforeDownloadHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.askBeforeDownload')}
-              options={onOffOptions}
-              value={values.askBeforeDownload}
-              onchange={(value) => update({ askBeforeDownload: value })}
+              checked={values.askBeforeDownload}
+              onchange={(checked) => update({ askBeforeDownload: checked })}
             />
           </div>
           <div class="row">
@@ -564,13 +541,10 @@
             </label>
             <Select
               id="secure-dns"
+              options={dnsOptions}
               value={values.secureDns}
-              onchange={(event) => update({ secureDns: event.currentTarget.value as SettingsValues['secureDns'] })}
-            >
-              {#each dnsOptions as option (option.value)}
-                <option value={option.value}>{option.label}</option>
-              {/each}
-            </Select>
+              onchange={(value) => update({ secureDns: value })}
+            />
           </div>
           <h2>{t('settings.browsingData')}</h2>
           <div class="row stacked">
@@ -579,11 +553,12 @@
               <span class="hint">{t('settings.clearBrowsingDataHint')}</span>
             </span>
             <div class="clear">
-              <Select aria-label={t('settings.timeRange')} bind:value={clearRange} onchange={() => (cleared = false)}>
-                {#each rangeOptions as option (option.value)}
-                  <option value={option.value}>{option.label}</option>
-                {/each}
-              </Select>
+              <Select
+                aria-label={t('settings.timeRange')}
+                options={rangeOptions}
+                bind:value={clearRange}
+                onchange={() => (cleared = false)}
+              />
               {#each clearOptions as option (option.key)}
                 <label class="check">
                   <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
@@ -611,11 +586,10 @@
               <span>{t('settings.freezeBackgroundTabs')}</span>
               <span class="hint">{t('settings.freezeBackgroundTabsHint')}</span>
             </span>
-            <SegmentedControl
+            <Switch
               label={t('settings.freezeBackgroundTabs')}
-              options={onOffOptions}
-              value={values.freezeBackgroundTabs}
-              onchange={(value) => update({ freezeBackgroundTabs: value })}
+              checked={values.freezeBackgroundTabs}
+              onchange={(checked) => update({ freezeBackgroundTabs: checked })}
             />
           </div>
           <div class="row">

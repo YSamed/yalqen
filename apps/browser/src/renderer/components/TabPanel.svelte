@@ -19,6 +19,7 @@
     topInset,
     rowInset,
     edgeInset,
+    fullWidth,
     downloads,
     pendingUpdate,
     profile,
@@ -33,6 +34,7 @@
     topInset: number;
     rowInset: number;
     edgeInset: number;
+    fullWidth: number;
     downloads: DownloadsSummary;
     pendingUpdate: PendingUpdate | null;
     profile: ProfileKind;
@@ -201,7 +203,7 @@
   class:shrinking
   class:right={side === 'right'}
   aria-label={t('tabPanel.tabs')}
-  style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px`}
+  style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px; --panel-full-width: ${fullWidth}px`}
 >
   <div class="top" style:height="{topInset}px"></div>
 
@@ -436,6 +438,16 @@
 
   .shrinking .body {
     opacity: 0;
+  }
+
+  /* Expanded rows keep their full width while the panel animates, so they are uncovered
+     instead of squeezed into whatever width the panel has reached. */
+  .panel:not(.collapsed) .body {
+    width: calc(var(--panel-full-width) - var(--panel-row-inset) - var(--panel-edge-inset));
+  }
+
+  .panel.right:not(.collapsed) .body {
+    align-self: flex-end;
   }
 
   .rows {

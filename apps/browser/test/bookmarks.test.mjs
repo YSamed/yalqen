@@ -193,7 +193,7 @@ test('the menu lists folders, then loose bookmarks', () => {
   });
   assert.deepEqual(
     items.map((item) => item.label ?? '-'),
-    ['İş', 'Boş klasör', `${'B'.repeat(59)}…`, '-', 'Tüm yer imleri'],
+    ['İş', 'Boş klasör', `${'B'.repeat(59)}…`, '-', 'Tüm yer imleri', 'Yer imlerini içe aktar'],
   );
   assert.deepEqual(
     items[1].submenu.map((item) => item.label),
@@ -204,6 +204,27 @@ test('the menu lists folders, then loose bookmarks', () => {
   items[4].click();
   assert.deepEqual(opened, ['https://a.com/', 'https://b.com/', 'all']);
   assert.equal(bookmarksMenuTemplate([], [], {})[0].label, 'Henüz yer imi yok');
+});
+
+test('the menu offers detected browsers and a file to import', () => {
+  const imported = [];
+  const importFrom = (file) => imported.push(file ?? 'choose');
+  const [, , , importMenu] = bookmarksMenuTemplate([], [], { importFrom }, [
+    { label: 'Chrome — Kişi 1', file: '/chrome/Default/Bookmarks' },
+  ]);
+  assert.deepEqual(
+    importMenu.submenu.map((item) => item.label ?? '-'),
+    ['Chrome — Kişi 1', '-', 'Bookmarks dosyası seç…'],
+  );
+  importMenu.submenu[0].click();
+  importMenu.submenu[2].click();
+  assert.deepEqual(imported, ['/chrome/Default/Bookmarks', 'choose']);
+  assert.deepEqual(
+    bookmarksMenuTemplate([], [], { importFrom })
+      .at(-1)
+      .submenu.map((item) => item.label),
+    ['Bookmarks dosyası seç…'],
+  );
 });
 
 test('folder grouping preserves folder, bookmark, and loose entry order', () => {

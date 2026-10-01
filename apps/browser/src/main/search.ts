@@ -69,6 +69,14 @@ export const SEARCH_ENGINES: readonly SearchEngine[] = [
     },
     template: 'https://www.startpage.com/do/search?q=%s',
   },
+  {
+    id: 'kagi',
+    label: 'Kagi',
+    get placeholder() {
+      return t('search.placeholderKagi');
+    },
+    template: 'https://kagi.com/search?q=%s',
+  },
 ];
 
 export function isValidSearchTemplate(template: string | null | undefined): template is string {

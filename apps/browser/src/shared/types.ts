@@ -8,7 +8,8 @@ export const BOOKMARKS_URL = 'yalqen://bookmarks/';
 export const SETTINGS_URL = 'yalqen://settings/';
 export type CommandPage = 'downloads' | 'bookmarks';
 
-export type SearchEngineId = 'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'startpage' | 'custom';
+export type SearchEngineId =
+  'google' | 'yandex' | 'duckduckgo' | 'bing' | 'brave' | 'ecosia' | 'startpage' | 'kagi' | 'custom';
 export type ThemeSource = 'system' | 'light' | 'dark';
 export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
 export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
@@ -103,6 +104,9 @@ export interface DownloadsSummary {
 
 export interface ChromeLayout {
   panelWidth: number;
+  // While the panel animates, how far it still is from panelWidth. The page slides by this much
+  // instead of resizing, so it moves with the panel without reflowing every frame.
+  panelSlide: number;
   panelSide: PanelSide;
   chromeHeight: number;
   pageInset: number;

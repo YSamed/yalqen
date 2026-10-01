@@ -59,7 +59,7 @@
   const side = $derived(browser.panelSide);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let shownWidth = $state(PANEL_WIDTH);
-  let pagePanelWidth = $state(PANEL_WIDTH);
+  let panelSlide = $state(0);
   let panelMode = '';
   let animateModeChanges = false;
   let panelAnimation = 0;
@@ -75,19 +75,20 @@
     const from = untrack(() => shownWidth);
     if (!modeChanged || !animateModeChanges || reducedMotion.matches || from === target) {
       shownWidth = target;
-      pagePanelWidth = target;
+      panelSlide = 0;
       return;
     }
-    // Resizing the native page view every frame makes it reflow and lag behind the chrome,
-    // so it moves once: before an expand, after a collapse.
-    pagePanelWidth = Math.max(from, target);
+    // Resizing the native page view every frame makes it reflow and lag behind the chrome, so it
+    // takes its final size up front and only slides with the panel. Emulated devices just resize.
+    const slides = untrack(() => browser.device === null);
     const start = performance.now();
     const step = (now: number) => {
       const progress = Math.min(1, (now - start) / PANEL_ANIMATION_MS);
-      shownWidth = Math.round(from + (target - from) * (1 - (1 - progress) ** 4));
+      shownWidth = Math.round(from + (target - from) * (1 - (1 - progress) ** 3));
+      panelSlide = slides ? shownWidth - target : 0;
       if (progress < 1) panelAnimation = requestAnimationFrame(step);
-      else pagePanelWidth = target;
     };
+    panelSlide = slides ? from - target : 0;
     panelAnimation = requestAnimationFrame(step);
   });
   const topInset = $derived(browser.toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
@@ -100,14 +101,15 @@
   $effect(() => {
     if (!stateReceived) return;
     window.yalqen.setLayout({
-      panelWidth: pagePanelWidth,
+      panelWidth,
+      panelSlide,
       panelSide: side,
       chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
       newTabCenterOffset:
         material === 'glass' && !pageFullScreen
-          ? ((side === 'right' ? 1 : -1) * Math.max(0, pagePanelWidth - COLLAPSED_WIDTH)) / 2
+          ? ((side === 'right' ? 1 : -1) * Math.max(0, panelWidth - COLLAPSED_WIDTH)) / 2
           : 0,
     });
   });
@@ -160,6 +162,7 @@
         {topInset}
         rowInset={PANEL_ROW_INSET}
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
+        fullWidth={PANEL_WIDTH}
         downloads={browser.downloads}
         pendingUpdate={browser.pendingUpdate}
         profile={browser.profile}
