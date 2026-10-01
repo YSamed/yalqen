@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.20](https://github.com/YSamed/yalqen/compare/v0.2.19...v0.2.20) (2026-10-01)
+
+
+### Bug Fixes
+
+* redraw history icon and use standard spacing for toolbar buttons ([b4a8e1f](https://github.com/YSamed/yalqen/commit/b4a8e1fe9c4f63cf9bd02497fdc86bb37e115c2d))
+
 ## [0.2.19](https://github.com/YSamed/yalqen/compare/v0.2.18...v0.2.19) (2026-10-01)
 
 
