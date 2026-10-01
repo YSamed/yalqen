@@ -95,3 +95,72 @@ test('the list is limited', () => {
   }));
   assert.equal(suggest('a.com', { tabs: [], bookmarks: [], history }).length, MAX_SUGGESTIONS);
 });
+
+test('rebuilding an index reuses visits while reflecting title, address, and icon changes', () => {
+  const visit = { title: 'İlk', url: 'https://old.example/', visitedAt: 20 };
+  const older = { title: 'Older', url: visit.url, visitedAt: 10 };
+  assert.equal(indexHistory([visit, older]).pages[0].visits, 2);
+  visit.title = 'Yeni Başlık';
+  visit.url = 'https://new.example/';
+  visit.faviconUrl = 'https://new.example/new.ico';
+  const history = indexHistory([visit, older]);
+  assert.equal(history.pages.length, 2);
+  assert.equal(history.pages[0].name, 'yeni başlık');
+  assert.equal(history.pages[0].address, 'new.example/');
+  assert.equal(history.pages[0].visits, 1);
+  assert.equal(history.favicons.get('new.example'), visit.faviconUrl);
+  visit.faviconUrl = 'https://new.example/latest.ico';
+  assert.equal(indexHistory([visit]).favicons.get('new.example'), visit.faviconUrl);
+});
+
+test('bounded ranking matches the full ordering across sources, frequencies, and ties', () => {
+  const history = indexHistory(
+    Array.from({ length: 1000 }, (_, index) => ({
+      title: `Match ${index % 137}`,
+      url: `https://site${index % 137}.example/`,
+      visitedAt: 2000 - index,
+    })),
+  );
+  const tabs = [
+    { id: 'tab-a', title: 'Match tab', url: 'https://site70.example/' },
+    { id: 'tab-b', title: 'Match tab', url: 'https://site80.example/' },
+    { id: 'duplicate', title: 'Match duplicate', url: 'https://site70.example/' },
+  ];
+  const bookmarks = [
+    { title: 'Match duplicate', url: tabs[0].url },
+    { title: 'Match bookmark', url: 'https://site120.example/' },
+  ];
+  const kinds = { tab: 0, bookmark: 1, history: 2 };
+  const expected = history.pages
+    .map((page) => {
+      const tab = tabs.find(({ url }) => url === page.url);
+      const bookmark = bookmarks.find(({ url }) => url === page.url);
+      return {
+        kind: tab ? 'tab' : bookmark ? 'bookmark' : 'history',
+        title: tab?.title ?? bookmark?.title ?? page.title,
+        url: page.url,
+        ...(tab && { tabId: tab.id }),
+        visits: page.visits,
+        lastVisit: page.lastVisit,
+      };
+    })
+    .sort((a, b) => kinds[a.kind] - kinds[b.kind] || b.visits - a.visits || b.lastVisit - a.lastVisit)
+    .map(({ visits: _visits, lastVisit: _lastVisit, ...item }) => item);
+  for (const limit of [0, 1, 6, 20, 200]) {
+    assert.deepEqual(suggestFrom('match', { tabs, bookmarks, history }, limit), expected.slice(0, limit));
+  }
+});
+
+test('match quality ranks ahead of source priority and equal history ties stay stable', () => {
+  const history = indexHistory([
+    { title: 'Other', url: 'https://match.example/', visitedAt: 1 },
+    { title: 'Match first', url: 'https://first.example/', visitedAt: 1 },
+    { title: 'Match second', url: 'https://second.example/', visitedAt: 1 },
+  ]);
+  const tabs = [{ id: 'tab', title: 'A match inside', url: 'https://tab.example/' }];
+  const list = suggestFrom('match', { tabs, bookmarks: [], history }, 3);
+  assert.deepEqual(
+    list.map(({ url }) => url),
+    ['https://match.example/', tabs[0].url, 'https://first.example/'],
+  );
+});

@@ -18,6 +18,29 @@ interface IndexedPage {
   lastVisit: number;
 }
 
+interface VisitText {
+  title: string;
+  url: string;
+  address: string;
+  name: string;
+  words: string[];
+  host?: string;
+}
+
+// Visit objects survive title/favicon changes and index rebuilds. Weak keys let evicted
+// visits disappear without retaining their browsing data in a separate cache.
+const visitTexts = new WeakMap<Visit, VisitText>();
+
+function textOf(visit: Visit): VisitText {
+  let text = visitTexts.get(visit);
+  if (!text || text.title !== visit.title || text.url !== visit.url) {
+    const name = visit.title.toLocaleLowerCase('tr');
+    text = { title: visit.title, url: visit.url, address: bareUrl(visit.url), name, words: wordsOf(name) };
+    visitTexts.set(visit, text);
+  }
+  return text;
+}
+
 export interface HistoryIndex {
   pages: readonly IndexedPage[];
   favicons: ReadonlyMap<string, string>;
@@ -63,19 +86,20 @@ export function indexHistory(history: readonly Visit[]): HistoryIndex {
     if (seen) {
       seen.visits++;
     } else {
-      const name = visit.title.toLocaleLowerCase('tr');
+      const { address, name, words } = textOf(visit);
       pages.set(visit.url, {
         url: visit.url,
         title: visit.title,
-        address: bareUrl(visit.url),
+        address,
         name,
-        words: wordsOf(name),
+        words,
         visits: 1,
         lastVisit: visit.visitedAt,
       });
     }
     if (!visit.faviconUrl) continue;
-    const host = displayHost(visit.url);
+    const text = textOf(visit);
+    const host = (text.host ??= displayHost(visit.url));
     if (host && !favicons.has(host)) favicons.set(host, visit.faviconUrl);
   }
   return { pages: [...pages.values()], favicons };
@@ -87,9 +111,16 @@ interface Candidate extends AddressSuggestion {
   lastVisit: number;
 }
 
+function compareCandidates(a: Candidate, b: Candidate): number {
+  return (
+    b.score - a.score || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.visits - a.visits || b.lastVisit - a.lastVisit
+  );
+}
+
 export function suggest(input: string, sources: SuggestionSources, limit = MAX_SUGGESTIONS): AddressSuggestion[] {
   const term = input.trim().toLocaleLowerCase('tr').slice(0, 200);
-  if (term === '') return [];
+  const count = Math.max(0, Math.trunc(limit));
+  if (term === '' || !count) return [];
   const byUrl = new Map<string, Candidate>();
   const offer = (candidate: Candidate) => {
     const existing = byUrl.get(candidate.url);
@@ -112,6 +143,20 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
     if (score > 0)
       offer({ kind: 'bookmark', title: bookmark.title, url: bookmark.url, score, visits: 0, lastVisit: 0 });
   }
+  // Keep only the requested results instead of sorting every history match.
+  const ranked: Candidate[] = [];
+  const rank = (candidate: Candidate) => {
+    if (ranked.length === count && compareCandidates(candidate, ranked[ranked.length - 1]) >= 0) return;
+    let start = 0;
+    let end = ranked.length;
+    while (start < end) {
+      const middle = (start + end) >>> 1;
+      if (compareCandidates(candidate, ranked[middle]) < 0) end = middle;
+      else start = middle + 1;
+    }
+    ranked.splice(start, 0, candidate);
+    if (ranked.length > count) ranked.pop();
+  };
   for (const page of sources.history.pages) {
     const score = matchText(term, page.address, page.name, page.words);
     if (score === 0) continue;
@@ -120,7 +165,7 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
       existing.visits = page.visits;
       existing.lastVisit = page.lastVisit;
     } else {
-      offer({
+      rank({
         kind: 'history',
         title: page.title,
         url: page.url,
@@ -130,21 +175,13 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
       });
     }
   }
+  for (const candidate of byUrl.values()) rank(candidate);
 
   const { favicons } = sources.history;
-  return [...byUrl.values()]
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
-        b.visits - a.visits ||
-        b.lastVisit - a.lastVisit,
-    )
-    .slice(0, limit)
-    .map(({ kind, title, url, tabId }) => {
-      const suggestion: AddressSuggestion = tabId ? { kind, title, url, tabId } : { kind, title, url };
-      const faviconUrl = favicons.get(displayHost(url));
-      if (faviconUrl) suggestion.faviconUrl = faviconUrl;
-      return suggestion;
-    });
+  return ranked.map(({ kind, title, url, tabId }) => {
+    const suggestion: AddressSuggestion = tabId ? { kind, title, url, tabId } : { kind, title, url };
+    const faviconUrl = favicons.get(displayHost(url));
+    if (faviconUrl) suggestion.faviconUrl = faviconUrl;
+    return suggestion;
+  });
 }

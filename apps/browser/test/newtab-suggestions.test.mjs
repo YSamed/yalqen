@@ -119,6 +119,31 @@ test('the downloads page updates itself when the list changes', async () => {
   assert.equal(update.html, downloadsModule.renderDownloads(entries));
 });
 
+test('unchanged download polls omit HTML and do not read the list', async () => {
+  let reads = 0;
+  const handle = serve({
+    downloads: {
+      list: () => {
+        reads++;
+        return [];
+      },
+      changes: { version: 3, next: async () => 3 },
+    },
+  });
+  const response = await handle(new Request('yalqen://downloads/changes?since=3'));
+  assert.deepEqual(await response.json(), { version: 3 });
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(reads, 0);
+});
+
+test('cancelled download polls stop waiting and return no redundant HTML', async () => {
+  const controller = new AbortController();
+  const handle = serve({});
+  const waiting = handle(new Request('yalqen://downloads/changes?since=0', { signal: controller.signal }));
+  controller.abort();
+  assert.deepEqual(await (await waiting).json(), { version: 0 });
+});
+
 test('pinned sites render as escaped tiles with a letter fallback', () => {
   const html = internalPages.renderPinned([
     { url: 'https://github.com/', title: 'GitHub', faviconUrl: 'https://github.com/favicon.ico' },

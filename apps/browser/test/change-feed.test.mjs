@@ -24,3 +24,15 @@ test('waiting ends with the same version when nothing changes', async () => {
   feed.notify();
   assert.equal(feed.version, 1);
 });
+
+test('aborting a closed page releases its wait without waiting for a change', async () => {
+  const feed = new ChangeFeed();
+  const controller = new AbortController();
+  const waiting = feed.next(0, 1000, controller.signal);
+  controller.abort();
+  assert.equal(await waiting, 0);
+  assert.equal(await feed.next(0, 1000, controller.signal), 0);
+  const active = feed.next(0);
+  feed.notify();
+  assert.equal(await active, 1);
+});

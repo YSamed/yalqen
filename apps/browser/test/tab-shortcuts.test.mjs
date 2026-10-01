@@ -44,3 +44,12 @@ test('number shortcuts follow the tab list order', () => {
   assert.equal(tabForShortcut(ordered, -1).id, 'p1');
   assert.equal(tabForShortcut(ordered, 4), undefined);
 });
+
+test('stale opened pins are ignored while large groups keep their opening order', () => {
+  const pins = Array.from({ length: 1000 }, (_, index) => ({ id: `p${index}`, pinnedUrl: `https://p${index}.test/` }));
+  const anchor = { id: 'anchor', pinnedUrl: null };
+  const opened = new Map([['gone', 'anchor'], ['anchor', null], ...pins.toReversed().map(({ id }) => [id, 'anchor'])]);
+  const ordered = tabListOrder([...pins, anchor], opened);
+  assert.deepEqual(ids(ordered), ['anchor', ...pins.toReversed().map(({ id }) => id)]);
+  assert.equal(new Set(ordered).size, 1001);
+});

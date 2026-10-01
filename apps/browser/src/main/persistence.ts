@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { NavigationEntry } from 'electron';
+import type { NavigationEntry, NavigationHistory } from 'electron';
 import type { TabId } from '../shared/types.js';
 import { JsonFile } from './json-file.js';
 
@@ -18,6 +18,24 @@ export function trimHistory(history: SavedHistory, around = SAVED_ENTRIES_AROUND
   const start = Math.max(0, index - around);
   const end = Math.min(history.entries.length, index + around + 1);
   return { entries: history.entries.slice(start, end), index: index - start };
+}
+
+export function captureSavedHistory(
+  history: Pick<NavigationHistory, 'length' | 'getActiveIndex' | 'getEntryAtIndex'>,
+  around = SAVED_ENTRIES_AROUND_ACTIVE,
+): SavedHistory | null {
+  const length = history.length();
+  if (length === 0) return null;
+  const index = Math.min(Math.max(history.getActiveIndex(), 0), length - 1);
+  const start = Math.max(0, index - around);
+  const end = Math.min(length, index + around + 1);
+  const entries: NavigationEntry[] = [];
+  for (let position = start; position < end; position++) {
+    const entry = history.getEntryAtIndex(position);
+    if (!entry) return null;
+    entries.push(entry);
+  }
+  return { entries, index: index - start };
 }
 
 export interface SavedTab {

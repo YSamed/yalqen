@@ -1,7 +1,7 @@
 const list = document.getElementById('downloads');
 const RETRY_MS = 2000;
 let version = Number(list.dataset.version);
-let shown = null;
+let shown = list.innerHTML;
 
 function focusedCommand() {
   const active = document.activeElement;
@@ -23,7 +23,7 @@ async function watch() {
       if (!response.ok) throw new Error(`Downloads: ${response.status}`);
       const next = await response.json();
       version = next.version;
-      render(next.html);
+      if (typeof next.html === 'string') render(next.html);
     } catch {
       await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
     }
