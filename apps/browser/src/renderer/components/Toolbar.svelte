@@ -208,33 +208,43 @@
   <div class="side leading" aria-hidden="true"></div>
 
   <div class="tab-group" bind:this={group}>
-    {#if activeTab?.canGoBack || activeTab?.canGoForward}
-      <Capsule as="nav" ariaLabel={t('toolbar.navigation')}>
-        {#if activeTab.canGoBack}
-          <IconButton icon="back" label={t('toolbar.back')} onclick={() => send({ type: 'go-back' })} />
-        {/if}
-        {#if activeTab.canGoForward}
-          <IconButton icon="forward" label={t('toolbar.forward')} onclick={() => send({ type: 'go-forward' })} />
-        {/if}
-      </Capsule>
+    {#if activeTab?.canGoBack}
+      <IconButton
+        size="lg"
+        variant="surface"
+        icon="back"
+        label={t('toolbar.back')}
+        onclick={() => send({ type: 'go-back' })}
+      />
     {/if}
-    <Capsule ariaLabel={t('toolbar.pageLoading')}>
-      {#if activeTab?.loading}
-        <IconButton
-          icon="close"
-          label={t('toolbar.stop')}
-          title={t('toolbar.stopTitle')}
-          onclick={() => send({ type: 'stop' })}
-        />
-      {:else}
-        <IconButton
-          icon="reload"
-          label={t('toolbar.reload')}
-          title={t('toolbar.reloadTitle')}
-          onclick={() => send({ type: 'reload' })}
-        />
-      {/if}
-    </Capsule>
+    {#if activeTab?.canGoForward}
+      <IconButton
+        size="lg"
+        variant="surface"
+        icon="forward"
+        label={t('toolbar.forward')}
+        onclick={() => send({ type: 'go-forward' })}
+      />
+    {/if}
+    {#if activeTab?.loading}
+      <IconButton
+        size="lg"
+        variant="surface"
+        icon="close"
+        label={t('toolbar.stop')}
+        title={t('toolbar.stopTitle')}
+        onclick={() => send({ type: 'stop' })}
+      />
+    {:else}
+      <IconButton
+        size="lg"
+        variant="surface"
+        icon="reload"
+        label={t('toolbar.reload')}
+        title={t('toolbar.reloadTitle')}
+        onclick={() => send({ type: 'reload' })}
+      />
+    {/if}
     <ol class="strip" bind:this={strip} aria-label={t('toolbar.openTabs')}>
       {#each tabs as tab (tab.id)}
         {@const active = tab.id === activeTabId}
