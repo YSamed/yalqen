@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.27](https://github.com/YSamed/yalqen/compare/v0.2.26...v0.2.27) (2026-10-02)
+
+
+### Bug Fixes
+
+* open pinned tab instead of blank tab when last unpinned tab closes ([#115](https://github.com/YSamed/yalqen/issues/115)) ([90831b1](https://github.com/YSamed/yalqen/commit/90831b1fb8fed2933d8ebfc34dca356186ef5af7))
+
 ## [0.2.26](https://github.com/YSamed/yalqen/compare/v0.2.25...v0.2.26) (2026-10-02)
 
 
