@@ -290,6 +290,10 @@ export const en = {
   'settings.pageZoomHint': 'Applies to pages without a saved zoom level.',
   'settings.menus': 'Toolbar and sidebar',
   'settings.sidebar': 'Sidebar',
+  'settings.pinnedTabs': 'Pinned tabs',
+  'settings.pinnedAlways': 'Always',
+  'settings.pinnedExpanded': 'Wide sidebar only',
+  'settings.pinnedNever': 'Never',
   'settings.sidebarVisibility': 'Sidebar visibility',
   'settings.toolbar': 'Toolbar',
   'settings.toolbarHint': 'When both are hidden, you can show them again from the View menu.',
@@ -593,7 +597,6 @@ export const en = {
   'pageExport.fallbackFileName': 'page',
 
   'internalPages.removeFromList': 'Remove from list: {host}',
-  'internalPages.recentlyClosed': 'Recently closed',
   'internalPages.pinned': 'Pinned',
   'internalPages.welcomeTitle': 'Welcome to Yalqen.',
   'internalPages.welcomeText': 'Make your own way on the web. Start by searching or typing an address.',

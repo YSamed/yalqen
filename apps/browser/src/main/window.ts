@@ -444,6 +444,7 @@ export class YalqenWindow {
       addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
+      pinnedDisplay: this.app.settings.get().pinnedDisplay,
       sidebarVisible: this.app.settings.get().sidebarVisible,
       toolbarVisible: this.app.settings.get().toolbarVisible,
       toolbarTabs: this.app.settings.get().toolbarTabs,

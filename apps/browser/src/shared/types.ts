@@ -74,6 +74,8 @@ export type WindowMaterial = 'glass' | 'opaque';
 
 export type PanelSide = 'left' | 'right';
 
+export type PinnedDisplay = 'always' | 'expanded' | 'never';
+
 export const TOOLBAR_BUTTON_IDS = ['bookmarks', 'history', 'extensions', 'profile', 'settings', 'downloads'] as const;
 export type ToolbarButtonId = (typeof TOOLBAR_BUTTON_IDS)[number];
 export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
@@ -88,6 +90,7 @@ export interface BrowserState {
   addressPlaceholder: string;
   panelCollapsed: boolean;
   panelSide: PanelSide;
+  pinnedDisplay: PinnedDisplay;
   sidebarVisible: boolean;
   toolbarVisible: boolean;
   toolbarTabs: boolean;
@@ -333,6 +336,7 @@ export interface SettingsValues {
   startupBehavior: 'restore' | 'new-tab';
   panelCollapsed: boolean;
   panelSide: PanelSide;
+  pinnedDisplay: PinnedDisplay;
   sidebarVisible: boolean;
   toolbarVisible: boolean;
   toolbarTabs: boolean;

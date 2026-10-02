@@ -4,6 +4,7 @@ import type {
   FontSizeSetting,
   PageLanguage,
   PanelSide,
+  PinnedDisplay,
   SecureDnsSetting,
   SettingsValues,
   ThemeSource,
@@ -27,6 +28,7 @@ const DEFAULTS: Settings = {
   startupBehavior: 'restore',
   panelCollapsed: false,
   panelSide: 'left',
+  pinnedDisplay: 'always',
   sidebarVisible: true,
   toolbarVisible: true,
   toolbarTabs: true,
@@ -49,6 +51,7 @@ const DEFAULTS: Settings = {
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
 const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
+const PINNED_DISPLAYS = new Set<string>(['always', 'expanded', 'never'] satisfies PinnedDisplay[]);
 const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Settings['startupBehavior'][]);
@@ -70,6 +73,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     startupBehavior,
     panelCollapsed,
     panelSide,
+    pinnedDisplay,
     sidebarVisible,
     toolbarVisible,
     toolbarTabs,
@@ -106,6 +110,10 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.startupBehavior,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
     panelSide: typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
+    pinnedDisplay:
+      typeof pinnedDisplay === 'string' && PINNED_DISPLAYS.has(pinnedDisplay)
+        ? (pinnedDisplay as PinnedDisplay)
+        : base.pinnedDisplay,
     sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     toolbarTabs: typeof toolbarTabs === 'boolean' ? toolbarTabs : base.toolbarTabs,

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { PanelSide, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import type { PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
+  import { flip } from 'svelte/animate';
   import { fly } from 'svelte/transition';
   import { devStates } from '../format';
   import Icon from './Icon.svelte';
@@ -14,26 +15,28 @@
     developer,
     activeTabId,
     collapsed,
-    shrinking,
+    fading,
     side,
     topInset,
     rowInset,
     edgeInset,
     fullWidth,
     profile,
+    pinnedDisplay,
   }: {
     tabs: TabSnapshot[];
     listOrder: TabId[];
     developer: boolean;
     activeTabId: TabId | null;
     collapsed: boolean;
-    shrinking: boolean;
+    fading: boolean;
     side: PanelSide;
     topInset: number;
     rowInset: number;
     edgeInset: number;
     fullWidth: number;
     profile: ProfileKind;
+    pinnedDisplay: PinnedDisplay;
   } = $props();
 
   type DragGroup = 'pinned' | 'listed';
@@ -45,6 +48,7 @@
     x: number;
     y: number;
     scrollTop: number;
+    home: DOMRect;
     dragging: boolean;
     cancelled: boolean;
   }
@@ -61,17 +65,23 @@
   let dragGroup: DragGroup | null = $state(null);
   let dragOffset = $state({ x: 0, y: 0 });
   let dropIndex: number | null = $state(null);
+  let settleOrder: string | null = $state(null);
+  let returningId: TabId | null = $state(null);
+  let settleTimer = 0;
+  let returnTimer = 0;
   let brokenIcons: Record<string, true> = $state({});
 
   const send = window.yalqen.send;
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
   const listed = $derived(tabs.filter((tab) => !tab.pinned));
+  const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
   const tabsById = $derived(new Map(tabs.map((tab) => [tab.id, tab])));
+  const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
   const entries = $derived(
     listOrder
       .map((id) => tabsById.get(id))
-      .filter((tab): tab is TabSnapshot => tab !== undefined && (!collapsed || !tab.pinned)),
+      .filter((tab): tab is TabSnapshot => tab !== undefined && (!showPinned || !collapsed || !tab.pinned)),
   );
   const profiles: { id: ProfileKind; name: string }[] = [
     { id: 'personal', name: t('tabPanel.profilePersonal') },
@@ -83,9 +93,12 @@
   function reveal(node: Element) {
     return fly(node, {
       x: side === 'left' ? -8 : 8,
-      duration: reducedMotion.matches ? 0 : 220,
+      duration: reducedMotion.matches ? 0 : 160,
       easing: cubicOut,
     });
+  }
+  function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
+    return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
   }
   const draggingPinned = $derived(dragGroup === 'pinned');
   const draggingListed = $derived(dragGroup === 'listed');
@@ -107,6 +120,7 @@
   // native macOS drag session inside the transparent glass window.
   function onPointerDown(event: PointerEvent & { currentTarget: HTMLElement }, id: TabId, group: DragGroup): void {
     if (event.button !== 0 || !event.isPrimary || !lists) return;
+    if (settleOrder !== null) resetDragState();
     press = {
       id,
       group,
@@ -115,6 +129,7 @@
       x: event.clientX,
       y: event.clientY,
       scrollTop: lists.scrollTop,
+      home: event.currentTarget.getBoundingClientRect(),
       dragging: false,
       cancelled: false,
     };
@@ -137,7 +152,11 @@
     if (!press || !event.isPrimary) return;
     if (press.dragging) {
       suppressNextClick();
-      if (!press.cancelled) commitMove(press.id, press.group === 'pinned' ? pinned : listed);
+      if (!press.cancelled && commitMove(press.id, press.group === 'pinned' ? pinned : listed)) {
+        settle();
+        return;
+      }
+      returnHome(press.id);
     }
     endDrag();
   }
@@ -151,9 +170,18 @@
   function track(): void {
     if (!press || !lists) return;
     const horizontal = press.group === 'pinned' && !collapsed;
+    const bounds = lists.getBoundingClientRect();
+    const scrolled = lists.scrollTop - press.scrollTop;
+    const content = lists.lastElementChild?.getBoundingClientRect();
+    const homeTop = press.home.top - bounds.top + press.scrollTop;
+    const contentHeight = (content?.bottom ?? bounds.bottom) - bounds.top + lists.scrollTop;
+    const minY = -homeTop;
+    const maxY = contentHeight - press.home.height - homeTop;
+    const minX = bounds.left - press.home.left;
+    const maxX = bounds.right - press.home.right;
     dragOffset = {
-      x: horizontal ? pointer.x - press.x : 0,
-      y: pointer.y - press.y + lists.scrollTop - press.scrollTop,
+      x: horizontal ? Math.min(Math.max(pointer.x - press.x, minX), maxX) : 0,
+      y: Math.min(Math.max(pointer.y - press.y + scrolled, minY), maxY),
     };
     dropIndex = slotAt(press, horizontal);
   }
@@ -203,13 +231,33 @@
     scrollFrame = requestAnimationFrame(autoScroll);
   }
 
-  function commitMove(id: TabId, group: TabSnapshot[]): void {
-    if (dropIndex === null || !group.some((tab) => tab.id === id)) return;
+  function commitMove(id: TabId, group: TabSnapshot[]): boolean {
+    if (dropIndex === null || !group.some((tab) => tab.id === id)) return false;
     const from = tabs.findIndex((tab) => tab.id === id);
     const before = group[dropIndex];
     const target = before ? tabs.indexOf(before) : tabs.indexOf(group[group.length - 1]) + 1;
     const toIndex = target > from ? target - 1 : target;
-    if (toIndex !== from) send({ type: 'move-tab', id, toIndex });
+    if (toIndex === from) return false;
+    send({ type: 'move-tab', id, toIndex });
+    return true;
+  }
+
+  // The dropped row stays where it was released until the new order arrives, so the reorder
+  // animates from the release point instead of snapping back first.
+  function settle(): void {
+    press = null;
+    dropIndex = null;
+    cancelAnimationFrame(scrollFrame);
+    scrollFrame = 0;
+    settleOrder = orderKey;
+    clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(resetDragState, 400);
+  }
+
+  function returnHome(id: TabId): void {
+    returningId = id;
+    clearTimeout(returnTimer);
+    returnTimer = window.setTimeout(() => (returningId = null), 220);
   }
 
   // The release lands on a row button, which would otherwise activate the tab that was just dropped.
@@ -227,6 +275,8 @@
     dragGroup = null;
     dropIndex = null;
     dragOffset = { x: 0, y: 0 };
+    settleOrder = null;
+    clearTimeout(settleTimer);
     cancelAnimationFrame(scrollFrame);
     scrollFrame = 0;
   }
@@ -237,8 +287,14 @@
   }
 
   function dragStyle(id: TabId): string | undefined {
-    return id === dragId ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined;
+    return id === dragId && (settleOrder === null || settleOrder === orderKey)
+      ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
+      : undefined;
   }
+
+  $effect(() => {
+    if (settleOrder !== null && settleOrder !== orderKey) resetDragState();
+  });
 </script>
 
 {#snippet favicon(tab: TabSnapshot, size: number)}
@@ -337,7 +393,7 @@
   class="panel"
   class:collapsed
   class:dragging={dragId !== null}
-  class:shrinking
+  class:fading
   class:right={side === 'right'}
   aria-label={t('tabPanel.tabs')}
   style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px; --panel-full-width: ${fullWidth}px`}
@@ -347,7 +403,7 @@
   {#key collapsed}
     <div class="body" in:reveal>
       <div class="lists" bind:this={lists}>
-        {#if pinned.length > 0}
+        {#if showPinned && pinned.length > 0}
           <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
             {#each pinned as tab, index (tab.id)}
               <li
@@ -355,9 +411,11 @@
                 class:active={tab.id === activeTabId}
                 class:discarded={!tab.live}
                 class:lifted={tab.id === dragId}
+                class:returning={tab.id === returningId}
                 class:drop-before={draggingPinned && dropIndex === index}
                 class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
                 data-drag-index={index}
+                animate:reorder
                 style:transform={dragStyle(tab.id)}
                 onpointerdown={(e) => onPointerDown(e, tab.id, 'pinned')}
                 oncontextmenu={(e) => {
@@ -386,7 +444,7 @@
           </ul>
         {/if}
 
-        {#if collapsed && pinned.length > 0 && listed.length > 0}
+        {#if showPinned && collapsed && pinned.length > 0 && listed.length > 0}
           <span class="divider" aria-hidden="true"></span>
         {/if}
 
@@ -399,14 +457,16 @@
                 class:private={tab.isPrivate}
                 class:active={tab.id === activeTabId}
                 class:discarded={!tab.live}
-                class:lifted={tab.id === dragId}
+                class:lifted={index >= 0 && tab.id === dragId}
+                class:returning={index >= 0 && tab.id === returningId}
                 class:drop-before={index >= 0 && draggingListed && dropIndex === index}
                 class:drop-after={index >= 0 &&
                   draggingListed &&
                   dropIndex === index + 1 &&
                   index === listed.length - 1}
                 data-drag-index={index >= 0 ? index : undefined}
-                style:transform={dragStyle(tab.id)}
+                animate:reorder
+                style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
                 onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
                 oncontextmenu={(e) => {
                   e.preventDefault();
@@ -528,7 +588,7 @@
     width: 100%;
   }
 
-  .shrinking .body {
+  .fading .body {
     opacity: 0;
   }
 
@@ -563,6 +623,13 @@
     margin: 0 0 12px;
     padding: 0;
     list-style: none;
+  }
+
+  .divider {
+    width: 16px;
+    height: 1px;
+    margin: 4px 0;
+    background: var(--page-divider);
   }
 
   .favorite {
@@ -631,13 +698,6 @@
 
   .collapsed .favorite.drop-after::after {
     bottom: -4px;
-  }
-
-  .divider {
-    width: 16px;
-    height: 1px;
-    margin: 4px 0;
-    background: var(--page-divider);
   }
 
   .row {
@@ -780,6 +840,12 @@
   .lifted {
     z-index: 1;
     pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .returning {
+      transition: transform 200ms var(--ease-out);
+    }
   }
 
   /* Glass surfaces are translucent; backing them with the page color keeps covered rows from showing through. */

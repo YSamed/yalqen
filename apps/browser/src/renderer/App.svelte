@@ -18,6 +18,7 @@
   const WINDOW_CONTROLS_END = 88;
   const DEVICE_BEZEL = 10;
   const PANEL_ANIMATION_MS = 240;
+  const CONTENT_SWAP_PROGRESS = 0.5;
 
   let browser: BrowserState = $state.raw({
     tabs: [],
@@ -29,6 +30,7 @@
     addressPlaceholder: t('app.addressPlaceholder'),
     panelCollapsed: false,
     panelSide: 'left',
+    pinnedDisplay: 'always',
     sidebarVisible: true,
     toolbarVisible: true,
     toolbarTabs: true,
@@ -62,6 +64,8 @@
   let panelMode = '';
   let animateModeChanges = false;
   let panelAnimation = 0;
+  let contentCollapsed = $state(untrack(() => browser.panelCollapsed));
+  let contentFading = $state(false);
   const panelSettled = $derived(shownWidth === panelWidth);
   const rightPanel = $derived(side === 'right' && browser.sidebarVisible);
 
@@ -75,6 +79,8 @@
     if (!modeChanged || !animateModeChanges || reducedMotion.matches || from === target) {
       shownWidth = target;
       panelSlide = 0;
+      contentCollapsed = collapsed;
+      contentFading = false;
       return;
     }
     // Resizing the native page view every frame makes it reflow and lag behind the chrome, so it
@@ -85,9 +91,14 @@
       const progress = Math.min(1, (now - start) / PANEL_ANIMATION_MS);
       shownWidth = Math.round(from + (target - from) * (1 - (1 - progress) ** 3));
       panelSlide = slides ? shownWidth - target : 0;
+      if (contentFading && progress >= CONTENT_SWAP_PROGRESS) {
+        contentCollapsed = collapsed;
+        contentFading = false;
+      }
       if (progress < 1) panelAnimation = requestAnimationFrame(step);
     };
     panelSlide = slides ? from - target : 0;
+    contentFading = true;
     panelAnimation = requestAnimationFrame(step);
   });
   const topInset = $derived(browser.toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
@@ -155,14 +166,15 @@
         listOrder={browser.listOrder}
         developer={browser.developer}
         activeTabId={browser.activeTabId}
-        collapsed={collapsed && panelSettled}
-        shrinking={collapsed && !panelSettled}
+        collapsed={contentCollapsed}
+        fading={contentFading}
         {side}
         {topInset}
         rowInset={PANEL_ROW_INSET}
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={PANEL_WIDTH}
         profile={browser.profile}
+        pinnedDisplay={browser.pinnedDisplay}
       />
     {/if}
     {#if browser.toolbarVisible}
