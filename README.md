@@ -45,7 +45,6 @@ Yalqen is for developers who want Chromium compatibility without a browser UI ge
   <picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/cards/memory-dark.svg"><img src="design/readme/cards/memory-light.svg" alt="Memory saver" width="268"></picture>
 </p>
 
-See every [keyboard shortcut](docs/keyboard-shortcuts.md). Yalqen also ships seven built-in search engines.
 
 ## Install
 
