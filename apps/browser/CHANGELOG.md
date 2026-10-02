@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.26](https://github.com/YSamed/yalqen/compare/v0.2.25...v0.2.26) (2026-10-02)
+
+
+### Features
+
+* remove update indicator from sidebar and toolbar ([e5cbea6](https://github.com/YSamed/yalqen/commit/e5cbea669ee818141837f2e9875b3153bfa5a5ae))
+
 ## [0.2.25](https://github.com/YSamed/yalqen/compare/v0.2.24...v0.2.25) (2026-10-02)
 
 
