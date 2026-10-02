@@ -50,53 +50,16 @@ Tüm [klavye kısayollarına](docs/keyboard-shortcuts.tr.md) göz atın. Yalqen 
 
 ## Kurulum
 
-> [!NOTE]
-> macOS 13 veya üzeri ve Apple Silicon gerekir.
+<picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/cards/requirements-dark.tr.svg"><img src="design/readme/cards/requirements-light.tr.svg" alt="Apple Silicon üzerinde macOS 13 veya üzeri gerekir, imzalı ve notarize, kendini günceller" height="56"></picture>
 
 ```bash
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Uygulama imzalı ve notarize edilmiştir, kendini güncel tutar.
+<sub>Disk görüntüsünü mü tercih edersiniz? [Son DMG dosyasını indirin](https://github.com/YSamed/yalqen/releases/latest).</sub>
 
-<details>
-<summary>Güncelleme, kaldırma ve kullanım ölçümü</summary>
+<br>
 
-Güncellemeyi Homebrew ile yapmak için:
-
-```bash
-brew upgrade --cask yalqen
-```
-
-Kaldırmak ve verilerini silmek için:
-
-```bash
-brew uninstall --zap --cask yalqen
-```
-
-Aktif kurulum ölçümü varsayılan olarak kapalıdır, **Ayarlar → Gizlilik** bölümünden açılabilir. [Rozet sayaçlarının ayrıntıları](docs/usage-measurement.md).
-
-</details>
-
-## Geliştirme
-
-```bash
-cd apps/browser
-npm ci
-npm start
-```
-
-Node.js 22.12 veya üzeri gerekir. Kontroller ve pull request'ler için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın.
-
----
-
-<p align="center"><sub><a href="LICENSE">MIT Lisansı</a> · Filtre listeleri <a href="apps/browser/THIRD_PARTY_NOTICES.md">kendi lisanslarını</a> korur · Yalqen adı ve logosu MIT Lisansı kapsamında değildir</sub></p>
+<p align="center"><sub><a href="docs/README.tr.md">Teknik ayrıntılar</a> · <a href="CONTRIBUTING.md">Katkıda bulunma</a> · <a href="SECURITY.md">Güvenlik</a> · <a href="LICENSE">MIT Lisansı</a></sub></p>
 
 <p align="center"><sub>Yalqen işinize yarıyorsa depoya yıldız verin. Projenin başka geliştiricilere ulaşmasına yardımcı olur.</sub></p>
-
-<p align="center">
-  <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen"><img src="https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://yalqen.com/privacy#active-installations"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fusage" alt="Active installations in the last 30 days, opt-in only"></a>
-</p>

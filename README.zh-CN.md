@@ -49,53 +49,16 @@ Yalqen 适合想要 Chromium 兼容性、又不想被浏览器界面干扰的开
 
 ## 安装
 
-> [!NOTE]
-> 需要 macOS 13 或更高版本，且仅支持 Apple Silicon。
+<picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/cards/requirements-dark.zh-CN.svg"><img src="design/readme/cards/requirements-light.zh-CN.svg" alt="需要搭载 Apple Silicon 的 macOS 13 或更高版本，已签名并公证，自动更新" height="56"></picture>
 
 ```bash
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-也可以从 [Releases](https://github.com/YSamed/yalqen/releases/latest) 下载 DMG。应用已签名并经过公证，会自动保持更新。
+<sub>更喜欢磁盘映像？[下载最新 DMG](https://github.com/YSamed/yalqen/releases/latest)。</sub>
 
-<details>
-<summary>更新、卸载和使用统计</summary>
+<br>
 
-如需通过 Homebrew 更新：
-
-```bash
-brew upgrade --cask yalqen
-```
-
-卸载并删除其数据：
-
-```bash
-brew uninstall --zap --cask yalqen
-```
-
-活跃安装统计默认关闭，可在 **设置 → 隐私** 中开启。[徽章统计方式详情](docs/usage-measurement.md)。
-
-</details>
-
-## 开发
-
-```bash
-cd apps/browser
-npm ci
-npm start
-```
-
-需要 Node.js 22.12 或更高版本。检查命令和 Pull Request 流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
----
-
-<p align="center"><sub><a href="LICENSE">MIT 许可证</a> · 内置过滤列表保留<a href="apps/browser/THIRD_PARTY_NOTICES.md">各自的许可证</a> · Yalqen 名称和标志不在 MIT 许可证范围内</sub></p>
+<p align="center"><sub><a href="docs/README.zh-CN.md">技术细节</a> · <a href="CONTRIBUTING.md">参与贡献</a> · <a href="SECURITY.md">安全</a> · <a href="LICENSE">MIT 许可证</a></sub></p>
 
 <p align="center"><sub>如果 Yalqen 对你有帮助，欢迎给仓库点个 Star，这能帮助更多开发者发现这个项目。</sub></p>
-
-<p align="center">
-  <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen"><img src="https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://yalqen.com/privacy#active-installations"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fusage" alt="Active installations in the last 30 days, opt-in only"></a>
-</p>
