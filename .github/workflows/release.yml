@@ -112,3 +112,13 @@ jobs:
               --generate-notes
           fi
           gh release edit "$TAG" --draft=false
+      - name: Bump Homebrew cask
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "TAP_DISPATCH_TOKEN is not set; the tap bumps itself on its hourly schedule"
+            exit 0
+          fi
+          gh workflow run bump-cask.yml --repo YSamed/homebrew-yalqen
