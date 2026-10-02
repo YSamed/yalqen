@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.24](https://github.com/YSamed/yalqen/compare/v0.2.23...v0.2.24) (2026-10-02)
+
+
+### Features
+
+* add opt-in active installation counting ([f09e254](https://github.com/YSamed/yalqen/commit/f09e254d5246b1efb4b36be7582d1f78603dd4f2))
+
 ## [0.2.23](https://github.com/YSamed/yalqen/compare/v0.2.22...v0.2.23) (2026-10-01)
 
 
