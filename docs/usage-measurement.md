@@ -25,7 +25,7 @@ The implementation is in the `YSamed/yalqenweb` repository:
 - The storage layer HMAC-hashes the ID before writing it to Upstash Redis. Only the hash and server-side last-seen time are persisted. Repeated reports update a sorted-set member instead of increasing its cardinality. Server timestamps determine the 30-day window.
 - Old observations are pruned on every successful read and write. The entire set expires after 35 days without new reports. Preview deployments use a separate key from production.
 - `GET /api/usage` exposes only the aggregate count and Shields endpoint metadata. Unconfigured or unavailable storage displays `unavailable`, never a fabricated zero. Successful results are cached for five minutes.
-- `GET /api/downloads` exposes the DMG-only total and Shields endpoint metadata, cached for fifteen minutes. It paginates GitHub releases instead of silently limiting the count to the first page.
+- `GET /api/downloads` exposes the DMG-only total and Shields endpoint metadata, cached for one minute. It paginates GitHub releases instead of silently limiting the count to the first page.
 
 The collector does not log request bodies, IDs, cookies or IPs. Vercel necessarily receives IP addresses to deliver requests and may retain infrastructure request logs independently of this storage. Do not describe the system as absolutely anonymous or as having no telemetry. Website visit/click analytics remain a separate metric.
 
@@ -43,4 +43,6 @@ The README badges depend on these live endpoints. Local code preparation alone d
 
 The site's download redirect counts distinct IP and user-agent combinations (see [unique-downloads-spec.md](unique-downloads-spec.md)). The README badge preserves a fixed historical baseline of **103** downloads and adds `uniqueDownloads` to it. It is labelled "downloads", because the historical baseline was not deduplicated. For example, 0 new unique downloads displays 103; 5 displays 108. The API continues to expose the actual unique counter separately, without adding the historical baseline. If storage is unavailable and the endpoint omits that field, the badge falls back to the DMG total above labelled "downloads". This measures download redirects, not completed installations or distinct people; Homebrew and direct GitHub downloads bypass it. Historic GitHub downloads cannot be deduplicated retroactively.
 
-The release badge under the README's download buttons is not served by the site. The `Release badge` workflow in this repository renders it every six hours and after each release with `.github/scripts/release-badge.mjs`, adding the historical baseline to the unique counter from `/api/downloads` and including the newest stable release that has a DMG. It deploys the light and dark SVGs to GitHub Pages.
+The release badge under the README's download buttons is not served by the site. The `Release badge` workflow in this repository renders it every fifteen minutes and after each release with `.github/scripts/release-badge.mjs`, adding the historical baseline to the unique counter from `/api/downloads` and including the newest stable release that has a DMG. It deploys the light and dark SVGs to GitHub Pages.
+
+Scheduled GitHub Actions runs can be delayed or skipped under load. GitHub may also cache README images, so the fifteen-minute schedule is not a guaranteed display deadline.

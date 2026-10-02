@@ -7,7 +7,7 @@ on:
       - .github/workflows/release-badge.yml
       - .github/scripts/release-badge.mjs
   schedule:
-    - cron: '17 */6 * * *'
+    - cron: '7,22,37,52 * * * *'
   workflow_run:
     workflows: [Release Please]
     types: [completed]
