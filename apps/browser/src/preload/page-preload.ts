@@ -28,6 +28,7 @@ const PENDING_CENTER_MS = 250;
 const ZOOM_STEP_DELTA = 40;
 
 let zoomDelta = 0;
+let lastZoomAt = 0;
 
 let distance = 0;
 let lastAt = 0;
@@ -81,14 +82,17 @@ function hasHorizontalScroller(event: WheelEvent): boolean {
 window.addEventListener(
   'wheel',
   (event) => {
-    if (!event.isTrusted || !event.ctrlKey || window !== window.top) return;
+    if (!event.isTrusted || !event.ctrlKey || event.defaultPrevented) return;
     event.preventDefault();
+    const now = performance.now();
+    if (now - lastZoomAt > GAP_MS) zoomDelta = 0;
+    lastZoomAt = now;
     zoomDelta += event.deltaY;
     if (Math.abs(zoomDelta) < ZOOM_STEP_DELTA) return;
     ipcRenderer.send(PageChannel.zoom, zoomDelta < 0 ? 'in' : 'out');
     zoomDelta = 0;
   },
-  { capture: true, passive: false },
+  { passive: false },
 );
 
 window.addEventListener(
