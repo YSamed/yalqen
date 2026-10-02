@@ -49,53 +49,16 @@ See every [keyboard shortcut](docs/keyboard-shortcuts.md). Yalqen also ships sev
 
 ## Install
 
-> [!NOTE]
-> Requires macOS 13 or later on Apple Silicon.
+<picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/cards/requirements-dark.svg"><img src="design/readme/cards/requirements-light.svg" alt="Requires macOS 13 or later on Apple Silicon, signed and notarized, updates itself" height="56"></picture>
 
 ```bash
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest). It is signed and notarized, and keeps itself up to date.
+<sub>Prefer a disk image? [Download the latest DMG](https://github.com/YSamed/yalqen/releases/latest).</sub>
 
-<details>
-<summary>Update, uninstall and usage counting</summary>
+<br>
 
-To update through Homebrew instead:
-
-```bash
-brew upgrade --cask yalqen
-```
-
-To uninstall and remove its data:
-
-```bash
-brew uninstall --zap --cask yalqen
-```
-
-Active-install counting is off by default and can be enabled in **Settings → Privacy**. See [how the badge counters work](docs/usage-measurement.md).
-
-</details>
-
-## Development
-
-```bash
-cd apps/browser
-npm ci
-npm start
-```
-
-Requires Node.js 22.12 or later. See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and pull requests.
-
----
-
-<p align="center"><sub><a href="LICENSE">MIT License</a> · Bundled filter lists keep <a href="apps/browser/THIRD_PARTY_NOTICES.md">their own licenses</a> · The Yalqen name and logo are not covered by the MIT License</sub></p>
+<p align="center"><sub><a href="docs/README.md">Technical details</a> · <a href="CONTRIBUTING.md">Contributing</a> · <a href="SECURITY.md">Security</a> · <a href="LICENSE">MIT License</a></sub></p>
 
 <p align="center"><sub>If Yalqen is useful to you, star the repository. It helps other developers discover the project.</sub></p>
-
-<p align="center">
-  <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen"><img src="https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://yalqen.com/privacy#active-installations"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fusage" alt="Active installations in the last 30 days, opt-in only"></a>
-</p>
