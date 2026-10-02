@@ -73,10 +73,10 @@
       </div>
       <code class="secret" aria-label={t('passwordsPanel.password')}>{revealed[entry.id] ?? '••••••••'}</code>
       <div class="controls">
-        <Button size="sm" onclick={() => toggleReveal(entry.id)}
+        <Button size="sm" variant="tonal" onclick={() => toggleReveal(entry.id)}
           >{entry.id in revealed ? t('passwordsPanel.hide') : t('passwordsPanel.show')}</Button
         >
-        <Button size="sm" onclick={() => copy(entry.id)}
+        <Button size="sm" variant="tonal" onclick={() => copy(entry.id)}
           >{copiedId === entry.id ? t('passwordsPanel.copied') : t('passwordsPanel.copy')}</Button
         >
         <IconButton
@@ -108,25 +108,6 @@
 {/if}
 
 <style>
-  h2 {
-    margin: 12px 0 4px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .hint {
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-  }
-
-  .error {
-    color: var(--warn);
-    font-size: var(--font-size-small);
-  }
-
   .intro {
     margin: 0 0 8px;
   }

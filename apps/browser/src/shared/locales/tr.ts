@@ -59,8 +59,6 @@ export const tr: Record<MessageKey, string> = {
   'extensionsPanel.loadFailed': 'Yüklenemedi: {error}',
   'extensionsPanel.options': 'Seçenekler',
   'extensionsPanel.enabledLabel': '{name} etkin',
-  'extensionsPanel.disable': 'Devre dışı bırak',
-  'extensionsPanel.enable': 'Etkinleştir',
   'extensionsPanel.removeLabel': '{name} kaldır',
   'extensionsPanel.empty': 'Yüklü uzantı yok.',
   'extensionsPanel.storePlaceholder': 'Chrome Web Mağazası adresi veya uzantı kimliği',

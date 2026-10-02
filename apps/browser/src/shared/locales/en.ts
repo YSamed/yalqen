@@ -57,8 +57,6 @@ export const en = {
   'extensionsPanel.loadFailed': "Couldn't load: {error}",
   'extensionsPanel.options': 'Options',
   'extensionsPanel.enabledLabel': '{name} enabled',
-  'extensionsPanel.disable': 'Disable',
-  'extensionsPanel.enable': 'Enable',
   'extensionsPanel.removeLabel': 'Remove {name}',
   'extensionsPanel.empty': 'No extensions installed.',
   'extensionsPanel.storePlaceholder': 'Chrome Web Store URL or extension ID',

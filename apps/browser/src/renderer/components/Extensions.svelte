@@ -5,6 +5,7 @@
   import Icon from './Icon.svelte';
   import Button from './ui/Button.svelte';
   import IconButton from './ui/IconButton.svelte';
+  import Switch from './ui/Switch.svelte';
   import TextField from './ui/TextField.svelte';
 
   const api = window.yalqenSettings;
@@ -60,16 +61,14 @@
     </div>
     <div class="controls">
       {#if extension.hasOptions}
-        <Button size="sm" onclick={() => api.openExtensionOptions(extension.path)}
+        <Button size="sm" variant="tonal" onclick={() => api.openExtensionOptions(extension.path)}
           >{t('extensionsPanel.options')}</Button
         >
       {/if}
-      <input
-        type="checkbox"
+      <Switch
+        label={t('extensionsPanel.enabledLabel', { name: extension.name })}
         checked={extension.enabled}
-        aria-label={t('extensionsPanel.enabledLabel', { name: extension.name })}
-        title={extension.enabled ? t('extensionsPanel.disable') : t('extensionsPanel.enable')}
-        onchange={(event) => api.setExtensionEnabled(extension.path, event.currentTarget.checked)}
+        onchange={(checked) => api.setExtensionEnabled(extension.path, checked)}
       />
       <IconButton
         icon="close"
@@ -92,38 +91,23 @@
     autocomplete="off"
     disabled={installing}
   />
-  <Button type="submit" icon="plus" disabled={installing || storeInput.trim() === ''}>
+  <Button type="submit" variant="tonal" icon="plus" disabled={installing || storeInput.trim() === ''}>
     {installing ? t('extensionsPanel.adding') : t('extensionsPanel.addFromStore')}
   </Button>
 </form>
 
 <div class="actions">
-  <Button icon="extensions" onclick={() => api.openExtensionStore()}>{t('extensionsPanel.openStore')}</Button>
-  <Button icon="plus" disabled={installing} onclick={install}>{t('extensionsPanel.loadFromFolder')}</Button>
+  <Button variant="tonal" icon="extensions" onclick={() => api.openExtensionStore()}
+    >{t('extensionsPanel.openStore')}</Button
+  >
+  <Button variant="tonal" icon="plus" disabled={installing} onclick={install}
+    >{t('extensionsPanel.loadFromFolder')}</Button
+  >
   {#if installError}<span class="error" role="alert">{t('extensionsPanel.loadFailed', { error: installError })}</span
     >{/if}
 </div>
 
 <style>
-  h2 {
-    margin: 12px 0 4px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .hint {
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-  }
-
-  .error {
-    color: var(--warn);
-    font-size: var(--font-size-small);
-  }
-
   .intro {
     margin: 0 0 8px;
   }
@@ -182,10 +166,6 @@
     flex: none;
     align-items: center;
     gap: 8px;
-  }
-
-  .controls input {
-    margin: 0;
   }
 
   .store {

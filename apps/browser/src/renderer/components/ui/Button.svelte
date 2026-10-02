@@ -17,7 +17,7 @@
   }: Omit<HTMLButtonAttributes, 'children'> & {
     icon?: IconName;
     size?: Size;
-    variant?: 'ghost' | 'tonal' | 'surface' | 'primary';
+    variant?: 'ghost' | 'tonal' | 'surface' | 'primary' | 'danger';
     children: Snippet;
   } = $props();
 </script>

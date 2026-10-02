@@ -68,35 +68,6 @@
 {/if}
 
 <style>
-  h2 {
-    margin: 20px 0 4px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .label {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .hint {
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-  }
-
   .note {
     margin: 10px 0 0;
   }

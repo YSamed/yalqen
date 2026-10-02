@@ -122,6 +122,17 @@
   background-image: linear-gradient(rgb(0 0 0 / 0.08) 0 0);
 }
 
+.btn.danger {
+  background-color: var(--danger, #c94d4d);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn.danger:hover:not(:disabled) {
+  background-color: var(--danger, #c94d4d);
+  background-image: linear-gradient(rgb(0 0 0 / 0.08) 0 0);
+}
+
 .icon-btn.tone-muted,
 .btn.ghost,
 .btn.tonal {
@@ -157,8 +168,14 @@
 }
 
 .icon-btn.accent:disabled,
-.btn.primary:disabled {
+.btn.primary:disabled,
+.btn.danger:disabled {
   color: #fff;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
 }
 
 .segmented {

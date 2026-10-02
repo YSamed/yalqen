@@ -133,10 +133,10 @@
 {/each}
 
 <div class="actions">
-  <Button icon="plus" onclick={add}>{t('requestRulesPanel.addRule')}</Button>
+  <Button variant="tonal" icon="plus" onclick={add}>{t('requestRulesPanel.addRule')}</Button>
   <span class="spacer"></span>
   {#if dirty}
-    <Button onclick={() => load(JSON.parse(saved))}>{t('requestRulesPanel.cancel')}</Button>
+    <Button variant="tonal" onclick={() => load(JSON.parse(saved))}>{t('requestRulesPanel.cancel')}</Button>
   {/if}
   <Button variant="primary" disabled={!dirty || saving} onclick={save}
     >{saving ? t('requestRulesPanel.saving') : t('requestRulesPanel.save')}</Button
@@ -144,20 +144,6 @@
 </div>
 
 <style>
-  h2 {
-    margin: 12px 0 4px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .hint {
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-  }
-
   .intro {
     margin: 0 0 8px;
   }
