@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.30](https://github.com/YSamed/yalqen/compare/v0.2.29...v0.2.30) (2026-10-02)
+
+
+### Bug Fixes
+
+* respect page wheel handlers in pinch zoom ([650f1ca](https://github.com/YSamed/yalqen/commit/650f1caed23af1b69b81dbf43cfb07c142f0b4e6))
+
 ## [0.2.29](https://github.com/YSamed/yalqen/compare/v0.2.28...v0.2.29) (2026-10-02)
 
 
