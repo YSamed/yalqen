@@ -1,6 +1,6 @@
 # Unique download counting (yalqenweb)
 
-Implementation spec for the `YSamed/yalqenweb` repository. The release badge in this repository already reads `uniqueDownloads` from `GET https://yalqen.com/api/downloads` and falls back to the GitHub DMG total while the field is missing or zero.
+Implementation spec for the `YSamed/yalqenweb` repository. The release badge in this repository reads `uniqueDownloads` from `GET https://yalqen.com/api/downloads`, including zero, and falls back to the GitHub DMG total only while the field is missing.
 
 ## Goal
 
@@ -25,7 +25,7 @@ Count distinct downloaders of the DMG through `yalqen.com/download`, instead of 
 
 ### `api/downloads.ts`
 
-- Keep the existing response and add `uniqueDownloads` (number) and `uniqueSince` (ISO date) when the store is available. If storage fails, omit both fields. Never return a fabricated zero.
+- Keep `downloads` as the GitHub total and add `uniqueDownloads` (number, including a measured zero) when the store is available. Add `uniqueSince` (ISO date) after the first event is recorded. If storage fails, omit both fields. Never return a fabricated zero on failure. Shields metadata should prefer the unique count when available.
 - Keep `downloads` as the GitHub DMG total.
 
 ### Tests
