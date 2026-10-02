@@ -38,7 +38,30 @@
     profile: ProfileKind;
   } = $props();
 
+  type DragGroup = 'pinned' | 'listed';
+  interface Press {
+    id: TabId;
+    group: DragGroup;
+    list: HTMLElement;
+    item: HTMLElement;
+    x: number;
+    y: number;
+    scrollTop: number;
+    dragging: boolean;
+    cancelled: boolean;
+  }
+
+  const DRAG_THRESHOLD = 4;
+  const SCROLL_EDGE = 28;
+  const SCROLL_STEP = 8;
+
+  let press: Press | null = null;
+  let pointer = { x: 0, y: 0 };
+  let scrollFrame = 0;
+  let lists: HTMLElement | undefined = $state();
   let dragId: TabId | null = $state(null);
+  let dragGroup: DragGroup | null = $state(null);
+  let dragOffset = $state({ x: 0, y: 0 });
   let dropIndex: number | null = $state(null);
   let brokenIcons: Record<string, true> = $state({});
 
@@ -66,7 +89,8 @@
       easing: cubicOut,
     });
   }
-  const draggingPinned = $derived(pinned.some((tab) => tab.id === dragId));
+  const draggingPinned = $derived(dragGroup === 'pinned');
+  const draggingListed = $derived(dragGroup === 'listed');
 
   function openUpdatePopup(event: MouseEvent & { currentTarget: HTMLElement }): void {
     const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
@@ -86,29 +110,141 @@
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
 
-  function onDragOver(event: DragEvent, group: TabSnapshot[], index: number, horizontal = false): void {
-    if (!group.some((tab) => tab.id === dragId)) return;
-    event.preventDefault();
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const before = horizontal ? event.clientX < rect.left + rect.width / 2 : event.clientY < rect.top + rect.height / 2;
-    dropIndex = before ? index : index + 1;
+  // Pointer events instead of HTML drag and drop, so reordering does not depend on the
+  // native macOS drag session inside the transparent glass window.
+  function onPointerDown(event: PointerEvent & { currentTarget: HTMLElement }, id: TabId, group: DragGroup): void {
+    if (event.button !== 0 || !event.isPrimary || !lists) return;
+    press = {
+      id,
+      group,
+      list: event.currentTarget.parentElement!,
+      item: event.currentTarget,
+      x: event.clientX,
+      y: event.clientY,
+      scrollTop: lists.scrollTop,
+      dragging: false,
+      cancelled: false,
+    };
   }
 
-  function onDrop(event: DragEvent, group: TabSnapshot[]): void {
-    event.preventDefault();
-    if (dragId && dropIndex !== null && group.some((tab) => tab.id === dragId)) {
-      const from = tabs.findIndex((tab) => tab.id === dragId);
-      const before = group[dropIndex];
-      const target = before ? tabs.indexOf(before) : tabs.indexOf(group[group.length - 1]) + 1;
-      const toIndex = target > from ? target - 1 : target;
-      if (toIndex !== from) send({ type: 'move-tab', id: dragId, toIndex });
+  function onPointerMove(event: PointerEvent): void {
+    if (!press || press.cancelled || !event.isPrimary) return;
+    pointer = { x: event.clientX, y: event.clientY };
+    if (!press.dragging) {
+      if (Math.hypot(pointer.x - press.x, pointer.y - press.y) < DRAG_THRESHOLD) return;
+      press.dragging = true;
+      dragId = press.id;
+      dragGroup = press.group;
+    }
+    track();
+    if (scrollSpeed() !== 0 && !scrollFrame) scrollFrame = requestAnimationFrame(autoScroll);
+  }
+
+  function onPointerUp(event: PointerEvent): void {
+    if (!press || !event.isPrimary) return;
+    if (press.dragging) {
+      suppressNextClick();
+      if (!press.cancelled) commitMove(press.id, press.group === 'pinned' ? pinned : listed);
     }
     endDrag();
   }
 
-  function endDrag(): void {
+  function onKeyDown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !press?.dragging) return;
+    press.cancelled = true;
+    resetDragState();
+  }
+
+  function track(): void {
+    if (!press || !lists) return;
+    const horizontal = press.group === 'pinned' && !collapsed;
+    dragOffset = {
+      x: horizontal ? pointer.x - press.x : 0,
+      y: pointer.y - press.y + lists.scrollTop - press.scrollTop,
+    };
+    dropIndex = slotAt(press, horizontal);
+  }
+
+  function slotAt(current: Press, horizontal: boolean): number | null {
+    let nearest: { index: number; rect: DOMRect } | null = null;
+    let nearestDistance = Infinity;
+    for (const item of current.list.querySelectorAll<HTMLElement>(':scope > [data-drag-index]')) {
+      const rect = item.getBoundingClientRect();
+      if (item === current.item) {
+        rect.x -= dragOffset.x;
+        rect.y -= dragOffset.y;
+      }
+      const dx = Math.max(rect.left - pointer.x, 0, pointer.x - rect.right);
+      const dy = Math.max(rect.top - pointer.y, 0, pointer.y - rect.bottom);
+      const distance = Math.hypot(dx, dy);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = { index: Number(item.dataset.dragIndex), rect };
+      }
+    }
+    if (!nearest) return null;
+    const { index, rect } = nearest;
+    const before = horizontal ? pointer.x < rect.left + rect.width / 2 : pointer.y < rect.top + rect.height / 2;
+    const slot = before ? index : index + 1;
+    const from = (current.group === 'pinned' ? pinned : listed).findIndex((tab) => tab.id === current.id);
+    return slot === from || slot === from + 1 ? null : slot;
+  }
+
+  function scrollSpeed(): number {
+    if (!lists) return 0;
+    const { top, bottom } = lists.getBoundingClientRect();
+    if (pointer.y < top + SCROLL_EDGE && lists.scrollTop > 0) return -SCROLL_STEP;
+    if (pointer.y > bottom - SCROLL_EDGE && lists.scrollTop + lists.clientHeight < lists.scrollHeight)
+      return SCROLL_STEP;
+    return 0;
+  }
+
+  function autoScroll(): void {
+    const speed = press?.dragging && !press.cancelled ? scrollSpeed() : 0;
+    if (speed === 0 || !lists) {
+      scrollFrame = 0;
+      return;
+    }
+    lists.scrollTop += speed;
+    track();
+    scrollFrame = requestAnimationFrame(autoScroll);
+  }
+
+  function commitMove(id: TabId, group: TabSnapshot[]): void {
+    if (dropIndex === null || !group.some((tab) => tab.id === id)) return;
+    const from = tabs.findIndex((tab) => tab.id === id);
+    const before = group[dropIndex];
+    const target = before ? tabs.indexOf(before) : tabs.indexOf(group[group.length - 1]) + 1;
+    const toIndex = target > from ? target - 1 : target;
+    if (toIndex !== from) send({ type: 'move-tab', id, toIndex });
+  }
+
+  // The release lands on a row button, which would otherwise activate the tab that was just dropped.
+  function suppressNextClick(): void {
+    const swallow = (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    window.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', swallow, { capture: true }));
+  }
+
+  function resetDragState(): void {
     dragId = null;
+    dragGroup = null;
     dropIndex = null;
+    dragOffset = { x: 0, y: 0 };
+    cancelAnimationFrame(scrollFrame);
+    scrollFrame = 0;
+  }
+
+  function endDrag(): void {
+    press = null;
+    resetDragState();
+  }
+
+  function dragStyle(id: TabId): string | undefined {
+    return id === dragId ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined;
   }
 </script>
 
@@ -118,6 +254,7 @@
       <img
         src={tab.faviconUrl}
         alt=""
+        draggable="false"
         width={size}
         height={size}
         onerror={() => (brokenIcons[tab.faviconUrl!] = true)}
@@ -195,9 +332,18 @@
   {/if}
 {/snippet}
 
+<svelte:window
+  onpointermove={onPointerMove}
+  onpointerup={onPointerUp}
+  onpointercancel={endDrag}
+  onkeydown={onKeyDown}
+  onblur={endDrag}
+/>
+
 <aside
   class="panel"
   class:collapsed
+  class:dragging={dragId !== null}
   class:shrinking
   class:right={side === 'right'}
   aria-label={t('tabPanel.tabs')}
@@ -207,30 +353,24 @@
 
   {#key collapsed}
     <div class="body" in:reveal>
-      <div class="lists">
+      <div class="lists" bind:this={lists}>
         {#if pinned.length > 0}
-          <ul
-            class="favorites"
-            class:rows={collapsed}
-            aria-label={t('tabPanel.pinned')}
-            ondrop={(e) => onDrop(e, pinned)}
-            ondragover={(e) => draggingPinned && e.preventDefault()}
-          >
+          <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
             {#each pinned as tab, index (tab.id)}
               <li
                 class="favorite"
                 class:active={tab.id === activeTabId}
                 class:discarded={!tab.live}
+                class:lifted={tab.id === dragId}
                 class:drop-before={draggingPinned && dropIndex === index}
                 class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
-                draggable="true"
-                ondragstart={() => (dragId = tab.id)}
+                data-drag-index={index}
+                style:transform={dragStyle(tab.id)}
+                onpointerdown={(e) => onPointerDown(e, tab.id, 'pinned')}
                 oncontextmenu={(e) => {
                   e.preventDefault();
                   send({ type: 'open-tab-menu', id: tab.id });
                 }}
-                ondragend={endDrag}
-                ondragover={(e) => onDragOver(e, pinned, index, !collapsed)}
               >
                 {#if collapsed}
                   {@render compactTab(tab)}
@@ -258,11 +398,7 @@
         {/if}
 
         {#if entries.length > 0}
-          <ol
-            class="rows"
-            ondrop={(e) => onDrop(e, listed)}
-            ondragover={(e) => dragId && !draggingPinned && e.preventDefault()}
-          >
+          <ol class="rows">
             {#each entries as tab (tab.id)}
               {@const index = listed.indexOf(tab)}
               <li
@@ -270,19 +406,19 @@
                 class:private={tab.isPrivate}
                 class:active={tab.id === activeTabId}
                 class:discarded={!tab.live}
-                class:drop-before={index >= 0 && !draggingPinned && dropIndex === index}
+                class:lifted={tab.id === dragId}
+                class:drop-before={index >= 0 && draggingListed && dropIndex === index}
                 class:drop-after={index >= 0 &&
-                  !draggingPinned &&
+                  draggingListed &&
                   dropIndex === index + 1 &&
                   index === listed.length - 1}
-                draggable={index >= 0}
-                ondragstart={() => (dragId = tab.id)}
+                data-drag-index={index >= 0 ? index : undefined}
+                style:transform={dragStyle(tab.id)}
+                onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
                 oncontextmenu={(e) => {
                   e.preventDefault();
                   send({ type: 'open-tab-menu', id: tab.id });
                 }}
-                ondragend={endDrag}
-                ondragover={(e) => index >= 0 && onDragOver(e, listed, index)}
               >
                 {#if collapsed}
                   {@render compactTab(tab)}
@@ -565,7 +701,7 @@
       box-shadow var(--transition);
   }
 
-  .row:not(.active):hover .pill {
+  .panel:not(.dragging) .row:not(.active):hover .pill {
     background: var(--surface-hover);
   }
 
@@ -663,6 +799,27 @@
 
   .row:not(:hover, :focus-within) :global(.audio) {
     margin-right: 4px;
+  }
+
+  .dragging,
+  .dragging :global(*) {
+    cursor: grabbing;
+  }
+
+  .lifted {
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Glass surfaces are translucent; backing them with the page color keeps covered rows from showing through. */
+  .row.lifted .pill,
+  .row.lifted :global(.tab-icon) {
+    background: linear-gradient(var(--surface), var(--surface)), var(--page);
+    box-shadow: var(--shadow);
+  }
+
+  .row.lifted .actions {
+    display: none;
   }
 
   .row.drop-before::before,
