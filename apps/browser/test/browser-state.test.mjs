@@ -65,7 +65,6 @@ const fixture = () => ({
   defaultZoom: 1,
   downloads: { active: 0, progress: null, started: 0 },
   extensions: false,
-  pendingUpdate: { state: 'downloading', version: '1.0.0', percent: 30 },
   profile: 'personal',
 });
 const changed = (value) =>
@@ -149,7 +148,7 @@ test('all window fields and nested summaries remain current while tabs are reuse
     assert.deepEqual(result, next, key);
     assert.equal(result.tabs, previous.tabs, key);
   }
-  for (const nested of ['device', 'downloads', 'pendingUpdate']) {
+  for (const nested of ['device', 'downloads']) {
     for (const [key, value] of Object.entries(previous[nested])) {
       const next = structuredClone(previous);
       next[nested][key] = changed(value);
@@ -161,7 +160,6 @@ test('all window fields and nested summaries remain current while tabs are reuse
   }
   for (const [key, value] of [
     ['device', null],
-    ['pendingUpdate', { state: 'ready', version: '1.0.0' }],
     ['toolbarButtons', ['downloads', 'settings']],
     ['listOrder', ['b', 'a']],
   ]) {

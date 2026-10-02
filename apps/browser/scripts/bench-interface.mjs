@@ -112,7 +112,6 @@ ipcRenderer.on('bench:state', (_event, state) => {
     defaultZoom: 1,
     downloads: { active: 0, progress: null, started: 0 },
     extensions: false,
-    pendingUpdate: null,
     profile: 'personal',
   };
   ipcMain.handle('bench:initial', () => initial);

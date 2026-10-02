@@ -32,14 +32,13 @@ export interface ExtensionPopupRequest {
   url: string;
   anchor: AnchorRect;
   onOpenUrl(url: string): void;
-  onCommand?(url: string): void;
 }
 
 export class ExtensionPopup {
   private view: WebContentsView | null = null;
   private window: BaseWindow | null = null;
 
-  open({ window, session, url, anchor, onOpenUrl, onCommand }: ExtensionPopupRequest): void {
+  open({ window, session, url, anchor, onOpenUrl }: ExtensionPopupRequest): void {
     this.close();
     const view = new WebContentsView({
       webPreferences: {
@@ -74,13 +73,6 @@ export class ExtensionPopup {
       event.preventDefault();
       this.closeView(view);
     });
-    if (onCommand) {
-      contents.on('will-navigate', (event, target) => {
-        event.preventDefault();
-        onCommand(target);
-        this.closeView(view);
-      });
-    }
     contents.setWindowOpenHandler(({ url: target }) => {
       onOpenUrl(target);
       this.closeView(view);

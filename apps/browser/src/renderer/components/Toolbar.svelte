@@ -1,12 +1,5 @@
 <script lang="ts">
-  import type {
-    DownloadsSummary,
-    PendingUpdate,
-    TabId,
-    TabSnapshot,
-    ToolbarButtonId,
-    TranslationStatus,
-  } from '../../shared/types';
+  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId, TranslationStatus } from '../../shared/types';
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
   import { consoleErrorCount, devStates, isNewTab, siteLabel } from '../format';
@@ -26,7 +19,6 @@
     ready,
     extensions,
     buttons,
-    pendingUpdate,
     leadingInset,
     trailingInset,
     centerOffset,
@@ -41,7 +33,6 @@
     ready: boolean;
     extensions: boolean;
     buttons: ToolbarButtonId[];
-    pendingUpdate: PendingUpdate | null;
     leadingInset: number;
     trailingInset: number;
     centerOffset: number;
@@ -80,11 +71,6 @@
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
     const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
     send({ type: 'open-extensions-menu', anchor: { x, y, width, height } });
-  }
-
-  function openUpdatePopup(event: MouseEvent & { currentTarget: HTMLElement }): void {
-    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
-    send({ type: 'open-update-popup', anchor: { x, y, width, height } });
   }
 
   $effect(() => {
@@ -420,33 +406,6 @@
 
   <div class="side trailing" bind:this={trailing} style:margin-right="{-trailingOverhang}px">
     <Capsule>
-      {#if pendingUpdate?.state === 'ready'}
-        <IconButton
-          icon="update"
-          tone="accent"
-          label={t('toolbar.updateReady', { version: pendingUpdate.version })}
-          onclick={openUpdatePopup}
-        >
-          <span class="update-dot" aria-hidden="true"></span>
-        </IconButton>
-      {:else if pendingUpdate}
-        <IconButton
-          icon="update"
-          tone="muted"
-          label={t('toolbar.updateDownloading', { version: pendingUpdate.version, percent: pendingUpdate.percent })}
-          onclick={() => send({ type: 'open-settings' })}
-        >
-          <svg class="ring" class:indeterminate={pendingUpdate.percent === 0} viewBox="0 0 28 28" aria-hidden="true">
-            <circle
-              cx="14"
-              cy="14"
-              r="12.5"
-              pathLength="100"
-              stroke-dasharray="{pendingUpdate.percent === 0 ? 25 : Math.max(2, pendingUpdate.percent)} 100"
-            />
-          </svg>
-        </IconButton>
-      {/if}
       {#each buttons as id (id)}
         {@render button(id)}
       {/each}
@@ -690,27 +649,6 @@
     animation: spin 1s linear infinite;
   }
 
-  .update-dot {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 1.5px var(--surface-strong);
-    pointer-events: none;
-    animation: pulse 2s ease-in-out 3;
-  }
-
-  @keyframes pulse {
-    50% {
-      box-shadow:
-        0 0 0 1.5px var(--surface-strong),
-        0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent);
-    }
-  }
-
   @keyframes spin {
     from {
       transform: rotate(0deg);
@@ -721,8 +659,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .ring.indeterminate,
-    .update-dot {
+    .ring.indeterminate {
       animation: none;
     }
   }

@@ -20,7 +20,6 @@ import {
   type ChromeLayout,
   type DevCommandId,
   type DeviceId,
-  type PendingUpdate,
   type ProfileKind,
   type TabId,
   type UiAction,
@@ -70,7 +69,6 @@ import { clearSiteData, cookieUrl, cookiesForHost } from './site-data.js';
 import { siteInfoTemplate } from './site-info.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { TabManager, type DetachedTab } from './tabs.js';
-import { releaseNotesUrl, updatePopupCommand, updatePopupUrl } from './update-popup.js';
 import { resolveInput, withoutHash } from './url.js';
 import type { RequestRuleStore } from './request-rules.js';
 import type { ZoomStore } from './zoom.js';
@@ -108,8 +106,6 @@ export interface AppContext {
   importHistory(file: string): Promise<HistoryImportResult>;
   runDownloadsCommand(command: string, params: URLSearchParams): void;
   updateSettings(patch: unknown): void;
-  pendingUpdate(): PendingUpdate | null;
-  installUpdate(): void;
   deviceId(): DeviceId;
   openWindow(options: WindowOptions): YalqenWindow;
   switchProfile(profile: ProfileKind, from: YalqenWindow): void;
@@ -456,7 +452,6 @@ export class YalqenWindow {
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
-      pendingUpdate: this.app.pendingUpdate(),
       profile: this.profile,
     };
   }
@@ -853,9 +848,6 @@ export class YalqenWindow {
       case 'open-settings':
         tabs.openSettings();
         break;
-      case 'open-update-popup':
-        this.openUpdatePopup(sanitizeAnchor(action.anchor));
-        break;
     }
   }
 
@@ -900,28 +892,6 @@ export class YalqenWindow {
       },
     );
     this.popup(template);
-  }
-
-  private openUpdatePopup(anchor: AnchorRect): void {
-    const update = this.app.pendingUpdate();
-    if (update?.state !== 'ready') return;
-    this.app.extensionPopup.open({
-      window: this.window,
-      session: this.app.daily,
-      url: updatePopupUrl(update.version),
-      anchor,
-      onOpenUrl: () => {},
-      onCommand: (target) => {
-        switch (updatePopupCommand(target)) {
-          case 'install':
-            this.app.installUpdate();
-            break;
-          case 'notes':
-            this.tabs.open(releaseNotesUrl(update.version), { isPrivate: false });
-            break;
-        }
-      },
-    });
   }
 
   private openExtensionsMenu(anchor: AnchorRect): void {

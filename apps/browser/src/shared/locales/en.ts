@@ -164,8 +164,6 @@ export const en = {
   'toolbar.close': 'Close',
   'toolbar.loading': 'Loading',
   'toolbar.privateTabTitle': '{title} (private)',
-  'toolbar.updateReady': 'Yalqen {version} is ready, update options',
-  'toolbar.updateDownloading': 'Downloading Yalqen {version}, {percent}%',
 
   'tabPanel.profilePersonal': 'Personal',
   'tabPanel.profileDeveloper': 'Developer',
@@ -185,10 +183,6 @@ export const en = {
   'tabPanel.mute': 'Mute',
   'tabPanel.tabs': 'Tabs',
   'tabPanel.pinned': 'Pinned',
-  'tabPanel.percent': '{percent}%',
-  'tabPanel.updateReady': 'Yalqen {version} is ready',
-  'tabPanel.update': 'Update',
-  'tabPanel.updateDownloading': 'Downloading update',
   'tabPanel.profiles': 'Profiles',
   'tabPanel.profileLabel': '{name} profile',
   'tabPanel.profileCurrent': '{name} (current)',
@@ -639,13 +633,6 @@ export const en = {
   'downloadsPage.title': 'Downloads',
 
   'bookmarksPage.title': 'Bookmarks',
-
-  'updatePopup.title': 'Update',
-  'updatePopup.ready': 'Yalqen {version} is ready',
-  'updatePopup.text': 'It installs when you restart, and your open tabs come back.',
-  'updatePopup.restart': 'Restart',
-  'updatePopup.whatsNew': "What's new",
-  'updatePopup.later': 'Later',
 
   'bookmarks.newFolder': 'New folder',
   'bookmarks.menuEmpty': 'Empty',

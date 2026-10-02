@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PanelSide, PendingUpdate, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import type { PanelSide, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
@@ -20,7 +20,6 @@
     rowInset,
     edgeInset,
     fullWidth,
-    pendingUpdate,
     profile,
   }: {
     tabs: TabSnapshot[];
@@ -34,7 +33,6 @@
     rowInset: number;
     edgeInset: number;
     fullWidth: number;
-    pendingUpdate: PendingUpdate | null;
     profile: ProfileKind;
   } = $props();
 
@@ -91,11 +89,6 @@
   }
   const draggingPinned = $derived(dragGroup === 'pinned');
   const draggingListed = $derived(dragGroup === 'listed');
-
-  function openUpdatePopup(event: MouseEvent & { currentTarget: HTMLElement }): void {
-    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
-    send({ type: 'open-update-popup', anchor: { x, y, width, height } });
-  }
 
   function label(tab: TabSnapshot): string {
     const states = [
@@ -437,27 +430,6 @@
         {/if}
       </div>
 
-      {#if !collapsed && pendingUpdate}
-        {#if pendingUpdate.state === 'ready'}
-          <button class="card" onclick={openUpdatePopup}>
-            <span class="card-line">
-              <Icon name="sparkle" size={15} />
-              <span class="card-title">{t('tabPanel.updateReady', { version: pendingUpdate.version })}</span>
-              <span class="card-action">{t('tabPanel.update')}</span>
-            </span>
-          </button>
-        {:else}
-          <button class="card" onclick={() => send({ type: 'open-settings' })}>
-            <span class="card-line">
-              <Icon name="update" size={15} />
-              <span class="card-title">{t('tabPanel.updateDownloading')}</span>
-              <span class="card-meta">{t('tabPanel.percent', { percent: pendingUpdate.percent })}</span>
-            </span>
-            <span class="meter"><span style:width="{Math.max(4, pendingUpdate.percent)}%"></span></span>
-          </button>
-        {/if}
-      {/if}
-
       <footer class="footer" class:compact={collapsed}>
         <div class="profiles" role="group" aria-label={t('tabPanel.profiles')}>
           {#each profiles as item (item.id)}
@@ -722,8 +694,7 @@
     opacity: 0.55;
   }
 
-  :global([data-material='glass']) .row.active .pill,
-  :global([data-material='glass']) .card {
+  :global([data-material='glass']) .row.active .pill {
     box-shadow: var(--shadow), var(--rim);
   }
 
@@ -846,74 +817,6 @@
     margin-top: 6px;
   }
 
-  .card {
-    display: flex;
-    flex: none;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-    margin-top: auto;
-    padding: 10px 12px;
-    border: 0;
-    border-radius: var(--panel-radius);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    color: var(--text);
-    text-align: left;
-  }
-
-  .card-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .card-line > :global(svg) {
-    flex: none;
-    color: var(--text-muted);
-  }
-
-  .card-title {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .card-meta {
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .card-action {
-    padding: 1px 8px;
-    border-radius: 999px;
-    background: var(--accent);
-    color: var(--on-accent);
-    font-size: var(--font-size-small);
-  }
-
-  .meter {
-    position: relative;
-    height: 4px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: var(--well);
-  }
-
-  .meter > span {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    border-radius: 999px;
-    background: var(--accent);
-    transition: width 300ms var(--ease-out);
-  }
-
   .footer {
     display: flex;
     flex: none;
@@ -924,10 +827,6 @@
     margin-top: auto;
     gap: 2px;
     padding-top: 8px;
-  }
-
-  .card + .footer {
-    margin-top: 8px;
   }
 
   .footer.compact {

@@ -31,7 +31,6 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
     downloads: page('downloads.html'),
     bookmarks: page('bookmarks.html'),
     settings,
-    updatePopup: page('update-popup.html'),
   });
   serveInternalPages(session, pages, {
     recent: () => [],
@@ -81,15 +80,6 @@ test('the repo prompt is only rendered when it is due and never beside the welco
   assert.doesNotMatch(await body({}), /class="repo-prompt"/);
   assert.match(await body({ showRepoPrompt: () => true }), /yalqen:\/\/newtab\/repo\?action=star/);
   assert.doesNotMatch(await body({ showWelcome: () => true, showRepoPrompt: () => true }), /class="repo-prompt"/);
-});
-
-test('the update popup shows the escaped version and only serves its own page', async () => {
-  const handle = serve({});
-  const page = await handle(new Request('yalqen://update/?version=0.2.12'));
-  assert.match(await page.text(), /Yalqen 0\.2\.12 hazır[\s\S]*yalqen:\/\/update\/install/);
-  const hostile = await handle(new Request('yalqen://update/?version=%3Cb%3E'));
-  assert.doesNotMatch(await hostile.text(), /<b>/);
-  assert.equal((await handle(new Request('yalqen://update/install'))).status, 404);
 });
 
 test('the downloads page updates itself when the list changes', async () => {

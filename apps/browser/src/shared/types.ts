@@ -98,7 +98,6 @@ export interface BrowserState {
   defaultZoom: number;
   downloads: DownloadsSummary;
   extensions: boolean;
-  pendingUpdate: PendingUpdate | null;
   profile: ProfileKind;
 }
 
@@ -163,8 +162,7 @@ export type UiAction =
   | { type: 'open-extension-store' }
   | { type: 'open-history' }
   | { type: 'toggle-translation' }
-  | { type: 'open-settings' }
-  | { type: 'open-update-popup'; anchor: AnchorRect };
+  | { type: 'open-settings' };
 
 export const PageChannel = {
   swipe: 'yalqen:page-swipe',
@@ -363,8 +361,6 @@ export type UpdateStatus =
   | { state: 'downloading'; version: string; percent: number }
   | { state: 'ready'; version: string }
   | { state: 'failed' };
-
-export type PendingUpdate = Extract<UpdateStatus, { state: 'downloading' | 'ready' }>;
 
 export interface SettingsView {
   values: SettingsValues;

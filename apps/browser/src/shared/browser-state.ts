@@ -43,7 +43,6 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     toolbarButtons: reuseArray(previous.toolbarButtons, next.toolbarButtons),
     device: reuseFields(previous.device, next.device),
     downloads: reuseFields(previous.downloads, next.downloads)!,
-    pendingUpdate: reuseFields(previous.pendingUpdate, next.pendingUpdate),
   };
   return sameFields(previous, candidate) ? previous : candidate;
 }

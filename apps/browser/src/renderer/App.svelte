@@ -39,7 +39,6 @@
     defaultZoom: 1,
     downloads: { active: 0, progress: null, started: 0 },
     extensions: false,
-    pendingUpdate: null,
     profile: 'personal',
   });
   let stateReceived = $state(false);
@@ -163,7 +162,6 @@
         rowInset={PANEL_ROW_INSET}
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={PANEL_WIDTH}
-        pendingUpdate={browser.pendingUpdate}
         profile={browser.profile}
       />
     {/if}
@@ -178,7 +176,6 @@
         ready={stateReceived}
         extensions={browser.extensions}
         buttons={browser.toolbarButtons}
-        pendingUpdate={browser.pendingUpdate}
         leadingInset={windowControls
           ? side === 'left'
             ? Math.max(0, WINDOW_CONTROLS_END - shownWidth)

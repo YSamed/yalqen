@@ -166,8 +166,6 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.close': 'Kapat',
   'toolbar.loading': 'Yükleniyor',
   'toolbar.privateTabTitle': '{title} (gizli)',
-  'toolbar.updateReady': 'Yalqen {version} hazır, güncelleme seçenekleri',
-  'toolbar.updateDownloading': 'Yalqen {version} indiriliyor %{percent}',
 
   'tabPanel.profilePersonal': 'Kişisel',
   'tabPanel.profileDeveloper': 'Geliştirici',
@@ -187,10 +185,6 @@ export const tr: Record<MessageKey, string> = {
   'tabPanel.mute': 'Sessize al',
   'tabPanel.tabs': 'Sekmeler',
   'tabPanel.pinned': 'Sabitlenenler',
-  'tabPanel.percent': '%{percent}',
-  'tabPanel.updateReady': 'Yalqen {version} hazır',
-  'tabPanel.update': 'Güncelle',
-  'tabPanel.updateDownloading': 'Güncelleme indiriliyor',
   'tabPanel.profiles': 'Profiller',
   'tabPanel.profileLabel': '{name} profili',
   'tabPanel.profileCurrent': '{name} (açık)',
@@ -641,13 +635,6 @@ export const tr: Record<MessageKey, string> = {
   'downloadsPage.title': 'İndirilenler',
 
   'bookmarksPage.title': 'Yer imleri',
-
-  'updatePopup.title': 'Güncelleme',
-  'updatePopup.ready': 'Yalqen {version} hazır',
-  'updatePopup.text': 'Yeniden başlatınca yüklenir, açık sekmeler geri gelir.',
-  'updatePopup.restart': 'Yeniden başlat',
-  'updatePopup.whatsNew': 'Yenilikler',
-  'updatePopup.later': 'Sonra',
 
   'bookmarks.newFolder': 'Yeni klasör',
   'bookmarks.menuEmpty': 'Boş',

@@ -252,10 +252,7 @@ function startBrowser(): void {
   const updater = new Updater({
     load: app.isPackaged && !bench ? loadAutoUpdater : null,
     automatic: () => settings.get().autoUpdate,
-    onChange: () => {
-      pushState();
-      broadcastSettings(settingsView());
-    },
+    onChange: () => broadcastSettings(settingsView()),
     // quitAndInstall closes the windows before before-quit fires, so the session is saved first.
     beforeInstall: () => {
       quitting = true;
@@ -331,8 +328,6 @@ function startBrowser(): void {
     },
     runDownloadsCommand: (command, params) => downloadManager.runCommand(command, params),
     updateSettings,
-    pendingUpdate: () => updater.pending(),
-    installUpdate: () => updater.install(),
     deviceId: () => deviceId,
     openWindow: (options) => openWindow(options),
     switchProfile: (profile, from) => {
@@ -397,7 +392,6 @@ function startBrowser(): void {
     downloads: path.join(rendererDir, 'downloads.html'),
     bookmarks: path.join(rendererDir, 'bookmarks.html'),
     settings: path.join(rendererDir, 'settings.html'),
-    updatePopup: path.join(rendererDir, 'update-popup.html'),
   });
   for (const [browsing, isPrivate] of [
     [daily, false],

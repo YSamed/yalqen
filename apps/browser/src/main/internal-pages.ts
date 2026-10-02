@@ -11,7 +11,6 @@ import type { HistoryEntry } from './history.js';
 import { escapeHtml } from './html.js';
 import type { AddressSuggestion } from '../shared/types.js';
 import { searchFieldMarkup } from './search-field-markup.js';
-import { updatePopupVersion } from './update-popup.js';
 import type { RecentPage } from './tabs.js';
 
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
@@ -153,7 +152,6 @@ export interface InternalPageFiles {
   downloads: string;
   bookmarks: string;
   settings: string;
-  updatePopup: string;
 }
 
 export interface InternalPageSources {
@@ -176,7 +174,6 @@ export interface InternalPages {
   downloadsScript: string;
   bookmarks: string;
   settings: string;
-  updatePopup: string;
   settingsAsset: (name: string) => Buffer<ArrayBuffer> | null;
 }
 
@@ -202,7 +199,6 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
     downloadsScript: fs.readFileSync(path.join(path.dirname(files.downloads), 'downloads.js'), 'utf8'),
     bookmarks: readPage(files.bookmarks),
     settings: localizePage(fs.readFileSync(files.settings, 'utf8')),
-    updatePopup: readPage(files.updatePopup),
     settingsAsset: (name) => {
       const cached = assetCache.get(name);
       if (cached) return cached;
@@ -321,13 +317,6 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         return serveSettings(url.pathname, pages);
       case 'newtab':
         return serveNewTab(url, pages, sources);
-      case 'update':
-        return url.pathname === '/'
-          ? html(
-              pages.updatePopup.replace('{version}', escapeHtml(updatePopupVersion(url.searchParams.get('version')))),
-              INTERNAL_CSP,
-            )
-          : notFound();
       case 'downloads':
         return serveDownloads(url, pages, sources, request.signal);
       case 'history':
