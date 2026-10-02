@@ -10,7 +10,7 @@
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png"><img src="design/readme/download-dmg.png" alt="下载 DMG" width="250"></picture></a>
+    <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png"><img src="design/readme/download-dmg.png" alt="下载 DMG" width="250"></picture></a>
     <a href="#安装"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/install-homebrew-dark.png"><img src="design/readme/install-homebrew.png" alt="使用 Homebrew 安装" width="250"></picture></a>
     <br>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="最新版本和总下载量" height="56"></picture></a>
@@ -55,7 +55,7 @@ Yalqen 适合想要 Chromium 兼容性、又不想被浏览器界面干扰的开
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-<sub>更喜欢磁盘映像？[下载最新 DMG](https://github.com/YSamed/yalqen/releases/latest)。</sub>
+<sub>更喜欢磁盘映像？[下载最新 DMG](https://yalqen.com/download)。</sub>
 
 <br>
 

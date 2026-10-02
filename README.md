@@ -10,7 +10,7 @@
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png"><img src="design/readme/download-dmg.png" alt="Download the DMG" width="250"></picture></a>
+    <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png"><img src="design/readme/download-dmg.png" alt="Download the DMG" width="250"></picture></a>
     <a href="#install"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/install-homebrew-dark.png"><img src="design/readme/install-homebrew.png" alt="Install with Homebrew" width="250"></picture></a>
     <br>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Latest release and total downloads" height="56"></picture></a>
@@ -54,7 +54,7 @@ Yalqen is for developers who want Chromium compatibility without a browser UI ge
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-<sub>Prefer a disk image? [Download the latest DMG](https://github.com/YSamed/yalqen/releases/latest).</sub>
+<sub>Prefer a disk image? [Download the latest DMG](https://yalqen.com/download).</sub>
 
 <br>
 
