@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.25](https://github.com/YSamed/yalqen/compare/v0.2.24...v0.2.25) (2026-10-02)
+
+
+### Bug Fixes
+
+* reorder sidebar tabs with pointer events instead of native drag ([#110](https://github.com/YSamed/yalqen/issues/110)) ([c3386f1](https://github.com/YSamed/yalqen/commit/c3386f1a252a12acf8360df9839f5cc4b24b0d96))
+
 ## [0.2.24](https://github.com/YSamed/yalqen/compare/v0.2.23...v0.2.24) (2026-10-02)
 
 
