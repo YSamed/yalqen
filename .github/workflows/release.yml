@@ -111,3 +111,4 @@ jobs:
               --notes-file build/release-notes.md \
               --generate-notes
           fi
+          gh release edit "$TAG" --draft=false
