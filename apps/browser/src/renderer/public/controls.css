@@ -7,6 +7,7 @@
   --radius-pill: 999px;
   --radius-control: 8px;
   --control-transition: 120ms ease-out;
+  --control-press: 160ms var(--ease-out, ease-out);
 }
 
 .icon-btn,
@@ -27,7 +28,8 @@
   transition:
     background-color var(--control-transition),
     color var(--control-transition),
-    opacity var(--control-transition);
+    opacity var(--control-transition),
+    transform var(--control-press);
   -webkit-app-region: no-drag;
 }
 
@@ -85,6 +87,11 @@
 .icon-btn:hover:not(:disabled),
 .btn:hover:not(:disabled) {
   background-color: var(--surface-hover);
+}
+
+.icon-btn:active:not(:disabled),
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .icon-btn.surface,
@@ -442,5 +449,6 @@ input[type='radio'] {
 @media (prefers-reduced-motion: reduce) {
   :root {
     --control-transition: 0ms;
+    --control-press: 0ms;
   }
 }
