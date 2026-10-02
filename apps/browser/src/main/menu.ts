@@ -85,19 +85,11 @@ export function buildMenu(actions: MenuActions): Menu {
     {
       label: t('menu.file'),
       submenu: [
-        { label: t('menu.newTab'), accelerator: 'CmdOrCtrl+T', click: actions.newTab },
         { label: t('menu.newWindow'), accelerator: 'CmdOrCtrl+N', click: actions.newWindow },
         { label: t('menu.newPrivateWindow'), accelerator: 'CmdOrCtrl+Shift+N', click: actions.newPrivateWindow },
-        { label: t('menu.newPrivateTab'), click: actions.newPrivateTab },
         { label: t('menu.newDeveloperWindow'), click: actions.newDeveloperWindow },
         { type: 'separator' },
-        { label: t('menu.closeTab'), accelerator: 'CmdOrCtrl+W', click: actions.closeTab },
         { label: t('menu.closeWindow'), accelerator: 'CmdOrCtrl+Shift+W', click: actions.closeWindow },
-        {
-          label: t('menu.reopenClosedTab'),
-          accelerator: 'CmdOrCtrl+Shift+T',
-          click: actions.reopenClosedTab,
-        },
         { type: 'separator' },
         { label: t('menu.addressBar'), accelerator: 'CmdOrCtrl+L', click: actions.focusAddress },
         { type: 'separator' },
@@ -136,6 +128,15 @@ export function buildMenu(actions: MenuActions): Menu {
     {
       label: t('menu.tab'),
       submenu: [
+        { label: t('menu.newTab'), accelerator: 'CmdOrCtrl+T', click: actions.newTab },
+        { label: t('menu.newPrivateTab'), click: actions.newPrivateTab },
+        { label: t('menu.closeTab'), accelerator: 'CmdOrCtrl+W', click: actions.closeTab },
+        {
+          label: t('menu.reopenClosedTab'),
+          accelerator: 'CmdOrCtrl+Shift+T',
+          click: actions.reopenClosedTab,
+        },
+        { type: 'separator' },
         { label: t('menu.nextTab'), accelerator: 'Ctrl+Tab', click: actions.selectNextTab },
         { label: t('menu.previousTab'), accelerator: 'Ctrl+Shift+Tab', click: actions.selectPreviousTab },
         { label: t('menu.moveTabToNewWindow'), click: actions.moveTabToNewWindow },

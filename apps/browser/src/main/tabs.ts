@@ -1102,6 +1102,11 @@ export class TabManager {
     });
 
     listen('ipc-message', (event, channel, direction) => {
+      if (channel !== PageChannel.zoom || event.senderFrame !== contents.mainFrame) return;
+      if (direction === 'in' || direction === 'out') this.zoomView(tab, view, direction === 'in' ? 1 : -1);
+    });
+
+    listen('ipc-message', (event, channel, direction) => {
       if (channel !== PageChannel.swipe || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
       if (direction === 'back' || direction === 'forward') this.options.onPageSwipe(direction);
     });
