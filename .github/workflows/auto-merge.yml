@@ -12,6 +12,7 @@ jobs:
   enable:
     if: >-
       !github.event.pull_request.draft &&
+      !startsWith(github.event.pull_request.head.ref, 'release-please--') &&
       (github.event.pull_request.user.login == 'YSamed' ||
        github.event.pull_request.user.login == 'dependabot[bot]')
     runs-on: ubuntu-latest
