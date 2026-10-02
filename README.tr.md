@@ -1,16 +1,28 @@
 <div align="center">
-  <img src="design/brand/png/icon-256.png" alt="Yalqen" width="112">
-
-  <h1>Yalqen</h1>
-
-  <p>macOS için açık kaynaklı, Chromium tabanlı geliştirici tarayıcısı. Dikey sekmeler, klavye öncelikli komut çubuğu, yerleşik reklam engelleme.</p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/readme/wordmark-dark.png">
+    <img src="design/readme/wordmark-light.png" alt="Yalqen" width="300">
+  </picture>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-dmg.png" alt="DMG dosyasını indir" width="250"></a>
-    <a href="#kurulum"><img src="design/readme/install-homebrew.png" alt="Homebrew ile kur" width="250"></a>
+    <strong>macOS'ta geliştiriciler için klavye öncelikli Chromium tarayıcısı.</strong><br>
+    Dikey sekmeler, hızlı komut çubuğu, yerleşik reklam ve izleyici engelleme<br>ve gereksiz arayüzden arınmış geliştirici araçları.
   </p>
 
   <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png">
+        <img src="design/readme/download-dmg.png" alt="DMG dosyasını indir" width="250">
+      </picture>
+    </a>
+    <a href="#kurulum">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="design/readme/install-homebrew-dark.png">
+        <img src="design/readme/install-homebrew.png" alt="Homebrew ile kur" width="250">
+      </picture>
+    </a>
+    <br>
     <a href="https://github.com/YSamed/yalqen/releases/latest">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-dark.svg">
@@ -20,13 +32,14 @@
   </p>
 
   <p>
-    <a href="#kurulum">Kurulum</a> ·
-    <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Web sitesi</a> ·
-    <a href="apps/browser/CHANGELOG.md">Değişiklik günlüğü</a> ·
-    <a href="CONTRIBUTING.md">Katkıda bulun</a> ·
-    <a href="https://github.com/YSamed/yalqen/issues">Hata bildir</a> ·
-    <a href="README.md">English</a> ·
-    <a href="README.zh-CN.md">简体中文</a>
+    <sub>
+      <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Web sitesi</a> ·
+      <a href="apps/browser/CHANGELOG.md">Değişiklik günlüğü</a> ·
+      <a href="CONTRIBUTING.md">Katkıda bulun</a> ·
+      <a href="https://github.com/YSamed/yalqen/issues">Hata bildir</a> ·
+      <a href="README.md">English</a> ·
+      <a href="README.zh-CN.md">简体中文</a>
+    </sub>
   </p>
 </div>
 

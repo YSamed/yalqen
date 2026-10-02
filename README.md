@@ -1,25 +1,28 @@
 <div align="center">
-  <img src="design/brand/png/icon-256.png" alt="Yalqen" width="112">
-
-  <h1>Yalqen</h1>
-
-  <p><strong>A keyboard-first Chromium browser built for developers on macOS.</strong></p>
-  <p>Vertical tabs, a fast command bar, built-in ad and tracker blocking, and developer tools without the usual browser chrome.</p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/readme/wordmark-dark.png">
+    <img src="design/readme/wordmark-light.png" alt="Yalqen" width="300">
+  </picture>
 
   <p>
-    <a href="LICENSE"><img src="https://img.shields.io/github/license/YSamed/yalqen" alt="MIT license"></a>
-    <a href="https://yalqen.com/privacy#active-installations"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fusage" alt="Active installations in the last 30 days, opt-in only"></a>
-    <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-    <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
-    <a href="https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen"><img src="https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge" alt="OpenSSF Scorecard"></a>
+    <strong>A keyboard-first Chromium browser built for developers on macOS.</strong><br>
+    Vertical tabs, a fast command bar, built-in ad and tracker blocking,<br>and developer tools without the usual browser chrome.
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-dmg.png" alt="Download the DMG" width="250"></a>
-    <a href="#install"><img src="design/readme/install-homebrew.png" alt="Install with Homebrew" width="250"></a>
-  </p>
-
-  <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png">
+        <img src="design/readme/download-dmg.png" alt="Download the DMG" width="250">
+      </picture>
+    </a>
+    <a href="#install">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="design/readme/install-homebrew-dark.png">
+        <img src="design/readme/install-homebrew.png" alt="Install with Homebrew" width="250">
+      </picture>
+    </a>
+    <br>
     <a href="https://github.com/YSamed/yalqen/releases/latest">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-dark.svg">
@@ -29,13 +32,13 @@
   </p>
 
   <p>
-    <a href="#install">Install</a> ·
-    <a href="#why-yalqen">Why Yalqen?</a> ·
-    <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Website</a> ·
-    <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
-    <a href="CONTRIBUTING.md">Contribute</a> ·
-    <a href="README.tr.md">Türkçe</a> ·
-    <a href="README.zh-CN.md">简体中文</a>
+    <sub>
+      <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Website</a> ·
+      <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
+      <a href="CONTRIBUTING.md">Contribute</a> ·
+      <a href="README.tr.md">Türkçe</a> ·
+      <a href="README.zh-CN.md">简体中文</a>
+    </sub>
   </p>
 </div>
 
@@ -138,3 +141,11 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 - Yalqen is released under the [MIT License](LICENSE).
 - Bundled filter lists keep their own licenses, see [THIRD_PARTY_NOTICES.md](apps/browser/THIRD_PARTY_NOTICES.md).
 - The Yalqen name and logo are not covered by the MIT License.
+
+<p align="center">
+  <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen"><img src="https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge" alt="OpenSSF Scorecard"></a>
+  <a href="https://yalqen.com/privacy#active-installations"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fusage" alt="Active installations in the last 30 days, opt-in only"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/YSamed/yalqen" alt="MIT license"></a>
+</p>

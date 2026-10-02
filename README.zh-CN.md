@@ -1,17 +1,28 @@
 <div align="center">
-  <img src="design/brand/png/icon-256.png" alt="Yalqen" width="112">
-
-  <h1>Yalqen</h1>
-
-  <p><strong>面向 macOS 开发者的键盘优先 Chromium 浏览器。</strong></p>
-  <p>垂直标签页、快速命令栏、内置广告和跟踪器拦截，以及没有多余界面的开发者工具。</p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/readme/wordmark-dark.png">
+    <img src="design/readme/wordmark-light.png" alt="Yalqen" width="300">
+  </picture>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-dmg.png" alt="下载 DMG" width="250"></a>
-    <a href="#安装"><img src="design/readme/install-homebrew.png" alt="使用 Homebrew 安装" width="250"></a>
+    <strong>面向 macOS 开发者的键盘优先 Chromium 浏览器。</strong><br>
+    垂直标签页、快速命令栏、内置广告和跟踪器拦截，以及没有多余界面的开发者工具。
   </p>
 
   <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png">
+        <img src="design/readme/download-dmg.png" alt="下载 DMG" width="250">
+      </picture>
+    </a>
+    <a href="#安装">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="design/readme/install-homebrew-dark.png">
+        <img src="design/readme/install-homebrew.png" alt="使用 Homebrew 安装" width="250">
+      </picture>
+    </a>
+    <br>
     <a href="https://github.com/YSamed/yalqen/releases/latest">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-dark.svg">
@@ -21,12 +32,13 @@
   </p>
 
   <p>
-    <a href="#安装">安装</a> ·
-    <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">官网</a> ·
-    <a href="apps/browser/CHANGELOG.md">更新日志</a> ·
-    <a href="CONTRIBUTING.md">参与贡献</a> ·
-    <a href="README.md">English</a> ·
-    <a href="README.tr.md">Türkçe</a>
+    <sub>
+      <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">官网</a> ·
+      <a href="apps/browser/CHANGELOG.md">更新日志</a> ·
+      <a href="CONTRIBUTING.md">参与贡献</a> ·
+      <a href="README.md">English</a> ·
+      <a href="README.tr.md">Türkçe</a>
+    </sub>
   </p>
 </div>
 
