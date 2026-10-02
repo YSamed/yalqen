@@ -382,9 +382,11 @@ export class TabManager {
     this.changed(true);
   }
 
-  private activateUnpinnedNear(index: number): void {
-    const others = [...this.tabs.slice(index), ...this.tabs.slice(0, index).reverse()];
-    const next = others.find((item) => !item.pinnedUrl);
+  private activateUnpinnedNear(index: number, excludeId?: TabId): void {
+    const others = [...this.tabs.slice(index), ...this.tabs.slice(0, index).reverse()].filter(
+      (item) => item.id !== excludeId,
+    );
+    const next = others.find((item) => !item.pinnedUrl) ?? others[0];
     if (next) this.activate(next.id);
     else this.open();
   }
@@ -491,7 +493,7 @@ export class TabManager {
       this.changed(true);
       return;
     }
-    this.activateUnpinnedNear(this.indexOf(tab.id) + 1);
+    this.activateUnpinnedNear(this.indexOf(tab.id) + 1, tab.id);
   }
 
   blockedPopups(): string[] {
