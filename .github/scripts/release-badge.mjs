@@ -99,10 +99,22 @@ const latest = releases
 if (!latest) throw new Error('no published release has a .dmg asset')
 const downloads = releases.flatMap((release) => release.assets).filter(isDmg).reduce((sum, asset) => sum + asset.download_count, 0)
 
+async function uniqueDownloads() {
+  try {
+    const response = await fetch('https://yalqen.com/api/downloads', { signal: AbortSignal.timeout(8000) })
+    if (!response.ok) return null
+    const { uniqueDownloads: count } = await response.json()
+    return Number.isSafeInteger(count) && count > 0 ? count : null
+  } catch {
+    return null
+  }
+}
+const unique = await uniqueDownloads()
+
 const groups = [
   [{ text: latest.tag_name, bold: true }, { text: releasedAgo(latest.published_at, Date.now()), bold: false }],
-  [{ text: downloads.toLocaleString('en-US'), bold: true }, { text: 'downloads', bold: false }],
+  [{ text: (unique ?? downloads).toLocaleString('en-US'), bold: true }, { text: unique ? 'unique downloads' : 'downloads', bold: false }],
 ]
 mkdirSync(outDir, { recursive: true })
 for (const theme of ['light', 'dark']) writeFileSync(join(outDir, `release-${theme}.svg`), renderBadge(groups, theme))
-console.log(`${latest.tag_name}, ${downloads} DMG downloads`)
+console.log(`${latest.tag_name}, ${downloads} DMG downloads, ${unique ?? 'no'} unique downloads`)
