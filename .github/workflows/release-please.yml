@@ -19,6 +19,9 @@ jobs:
     steps:
       - id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        # A PAT so the release PR triggers CI; PRs opened with GITHUB_TOKEN start no workflows.
+        with:
+          token: ${{ secrets.AUTO_MERGE_TOKEN }}
 
   build:
     needs: release-please
