@@ -33,7 +33,6 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
     settings,
   });
   serveInternalPages(session, pages, {
-    recent: () => [],
     pinned: () => [],
     visits: () => [],
     downloads: { list: () => [], changes: new changeFeed.ChangeFeed() },

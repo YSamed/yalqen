@@ -18,7 +18,6 @@ const DOWNLOADS_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
 const SETTINGS_CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
-const RECENT_MARKER = '__YALQEN_RECENT_SLOT__';
 const PINNED_MARKER = '__YALQEN_PINNED_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
 const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
@@ -48,23 +47,6 @@ export function registerInternalScheme(): void {
   protocol.registerSchemesAsPrivileged([
     { scheme: INTERNAL_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
   ]);
-}
-
-export function renderRecent(pages: RecentPage[]): string {
-  if (pages.length === 0) return '';
-  const items = pages
-    .map((page) => {
-      const icon = page.faviconUrl?.startsWith('https:')
-        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="16" height="16" />`
-        : '<span class="dot"></span>';
-      const forget = `yalqen://newtab/forget?url=${encodeURIComponent(page.url)}`;
-      return (
-        `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title)}">${icon}<span>${escapeHtml(displayHost(page.url))}</span></a>` +
-        `<a class="icon-btn sm tone-muted forget" href="${escapeHtml(forget)}" aria-label="${t('internalPages.removeFromList', { host: escapeHtml(displayHost(page.url)) })}">${SMALL_FORGET_ICON}</a></li>`
-      );
-    })
-    .join('');
-  return `<section class="recent" aria-labelledby="recent-title"><h2 id="recent-title">${t('internalPages.recentlyClosed')}</h2><ul>${items}</ul></section>`;
 }
 
 export function renderPinned(pages: RecentPage[]): string {
@@ -155,7 +137,6 @@ export interface InternalPageFiles {
 }
 
 export interface InternalPageSources {
-  recent: () => RecentPage[];
   pinned: () => RecentPage[];
   visits: (query: string) => HistoryEntry[];
   downloads: { list: () => DownloadEntry[]; changes: ChangeFeed };
@@ -300,7 +281,6 @@ function serveNewTab(url: URL, pages: InternalPages, sources: InternalPageSource
         .replace(WELCOME_MARKER, welcomeVisible ? renderWelcome() : '')
         .replace(PINNED_MARKER, renderPinned(sources.pinned()))
         .replace(TIPS_MARKER, welcomeVisible ? renderTips() : '')
-        .replace(RECENT_MARKER, renderRecent(sources.recent()))
         .replace(REPO_PROMPT_MARKER, !welcomeVisible && sources.showRepoPrompt() ? renderRepoPrompt() : '');
       return html(body, NEW_TAB_CSP, false);
     }
