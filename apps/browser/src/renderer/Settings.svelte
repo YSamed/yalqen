@@ -344,6 +344,7 @@
               <Button variant="primary" onclick={() => api.installUpdate()}>{t('settings.restart')}</Button>
             {:else if view.update.state !== 'unavailable'}
               <Button
+                variant="tonal"
                 disabled={view.update.state === 'checking' || view.update.state === 'downloading'}
                 onclick={() => api.checkForUpdates()}>{t('settings.checkNow')}</Button
               >
@@ -577,7 +578,7 @@
                 </label>
               {/each}
               <div class="clear-actions">
-                <Button variant="primary" disabled={!clearSelected || clearing} onclick={clearData}>
+                <Button variant="danger" disabled={!clearSelected || clearing} onclick={clearData}>
                   {clearing ? t('settings.clearing') : t('settings.clearData')}
                 </Button>
                 {#if cleared}<span class="hint" role="status">{t('settings.cleared')}</span>{/if}
@@ -623,19 +624,25 @@
 {/if}
 
 <style>
+  :global(:root) {
+    --font-size: 14px;
+    --font-size-small: 12px;
+  }
+
   :global(body) {
     overflow-y: auto;
     background: var(--bg);
+    line-height: 1.45;
   }
 
   .settings {
-    width: min(920px, 100%);
+    width: min(1000px, 100%);
     margin: 0 auto;
     padding: 42px 24px 80px;
   }
 
   h1 {
-    margin: 0 0 20px;
+    margin: 0 0 24px;
     font-size: 30px;
     letter-spacing: -0.03em;
   }
@@ -643,7 +650,7 @@
   .layout {
     display: flex;
     align-items: flex-start;
-    gap: 20px;
+    gap: 40px;
   }
 
   .panes {
@@ -666,52 +673,48 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    padding: 4px 20px 12px;
-    border-radius: 14px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
   }
 
-  h2 {
-    margin: 20px 0 4px;
+  .pane :global(h2) {
+    margin: 30px 0 8px;
     color: var(--text-muted);
-    font-size: var(--font-size-small);
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
   }
 
-  h2:first-child {
-    margin-top: 12px;
+  .pane :global(h2:first-child) {
+    margin-top: 6px;
   }
 
-  .row {
+  .pane :global(.row) {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    padding: 10px 0;
+    min-height: 58px;
+    padding: 9px 0;
     border-bottom: 1px solid var(--border);
   }
 
   .row.stacked {
     flex-direction: column;
     align-items: stretch;
-    gap: 6px;
+    gap: 8px;
   }
 
-  .row:last-child {
-    border-bottom: 0;
-  }
-
-  .label {
+  .pane :global(.label) {
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
 
-  .hint {
+  .pane :global(.hint) {
     color: var(--text-muted);
+    font-size: var(--font-size-small);
+  }
+
+  .pane :global(.error) {
+    color: var(--warn);
     font-size: var(--font-size-small);
   }
 
@@ -734,11 +737,6 @@
     border-radius: inherit;
     background: var(--accent);
     transition: width 0.25s linear;
-  }
-
-  .error {
-    color: var(--warn);
-    font-size: var(--font-size-small);
   }
 
   .clear {

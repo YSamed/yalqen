@@ -249,7 +249,7 @@ function serveHistory(pathname: string, query: string, pages: InternalPages, sou
   if (pathname === '/') {
     content = renderHistory(sources.visits(query), query);
   } else if (pathname === '/confirm-clear') {
-    content = `<div class="confirm"><h2>${t('internalPages.confirmClearTitle')}</h2><p>${t('internalPages.confirmClearText')}</p><div class="confirm-actions"><a class="btn lg tonal" href="${HISTORY_URL}">${t('internalPages.cancel')}</a><a class="btn lg primary danger" href="${HISTORY_URL}clear">${t('internalPages.clearHistory')}</a></div></div>`;
+    content = `<div class="confirm"><h2>${t('internalPages.confirmClearTitle')}</h2><p>${t('internalPages.confirmClearText')}</p><div class="confirm-actions"><a class="btn lg tonal" href="${HISTORY_URL}">${t('internalPages.cancel')}</a><a class="btn lg danger" href="${HISTORY_URL}clear">${t('internalPages.clearHistory')}</a></div></div>`;
   } else {
     return notFound();
   }
