@@ -86,17 +86,23 @@ jobs:
           fi
           npm run build
           npx electron-builder --mac --publish never -c.extraMetadata.version="${TAG#v}" "${signing[@]}"
-      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+      - id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             apps/browser/release/*.dmg
             apps/browser/release/*.zip
             apps/browser/release/latest-mac.yml
+      # Scorecard's Signed-Releases check only sees provenance attached to the release as *.intoto.jsonl.
+      - name: Attach provenance bundle
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: jq -c . "$BUNDLE" > "release/yalqen-${TAG#v}.intoto.jsonl"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          assets=(release/*.dmg release/*.zip release/*.blockmap release/latest-mac.yml)
+          assets=(release/*.dmg release/*.zip release/*.blockmap release/latest-mac.yml release/*.intoto.jsonl)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${assets[@]}" --clobber
             { gh release view "$TAG" --json body --jq .body; echo; cat build/release-notes.md; } > "$RUNNER_TEMP/notes.md"
