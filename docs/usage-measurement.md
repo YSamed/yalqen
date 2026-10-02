@@ -38,3 +38,7 @@ The collector does not log request bodies, IDs, cookies or IPs. Vercel necessari
 5. Release the updated browser and README after the service is live. Counts start with participating users of that release; older browsers send no reports. Before rollout, zero observed profiles is not evidence of zero users.
 
 The README badges depend on these live endpoints. Local code preparation alone does not activate collection or establish a user count.
+
+## README release badge
+
+The release badge under the README's download buttons is not served by the site. The `Release badge` workflow in this repository renders it every six hours and after each release with `.github/scripts/release-badge.mjs`, using the same DMG-only total as `/api/downloads` plus the newest stable release that has a DMG. It force-pushes the light and dark SVGs as a single commit to the `badges` branch.

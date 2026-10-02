@@ -7,9 +7,7 @@
   <p>Vertical tabs, a fast command bar, built-in ad and tracker blocking, and developer tools without the usual browser chrome.</p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="https://img.shields.io/github/v/release/YSamed/yalqen" alt="Latest release"></a>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/YSamed/yalqen" alt="MIT license"></a>
-    <a href="https://github.com/YSamed/yalqen/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fdownloads" alt="DMG downloads across published stable releases"></a>
     <a href="https://yalqen.com/privacy#active-installations"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fusage" alt="Active installations in the last 30 days, opt-in only"></a>
     <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
@@ -17,12 +15,21 @@
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-button.png" alt="Download for macOS" width="260"></a>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-dmg.png" alt="Download the DMG" width="250"></a>
+    <a href="#install"><img src="design/readme/install-homebrew.png" alt="Install with Homebrew" width="250"></a>
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><strong>Download</strong></a> ·
-    <a href="#install">Homebrew</a> ·
+    <a href="https://github.com/YSamed/yalqen/releases/latest">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-dark.svg">
+        <img src="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-light.svg" alt="Latest release and total downloads" height="56">
+      </picture>
+    </a>
+  </p>
+
+  <p>
+    <a href="#install">Install</a> ·
     <a href="#why-yalqen">Why Yalqen?</a> ·
     <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Website</a> ·
     <a href="apps/browser/CHANGELOG.md">Changelog</a> ·
@@ -82,15 +89,17 @@ Yalqen is for developers who want Chromium compatibility without a browser UI ge
 
 > **Requires macOS 13 or later on Apple Silicon.** Intel Macs are not supported.
 
-With [Homebrew](https://brew.sh):
+Choose one:
+
+**DMG:** download it from [Releases](https://github.com/YSamed/yalqen/releases/latest). The app is signed with a Developer ID and notarized, so it opens without a Gatekeeper warning.
+
+**Terminal:** install with [Homebrew](https://brew.sh).
 
 ```bash
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest). The app is signed with a Developer ID and notarized, so it opens without a Gatekeeper warning.
-
-The download badge counts DMG file downloads, including repeat downloads. The active-install badge counts participating browser profiles observed in the last 30 days. Neither is a count of individual people. Active-install counting is off by default; enable it in **Settings → Privacy**. It sends only a random installation ID, at most once per UTC day while a non-private window is open. See [how the counter works](docs/usage-measurement.md).
+Active-install counting is off by default and can be enabled in **Settings → Privacy**. See [how the badge counters work](docs/usage-measurement.md).
 
 Yalqen updates itself in the background. To update through Homebrew instead:
 
