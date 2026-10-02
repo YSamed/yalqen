@@ -28,7 +28,7 @@
 </div>
 
 <p align="center">
-  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><picture><source media="(prefers-color-scheme: dark)" srcset="design/screenshots/website-dark.png"><img src="design/screenshots/website-light.png" alt="Yalqen website: Light as paper. Clear as glass." width="900"></picture></a>
+  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><img src="design/screenshots/website.webp" alt="Yalqen website: Light as paper. Clear as glass." width="900"></a>
 </p>
 
 ## Features
