@@ -8,11 +8,11 @@ Yalqen
 
 ## Tagline (max 60 characters)
 
-Pick one:
+```
+Keyboard-first open-source browser for developers
+```
 
-- `Open-source browser for developers on Mac` (41)
-- `A keyboard-first, open-source browser for developers` (51)
-- `Vertical tabs, command bar and ad blocking, open source` (55)
+49 characters. It leads with the audience and the one thing that sets it apart; alternatives if this tests badly: `Open-source browser for developers on Mac` (41), `Vertical tabs, command bar and ad blocking, open source` (55).
 
 ## Description (max 260 characters)
 
@@ -38,7 +38,7 @@ I spend most of my day in a browser, switching between docs, localhost and DevTo
 
 Yalqen is open source under MIT, runs on Apple Silicon Macs with macOS 13+, and updates itself with your tabs restored.
 
-It's built on Electron. I wrote honestly about what that costs and where the project is heading: https://github.com/YSamed/yalqen/blob/main/docs/why-electron.md
+It's built on Electron. I wrote honestly about what that costs: https://github.com/YSamed/yalqen/blob/main/docs/why-electron.md
 
 I'd love to hear what would make it your daily browser.
 ```
@@ -54,6 +54,16 @@ I'd love to hear what would make it your daily browser.
 7. Settings with memory saver options
 
 Product Hunt gallery images are 1270×760; export from real screenshots, no mockups of features that do not exist.
+
+Assets in the repo today: only `design/screenshots/website-light.png`, `website-dark.png` and the README cards. Items 1–7 still have to be captured from the app (the demo video is the same blocker as the README demo in [schedule.md](schedule.md)).
+
+## Before launching
+
+- [ ] Gallery items 1–7 captured at 1270×760 from the current build
+- [ ] Three-run benchmark finished, if any benchmark number is added to the comment (the draft quotes none)
+- [ ] Every item in [schedule.md](schedule.md#before-every-post) is checked
+- [ ] A hunter is optional; self-hunting is fine. Schedule the launch in advance on Product Hunt
+- [ ] Reply to every comment within the hour on launch day
 
 ## Timing
 
