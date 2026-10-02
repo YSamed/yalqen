@@ -10,7 +10,7 @@
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png"><img src="design/readme/download-dmg.png" alt="DMG dosyasını indir" width="250"></picture></a>
+    <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/download-dmg-dark.png"><img src="design/readme/download-dmg.png" alt="DMG dosyasını indir" width="250"></picture></a>
     <a href="#kurulum"><picture><source media="(prefers-color-scheme: dark)" srcset="design/readme/install-homebrew-dark.png"><img src="design/readme/install-homebrew.png" alt="Homebrew ile kur" width="250"></picture></a>
     <br>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Son sürüm ve toplam indirme sayısı" height="56"></picture></a>
@@ -56,7 +56,7 @@ Tüm [klavye kısayollarına](docs/keyboard-shortcuts.tr.md) göz atın. Yalqen 
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-<sub>Disk görüntüsünü mü tercih edersiniz? [Son DMG dosyasını indirin](https://github.com/YSamed/yalqen/releases/latest).</sub>
+<sub>Disk görüntüsünü mü tercih edersiniz? [Son DMG dosyasını indirin](https://yalqen.com/download).</sub>
 
 <br>
 

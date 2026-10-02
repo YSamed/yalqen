@@ -41,4 +41,6 @@ The README badges depend on these live endpoints. Local code preparation alone d
 
 ## README release badge
 
+Once the site's download redirect counts distinct downloaders (see [unique-downloads-spec.md](unique-downloads-spec.md)), the badge shows that `uniqueDownloads` value labelled "unique downloads". Until the endpoint returns it, the badge falls back to the DMG total above labelled "downloads".
+
 The release badge under the README's download buttons is not served by the site. The `Release badge` workflow in this repository renders it every six hours and after each release with `.github/scripts/release-badge.mjs`, using the same DMG-only total as `/api/downloads` plus the newest stable release that has a DMG. It force-pushes the light and dark SVGs as a single commit to the `badges` branch.
