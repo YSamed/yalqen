@@ -1,6 +1,6 @@
 # Unique download counting (yalqenweb)
 
-Implementation spec for the `YSamed/yalqenweb` repository. The release badge in this repository reads `uniqueDownloads` from `GET https://yalqen.com/api/downloads`, including zero, and falls back to the GitHub DMG total only while the field is missing.
+Implementation spec for the `YSamed/yalqenweb` repository. The release badge in this repository adds a fixed historical baseline of 103 to `uniqueDownloads` from `GET https://yalqen.com/api/downloads`, including zero, and labels the result "downloads". The baseline is not a unique count. The badge falls back to the GitHub DMG total only while the field is missing; the API unique counter stays unchanged.
 
 ## Goal
 

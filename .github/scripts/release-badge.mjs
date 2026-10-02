@@ -110,11 +110,15 @@ async function uniqueDownloads() {
   }
 }
 const unique = await uniqueDownloads()
+// Historical downloads were not deduplicated. Preserve them without claiming
+// that the combined figure represents unique people or unique downloads.
+const historicalDownloads = 103
+const displayedDownloads = unique === null ? downloads : historicalDownloads + unique
 
 const groups = [
   [{ text: latest.tag_name, bold: true }, { text: releasedAgo(latest.published_at, Date.now()), bold: false }],
-  [{ text: (unique ?? downloads).toLocaleString('en-US'), bold: true }, { text: unique !== null ? 'unique downloads' : 'downloads', bold: false }],
+  [{ text: displayedDownloads.toLocaleString('en-US'), bold: true }, { text: 'downloads', bold: false }],
 ]
 mkdirSync(outDir, { recursive: true })
 for (const theme of ['light', 'dark']) writeFileSync(join(outDir, `release-${theme}.svg`), renderBadge(groups, theme))
-console.log(`${latest.tag_name}, ${downloads} DMG downloads, ${unique ?? 'no'} unique downloads`)
+console.log(`${latest.tag_name}, ${downloads} GitHub DMG downloads, ${unique ?? 'no'} unique downloads, ${displayedDownloads} displayed downloads (historical baseline: ${historicalDownloads})`)
