@@ -43,6 +43,7 @@ const fixture = () => ({
   addressPlaceholder: 'Search',
   panelCollapsed: false,
   panelSide: 'left',
+  pinnedDisplay: 'always',
   sidebarVisible: true,
   toolbarVisible: true,
   toolbarTabs: true,

@@ -53,6 +53,11 @@
     { value: 'left', label: t('settings.left') },
     { value: 'right', label: t('settings.right') },
   ] as const;
+  const pinnedOptions = [
+    { value: 'always', label: t('settings.pinnedAlways') },
+    { value: 'expanded', label: t('settings.pinnedExpanded') },
+    { value: 'never', label: t('settings.pinnedNever') },
+  ] as const;
   const toolbarTabOptions = [
     { value: true, label: t('settings.allTabs') },
     { value: false, label: t('settings.currentPageOnly') },
@@ -405,6 +410,15 @@
               label={t('settings.sidebarVisibility')}
               checked={values.sidebarVisible}
               onchange={(checked) => update({ sidebarVisible: checked })}
+            />
+          </div>
+          <div class="row">
+            <span class="label">{t('settings.pinnedTabs')}</span>
+            <SegmentedControl
+              label={t('settings.pinnedTabs')}
+              options={pinnedOptions}
+              value={values.pinnedDisplay}
+              onchange={(value) => update({ pinnedDisplay: value })}
             />
           </div>
           <div class="row">

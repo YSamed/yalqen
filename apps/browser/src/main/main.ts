@@ -57,7 +57,6 @@ import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './se
 import { SettingsStore } from './settings.js';
 import { broadcastExtensions, broadcastPasswords, broadcastSettings, isSettingsFrame } from './settings-page.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
-import { recentPages } from './tabs.js';
 import { Updater, loadAutoUpdater } from './updater.js';
 import { UsageReporter, USAGE_ENDPOINT } from './usage.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
@@ -399,7 +398,6 @@ function startBrowser(): void {
     [developer, true],
   ] as const) {
     serveInternalPages(browsing, internalPages, {
-      recent: () => recentPages(closedTabs),
       pinned: () => [
         ...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values(),
       ],

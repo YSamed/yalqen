@@ -15,6 +15,7 @@ test('unknown or mistyped fields fall back', () => {
       startupBehavior: 'close-all',
       panelCollapsed: 'yes',
       panelSide: 'top',
+      pinnedDisplay: 'sometimes',
       sidebarVisible: 'no',
       toolbarVisible: 0,
       toolbarTabs: 'no',
@@ -38,6 +39,7 @@ test('unknown or mistyped fields fall back', () => {
       startupBehavior: 'restore',
       panelCollapsed: false,
       panelSide: 'left',
+      pinnedDisplay: 'always',
       sidebarVisible: true,
       toolbarVisible: true,
       toolbarTabs: true,
@@ -82,6 +84,7 @@ test('updates keep valid fields and persist', () => {
       startupBehavior: 'new-tab',
       panelCollapsed: true,
       panelSide: 'right',
+      pinnedDisplay: 'expanded',
       sidebarVisible: false,
       toolbarVisible: false,
       toolbarTabs: false,
@@ -109,6 +112,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.sidebarVisible, false);
     assert.equal(reloaded.toolbarVisible, false);
     assert.equal(reloaded.toolbarTabs, false);
+    assert.equal(reloaded.pinnedDisplay, 'expanded');
     assert.deepEqual(reloaded.toolbarButtons, ['downloads', 'settings']);
     assert.equal(reloaded.freezeBackgroundTabs, false);
     assert.equal(reloaded.discardAfterMinutes, 0);

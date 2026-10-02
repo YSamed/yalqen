@@ -355,9 +355,10 @@ export class TabManager {
     const index = this.indexOf(id);
     if (index < 0) return;
     const { pinnedUrl } = this.tabs[index];
+    const neighbor = this.listNeighbor(id);
     if (pinnedUrl) {
       this.openedPinned.delete(id);
-      this.unloadPinned(this.tabs[index], pinnedUrl);
+      this.unloadPinned(this.tabs[index], pinnedUrl, neighbor);
       return;
     }
     this.reanchorOpenedPinned(id);
@@ -375,20 +376,19 @@ export class TabManager {
     if (this.activeId === id) {
       this.activeId = null;
       if (opener) this.activate(opener.id);
-      else this.activateUnpinnedNear(index);
+      else if (neighbor) this.activate(neighbor);
+      else this.open();
       return;
     }
     if (opener) this.maybeFreeze(opener);
     this.changed(true);
   }
 
-  private activateUnpinnedNear(index: number, excludeId?: TabId): void {
-    const others = [...this.tabs.slice(index), ...this.tabs.slice(0, index).reverse()].filter(
-      (item) => item.id !== excludeId,
-    );
-    const next = others.find((item) => !item.pinnedUrl) ?? others[0];
-    if (next) this.activate(next.id);
-    else this.open();
+  private listNeighbor(id: TabId): TabId | null {
+    const order = tabListOrder(this.tabs, this.openedPinned);
+    const position = order.findIndex((tab) => tab.id === id);
+    if (position < 0) return null;
+    return (order[position + 1] ?? order[position - 1])?.id ?? null;
   }
 
   reopenClosed(): void {
@@ -482,7 +482,7 @@ export class TabManager {
     }
   }
 
-  private unloadPinned(tab: Tab, pinnedUrl: string): void {
+  private unloadPinned(tab: Tab, pinnedUrl: string, neighbor: TabId | null): void {
     this.destroyView(tab);
     tab.url = pinnedUrl;
     tab.history = null;
@@ -493,7 +493,8 @@ export class TabManager {
       this.changed(true);
       return;
     }
-    this.activateUnpinnedNear(this.indexOf(tab.id) + 1, tab.id);
+    if (neighbor) this.activate(neighbor);
+    else this.open();
   }
 
   blockedPopups(): string[] {

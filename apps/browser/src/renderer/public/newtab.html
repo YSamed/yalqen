@@ -348,85 +348,6 @@
         line-height: 1.4;
       }
 
-      .recent {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: min(640px, 100%);
-        margin-top: 28px;
-      }
-
-      .recent h2 {
-        margin: 0 0 10px;
-        color: var(--faint);
-        font-size: 12px;
-        font-weight: 500;
-      }
-
-      .recent ul {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 6px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-
-      .recent li {
-        display: flex;
-        align-items: center;
-        max-width: 220px;
-        height: var(--control-lg);
-        border-radius: var(--radius-pill);
-        background: var(--chip);
-        box-shadow:
-          var(--rim),
-          0 0 0 0.5px rgb(16 18 24 / 0.08);
-        color: var(--muted);
-        font-size: 13px;
-        transition:
-          background-color 120ms ease-out,
-          color 120ms ease-out;
-      }
-
-      .recent li:hover {
-        background: var(--surface);
-        color: var(--text);
-      }
-
-      .recent a:first-child {
-        display: flex;
-        flex: 1;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-        height: 100%;
-        padding: 0 4px 0 10px;
-      }
-
-      .recent a:first-child span:last-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .recent img,
-      .dot {
-        flex: none;
-        width: 16px;
-        height: 16px;
-        border-radius: 4px;
-      }
-
-      .dot {
-        background: var(--well);
-      }
-
-      .forget {
-        margin-right: 6px;
-      }
-
       .repo-prompt {
         position: fixed;
         z-index: 2;
@@ -545,7 +466,7 @@
         </form>
         <ul id="suggestions" class="suggestions" role="listbox" aria-label="{{newTab.suggestions}}" hidden></ul>
       </div>
-      __YALQEN_PINNED_SLOT__ __YALQEN_TIPS_SLOT__ __YALQEN_RECENT_SLOT__
+      __YALQEN_PINNED_SLOT__ __YALQEN_TIPS_SLOT__
     </main>
     __YALQEN_REPO_PROMPT_SLOT__
     <script src="yalqen://newtab/suggestions.js" defer></script>

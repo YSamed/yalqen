@@ -291,6 +291,10 @@ export const tr: Record<MessageKey, string> = {
   'settings.pageZoomHint': 'Kendi yakınlaştırması kaydedilmemiş sayfalara uygulanır.',
   'settings.menus': 'Menüler',
   'settings.sidebar': 'Yan menü',
+  'settings.pinnedTabs': 'Sabitlenmiş sekmeler',
+  'settings.pinnedAlways': 'Her zaman',
+  'settings.pinnedExpanded': 'Sadece geniş menüde',
+  'settings.pinnedNever': 'Hiçbir zaman',
   'settings.sidebarVisibility': 'Yan menü görünürlüğü',
   'settings.toolbar': 'Üst menü',
   'settings.toolbarHint': 'İki menü gizliyken Görünüm menüsünden yeniden açabilirsiniz.',
@@ -595,7 +599,6 @@ export const tr: Record<MessageKey, string> = {
   'pageExport.fallbackFileName': 'sayfa',
 
   'internalPages.removeFromList': 'Listeden kaldır: {host}',
-  'internalPages.recentlyClosed': 'Son kapatılanlar',
   'internalPages.pinned': 'Sabitlenenler',
   'internalPages.welcomeTitle': "Yalqen'e hoş geldin.",
   'internalPages.welcomeText': 'İnternette kendi yolunu aç. Aramak ya da bir adres yazmak için başlayabilirsin.',
