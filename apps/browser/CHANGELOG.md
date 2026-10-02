@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.28](https://github.com/YSamed/yalqen/compare/v0.2.27...v0.2.28) (2026-10-02)
+
+
+### Features
+
+* pinned tabs display setting, tab close order and sidebar polish ([#119](https://github.com/YSamed/yalqen/issues/119)) ([115f64d](https://github.com/YSamed/yalqen/commit/115f64d58624cc9ae4ff81e1ebc695e61dd8c9a2))
+
 ## [0.2.27](https://github.com/YSamed/yalqen/compare/v0.2.26...v0.2.27) (2026-10-02)
 
 
