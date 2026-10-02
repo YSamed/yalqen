@@ -323,6 +323,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.blockThirdPartyCookiesHint':
     'Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum açma ve yorum alanları çalışmayabilir.',
   'settings.askBeforeDownload': 'İndirmeden önce sor',
+  'settings.usageCounting': 'Aktif kurulumların sayılmasına yardımcı ol',
+  'settings.usageCountingHint':
+    'Varsayılan olarak kapalıdır. Son 30 gündeki aktif kurulumları saymak için yalqen.com’a günde bir kez yalnızca rastgele bir kurulum kimliği gönderir. Gezinme geçmişi veya hesap bilgisi gönderilmez. İstediğiniz zaman kapatabilirsiniz.',
   'settings.askBeforeDownloadHint': 'Bir site dosya indirmeye başlamadan önce onayınızı ister.',
   'settings.secureDns': 'Güvenli DNS',
   'settings.secureDnsHint':

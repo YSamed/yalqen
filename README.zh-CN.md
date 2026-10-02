@@ -71,6 +71,8 @@ brew install --cask YSamed/yalqen/yalqen
 
 或从 [Releases](https://github.com/YSamed/yalqen/releases/latest) 下载 DMG。应用已使用 Developer ID 签名并经过公证，打开时不会出现 Gatekeeper 警告。
 
+下载徽章统计 DMG 文件下载次数，包含重复下载。活跃安装徽章统计过去 30 天内参与统计的浏览器配置文件，不代表独立用户人数。活跃安装统计默认关闭，可在 **设置 → 隐私** 中开启。非隐私窗口打开时，每个 UTC 日期最多发送一次随机安装 ID。[统计方式详情](docs/usage-measurement.md)。
+
 Yalqen 会在后台自动更新。如需通过 Homebrew 更新：
 
 ```bash

@@ -9,7 +9,8 @@
   <p>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="https://img.shields.io/github/v/release/YSamed/yalqen" alt="Latest release"></a>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/YSamed/yalqen" alt="MIT license"></a>
-    <a href="https://github.com/YSamed/yalqen/releases"><img src="https://img.shields.io/github/downloads/YSamed/yalqen/total" alt="Downloads"></a>
+    <a href="https://github.com/YSamed/yalqen/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fdownloads" alt="DMG downloads across published stable releases"></a>
+    <a href="https://yalqen.com/privacy#active-installations"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fyalqen.com%2Fapi%2Fusage" alt="Active installations in the last 30 days, opt-in only"></a>
     <a href="https://github.com/YSamed/yalqen/actions/workflows/ci.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml"><img src="https://github.com/YSamed/yalqen/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
     <a href="https://scorecard.dev/viewer/?uri=github.com/YSamed/yalqen"><img src="https://api.scorecard.dev/projects/github.com/YSamed/yalqen/badge" alt="OpenSSF Scorecard"></a>
@@ -88,6 +89,8 @@ brew install --cask YSamed/yalqen/yalqen
 ```
 
 Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest). The app is signed with a Developer ID and notarized, so it opens without a Gatekeeper warning.
+
+The download badge counts DMG file downloads, including repeat downloads. The active-install badge counts participating browser profiles observed in the last 30 days. Neither is a count of individual people. Active-install counting is off by default; enable it in **Settings → Privacy**. It sends only a random installation ID, at most once per UTC day while a non-private window is open. See [how the counter works](docs/usage-measurement.md).
 
 Yalqen updates itself in the background. To update through Homebrew instead:
 

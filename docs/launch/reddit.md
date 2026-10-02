@@ -57,7 +57,7 @@ I built an open-source Chromium browser for macOS focused on developers – vert
 I'm the developer. Yalqen is an MIT-licensed browser for macOS (Apple Silicon). Engine is Chromium via Electron, UI is Svelte.
 
 What's different from Chrome/Arc/Zen:
-- Open source, no account, no telemetry
+- Open source, no account, no browsing analytics; optional active-install counting is off by default
 - Ad/tracker blocking and third-party cookie blocking on by default (Ghostery's filter engine)
 - Phone view and DevTools one key away, with iPhone/Pixel/Galaxy/iPad presets
 - Memory saver that discards idle tabs but never pinned, playing or DevTools tabs
@@ -69,7 +69,7 @@ https://github.com/YSamed/yalqen/blob/main/docs/benchmarks.md
 Repo: https://github.com/YSamed/yalqen
 ```
 
-Check before posting: remove "no telemetry" unless it is verified that the app sends nothing besides update checks to GitHub.
+Check before posting: describe optional active-install counting as off by default and link to the privacy explanation. Do not claim there is no telemetry when this feature is available.
 
 ---
 

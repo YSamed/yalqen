@@ -546,6 +546,17 @@
               onchange={(value) => update({ secureDns: value })}
             />
           </div>
+          <div class="row">
+            <span class="label">
+              <span>{t('settings.usageCounting')}</span>
+              <span class="hint">{t('settings.usageCountingHint')}</span>
+            </span>
+            <Switch
+              label={t('settings.usageCounting')}
+              checked={values.usageCounting}
+              onchange={(checked) => update({ usageCounting: checked })}
+            />
+          </div>
           <h2>{t('settings.browsingData')}</h2>
           <div class="row stacked">
             <span class="label">

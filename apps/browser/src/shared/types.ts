@@ -350,6 +350,7 @@ export interface SettingsValues {
   pageLanguage: PageLanguage;
   pageTranslation: boolean;
   autoUpdate: boolean;
+  usageCounting: boolean;
   askBeforeDownload: boolean;
   welcomeCompleted: boolean;
 }

@@ -59,6 +59,7 @@ import { broadcastExtensions, broadcastPasswords, broadcastSettings, isSettingsF
 import { EMPTY_HISTORY_INDEX, suggest } from './suggestions.js';
 import { recentPages } from './tabs.js';
 import { Updater, loadAutoUpdater } from './updater.js';
+import { UsageReporter, USAGE_ENDPOINT } from './usage.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window.js';
 import { ZoomStore } from './zoom.js';
 
@@ -272,11 +273,19 @@ function startBrowser(): void {
     if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs)
       eachWindow((window) => window.tabs.applyFreezeSetting());
     if (next.autoUpdate !== previous.autoUpdate) updater.schedule();
+    if (next.usageCounting !== previous.usageCounting) usage.schedule();
     adBlocker.setEnabled(next.adBlocking);
     applyCookieBlocking();
     pushState();
     broadcastSettings(settingsView());
   };
+
+  const usage = new UsageReporter({
+    directory: userData,
+    endpoint: app.isPackaged && !bench ? USAGE_ENDPOINT : null,
+    enabled: () => settings.get().usageCounting,
+    active: () => windows.some((window) => !window.isPrivate && !window.window.isDestroyed()),
+  });
 
   const context: AppContext = {
     icon: appIcon,
@@ -597,6 +606,7 @@ function startBrowser(): void {
   app.on('will-quit', () => {
     clearInterval(discardTimer);
     updater.stop();
+    usage.stop();
     downloadManager.destroy();
     adBlocker.destroy();
     commandBar.destroy();
@@ -651,6 +661,7 @@ function startBrowser(): void {
   void extensions.loadAll().then(() => {
     bench?.mark('extensions-loaded');
     openInitialWindows();
+    usage.schedule();
     prewarmCommandBar();
     if (!bench) return;
     void runBench(

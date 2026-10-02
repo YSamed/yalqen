@@ -321,6 +321,9 @@ export const en = {
   'settings.blockThirdPartyCookiesHint':
     'Makes it harder for other sites to track you across the web through embedded content. Some embedded sign-in and comment fields may not work.',
   'settings.askBeforeDownload': 'Ask before downloading',
+  'settings.usageCounting': 'Help count active installations',
+  'settings.usageCountingHint':
+    'Off by default. Sends only a random installation ID to yalqen.com once per day to count active installations over 30 days. No browsing history or account information is sent. You can turn it off at any time.',
   'settings.askBeforeDownloadHint': 'Asks for your confirmation before a site starts downloading a file.',
   'settings.secureDns': 'Secure DNS',
   'settings.secureDnsHint':

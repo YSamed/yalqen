@@ -28,6 +28,7 @@ test('unknown or mistyped fields fall back', () => {
       defaultZoom: 1.3,
       pageLanguage: 'de',
       autoUpdate: 'no',
+      usageCounting: 'yes',
     }),
     {
       version: 1,
@@ -52,6 +53,7 @@ test('unknown or mistyped fields fall back', () => {
       pageLanguage: 'tr',
       pageTranslation: true,
       autoUpdate: true,
+      usageCounting: false,
       askBeforeDownload: true,
       welcomeCompleted: false,
     },

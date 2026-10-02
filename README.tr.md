@@ -40,6 +40,8 @@ brew install --cask YSamed/yalqen/yalqen
 
 Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Uygulama Developer ID ile imzalı ve notarize edilmiştir, Gatekeeper uyarısı olmadan açılır.
 
+İndirme rozeti, tekrar indirmeler dahil DMG dosyası indirmelerini sayar. Aktif kurulum rozeti, son 30 günde ölçüme katılan tarayıcı profillerini sayar; tekil kişi sayısı değildir. Aktif kurulum ölçümü varsayılan olarak kapalıdır, **Ayarlar → Gizlilik** bölümünden açılabilir. Özel olmayan bir pencere açıkken UTC gününde en fazla bir kez yalnızca rastgele bir kurulum kimliği gönderilir. [Ölçümün ayrıntıları](docs/usage-measurement.md).
+
 Yalqen arka planda kendini günceller. Güncellemeyi Homebrew ile yapmak için:
 
 ```bash
