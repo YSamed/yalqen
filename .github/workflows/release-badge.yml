@@ -1,0 +1,49 @@
+name: Release badge
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_run:
+    workflows: [Release Please]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-badge
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Render badge
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/release-badge.mjs "$RUNNER_TEMP/badges"
+
+      # The badges branch holds a single orphan commit, so main's protection and history stay untouched.
+      - name: Publish to the badges branch
+        env:
+          GIT_INDEX_FILE: ${{ runner.temp }}/badges-index
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          git --work-tree="$RUNNER_TEMP/badges" add -A .
+          tree=$(git write-tree)
+          if git fetch -q --depth=1 origin badges && [ "$tree" = "$(git rev-parse 'FETCH_HEAD^{tree}')" ]; then
+            echo "Badge unchanged"
+            exit 0
+          fi
+          commit=$(git commit-tree "$tree" -m "chore: update release badge")
+          git push -f origin "$commit:refs/heads/badges"

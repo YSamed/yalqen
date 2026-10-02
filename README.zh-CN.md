@@ -7,12 +7,21 @@
   <p>垂直标签页、快速命令栏、内置广告和跟踪器拦截，以及没有多余界面的开发者工具。</p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-button.png" alt="下载 macOS 版" width="260"></a>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-dmg.png" alt="下载 DMG" width="250"></a>
+    <a href="#安装"><img src="design/readme/install-homebrew.png" alt="使用 Homebrew 安装" width="250"></a>
   </p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><strong>下载</strong></a> ·
-    <a href="#安装">Homebrew</a> ·
+    <a href="https://github.com/YSamed/yalqen/releases/latest">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-dark.svg">
+        <img src="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-light.svg" alt="最新版本和总下载量" height="56">
+      </picture>
+    </a>
+  </p>
+
+  <p>
+    <a href="#安装">安装</a> ·
     <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">官网</a> ·
     <a href="apps/browser/CHANGELOG.md">更新日志</a> ·
     <a href="CONTRIBUTING.md">参与贡献</a> ·
@@ -63,15 +72,17 @@ Yalqen 适合想要 Chromium 兼容性、又不想被浏览器界面干扰的开
 
 > **需要 macOS 13 或更高版本，且仅支持 Apple Silicon。** 不支持 Intel Mac。
 
-使用 [Homebrew](https://brew.sh)：
+任选其一：
+
+**DMG：** 从 [Releases](https://github.com/YSamed/yalqen/releases/latest) 下载。应用已使用 Developer ID 签名并经过公证，打开时不会出现 Gatekeeper 警告。
+
+**终端：** 使用 [Homebrew](https://brew.sh) 安装。
 
 ```bash
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-或从 [Releases](https://github.com/YSamed/yalqen/releases/latest) 下载 DMG。应用已使用 Developer ID 签名并经过公证，打开时不会出现 Gatekeeper 警告。
-
-下载徽章统计 DMG 文件下载次数，包含重复下载。活跃安装徽章统计过去 30 天内参与统计的浏览器配置文件，不代表独立用户人数。活跃安装统计默认关闭，可在 **设置 → 隐私** 中开启。非隐私窗口打开时，每个 UTC 日期最多发送一次随机安装 ID。[统计方式详情](docs/usage-measurement.md)。
+活跃安装统计默认关闭，可在 **设置 → 隐私** 中开启。[徽章统计方式详情](docs/usage-measurement.md)。
 
 Yalqen 会在后台自动更新。如需通过 Homebrew 更新：
 

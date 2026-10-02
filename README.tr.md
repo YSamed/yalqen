@@ -6,10 +6,21 @@
   <p>macOS için açık kaynaklı, Chromium tabanlı geliştirici tarayıcısı. Dikey sekmeler, klavye öncelikli komut çubuğu, yerleşik reklam engelleme.</p>
 
   <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-button.png" alt="macOS için indir" width="260"></a>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><img src="design/readme/download-dmg.png" alt="DMG dosyasını indir" width="250"></a>
+    <a href="#kurulum"><img src="design/readme/install-homebrew.png" alt="Homebrew ile kur" width="250"></a>
   </p>
 
   <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-dark.svg">
+        <img src="https://raw.githubusercontent.com/YSamed/yalqen/badges/release-light.svg" alt="Son sürüm ve toplam indirme sayısı" height="56">
+      </picture>
+    </a>
+  </p>
+
+  <p>
+    <a href="#kurulum">Kurulum</a> ·
     <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme">Web sitesi</a> ·
     <a href="apps/browser/CHANGELOG.md">Değişiklik günlüğü</a> ·
     <a href="CONTRIBUTING.md">Katkıda bulun</a> ·
@@ -32,15 +43,17 @@
 
 > **macOS 13 veya üzeri ve Apple Silicon gerekir.** Intel Mac'ler desteklenmez.
 
-[Homebrew](https://brew.sh) ile:
+İkisinden birini seçin:
+
+**DMG:** [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Uygulama Developer ID ile imzalı ve notarize edilmiştir, Gatekeeper uyarısı olmadan açılır.
+
+**Terminal:** [Homebrew](https://brew.sh) ile kurun.
 
 ```bash
 brew install --cask YSamed/yalqen/yalqen
 ```
 
-Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Uygulama Developer ID ile imzalı ve notarize edilmiştir, Gatekeeper uyarısı olmadan açılır.
-
-İndirme rozeti, tekrar indirmeler dahil DMG dosyası indirmelerini sayar. Aktif kurulum rozeti, son 30 günde ölçüme katılan tarayıcı profillerini sayar; tekil kişi sayısı değildir. Aktif kurulum ölçümü varsayılan olarak kapalıdır, **Ayarlar → Gizlilik** bölümünden açılabilir. Özel olmayan bir pencere açıkken UTC gününde en fazla bir kez yalnızca rastgele bir kurulum kimliği gönderilir. [Ölçümün ayrıntıları](docs/usage-measurement.md).
+Aktif kurulum ölçümü varsayılan olarak kapalıdır, **Ayarlar → Gizlilik** bölümünden açılabilir. [Rozet sayaçlarının ayrıntıları](docs/usage-measurement.md).
 
 Yalqen arka planda kendini günceller. Güncellemeyi Homebrew ile yapmak için:
 
