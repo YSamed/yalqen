@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/YSamed/yalqen/compare/v0.3.1...v0.3.2) (2026-10-03)
+
+
+### Features
+
+* simplify agent connection settings ([#148](https://github.com/YSamed/yalqen/issues/148)) ([b8fb3ae](https://github.com/YSamed/yalqen/commit/b8fb3ae08ccb4ada189308f832fbeadea5714dfe))
+
 ## [0.3.1](https://github.com/YSamed/yalqen/compare/v0.3.0...v0.3.1) (2026-10-03)
 
 
