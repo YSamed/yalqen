@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.32](https://github.com/YSamed/yalqen/compare/v0.2.31...v0.2.32) (2026-10-03)
+
+
+### Performance
+
+* send window state over ipc as a json string ([#137](https://github.com/YSamed/yalqen/issues/137)) ([4f9c97f](https://github.com/YSamed/yalqen/commit/4f9c97f6793e9859c3c01af3df0441cce27bff47))
+
 ## [0.2.31](https://github.com/YSamed/yalqen/compare/v0.2.30...v0.2.31) (2026-10-03)
 
 
