@@ -3,6 +3,7 @@
   import { t } from '../../shared/i18n';
   import type { AgentActionPolicy, AgentBridgeView, AgentSetupKind, SettingsValues } from '../../shared/types';
   import Button from '../ui/Button.svelte';
+  import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import SettingRow from './SettingRow.svelte';
@@ -16,6 +17,11 @@
     { value: 'ask', label: t('agentBridge.actionsAsk') },
     { value: 'allow', label: t('agentBridge.actionsAllow') },
   ];
+  const agentOptions: { value: 'claude' | 'codex'; label: string }[] = [
+    { value: 'claude', label: 'Claude Code' },
+    { value: 'codex', label: 'Codex' },
+  ];
+  let agent = $state<'claude' | 'codex'>('claude');
   let view = $state<AgentBridgeView | null>(null);
   let copied = $state<AgentSetupKind | null>(null);
   let originsText = $state('');
@@ -63,37 +69,23 @@
     <p class="hint error" role="alert">{t('agentBridge.failed', { error: view.error })}</p>
   {:else if view.url}
     <p class="hint status" aria-live="polite">
-      {t('agentBridge.listening', { url: view.url })}
-      · {t('agentBridge.observedTabs', { count: view.observedTabs })}
-      {#if view.lastCallAt}
-        · {t('agentBridge.lastCall', { time: new Date(view.lastCallAt).toLocaleTimeString() })}
-      {/if}
+      {t('agentBridge.ready')} · {t('agentBridge.observedTabs', { count: view.observedTabs })}
     </p>
 
     <div class="setup">
       <div class="setup-head">
-        <span>Claude Code</span>
-        <Button size="sm" onclick={() => copy('claude')}>
-          {copied === 'claude' ? t('agentBridge.copied') : t('agentBridge.copy')}
+        <SegmentedControl
+          label={t('agentBridge.title')}
+          options={agentOptions}
+          value={agent}
+          onchange={(next) => (agent = next)}
+        />
+        <Button size="sm" onclick={() => copy(agent)}>
+          {copied === agent ? t('agentBridge.copied') : t('agentBridge.copy')}
         </Button>
       </div>
-      <pre>{view.claudeCommand}</pre>
-    </div>
-    <div class="setup">
-      <div class="setup-head">
-        <span>Codex</span>
-        <Button size="sm" onclick={() => copy('codex')}>
-          {copied === 'codex' ? t('agentBridge.copied') : t('agentBridge.copy')}
-        </Button>
-      </div>
-      <pre>{view.codexConfig}</pre>
-    </div>
-    <p class="hint">{t('agentBridge.tokenHint')}</p>
-    <div class="actions">
-      <Button size="sm" onclick={() => copy('token')}>
-        {copied === 'token' ? t('agentBridge.copied') : t('agentBridge.copyToken')}
-      </Button>
-      <Button size="sm" onclick={regenerate}>{t('agentBridge.regenerate')}</Button>
+      <pre>{agent === 'claude' ? view.claudeCommand : view.codexConfig}</pre>
+      <p class="hint">{t('agentBridge.setupHint')}</p>
     </div>
   {/if}
 
@@ -106,38 +98,58 @@
     />
   </SettingRow>
 
-  <SettingRow title={t('agentBridge.tracing')} hint={t('agentBridge.tracingHint')}>
-    <Switch
-      label={t('agentBridge.tracing')}
-      checked={values.agentTracing}
-      onchange={(checked) => update({ agentTracing: checked })}
-    />
-  </SettingRow>
-  {#if values.agentTracing && view.otelConfig}
-    <div class="setup">
-      <div class="setup-head">
-        <span>{t('agentBridge.tracingSetup')}</span>
-        <Button size="sm" onclick={() => copy('otel')}>
-          {copied === 'otel' ? t('agentBridge.copied') : t('agentBridge.copy')}
-        </Button>
-      </div>
-      <pre>{view.otelConfig}</pre>
-    </div>
-  {/if}
+  <details class="advanced">
+    <summary>{t('agentBridge.advanced')}</summary>
 
-  <SettingRow title={t('agentBridge.origins')} hint={t('agentBridge.originsHint')} labelFor="agent-origins" stacked>
-    <textarea
-      id="agent-origins"
-      class="field code"
-      bind:value={originsText}
-      rows="3"
-      spellcheck="false"
-      autocomplete="off"
-      placeholder="https://my-app.ngrok.app"></textarea>
-  </SettingRow>
-  <div class="actions">
-    <Button size="sm" disabled={!originsDirty} onclick={saveOrigins}>{t('agentBridge.saveOrigins')}</Button>
-  </div>
+    {#if view.url}
+      <p class="hint status">
+        {t('agentBridge.listening', { url: view.url })}
+        {#if view.lastCallAt}
+          · {t('agentBridge.lastCall', { time: new Date(view.lastCallAt).toLocaleTimeString() })}
+        {/if}
+      </p>
+      <p class="hint">{t('agentBridge.tokenHint')}</p>
+      <div class="actions">
+        <Button size="sm" onclick={() => copy('token')}>
+          {copied === 'token' ? t('agentBridge.copied') : t('agentBridge.copyToken')}
+        </Button>
+        <Button size="sm" onclick={regenerate}>{t('agentBridge.regenerate')}</Button>
+      </div>
+    {/if}
+
+    <SettingRow title={t('agentBridge.tracing')} hint={t('agentBridge.tracingHint')}>
+      <Switch
+        label={t('agentBridge.tracing')}
+        checked={values.agentTracing}
+        onchange={(checked) => update({ agentTracing: checked })}
+      />
+    </SettingRow>
+    {#if values.agentTracing && view.otelConfig}
+      <div class="setup">
+        <div class="setup-head">
+          <span>{t('agentBridge.tracingSetup')}</span>
+          <Button size="sm" onclick={() => copy('otel')}>
+            {copied === 'otel' ? t('agentBridge.copied') : t('agentBridge.copy')}
+          </Button>
+        </div>
+        <pre>{view.otelConfig}</pre>
+      </div>
+    {/if}
+
+    <SettingRow title={t('agentBridge.origins')} hint={t('agentBridge.originsHint')} labelFor="agent-origins" stacked>
+      <textarea
+        id="agent-origins"
+        class="field code"
+        bind:value={originsText}
+        rows="3"
+        spellcheck="false"
+        autocomplete="off"
+        placeholder="https://my-app.ngrok.app"></textarea>
+    </SettingRow>
+    <div class="actions">
+      <Button size="sm" disabled={!originsDirty} onclick={saveOrigins}>{t('agentBridge.saveOrigins')}</Button>
+    </div>
+  </details>
 {/if}
 
 <style>
@@ -154,10 +166,26 @@
     margin: 0 0 12px;
   }
 
+  .setup .hint {
+    margin-top: 4px;
+  }
+
+  .advanced {
+    margin: 4px 0 20px;
+  }
+
+  .advanced summary {
+    margin-bottom: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
   .setup-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     margin-bottom: 4px;
     font-weight: 500;
   }
