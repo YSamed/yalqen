@@ -1,8 +1,11 @@
 import type { WebContents } from 'electron';
 import { fullPageClip } from './page-export.js';
 import type { ProtocolCommand } from './page-overrides.js';
+import { PREPARE_SCREENSHOT_SCRIPT } from './screenshot-preparation.js';
 
 const PROTOCOL_VERSION = '1.3';
+const SCREENSHOT_WORLD_ID = 1005;
+const captures = new WeakMap<WebContents, Promise<Buffer>>();
 
 export function attachDebugger(contents: WebContents): void {
   if (!contents.debugger.isAttached()) contents.debugger.attach(PROTOCOL_VERSION);
@@ -24,8 +27,21 @@ export async function sendCommands(contents: WebContents, commands: readonly Pro
 }
 
 export async function captureFullPage(contents: WebContents): Promise<Buffer> {
+  const pending = captures.get(contents);
+  if (pending) return pending;
+  const capture = capturePreparedPage(contents);
+  captures.set(contents, capture);
+  try {
+    return await capture;
+  } finally {
+    captures.delete(contents);
+  }
+}
+
+async function capturePreparedPage(contents: WebContents): Promise<Buffer> {
   attachDebugger(contents);
   const dbg = contents.debugger;
+  await contents.executeJavaScriptInIsolatedWorld(SCREENSHOT_WORLD_ID, [{ code: PREPARE_SCREENSHOT_SCRIPT }]);
   const metrics = (await dbg.sendCommand('Page.getLayoutMetrics')) as {
     cssContentSize: { width: number; height: number };
   };
