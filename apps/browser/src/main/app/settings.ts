@@ -14,6 +14,7 @@ import { DEFAULT_ZOOM_FACTORS, REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } fro
 import { JsonFile } from '../storage/json-file.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
 import { FONT_SIZES } from './page-preferences.js';
+import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from '../address-bar/search.js';
 
 export interface Settings extends SettingsValues {
@@ -47,6 +48,8 @@ const DEFAULTS: Settings = {
   usageCounting: false,
   askBeforeDownload: true,
   welcomeCompleted: false,
+  agentBridge: false,
+  agentOrigins: [],
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
@@ -92,6 +95,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     usageCounting,
     askBeforeDownload,
     welcomeCompleted,
+    agentBridge,
+    agentOrigins,
   } = input;
   return {
     version: 1,
@@ -137,6 +142,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     usageCounting: typeof usageCounting === 'boolean' ? usageCounting : base.usageCounting,
     askBeforeDownload: typeof askBeforeDownload === 'boolean' ? askBeforeDownload : base.askBeforeDownload,
     welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
+    agentBridge: typeof agentBridge === 'boolean' ? agentBridge : base.agentBridge,
+    agentOrigins: Array.isArray(agentOrigins) ? sanitizeAgentOrigins(agentOrigins) : base.agentOrigins,
   };
 }
 

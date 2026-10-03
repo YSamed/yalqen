@@ -116,17 +116,40 @@ async function capture() {
 
   const now = Date.UTC(2026, 9, 3, 12);
   const settingsView = {
-    values: (({ version: _version, ...rest }) => rest)(sanitizeSettings({})),
+    values: (({ version: _version, ...rest }) => rest)(
+      sanitizeSettings({ agentBridge: true, agentOrigins: ['https://my-app.ngrok.app'] }),
+    ),
     defaultBrowser: false,
     engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
     customTemplateValid: true,
     version: '0.0.0',
     update: { state: 'idle' },
   };
+  const agentView = {
+    enabled: true,
+    port: 47823,
+    error: null,
+    lastCallAt: now,
+    calls: 3,
+    url: 'http://127.0.0.1:47823/mcp',
+    claudeCommand:
+      'claude mcp add --transport http yalqen http://127.0.0.1:47823/mcp --header "Authorization: Bearer <token>"',
+    codexConfig: [
+      '# ~/.codex/config.toml',
+      '[mcp_servers.yalqen]',
+      'url = "http://127.0.0.1:47823/mcp"',
+      'bearer_token_env_var = "YALQEN_MCP_TOKEN"',
+      '',
+      '# shell profile',
+      'export YALQEN_MCP_TOKEN="<token>"',
+    ].join('\n'),
+    observedTabs: 2,
+  };
   const preloads = {
     settings: `
 const { contextBridge } = require('electron');
 const view = ${JSON.stringify(settingsView)};
+const agent = ${JSON.stringify(agentView)};
 const none = () => () => {};
 contextBridge.exposeInMainWorld('yalqenSettings', {
   get: async () => view, update: async () => view, onChange: none, clearData: async () => {}, makeDefault: async () => view,
@@ -136,6 +159,8 @@ contextBridge.exposeInMainWorld('yalqenSettings', {
   setExtensionEnabled: async () => {}, openExtensionOptions: async () => {}, onExtensionsChange: none,
   passwords: async () => ({ available: true, passwords: [], neverSave: [] }), revealPassword: async () => null,
   copyPassword: async () => false, removePassword: async () => {}, allowSaving: async () => {}, onPasswordsChange: none,
+  agentBridge: async () => agent, copyAgentSetup: async () => true, regenerateAgentToken: async () => agent,
+  onAgentBridgeChange: none,
 });`,
     window: (material) => `
 const { contextBridge } = require('electron');
@@ -145,7 +170,7 @@ const tab = (index) => ({
   bookmarked: false, blockedPopups: 0, consoleErrors: 0,
   overrides: { cacheDisabled: false, network: null, colorScheme: null, reducedMotion: false, printMedia: false, userAgent: null, requestRules: false },
   translation: { status: 'idle', available: false }, autoReloadSeconds: null, audible: false, muted: false,
-  canGoBack: index === 0, canGoForward: false,
+  canGoBack: index === 0, canGoForward: false, agentObserved: index === 0, agentReadAt: null,
 });
 const state = {
   tabs: [0, 1, 2, 3, 4].map(tab), listOrder: ['tab-0', 'tab-1', 'tab-2', 'tab-3', 'tab-4'], developer: false,

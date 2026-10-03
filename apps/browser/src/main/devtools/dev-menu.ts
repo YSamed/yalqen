@@ -37,6 +37,8 @@ export function devMenuTemplate(state: DevMenuState, actions: DevMenuActions): M
           { type: 'separator' as const },
         ]
       : []),
+    { label: t('devMenu.pickElement'), accelerator: 'Alt+CmdOrCtrl+P', click: run('pick-element') },
+    { type: 'separator' },
     {
       label: t('devMenu.disableCache'),
       type: 'checkbox',

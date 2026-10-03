@@ -188,6 +188,11 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.developerTools'), accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },
         { label: t('menu.phoneView'), accelerator: 'Alt+CmdOrCtrl+M', click: actions.toggleDeviceView },
         {
+          label: t('menu.pickElement'),
+          accelerator: 'Alt+CmdOrCtrl+P',
+          click: () => actions.devCommand('pick-element'),
+        },
+        {
           label: t('menu.device'),
           submenu: actions.devices.map((device) => ({
             label: device.label,

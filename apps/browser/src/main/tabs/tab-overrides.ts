@@ -7,7 +7,7 @@ import { pausedRequestCommand, type PausedRequest } from '../devtools/request-ru
 import type { Tab } from './tab.js';
 
 export function needsDebugger(tab: Tab): boolean {
-  return tab.emulation !== null || hasOverrides(tab.overrides);
+  return tab.emulation !== null || tab.agent !== null || hasOverrides(tab.overrides);
 }
 
 export function releaseDebugger(tab: Tab, contents: WebContents): void {
@@ -15,7 +15,10 @@ export function releaseDebugger(tab: Tab, contents: WebContents): void {
 }
 
 export async function pushOverrides(tab: Tab, contents: WebContents, rules: readonly RequestRule[]): Promise<void> {
-  await sendCommands(contents, overrideCommands(tab.overrides, emulatedUserAgent(tab.emulation), rules));
+  await sendCommands(
+    contents,
+    overrideCommands(tab.overrides, emulatedUserAgent(tab.emulation), rules, tab.agent !== null),
+  );
   releaseDebugger(tab, contents);
 }
 

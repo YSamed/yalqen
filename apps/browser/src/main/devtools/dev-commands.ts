@@ -108,6 +108,12 @@ export function devCommands(): readonly DevCommand[] {
       keywords: t('devCommands.devtoolsKeywords'),
     },
     {
+      id: 'pick-element',
+      title: t('devCommands.pickElement'),
+      shortcut: '⌥⌘P',
+      keywords: t('devCommands.pickElementKeywords'),
+    },
+    {
       id: 'view-source',
       title: t('devCommands.viewSource'),
       shortcut: '⌥⌘U',

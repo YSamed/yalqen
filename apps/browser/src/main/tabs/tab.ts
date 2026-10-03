@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { WebContentsView } from 'electron';
 import { t } from '../../shared/i18n.js';
 import type { PageOverrides, TabId, TranslationStatus } from '../../shared/types.js';
+import type { TabRuntime } from '../agent-bridge/runtime-buffer.js';
 import type { Emulation } from '../devtools/devices.js';
 import { NO_OVERRIDES } from '../devtools/page-overrides.js';
 import { captureSavedHistory, trimHistory, type SavedHistory, type SavedTab } from './persistence.js';
@@ -34,6 +35,8 @@ export interface Tab {
   emulation: Emulation | null;
   visitId: string | null;
   openerId: TabId | null;
+  agent: TabRuntime | null;
+  agentReadAt: number | null;
 }
 
 export interface RecentPage {
@@ -71,6 +74,8 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     emulation: null,
     visitId: null,
     openerId: null,
+    agent: null,
+    agentReadAt: null,
   };
 }
 

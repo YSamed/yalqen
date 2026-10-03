@@ -4,6 +4,7 @@
   import { t } from '../../shared/i18n';
   import type { IconName } from '../ui/Icon.svelte';
   import Button from '../ui/Button.svelte';
+  import AgentBridge from './AgentBridge.svelte';
   import AppearancePane from './AppearancePane.svelte';
   import Extensions from './Extensions.svelte';
   import GeneralPane from './GeneralPane.svelte';
@@ -90,6 +91,7 @@
         {:else if pane === 'extensions'}
           <Extensions />
         {:else if pane === 'developer'}
+          <AgentBridge values={view.values} {update} />
           <RequestRules />
         {:else}
           <PerformancePane values={view.values} {update} />

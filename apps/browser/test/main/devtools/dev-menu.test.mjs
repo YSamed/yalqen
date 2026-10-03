@@ -38,9 +38,13 @@ test('the menu reflects the tab state and runs commands', () => {
   assert.deepEqual(a.calls, ['open-devtools', 'network-offline', 'reset-overrides']);
 });
 
-test('without errors or overrides the menu starts with the toggles and cannot reset', () => {
-  const items = devMenuTemplate({ consoleErrors: 0, autoReloadSeconds: null, overrides: NO_OVERRIDES }, actions());
-  assert.equal(items[0].label, 'Önbelleği kapat');
+test('without errors or overrides the menu starts with element selection, then the toggles, and cannot reset', () => {
+  const calls = actions();
+  const items = devMenuTemplate({ consoleErrors: 0, autoReloadSeconds: null, overrides: NO_OVERRIDES }, calls);
+  assert.equal(items[0].label, 'Ajan için Öğe Seç');
+  items[0].click();
+  assert.deepEqual(calls.calls, ['pick-element']);
+  assert.equal(items[2].label, 'Önbelleği kapat');
   assert.equal(find(items, 'Taklitleri sıfırla').enabled, false);
   assert.equal(find(items, 'Tema').submenu.find((item) => item.checked).label, 'Sistem');
 });

@@ -30,6 +30,8 @@ test('unknown or mistyped fields fall back', () => {
       pageLanguage: 'de',
       autoUpdate: 'no',
       usageCounting: 'yes',
+      agentBridge: 'on',
+      agentOrigins: 'https://x.test',
     }),
     {
       version: 1,
@@ -58,6 +60,8 @@ test('unknown or mistyped fields fall back', () => {
       usageCounting: false,
       askBeforeDownload: true,
       welcomeCompleted: false,
+      agentBridge: false,
+      agentOrigins: [],
     },
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');
@@ -141,4 +145,13 @@ test('an update that changes nothing keeps the same settings and skips the write
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('agent origins keep unique http and https origins only', () => {
+  assert.deepEqual(
+    sanitizeSettings({
+      agentOrigins: ['https://app.ngrok.app/login', 'https://app.ngrok.app', 'ftp://x', 42, 'http://192.168.1.5:3000'],
+    }).agentOrigins,
+    ['https://app.ngrok.app', 'http://192.168.1.5:3000'],
+  );
 });

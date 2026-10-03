@@ -8,11 +8,17 @@ import {
   NEW_TAB_URL,
   IpcChannel,
   type ChromeLayout,
+  type AgentBridgeView,
   type ClearDataRequest,
   type UiAction,
   type SettingsView,
 } from '../shared/types.js';
 import { AdBlocker } from './privacy/adblock.js';
+import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
+import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
+import { createElectronHost } from './agent-bridge/electron-host.js';
+import { isInScope } from './agent-bridge/tab-scope.js';
+import { AgentTokenStore } from './agent-bridge/token-store.js';
 import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench/bench-driver.js';
 import { BookmarkStore, runBookmarksCommand } from './library/bookmarks.js';
 import {
@@ -51,7 +57,13 @@ import { RequestRuleStore } from './devtools/request-rules.js';
 import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './tabs/persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './address-bar/search.js';
 import { SettingsStore } from './app/settings.js';
-import { broadcastExtensions, broadcastPasswords, broadcastSettings, isSettingsFrame } from './app/settings-page.js';
+import {
+  broadcastAgentBridge,
+  broadcastExtensions,
+  broadcastPasswords,
+  broadcastSettings,
+  isSettingsFrame,
+} from './app/settings-page.js';
 import { registerSettingsIpc } from './app/settings-ipc.js';
 import {
   applyCookieBlocking,
@@ -175,6 +187,38 @@ function startBrowser(): void {
   });
   const downloadsChanged = () => downloadManager.changed();
 
+  const agentTokens = new AgentTokenStore(userData, safeStorageCipher);
+  const focusedFirst = () => (current ? [current, ...windows.filter((window) => window !== current)] : windows);
+  const agentBridge = new AgentBridge({
+    enabled: () => settings.get().agentBridge,
+    host: createElectronHost(() => focusedFirst().map((window) => window.tabs)),
+    token: () => agentTokens.get(),
+    version: app.getVersion(),
+    onChange: () => {
+      eachWindow((window) => window.tabs.syncAgent());
+      broadcastAgentBridge(agentView());
+    },
+  });
+  const agentView = (): AgentBridgeView => {
+    const status = agentBridge.status();
+    const port = status.port;
+    return {
+      ...status,
+      url: port ? mcpUrl(port) : null,
+      claudeCommand: port ? setupSnippet('claude', port, '<token>') : null,
+      codexConfig: port ? setupSnippet('codex', port, '<token>') : null,
+      observedTabs: windows.reduce((count, window) => count + window.tabs.observedTabs().length, 0),
+    };
+  };
+  registerAgentBridgeIpc({
+    view: agentView,
+    snippet: (kind) => agentBridge.snippet(kind),
+    regenerateToken: () => {
+      agentTokens.regenerate();
+      broadcastAgentBridge(agentView());
+    },
+  });
+
   handleCertificateErrors(certificates, eachSession(sessions));
   const adBlocker = new AdBlocker([daily, privateBrowsing], path.join(userData, 'adblock-engine.bin'));
   adBlocker.setEnabled(settings.get().adBlocking);
@@ -223,6 +267,8 @@ function startBrowser(): void {
       eachWindow((window) => window.tabs.applyFreezeSetting());
     if (next.autoUpdate !== previous.autoUpdate) updater.schedule();
     if (next.usageCounting !== previous.usageCounting) usage.schedule();
+    if (next.agentBridge !== previous.agentBridge) void agentBridge.sync();
+    else if (next.agentOrigins !== previous.agentOrigins) eachWindow((window) => window.tabs.syncAgent());
     adBlocker.setEnabled(next.adBlocking);
     applyCookieBlocking(sessions, next.blockThirdPartyCookies);
     pushState();
@@ -314,6 +360,8 @@ function startBrowser(): void {
       if (index >= 0) windows.splice(index, 1);
       store.scheduleSave(sessionSnapshot);
     },
+    agentScope: (url, privateBrowsing) =>
+      agentBridge.port !== null && isInScope({ url, isPrivate: privateBrowsing }, settings.get().agentOrigins),
     onWindowClosed: (window) => {
       const index = windows.indexOf(window);
       if (index >= 0) windows.splice(index, 1);
@@ -430,6 +478,7 @@ function startBrowser(): void {
   });
   app.on('will-quit', () => {
     stopMemorySaver();
+    void agentBridge.stop();
     updater.stop();
     usage.stop();
     downloadManager.destroy();
@@ -487,6 +536,7 @@ function startBrowser(): void {
     bench?.mark('extensions-loaded');
     openInitialWindows();
     usage.schedule();
+    void agentBridge.sync();
     prewarmCommandBar();
     if (!bench) return;
     void runBench(

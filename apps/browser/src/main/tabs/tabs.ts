@@ -46,6 +46,9 @@ import { isActivation, mayOpenWindow, opensInPlace, recordBlocked } from './popu
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
 import { TabFreezer } from './tab-freezer.js';
 import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger } from './tab-overrides.js';
+import { observeTab, unobserveTab } from './tab-agent.js';
+import { captureSelection, startPicking, type PickSession } from './tab-picker.js';
+import type { ElementSelection } from '../agent-bridge/selection.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { TabTranslation } from './tab-translation.js';
 import { stepZoom } from './zoom.js';
@@ -97,9 +100,13 @@ export interface TabManagerOptions {
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
   requestRules: () => readonly RequestRule[];
   translation: () => { enabled: boolean; language: PageLanguage };
+  agentScope: (tab: { url: string; isPrivate: boolean }) => boolean;
 }
 
 export type DetachedTab = Tab;
+
+export type PickOutcome =
+  { status: 'picked'; selection: ElementSelection } | { status: 'cancelled' | 'failed' | 'agent-off' | 'not-local' };
 
 export class TabManager {
   private readonly tabs: Tab[] = [];
@@ -109,6 +116,7 @@ export class TabManager {
   private readonly autoReloader = new AutoReloader(() => this.tabs);
   private readonly freezer: TabFreezer;
   private readonly translation: TabTranslation;
+  private picking: PickSession | null = null;
 
   constructor(private readonly options: TabManagerOptions) {
     this.freezer = new TabFreezer({
@@ -603,6 +611,77 @@ export class TabManager {
     this.active()?.view?.webContents.stop();
   }
 
+  syncAgent(): void {
+    for (const tab of this.tabs) this.syncAgentFor(tab, tab.url);
+  }
+
+  observedTabs(): Tab[] {
+    return this.tabs.filter((tab) => tab.agent && liveContents(tab));
+  }
+
+  observedTab(id: TabId): { tab: Tab; contents: WebContents } | null {
+    const tab = this.find(id);
+    const contents = liveContents(tab);
+    return tab?.agent && contents ? { tab, contents } : null;
+  }
+
+  get isPicking(): boolean {
+    return this.picking !== null;
+  }
+
+  cancelPicking(): void {
+    this.picking?.cancel();
+  }
+
+  async pickElement(agentOn: boolean): Promise<PickOutcome> {
+    const tab = this.active();
+    const contents = liveContents(tab);
+    if (!tab || !contents) return { status: 'cancelled' };
+    if (!tab.agent) return { status: agentOn ? 'not-local' : 'agent-off' };
+    this.picking?.cancel();
+    const session = startPicking(contents);
+    this.picking = session;
+    contents.focus();
+    const backendNodeId = await session.result;
+    if (this.picking === session) this.picking = null;
+    const runtime = tab.agent;
+    if (backendNodeId === null || !runtime || contents.isDestroyed()) return { status: 'cancelled' };
+    try {
+      const selection = await captureSelection(contents, backendNodeId, tab);
+      runtime.selections.push(selection);
+      return { status: 'picked', selection };
+    } catch (error) {
+      console.warn(`[picker] could not read the element: ${(error as Error).message}`);
+      return { status: 'failed' };
+    }
+  }
+
+  markAgentRead(id: TabId): void {
+    const tab = this.find(id);
+    if (!tab) return;
+    tab.agentReadAt = Date.now();
+    this.changed();
+  }
+
+  reloadTab(id: TabId, ignoreCache: boolean): void {
+    const tab = this.find(id);
+    const contents = liveContents(tab);
+    if (!tab || !contents) return;
+    this.freezer.unfreeze(tab);
+    if (ignoreCache) contents.reloadIgnoringCache();
+    else contents.reload();
+  }
+
+  private syncAgentFor(tab: Tab, url: string): void {
+    const contents = liveContents(tab);
+    if (!contents) return;
+    const inScope = this.options.agentScope({ url, isPrivate: tab.isPrivate });
+    if (inScope === (tab.agent !== null)) return;
+    const done = inScope ? observeTab(tab, contents) : unobserveTab(tab, contents);
+    this.changed();
+    void done.then(() => this.changed());
+  }
+
   applyDefaultZoom(): void {
     for (const tab of this.tabs) {
       const contents = liveContents(tab);
@@ -784,6 +863,7 @@ export class TabManager {
     if (tab.muted) view.webContents.setAudioMuted(true);
     tab.view = view;
     this.attachListeners(tab, view);
+    this.syncAgentFor(tab, tab.url);
     return this.placement.place(tab, view);
   }
 
@@ -993,6 +1073,8 @@ export class TabManager {
     });
     listen('did-stop-loading', () => {
       tab.loading = false;
+      // A navigation that started but never committed (a download, an abort) leaves the page where it was.
+      this.syncAgentFor(tab, tab.url);
       this.options.onVisitTitle(tab.visitId, contents.getTitle());
       this.freezer.maybeFreeze(tab);
       this.changed();
@@ -1002,8 +1084,9 @@ export class TabManager {
       this.changed();
     });
     listen('devtools-closed', () => this.freezer.maybeFreeze(tab));
-    listen('did-start-navigation', ({ isMainFrame, isSameDocument }) => {
+    listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
       if (!isMainFrame || isSameDocument) return;
+      this.syncAgentFor(tab, url);
       const hadTranslationState = tab.translation !== 'idle' || tab.pageLanguage !== null;
       this.translation.reset(tab);
       if (tab.blockedPopups.length === 0 && tab.consoleErrors === 0 && !hadTranslationState) return;
@@ -1049,18 +1132,26 @@ export class TabManager {
       if (tab.view !== view || !needsDebugger(tab) || contents.isDestroyed()) return;
       tab.emulation = null;
       tab.overrides = NO_OVERRIDES;
+      tab.agent = null;
       this.placement.place(tab, view);
       this.changed();
     };
     contents.debugger.on('detach', onDebuggerDetach);
     disposers.push(() => contents.debugger.off('detach', onDebuggerDetach));
     const onDebuggerMessage = (_event: Electron.Event, method: string, params: unknown) => {
+      tab.agent?.handle(method, params);
       if (method !== 'Fetch.requestPaused' || contents.isDestroyed()) return;
       answerPausedRequest(contents, this.options.requestRules(), params as PausedRequest);
     };
     contents.debugger.on('message', onDebuggerMessage);
     disposers.push(() => contents.debugger.off('message', onDebuggerMessage));
-    listen('did-navigate', () => updateUrl(true));
+    listen('did-redirect-navigation', ({ url, isMainFrame }) => {
+      if (isMainFrame) this.syncAgentFor(tab, url);
+    });
+    listen('did-navigate', () => {
+      updateUrl(true);
+      this.syncAgentFor(tab, tab.url);
+    });
     let failure: string | null = null;
     listen('did-fail-load', (_event, code, name, url, isMainFrame) => {
       if (!isMainFrame || code === ERR_ABORTED) return;
@@ -1142,6 +1233,7 @@ export class TabManager {
     tab.loading = false;
     tab.frozen = false;
     tab.overrides = NO_OVERRIDES;
+    tab.agent = null;
     this.translation.reset(tab);
     this.options.window.contentView.removeChildView(view);
     // A view drops its contents once a page closes itself, despite the typings.
@@ -1172,6 +1264,8 @@ export class TabManager {
       muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,
       canGoForward: history?.canGoForward() ?? false,
+      agentObserved: tab.agent !== null,
+      agentReadAt: tab.agentReadAt,
     };
   }
 

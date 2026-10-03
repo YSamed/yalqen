@@ -24,6 +24,7 @@ export const tr: Record<MessageKey, string> = {
   'format.printView': 'yazdırma görünümü',
   'format.userAgentChanged': 'user-agent değiştirildi',
   'format.requestRulesApplied': 'istek kuralları uygulanıyor',
+  'format.agentObserved': 'ajana görünür',
 
   'newTabButton.label': 'Yeni sekme',
   'newTabButton.title': 'Yeni sekme (⌘T)',
@@ -84,6 +85,26 @@ export const tr: Record<MessageKey, string> = {
   'passwordsPanel.empty': 'Kayıtlı şifre yok.',
   'passwordsPanel.neverSaved': 'Hiç kaydedilmeyenler',
   'passwordsPanel.removeFromList': '{host} listeden çıkar',
+
+  'agentBridge.title': 'Ajan bağlantısı',
+  'agentBridge.toggle': 'Ajan bağlantısı (deneysel)',
+  'agentBridge.toggleHint':
+    "Claude Code veya Codex gibi bir kodlama ajanının yerel geliştirme sekmelerindeki (localhost, *.test) konsol hatalarını, başarısız istekleri ve ekran görüntülerini okumasını sağlar. Gizli pencereler hiçbir zaman paylaşılmaz ve hiçbir veri Mac'inizden çıkmaz.",
+  'agentBridge.listening': '{url} adresinde dinliyor',
+  'agentBridge.observedTabs': '{count} yerel sekme görünür',
+  'agentBridge.observedTabs.one': '{count} yerel sekme görünür',
+  'agentBridge.lastCall': 'son okuma {time}',
+  'agentBridge.failed': 'Ajan bağlantısı başlatılamadı: {error}',
+  'agentBridge.copy': 'Kopyala',
+  'agentBridge.copied': 'Kopyalandı',
+  'agentBridge.copyToken': 'Token’ı kopyala',
+  'agentBridge.regenerate': 'Token’ı yenile',
+  'agentBridge.tokenHint':
+    'Kopyala, komuta gerçek token’ı koyar. Token’ı yenilemek eskisini kullanan ajanların bağlantısını keser.',
+  'agentBridge.origins': 'Diğer origin’ler',
+  'agentBridge.originsHint':
+    'Ajanın okuyabileceği ek geliştirme adresleri; her satıra bir tane, örneğin bir tünel ya da yerel ağ adresi.',
+  'agentBridge.saveOrigins': 'Origin’leri kaydet',
 
   'requestRulesPanel.actionBlock': 'Engelle',
   'requestRulesPanel.actionMock': 'Sahte yanıt',
@@ -398,6 +419,7 @@ export const tr: Record<MessageKey, string> = {
   'menu.phoneView': 'Telefon görünümü',
   'menu.device': 'Cihaz',
   'menu.rotateDevice': 'Cihazı döndür',
+  'menu.pickElement': 'Ajan için Öğe Seç',
 
   'devCommands.intervalSeconds': '{seconds} sn',
   'devCommands.intervalMinutes': '{minutes} dk',
@@ -459,6 +481,8 @@ export const tr: Record<MessageKey, string> = {
   'devCommands.clearCacheKeywords': 'clear cache empty',
   'devCommands.clearSiteData': 'Bu sitenin verilerini temizle',
   'devCommands.clearSiteDataKeywords': 'clear site data cookies storage çerez depolama localstorage',
+  'devCommands.pickElement': 'Ajan için öğe seç',
+  'devCommands.pickElementKeywords': 'pick inspect element select agent ai claude codex öğe seç ajan',
 
   'devMenu.consoleErrors': 'Konsolda {count} hata',
   'devMenu.consoleErrors.one': 'Konsolda {count} hata',
@@ -480,6 +504,7 @@ export const tr: Record<MessageKey, string> = {
   'devMenu.applyRequestRules': 'İstek kurallarını uygula',
   'devMenu.editRequestRules': 'İstek kurallarını düzenle…',
   'devMenu.resetOverrides': 'Taklitleri sıfırla',
+  'devMenu.pickElement': 'Ajan için Öğe Seç',
 
   'contextMenu.openLinkInNewTab': 'Bağlantıyı yeni sekmede aç',
   'contextMenu.openLinkInNewWindow': 'Bağlantıyı yeni pencerede aç',
@@ -779,4 +804,12 @@ export const tr: Record<MessageKey, string> = {
   'extensions.openStore': 'Chrome Web Mağazası’nı aç',
   'extensions.manage': 'Uzantıları yönet…',
   'extensions.invalidStoreId': 'Geçerli bir Chrome Web Mağazası adresi veya uzantı kimliği girin',
+
+  'picker.start': 'Ajan için seçmek istediğiniz öğeye tıklayın',
+  'picker.cancelHint': 'İptal etmek için Esc',
+  'picker.selected': 'Seçildi: {label}',
+  'picker.copied': '{id} panoya kopyalandı',
+  'picker.off': 'Önce Ayarlar → Geliştirici’den ajan bağlantısını açın',
+  'picker.notLocal': 'Öğe seçimi yalnızca yerel geliştirme sekmelerinde çalışır',
+  'picker.failed': 'Öğe okunamadı',
 };

@@ -48,6 +48,7 @@ import type { HistoryStore } from '../library/history.js';
 import type { HttpsOnly } from '../privacy/https-only.js';
 import { canViewSource, formatAddress, type AddressFormat } from '../devtools/page-export.js';
 import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
+import { PageNotice } from './page-notice.js';
 import { pageFrame } from './page-layout.js';
 import { fontPreferences } from '../app/page-preferences.js';
 import { permissionOrigin, type PermissionStore } from '../privacy/permissions.js';
@@ -110,6 +111,7 @@ export interface AppContext {
   onWindowFocus(window: YalqenWindow): void;
   onWindowClosing(window: YalqenWindow): void;
   onWindowClosed(window: YalqenWindow): void;
+  agentScope(url: string, privateBrowsing: boolean): boolean;
 }
 
 export interface WindowOptions {
@@ -149,6 +151,7 @@ export class YalqenWindow {
   private lastPushedState = '';
   private findTarget: { tabId: string; url: string } | null = null;
   private readonly navigationHint: NavigationHint;
+  private readonly notice: PageNotice;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
   constructor(
@@ -323,9 +326,12 @@ export class YalqenWindow {
         enabled: app.settings.get().pageTranslation,
         language: app.settings.get().pageLanguage,
       }),
+      // Developer windows are private only to keep their session apart; they are meant for local work.
+      agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate && !this.isDeveloper),
     });
 
     this.navigationHint = new NavigationHint({ window: this.window, area: () => this.pageArea });
+    this.notice = new PageNotice({ window: this.window, area: () => this.pageArea });
     this.window.on('focus', () => app.onWindowFocus(this));
     if (process.platform === 'darwin') {
       this.window.on('swipe', (_event, direction) => {
@@ -365,6 +371,7 @@ export class YalqenWindow {
       this.commandBar.release(this.window);
       this.findBar.release(this.window);
       this.navigationHint.destroy();
+      this.notice.destroy();
       app.extensionPopup.close(this.window);
       if (!this.uiContents.isDestroyed()) this.uiContents.close();
       app.onWindowClosed(this);
@@ -526,6 +533,9 @@ export class YalqenWindow {
       case 'copy-curl':
         this.copyAddress('curl');
         break;
+      case 'pick-element':
+        void this.pickElement();
+        break;
       case 'devtools':
         tabs.toggleDevTools();
         break;
@@ -583,6 +593,34 @@ export class YalqenWindow {
 
   saveScreenshot(fullPage: boolean): Promise<void> {
     return saveScreenshotFile(this.window, this.tabs, fullPage);
+  }
+
+  private async pickElement(): Promise<void> {
+    if (this.tabs.isPicking) {
+      this.tabs.cancelPicking();
+      return;
+    }
+    const picking = this.tabs.pickElement(this.app.settings.get().agentBridge);
+    if (this.tabs.isPicking) this.notice.show([t('picker.start'), t('picker.cancelHint')]);
+    const outcome = await picking;
+    switch (outcome.status) {
+      case 'picked':
+        clipboard.writeText(outcome.selection.id);
+        this.notice.show([
+          t('picker.selected', { label: outcome.selection.label }),
+          t('picker.copied', { id: outcome.selection.id }),
+        ]);
+        break;
+      case 'agent-off':
+        this.notice.show([t('picker.off')]);
+        break;
+      case 'not-local':
+        this.notice.show([t('picker.notLocal')]);
+        break;
+      case 'failed':
+        this.notice.show([t('picker.failed')]);
+        break;
+    }
   }
 
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {

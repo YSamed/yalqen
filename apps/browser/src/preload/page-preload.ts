@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
+  AgentBridgeChannel,
   ExtensionsChannel,
   NEW_TAB_URL,
   PageChannel,
@@ -7,6 +8,8 @@ import {
   RequestRulesChannel,
   SETTINGS_URL,
   SettingsChannel as settingsChannel,
+  type AgentBridgeView,
+  type AgentSetupKind,
   type ClearDataRequest,
   type ExtensionInfo,
   type NewTabCenter,
@@ -154,6 +157,10 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     removePassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.remove, id) as Promise<void>,
     allowSaving: (origin: string) => ipcRenderer.invoke(PasswordsChannel.allowSaving, origin) as Promise<void>,
     onPasswordsChange: (listener) => subscribe<PasswordsView>(PasswordsChannel.changed, listener),
+    agentBridge: () => ipcRenderer.invoke(AgentBridgeChannel.status) as Promise<AgentBridgeView>,
+    copyAgentSetup: (kind: AgentSetupKind) => ipcRenderer.invoke(AgentBridgeChannel.copy, kind) as Promise<boolean>,
+    regenerateAgentToken: () => ipcRenderer.invoke(AgentBridgeChannel.regenerate) as Promise<AgentBridgeView>,
+    onAgentBridgeChange: (listener) => subscribe<AgentBridgeView>(AgentBridgeChannel.changed, listener),
   };
   contextBridge.exposeInMainWorld('yalqenSettings', api);
 }

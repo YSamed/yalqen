@@ -93,10 +93,17 @@ export interface ProtocolCommand {
   optional?: boolean;
 }
 
+// The agent bridge reads failed response bodies later, so the protocol has to keep them for a while.
+export const OBSERVED_NETWORK_ENABLE: ProtocolCommand = {
+  method: 'Network.enable',
+  params: { maxTotalBufferSize: 8 * 1024 * 1024, maxResourceBufferSize: 256 * 1024 },
+};
+
 export function overrideCommands(
   overrides: PageOverrides,
   fallbackUserAgent: UserAgent,
   rules: readonly RequestRule[] = [],
+  observed = false,
 ): ProtocolCommand[] {
   const patterns = overrides.requestRules ? interceptPatterns(rules) : [];
   const fetch: ProtocolCommand =
@@ -107,15 +114,17 @@ export function overrideCommands(
   const network: ProtocolCommand[] =
     overrides.cacheDisabled || overrides.network
       ? [
-          // Only the switches are needed, so the protocol keeps no response bodies around.
-          { method: 'Network.enable', params: { maxTotalBufferSize: 0, maxResourceBufferSize: 0 } },
+          observed
+            ? OBSERVED_NETWORK_ENABLE
+            : // Only the switches are needed, so the protocol keeps no response bodies around.
+              { method: 'Network.enable', params: { maxTotalBufferSize: 0, maxResourceBufferSize: 0 } },
           { method: 'Network.setCacheDisabled', params: { cacheDisabled: overrides.cacheDisabled } },
           { method: 'Network.emulateNetworkConditions', params: { ...conditions } },
         ]
       : [
           { method: 'Network.setCacheDisabled', params: { cacheDisabled: false }, optional: true },
           { method: 'Network.emulateNetworkConditions', params: { ...UNTHROTTLED }, optional: true },
-          { method: 'Network.disable', optional: true },
+          ...(observed ? [] : [{ method: 'Network.disable', optional: true }]),
         ];
   const userAgent = overrides.userAgent ? USER_AGENTS[overrides.userAgent] : fallbackUserAgent;
   return [

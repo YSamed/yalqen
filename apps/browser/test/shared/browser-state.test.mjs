@@ -32,6 +32,8 @@ const tab = (id) => ({
   muted: false,
   canGoBack: false,
   canGoForward: false,
+  agentObserved: false,
+  agentReadAt: null,
 });
 const fixture = () => ({
   tabs: [tab('a'), tab('b')],

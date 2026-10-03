@@ -22,6 +22,7 @@ export const en = {
   'format.printView': 'print view',
   'format.userAgentChanged': 'User-Agent changed',
   'format.requestRulesApplied': 'request rules applied',
+  'format.agentObserved': 'visible to agent',
 
   'newTabButton.label': 'New tab',
   'newTabButton.title': 'New tab (⌘T)',
@@ -82,6 +83,26 @@ export const en = {
   'passwordsPanel.empty': 'No saved passwords.',
   'passwordsPanel.neverSaved': 'Never saved',
   'passwordsPanel.removeFromList': 'Remove {host} from list',
+
+  'agentBridge.title': 'Agent connection',
+  'agentBridge.toggle': 'Agent connection (experimental)',
+  'agentBridge.toggleHint':
+    'Lets a coding agent such as Claude Code or Codex read console errors, failed requests and screenshots from local development tabs (localhost, *.test). Private windows are never shared, and nothing leaves your Mac.',
+  'agentBridge.listening': 'Listening on {url}',
+  'agentBridge.observedTabs': '{count} local tabs visible',
+  'agentBridge.observedTabs.one': '{count} local tab visible',
+  'agentBridge.lastCall': 'last read at {time}',
+  'agentBridge.failed': 'The agent connection could not start: {error}',
+  'agentBridge.copy': 'Copy',
+  'agentBridge.copied': 'Copied',
+  'agentBridge.copyToken': 'Copy token',
+  'agentBridge.regenerate': 'Regenerate token',
+  'agentBridge.tokenHint':
+    'Copy puts the real token in the command. Regenerating disconnects agents that use the old one.',
+  'agentBridge.origins': 'Other origins',
+  'agentBridge.originsHint':
+    'Extra development addresses the agent may read, one per line, such as a tunnel or a LAN address.',
+  'agentBridge.saveOrigins': 'Save origins',
 
   'requestRulesPanel.actionBlock': 'Block',
   'requestRulesPanel.actionMock': 'Mock response',
@@ -396,6 +417,7 @@ export const en = {
   'menu.phoneView': 'Phone View',
   'menu.device': 'Device',
   'menu.rotateDevice': 'Rotate Device',
+  'menu.pickElement': 'Select Element for Agent',
 
   'devCommands.intervalSeconds': '{seconds} sec',
   'devCommands.intervalMinutes': '{minutes} min',
@@ -457,6 +479,8 @@ export const en = {
   'devCommands.clearCacheKeywords': 'clear cache empty',
   'devCommands.clearSiteData': "Clear this site's data",
   'devCommands.clearSiteDataKeywords': 'clear site data cookies storage localstorage',
+  'devCommands.pickElement': 'Select element for agent',
+  'devCommands.pickElementKeywords': 'pick inspect element select agent ai claude codex',
 
   'devMenu.consoleErrors': '{count} Errors in Console',
   'devMenu.consoleErrors.one': '{count} Error in Console',
@@ -478,6 +502,7 @@ export const en = {
   'devMenu.applyRequestRules': 'Apply Request Rules',
   'devMenu.editRequestRules': 'Edit Request Rules…',
   'devMenu.resetOverrides': 'Reset Emulations',
+  'devMenu.pickElement': 'Select Element for Agent',
 
   'contextMenu.openLinkInNewTab': 'Open Link in New Tab',
   'contextMenu.openLinkInNewWindow': 'Open Link in New Window',
@@ -777,6 +802,14 @@ export const en = {
   'extensions.openStore': 'Open Chrome Web Store',
   'extensions.manage': 'Manage Extensions…',
   'extensions.invalidStoreId': 'Enter a valid Chrome Web Store URL or extension ID',
+
+  'picker.start': 'Click an element to select it for the agent',
+  'picker.cancelHint': 'Press Esc to cancel',
+  'picker.selected': 'Selected: {label}',
+  'picker.copied': '{id} copied to clipboard',
+  'picker.off': 'Turn on the agent connection in Settings → Developer first',
+  'picker.notLocal': 'Element selection works on local development tabs only',
+  'picker.failed': 'The element could not be read',
 };
 
 export type MessageKey = keyof typeof en;
