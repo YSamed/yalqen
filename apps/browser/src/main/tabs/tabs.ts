@@ -789,13 +789,20 @@ export class TabManager {
 
   // Sign-in popups (Google and other OAuth providers) report back through window.opener,
   // so the tab must host the contents Chromium created for the popup instead of a fresh load.
-  private openChild(url: string, opener: Tab, webContents: WebContents): WebContents {
+  // Electron omits the contents for noopener popups, so those get a regular view.
+  private openChild(url: string, opener: Tab, webContents: WebContents | undefined): WebContents {
     const tab = this.createRecord({ url }, opener.isPrivate);
     tab.openerId = opener.id;
-    this.mount(tab, new WebContentsView({ webContents }));
     this.insertAfterActive(tab);
+    let view: WebContentsView;
+    if (webContents) {
+      view = new WebContentsView({ webContents });
+      this.mount(tab, view);
+    } else {
+      view = this.ensureLive(tab);
+    }
     this.activate(tab.id);
-    return webContents;
+    return view.webContents;
   }
 
   private load(tab: Tab, view: WebContentsView): void {
@@ -944,7 +951,7 @@ export class TabManager {
             action: 'allow',
             outlivesOpener: true,
             // Electron passes the popup's contents in the options, though its typings omit them.
-            createWindow: (options) => this.openChild(url, tab, (options as { webContents: WebContents }).webContents),
+            createWindow: (options) => this.openChild(url, tab, (options as { webContents?: WebContents }).webContents),
           };
         }
         this.open(url, { isPrivate: tab.isPrivate });
