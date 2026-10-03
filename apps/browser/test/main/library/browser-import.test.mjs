@@ -283,6 +283,48 @@ test('unsorted streamed histories match the newest visits selected from the comp
   assert.deepEqual(parseChromiumHistory(rows[Symbol.iterator]()), expected);
 });
 
+test('newest-first history stops reading once the cap is filled', () => {
+  let read = 0;
+  function* rows() {
+    for (let index = 0; index < MAX_VISITS * 3; index++) {
+      read++;
+      yield {
+        url: index % 10 === 0 ? 'chrome://newtab/' : `https://site.example/${index}`,
+        title: `Visit ${index}`,
+        last_visit_time: BigInt(NEW_YEAR_WEBKIT) - BigInt(index * 1000),
+      };
+    }
+  }
+  const visits = parseChromiumHistory(rows(), 'newest-first');
+  assert.equal(visits.length, MAX_VISITS);
+  assert.ok(read < MAX_VISITS * 1.2, `read ${read} rows`);
+  assert.deepEqual(visits, parseChromiumHistory([...rows()]));
+});
+
+test('an ordered import matches the unordered selection, ties and skipped rows included', async () => {
+  await withDir(async (dir) => {
+    const source = path.join(dir, 'History');
+    const db = historyDb(source);
+    db.exec('DELETE FROM urls');
+    const insert = db.prepare('INSERT INTO urls (url, title, last_visit_time, hidden) VALUES (?, ?, ?, ?)');
+    const rows = [];
+    for (let index = 0; index < MAX_VISITS * 2; index++) {
+      const row = {
+        url: index % 13 === 0 ? 'about:blank' : `https://site.example/${index}`,
+        title: `Visit ${index}`,
+        last_visit_time: BigInt(NEW_YEAR_WEBKIT) + BigInt(((index * 7919) % 700) * 1000),
+        hidden: index % 29 === 0 ? 1 : 0,
+      };
+      insert.run(row.url, row.title, row.last_visit_time, row.hidden);
+      if (row.hidden === 0) rows.push(row);
+    }
+    db.close();
+    let imported;
+    await importChromiumHistory({ importVisits: (visits) => (imported = visits).length }, source);
+    assert.deepEqual(imported, parseChromiumHistory(rows));
+  });
+});
+
 function historyDb(file) {
   const db = new DatabaseSync(file);
   db.exec(`CREATE TABLE urls(id INTEGER PRIMARY KEY, url LONGVARCHAR, title LONGVARCHAR,

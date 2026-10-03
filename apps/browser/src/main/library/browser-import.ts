@@ -179,15 +179,20 @@ export async function importChromiumBookmarks(store: BookmarkStore, file: string
 }
 
 // Chromium keeps one row per address with its latest visit; hidden rows are subframes the user never opened.
-const CHROMIUM_HISTORY_QUERY = 'SELECT url, title, last_visit_time FROM urls WHERE hidden = 0';
+// SQLite sorts newest first so reading can stop at the history cap; rowid keeps the source order at equal times.
+const CHROMIUM_HISTORY_QUERY =
+  'SELECT url, title, last_visit_time FROM urls WHERE hidden = 0 ORDER BY last_visit_time DESC, rowid';
 
-export function parseChromiumHistory(rows: Iterable<ChromiumHistoryRow>): ImportedVisit[] {
-  return newestWebVisits(rows, (row) => webkitTimeToUnixMs(row.last_visit_time));
+type RowOrder = 'any' | 'newest-first';
+
+export function parseChromiumHistory(rows: Iterable<ChromiumHistoryRow>, order: RowOrder = 'any'): ImportedVisit[] {
+  return newestWebVisits(rows, (row) => webkitTimeToUnixMs(row.last_visit_time), order);
 }
 
 function newestWebVisits<Row extends { url?: unknown; title?: unknown }>(
   rows: Iterable<Row>,
   visitedAt: (row: Row) => number | null,
+  sourceOrder: RowOrder,
 ): ImportedVisit[] {
   type Candidate = { visit: ImportedVisit; order: number };
   const newest: Candidate[] = [];
@@ -209,6 +214,7 @@ function newestWebVisits<Row extends { url?: unknown; title?: unknown }>(
   let heap = false;
   let order = 0;
   for (const row of rows) {
+    if (sourceOrder === 'newest-first' && newest.length === MAX_VISITS) break;
     const time = visitedAt(row);
     if (time === null) continue;
     if (newest.length === MAX_VISITS) {
@@ -272,7 +278,9 @@ async function querySqliteCopy<Result>(
 }
 
 export async function importChromiumHistory(store: HistoryStore, file: string): Promise<HistoryImportResult> {
-  const visits = await querySqliteCopy(file, CHROMIUM_HISTORY_QUERY, parseChromiumHistory);
+  const visits = await querySqliteCopy(file, CHROMIUM_HISTORY_QUERY, (rows) =>
+    parseChromiumHistory(rows, 'newest-first'),
+  );
   const added = store.importVisits(visits);
   return { visits: added, skipped: visits.length - added };
 }
@@ -361,14 +369,17 @@ export async function importFirefoxBookmarks(store: BookmarkStore, file: string)
 }
 
 // Hidden rows are frames and redirect sources that Firefox leaves out of its own history.
-const FIREFOX_HISTORY_QUERY = 'SELECT url, title, last_visit_date FROM moz_places WHERE hidden = 0';
+const FIREFOX_HISTORY_QUERY =
+  'SELECT url, title, last_visit_date FROM moz_places WHERE hidden = 0 ORDER BY last_visit_date DESC, rowid';
 
-export function parseFirefoxHistory(rows: Iterable<FirefoxHistoryRow>): ImportedVisit[] {
-  return newestWebVisits(rows, (row) => firefoxTimeToUnixMs(row.last_visit_date));
+export function parseFirefoxHistory(rows: Iterable<FirefoxHistoryRow>, order: RowOrder = 'any'): ImportedVisit[] {
+  return newestWebVisits(rows, (row) => firefoxTimeToUnixMs(row.last_visit_date), order);
 }
 
 export async function importFirefoxHistory(store: HistoryStore, file: string): Promise<HistoryImportResult> {
-  const visits = await querySqliteCopy(file, FIREFOX_HISTORY_QUERY, parseFirefoxHistory);
+  const visits = await querySqliteCopy(file, FIREFOX_HISTORY_QUERY, (rows) =>
+    parseFirefoxHistory(rows, 'newest-first'),
+  );
   const added = store.importVisits(visits);
   return { visits: added, skipped: visits.length - added };
 }
