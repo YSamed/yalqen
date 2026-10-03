@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.31](https://github.com/YSamed/yalqen/compare/v0.2.30...v0.2.31) (2026-10-03)
+
+
+### Bug Fixes
+
+* prevent page titles from expanding replacement patterns in template slots ([44b5ec8](https://github.com/YSamed/yalqen/commit/44b5ec8687515f78b39d0d19327d5da52bf26e5f))
+
+
+### Performance
+
+* avoid subscripting entire state in App and TabPanel ([44b5ec8](https://github.com/YSamed/yalqen/commit/44b5ec8687515f78b39d0d19327d5da52bf26e5f))
+* check for horizontal scrollers once per wheel gesture ([44b5ec8](https://github.com/YSamed/yalqen/commit/44b5ec8687515f78b39d0d19327d5da52bf26e5f))
+* optimize bookmarks page rendering for large folder counts ([44b5ec8](https://github.com/YSamed/yalqen/commit/44b5ec8687515f78b39d0d19327d5da52bf26e5f))
+* optimize history page rendering by format and translate once per day ([44b5ec8](https://github.com/YSamed/yalqen/commit/44b5ec8687515f78b39d0d19327d5da52bf26e5f))
+
 ## [0.2.30](https://github.com/YSamed/yalqen/compare/v0.2.29...v0.2.30) (2026-10-02)
 
 
