@@ -4,5 +4,5 @@ apps/browser/release/
 out/
 *.log
 .DS_Store
-bench/results/
-bench/.cache/
+apps/browser/bench/results/
+apps/browser/bench/.cache/

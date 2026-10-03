@@ -62,16 +62,16 @@ npm start
 | `npm run bench`       | 启动、页面加载和空闲性能测试   |
 | `npm run package:mac` | 构建 macOS 应用包              |
 
-Git hooks、提交信息和 Pull Request 流程请阅读 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+Git hooks、提交信息和 Pull Request 流程请阅读 [CONTRIBUTING.md](../.github/CONTRIBUTING.md)。
 
 ## 延伸阅读
 
 - [键盘快捷键](keyboard-shortcuts.md)
-- [为什么选择 Electron？](why-electron.md)
+- [为什么选择 Electron？](decisions/why-electron.md)
 - [架构](architecture.md)
 - [基准测试](benchmarks.md)
 - [下载和活跃安装统计](usage-measurement.md)
-- [安全策略](../SECURITY.md)
+- [安全策略](../.github/SECURITY.md)
 
 ## 许可证
 

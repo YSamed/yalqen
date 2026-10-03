@@ -6,8 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const repo = path.resolve(project, '../..');
-const engineCache = path.join(repo, 'bench/.cache/adblock-engine.bin');
+const engineCache = path.join(project, 'bench/.cache/adblock-engine.bin');
 const QUIT_TIMEOUT_MS = 15_000;
 
 const BROWSERS = {
@@ -49,10 +48,10 @@ function options() {
       runs: { type: 'string', default: '3' },
       settle: { type: 'string', default: '60' },
       idle: { type: 'string', default: '120' },
-      pages: { type: 'string', default: path.join(repo, 'bench/pages.txt') },
+      pages: { type: 'string', default: path.join(project, 'bench/pages.txt') },
       out: {
         type: 'string',
-        default: path.join(repo, `bench/results/browsers-${new Date().toISOString().slice(0, 10)}.jsonl`),
+        default: path.join(project, `bench/results/browsers-${new Date().toISOString().slice(0, 10)}.jsonl`),
       },
       help: { type: 'boolean', default: false },
     },

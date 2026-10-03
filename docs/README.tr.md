@@ -62,16 +62,16 @@ npm start
 | `npm run bench`       | Açılış, sayfa yükleme ve boşta kalma ölçümü   |
 | `npm run package:mac` | macOS uygulama paketini derler                |
 
-Git hook'ları, commit mesajları ve pull request'ler için [CONTRIBUTING.md](../CONTRIBUTING.md) dosyasını okuyun.
+Git hook'ları, commit mesajları ve pull request'ler için [CONTRIBUTING.md](../.github/CONTRIBUTING.md) dosyasını okuyun.
 
 ## Daha fazlası
 
 - [Klavye kısayolları](keyboard-shortcuts.tr.md)
-- [Neden Electron?](why-electron.md)
+- [Neden Electron?](decisions/why-electron.md)
 - [Mimari](architecture.md)
 - [Benchmark'lar](benchmarks.md)
 - [İndirme ve aktif kurulum ölçümü](usage-measurement.md)
-- [Güvenlik politikası](../SECURITY.md)
+- [Güvenlik politikası](../.github/SECURITY.md)
 
 ## Lisans
 

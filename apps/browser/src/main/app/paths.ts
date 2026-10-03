@@ -15,5 +15,5 @@ export function rendererPath(file: string): string {
 export function appIconPath(): string {
   return app.isPackaged
     ? path.join(process.resourcesPath, 'brand/icon-512.png')
-    : path.resolve(app.getAppPath(), '../../design/brand/png/fitted/icon-512.png');
+    : path.resolve(app.getAppPath(), 'resources/icon-512.png');
 }
