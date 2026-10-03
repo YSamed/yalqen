@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/YSamed/yalqen/compare/v0.3.4...v0.3.5) (2026-10-03)
+
+
+### Features
+
+* add native claude chat interface ([fe2d2a2](https://github.com/YSamed/yalqen/commit/fe2d2a231ada281329afd4e1a6863f7fd1d4607a))
+
 ## [0.3.4](https://github.com/YSamed/yalqen/compare/v0.3.3...v0.3.4) (2026-10-03)
 
 
