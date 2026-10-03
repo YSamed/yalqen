@@ -61,6 +61,7 @@ type Listen = WebContents['on'];
 export interface TabManagerOptions {
   window: BaseWindow;
   pagePreload: string;
+  pageTheme: string;
   closed: SavedTab[];
   privateWindow: boolean;
   session: Session;
@@ -1059,10 +1060,10 @@ export class TabManager {
       const upgrade = tab.upgrade;
       if (upgrade && withoutHash(url) === withoutHash(upgrade.https)) {
         const token = this.options.httpsOnlyWarning(upgrade.https, upgrade.http);
-        failure = errorPageScript(code, name, url, `${PROCEED_HTTP_URL}${token}`, true);
+        failure = errorPageScript(this.options.pageTheme, code, name, url, `${PROCEED_HTTP_URL}${token}`, true);
       } else {
         const token = isCertificateError(code) ? this.options.certificateToken(url) : null;
-        failure = errorPageScript(code, name, url, token ? `${PROCEED_URL}${token}` : null);
+        failure = errorPageScript(this.options.pageTheme, code, name, url, token ? `${PROCEED_URL}${token}` : null);
       }
       tab.url = url;
       tab.failed = true;

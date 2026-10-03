@@ -1,4 +1,5 @@
 import { bench } from './bench/bench.js';
+import fs from 'node:fs';
 import path from 'node:path';
 import { app, ipcMain, nativeTheme } from 'electron';
 import {
@@ -71,6 +72,7 @@ const COMMAND_BAR_PREWARM_MS = 5000;
 
 bench?.mark('modules-loaded');
 if (bench) prepareBenchApp();
+// The profile folder keeps its prototype name: renaming it would leave every existing profile behind.
 app.setPath('userData', bench?.profile ?? path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
 
 const appIcon = appIconPath();
@@ -252,6 +254,7 @@ function startBrowser(): void {
     certificates,
     httpsOnly,
     closedTabs,
+    pageTheme: fs.readFileSync(rendererPath('tokens.css'), 'utf8'),
     permissionsFor,
     zoomFor: (isPrivate) => (isPrivate ? privateZoom : zoom),
     searchEngine,

@@ -5,31 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{historyPage.title}}</title>
     <style>
-      __YALQEN_CONTROLS_SLOT__
+      __YALQEN_STYLES_SLOT__
     </style>
     <style>
       :root {
         color-scheme: light dark;
-        --page: #e6e8eb;
-        --text: #1a1b1e;
-        --text-muted: #6b6e75;
-        --surface: #fff;
-        --border: #d3d6da;
-        --surface-hover: rgb(16 18 24 / 0.05);
-        --accent: #f28c28;
-        --warn: #a34a06;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --page: #141517;
-          --text: #eceef1;
-          --text-muted: #9a9ea6;
-          --surface: #26282c;
-          --border: #373a40;
-          --surface-hover: rgb(255 255 255 / 0.06);
-          --accent: #f28c28;
-          --warn: #f0a35c;
-        }
+        --page: var(--bg);
+        --border: light-dark(#d3d6da, #373a40);
       }
       * {
         box-sizing: border-box;

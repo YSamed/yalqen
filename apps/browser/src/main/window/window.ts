@@ -90,6 +90,7 @@ export interface AppContext {
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
   closedTabs: SavedTab[];
+  pageTheme: string;
   permissionsFor(isPrivate: boolean): PermissionStore;
   zoomFor(isPrivate: boolean): ZoomStore;
   searchEngine(): SearchEngine;
@@ -240,6 +241,7 @@ export class YalqenWindow {
     this.tabs = new TabManager({
       window: this.window,
       pagePreload: preloadPath('page-preload'),
+      pageTheme: app.pageTheme,
       closed: app.closedTabs,
       privateWindow: this.isPrivate,
       session: app.daily,
