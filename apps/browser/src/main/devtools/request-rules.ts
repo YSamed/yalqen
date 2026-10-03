@@ -12,20 +12,6 @@ const MAX_BODY = 1024 * 1024;
 const MAX_HEADERS = 8192;
 const MAX_CACHED_BODY_CHARS = 8 * 1024 * 1024;
 
-export function newRequestRule(): RequestRule {
-  return {
-    id: randomUUID(),
-    enabled: true,
-    pattern: '',
-    action: 'block',
-    status: 200,
-    contentType: 'application/json',
-    body: '',
-    redirectUrl: '',
-    headers: '',
-  };
-}
-
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.slice(0, max) : '';
 }

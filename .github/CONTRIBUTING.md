@@ -32,7 +32,11 @@ Running `npm install` at the repository root sets up Git hooks: commit messages 
 
 ## Measuring performance
 
-Run `npm run bench` in `apps/browser` to measure startup, page loads, the command bar and idle cost from fresh temporary profiles; `npm run bench -- --help` lists the options. Records are appended to `bench/results/` as JSONL and a median summary is printed. Compare against a run on `main` before and after a performance change.
+Run `npm run bench` in `apps/browser` to measure startup, page loads, the command bar and idle cost from fresh temporary profiles; `npm run bench -- --help` lists the options. Records are appended to `bench/results/` as JSONL and a median summary is printed. Compare against a run on `main` before and after a performance change. Earlier performance passes are written up in [docs/performance](../docs/performance/).
+
+## Releasing
+
+Releases are cut by release-please from the commit history; [RELEASING.md](../apps/browser/RELEASING.md) covers signing, notarization and publishing.
 
 ## Commit messages
 

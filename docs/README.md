@@ -70,6 +70,7 @@ Read [CONTRIBUTING.md](../.github/CONTRIBUTING.md) for Git hooks, commit message
 - [Why Electron?](decisions/why-electron.md)
 - [Architecture](architecture.md)
 - [Benchmarks](benchmarks.md)
+- [Performance reports](performance/)
 - [Download and active-install measurements](usage-measurement.md)
 - [Security policy](../.github/SECURITY.md)
 

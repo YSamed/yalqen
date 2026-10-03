@@ -70,6 +70,7 @@ Git hook'ları, commit mesajları ve pull request'ler için [CONTRIBUTING.md](..
 - [Neden Electron?](decisions/why-electron.md)
 - [Mimari](architecture.md)
 - [Benchmark'lar](benchmarks.md)
+- [Performans raporları](performance/)
 - [İndirme ve aktif kurulum ölçümü](usage-measurement.md)
 - [Güvenlik politikası](../.github/SECURITY.md)
 

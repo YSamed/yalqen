@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../shared/i18n';
+  import { newRequestRule } from '../../shared/request-rule';
   import type { RequestRule, RequestRuleAction } from '../../shared/types';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
@@ -29,17 +30,7 @@
   }
 
   function add(): void {
-    rules.push({
-      id: crypto.randomUUID(),
-      enabled: true,
-      pattern: '',
-      action: 'block',
-      status: 200,
-      contentType: 'application/json',
-      body: '',
-      redirectUrl: '',
-      headers: '',
-    });
+    rules.push(newRequestRule());
   }
 
   async function save(): Promise<void> {

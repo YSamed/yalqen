@@ -25,11 +25,6 @@ export function siteOf(url: string): string | null {
   return resolveSite(url);
 }
 
-export function isThirdParty(requestUrl: string, pageUrl: string): boolean {
-  const request = siteOf(requestUrl);
-  return request !== null && request !== siteOf(pageUrl);
-}
-
 export function headerValues(headers: Record<string, string | string[]> | undefined, name: string): string[] {
   const values: string[] = [];
   for (const [key, value] of Object.entries(headers ?? {})) {

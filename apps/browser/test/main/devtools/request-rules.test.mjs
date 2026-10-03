@@ -5,17 +5,18 @@ import path from 'node:path';
 import { test } from 'node:test';
 import requestRules from '../../../dist/main/devtools/request-rules.js';
 import pageOverrides from '../../../dist/main/devtools/page-overrides.js';
+import requestRule from '../../../dist/shared/request-rule.js';
 
 const {
   RequestRuleStore,
   interceptPatterns,
   matchRequestRule,
-  newRequestRule,
   parseHeaderLines,
   pausedRequestCommand,
   sanitizeRequestRules,
 } = requestRules;
 const { NO_OVERRIDES, overrideCommands } = pageOverrides;
+const { newRequestRule } = requestRule;
 
 const rule = (overrides) => ({ ...newRequestRule(), ...overrides });
 const paused = (url, headers = {}) => ({ requestId: 'r1', request: { url, headers } });
