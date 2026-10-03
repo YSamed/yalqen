@@ -2,6 +2,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { checkRequest } from './auth.js';
 import { callTool, TOOLS, type BridgeHost } from './tools.js';
+import { TRACES_PATH } from './tracing.js';
 
 export const DEFAULT_PORT = 47823;
 export const PORT_ATTEMPTS = 10;
@@ -27,6 +28,7 @@ export interface BridgeServerOptions {
   token: () => string;
   version: string;
   onToolCall?: (name: string) => void;
+  onTraces?: (body: unknown) => void;
 }
 
 function rpcError(id: JsonRpcRequest['id'], code: number, message: string): JsonRpcResponse {
@@ -101,6 +103,35 @@ function readBody(req: http.IncomingMessage): Promise<string | null> {
   });
 }
 
+// OTLP/HTTP with JSON bodies; the binary protobuf encoding would need a decoder Yalqen does not ship.
+async function receiveTraces(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  onTraces: (body: unknown) => void,
+): Promise<void> {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    send(res, 405);
+    return;
+  }
+  if (!/^application\/json\b/i.test(req.headers['content-type'] ?? '')) {
+    send(res, 415, { error: 'Yalqen accepts OTLP traces as JSON. Set OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json.' });
+    return;
+  }
+  const body = await readBody(req).catch(() => null);
+  if (body === null) {
+    send(res, 413, { error: 'too large' });
+    return;
+  }
+  try {
+    onTraces(JSON.parse(body));
+  } catch {
+    send(res, 400, { error: 'invalid JSON' });
+    return;
+  }
+  send(res, 200, { partialSuccess: {} });
+}
+
 export function createRequestHandler(options: BridgeServerOptions, port: () => number): http.RequestListener {
   return async (req, res) => {
     const rejection = checkRequest(req.headers, port(), options.token());
@@ -113,7 +144,12 @@ export function createRequestHandler(options: BridgeServerOptions, port: () => n
       send(res, 403, { error: 'forbidden' });
       return;
     }
-    if (new URL(req.url ?? '/', 'http://127.0.0.1').pathname !== MCP_PATH) {
+    const pathname = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
+    if (pathname === TRACES_PATH && options.onTraces) {
+      await receiveTraces(req, res, options.onTraces);
+      return;
+    }
+    if (pathname !== MCP_PATH) {
       send(res, 404, { error: 'not found' });
       return;
     }

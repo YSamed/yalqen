@@ -30,3 +30,26 @@ for (const name of PRELOADS) {
     },
   });
 }
+
+// Page scripts run inside local development pages through the debugger, as the body of one function.
+const PAGE_SCRIPTS = { 'component-inspector': 'YalqenComponentInspector' };
+fs.rmSync(path.join(project, 'dist/page-scripts'), { recursive: true, force: true });
+for (const [name, global] of Object.entries(PAGE_SCRIPTS)) {
+  await build({
+    configFile: false,
+    root: project,
+    logLevel: 'warn',
+    build: {
+      outDir: path.join(project, 'dist/page-scripts'),
+      emptyOutDir: false,
+      target: 'chrome152',
+      minify: true,
+      lib: {
+        entry: path.join(project, `src/page-scripts/${name}.ts`),
+        formats: ['iife'],
+        name: global,
+        fileName: () => `${name}.js`,
+      },
+    },
+  });
+}

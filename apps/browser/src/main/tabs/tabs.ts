@@ -30,7 +30,8 @@ import { resizeEmulation, rotateEmulation, scaleEmulation, type Emulation } from
 import { captureFullPage } from '../devtools/page-debugger.js';
 import { canViewSource } from '../devtools/page-export.js';
 import { NO_OVERRIDES, hasOverrides } from '../devtools/page-overrides.js';
-import type { PausedRequest } from '../devtools/request-rules.js';
+import type { HeaderValue, PausedRequest } from '../devtools/request-rules.js';
+import { newTraceparent } from '../agent-bridge/tracing.js';
 import { isSameVisit } from '../library/history.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from '../pages/error-page.js';
 import { internalNavigation, isAllowedFrom, type InternalNavigation } from '../pages/internal-navigation.js';
@@ -45,10 +46,12 @@ import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, opensInPlace, recordBlocked } from './popups.js';
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
 import { TabFreezer } from './tab-freezer.js';
-import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger } from './tab-overrides.js';
+import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger, rulesFor } from './tab-overrides.js';
 import { observeTab, unobserveTab } from './tab-agent.js';
 import { captureSelection, startPicking, type PickSession } from './tab-picker.js';
 import type { ElementSelection } from '../agent-bridge/selection.js';
+import { episodePreview } from '../agent-bridge/timeline.js';
+import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { TabTranslation } from './tab-translation.js';
 import { stepZoom } from './zoom.js';
@@ -101,6 +104,7 @@ export interface TabManagerOptions {
   requestRules: () => readonly RequestRule[];
   translation: () => { enabled: boolean; language: PageLanguage };
   agentScope: (tab: { url: string; isPrivate: boolean }) => boolean;
+  agentTracing: () => boolean;
 }
 
 export type DetachedTab = Tab;
@@ -561,7 +565,7 @@ export class TabManager {
   refreshRequestRules(): void {
     for (const tab of this.tabs) {
       const contents = liveContents(tab);
-      if (!tab.overrides.requestRules || !contents) continue;
+      if ((!tab.overrides.requestRules && !tab.agent) || !contents) continue;
       this.applyOverrides(tab, contents).catch((error: unknown) => {
         console.warn('[request-rules] could not refresh interception:', error);
       });
@@ -569,7 +573,7 @@ export class TabManager {
   }
 
   private applyOverrides(tab: Tab, contents: WebContents): Promise<void> {
-    return pushOverrides(tab, contents, this.options.requestRules());
+    return pushOverrides(tab, contents, this.options.requestRules(), this.options.agentTracing());
   }
 
   toggleTranslation(): void {
@@ -656,6 +660,20 @@ export class TabManager {
     }
   }
 
+  async setAgentRules(id: TabId, rules: RequestRule[]): Promise<void> {
+    const found = this.observedTab(id);
+    if (!found?.tab.agent) return;
+    found.tab.agent.rules = rules;
+    await this.applyOverrides(found.tab, found.contents);
+    this.changed();
+  }
+
+  agentPlaywrightTest(episodeId: string): string | null {
+    const tab = this.active();
+    const episode = tab?.agent?.timeline.episodes.values().find((item) => item.id === episodeId);
+    return tab && episode ? playwrightTest(episode, tab.url) : null;
+  }
+
   markAgentRead(id: TabId): void {
     const tab = this.find(id);
     if (!tab) return;
@@ -670,6 +688,17 @@ export class TabManager {
     this.freezer.unfreeze(tab);
     if (ignoreCache) contents.reloadIgnoringCache();
     else contents.reload();
+  }
+
+  // Only same-origin requests get a trace header: on a cross-origin request it would trigger a CORS
+  // preflight the backend may refuse.
+  private traceHeaders(tab: Tab, paused: PausedRequest): HeaderValue[] {
+    if (!tab.agent || !this.options.agentTracing()) return [];
+    if (paused.resourceType !== 'Fetch' && paused.resourceType !== 'XHR') return [];
+    if (!isSameOrigin(paused.request.url, tab.url)) return [];
+    const { traceId, header } = newTraceparent();
+    tab.agent.traceRequest(traceId, paused.networkId ?? paused.requestId);
+    return [{ name: 'traceparent', value: header }];
   }
 
   private syncAgentFor(tab: Tab, url: string): void {
@@ -1141,7 +1170,8 @@ export class TabManager {
     const onDebuggerMessage = (_event: Electron.Event, method: string, params: unknown) => {
       tab.agent?.handle(method, params);
       if (method !== 'Fetch.requestPaused' || contents.isDestroyed()) return;
-      answerPausedRequest(contents, this.options.requestRules(), params as PausedRequest);
+      const paused = params as PausedRequest;
+      answerPausedRequest(contents, rulesFor(tab, this.options.requestRules()), paused, this.traceHeaders(tab, paused));
     };
     contents.debugger.on('message', onDebuggerMessage);
     disposers.push(() => contents.debugger.off('message', onDebuggerMessage));
@@ -1151,6 +1181,7 @@ export class TabManager {
     listen('did-navigate', () => {
       updateUrl(true);
       this.syncAgentFor(tab, tab.url);
+      tab.agent?.timeline.navigation(tab.url);
     });
     let failure: string | null = null;
     listen('did-fail-load', (_event, code, name, url, isMainFrame) => {
@@ -1266,6 +1297,8 @@ export class TabManager {
       canGoForward: history?.canGoForward() ?? false,
       agentObserved: tab.agent !== null,
       agentReadAt: tab.agentReadAt,
+      agentEpisode: episodePreview(tab.agent?.timeline.latestEpisode ?? null),
+      agentRules: tab.agent?.rules.length ?? 0,
     };
   }
 
@@ -1283,5 +1316,13 @@ export class TabManager {
 
   private changed(persist: PersistChange = false): void {
     this.options.onChange(persist);
+  }
+}
+
+function isSameOrigin(url: string, pageUrl: string): boolean {
+  try {
+    return new URL(url).origin === new URL(pageUrl).origin;
+  } catch {
+    return false;
   }
 }

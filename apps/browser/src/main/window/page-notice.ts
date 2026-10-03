@@ -2,7 +2,7 @@ import { type BaseWindow, type Rectangle, type WebContentsView } from 'electron'
 import { createOverlayView } from './overlay-view.js';
 
 const WIDTH = 460;
-const HEIGHT = 76;
+const HEIGHT = 96;
 const TOP_INSET = 12;
 const VISIBLE_MS = 2600;
 

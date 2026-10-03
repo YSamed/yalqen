@@ -1,4 +1,5 @@
 import type { AgentSetupKind } from '../../shared/types.js';
+import { TRACES_PATH } from './tracing.js';
 import { DEFAULT_PORT, MCP_PATH, startBridgeServer, type BridgeServer } from './server.js';
 import type { BridgeHost } from './tools.js';
 
@@ -16,6 +17,7 @@ export interface AgentBridgeOptions {
   token(): string;
   version: string;
   onChange(): void;
+  onTraces?(body: unknown): void;
   firstPort?: number;
 }
 
@@ -39,6 +41,12 @@ export function setupSnippet(kind: AgentSetupKind, port: number, token: string):
       ].join('\n');
     case 'token':
       return token;
+    case 'otel':
+      return [
+        `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:${port}${TRACES_PATH}`,
+        `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json`,
+        `OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Bearer%20${token}`,
+      ].join('\n');
   }
 }
 
@@ -92,6 +100,7 @@ export class AgentBridge {
             host: this.options.host,
             token: () => this.options.token(),
             version: this.options.version,
+            onTraces: this.options.onTraces && ((body) => this.options.onTraces?.(body)),
             onToolCall: () => {
               this.lastCallAt = Date.now();
               this.calls++;

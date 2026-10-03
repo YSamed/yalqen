@@ -23,6 +23,8 @@ export const en = {
   'format.userAgentChanged': 'User-Agent changed',
   'format.requestRulesApplied': 'request rules applied',
   'format.agentObserved': 'visible to agent',
+  'format.agentRules': '{count} agent request rules',
+  'format.agentRules.one': '{count} agent request rule',
 
   'newTabButton.label': 'New tab',
   'newTabButton.title': 'New tab (⌘T)',
@@ -103,6 +105,16 @@ export const en = {
   'agentBridge.originsHint':
     'Extra development addresses the agent may read, one per line, such as a tunnel or a LAN address.',
   'agentBridge.saveOrigins': 'Save origins',
+  'agentBridge.actions': 'Agent actions',
+  'agentBridge.actionsHint':
+    'Whether the agent may click, type and navigate in local tabs, for example to check its own fix.',
+  'agentBridge.actionsOff': 'Off',
+  'agentBridge.actionsAsk': 'Ask every time',
+  'agentBridge.actionsAllow': 'Allow',
+  'agentBridge.tracing': 'Backend traces',
+  'agentBridge.tracingHint':
+    'Adds a trace header to the page’s own API requests and accepts OpenTelemetry traces from your local backend, so the agent sees what happened on the server too. Only same-origin requests get the header.',
+  'agentBridge.tracingSetup': 'Backend environment',
 
   'requestRulesPanel.actionBlock': 'Block',
   'requestRulesPanel.actionMock': 'Mock response',
@@ -503,6 +515,9 @@ export const en = {
   'devMenu.editRequestRules': 'Edit Request Rules…',
   'devMenu.resetOverrides': 'Reset Emulations',
   'devMenu.pickElement': 'Select Element for Agent',
+  'devMenu.latestEpisode': 'Latest error · {id}',
+  'devMenu.copyEpisode': 'Copy Reference for Agent',
+  'devMenu.copyPlaywrightTest': 'Copy Playwright Test',
 
   'contextMenu.openLinkInNewTab': 'Open Link in New Tab',
   'contextMenu.openLinkInNewWindow': 'Open Link in New Window',
@@ -810,6 +825,21 @@ export const en = {
   'picker.off': 'Turn on the agent connection in Settings → Developer first',
   'picker.notLocal': 'Element selection works on local development tabs only',
   'picker.failed': 'The element could not be read',
+
+  'agentActions.inControl': 'Agent in control',
+  'agentActions.stop': 'Stop',
+  'agentActions.allow': 'Allow',
+  'agentActions.deny': 'Don’t Allow',
+  'agentActions.confirm': 'Allow the agent to do this? {action}',
+  'agentActions.confirmDetail':
+    'Yalqen will act in this tab as if you did it. You can stop it at any time with the Stop button above the page.',
+  'agentActions.passed': 'Verification passed',
+  'agentActions.failed': 'Verification failed',
+  'agentActions.noErrors': 'No console errors',
+  'agentActions.errors': '{count} console errors',
+  'agentActions.errors.one': '{count} console error',
+  'agentActions.notSent': 'not sent',
+  'agentActions.requestFailed': 'failed',
 };
 
 export type MessageKey = keyof typeof en;

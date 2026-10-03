@@ -1,5 +1,7 @@
 import type { WebContents } from 'electron';
-import { TabRuntime } from '../agent-bridge/runtime-buffer.js';
+import { ACTION_SCRIPT, ACTION_WORLD } from '../agent-bridge/action-script.js';
+import { WEBMCP_SCRIPT } from '../agent-bridge/webmcp.js';
+import { ACTION_BINDING, TabRuntime } from '../agent-bridge/runtime-buffer.js';
 import type { PageInfo, ResponseBody } from '../agent-bridge/tools.js';
 import { attachDebugger, captureFullPage, sendCommands } from '../devtools/page-debugger.js';
 import { NO_OVERRIDES, OBSERVED_NETWORK_ENABLE } from '../devtools/page-overrides.js';
@@ -8,16 +10,32 @@ import type { Tab } from './tab.js';
 import { releaseDebugger } from './tab-overrides.js';
 
 export async function observeTab(tab: Tab, contents: WebContents): Promise<void> {
-  const runtime = new TabRuntime();
+  const runtime = new TabRuntime(() => tab.url);
   tab.agent = runtime;
   try {
     attachDebugger(contents);
     // Sent together: awaiting each one would let the page's first requests go out before Network is on.
     await Promise.all(
-      [OBSERVED_NETWORK_ENABLE, { method: 'Runtime.enable' }, { method: 'Log.enable' }].map(({ method, params }) =>
-        contents.debugger.sendCommand(method, params),
+      [OBSERVED_NETWORK_ENABLE, { method: 'Runtime.enable' }, { method: 'Log.enable' }, { method: 'Page.enable' }].map(
+        ({ method, params }) => contents.debugger.sendCommand(method, params),
       ),
     );
+    await contents.debugger.sendCommand('Runtime.addBinding', {
+      name: ACTION_BINDING,
+      executionContextName: ACTION_WORLD,
+    });
+    // Scripts added this way only reach later documents while the Page domain is on.
+    const { identifier } = (await contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
+      source: ACTION_SCRIPT,
+      worldName: ACTION_WORLD,
+      runImmediately: true,
+    })) as { identifier: string };
+    runtime.actionScriptId = identifier;
+    const webMcp = (await contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
+      source: WEBMCP_SCRIPT,
+      runImmediately: true,
+    })) as { identifier: string };
+    runtime.webMcpScriptId = webMcp.identifier;
   } catch (error) {
     if (tab.agent === runtime) tab.agent = null;
     if (!contents.isDestroyed()) releaseDebugger(tab, contents);
@@ -26,10 +44,18 @@ export async function observeTab(tab: Tab, contents: WebContents): Promise<void>
 }
 
 export async function unobserveTab(tab: Tab, contents: WebContents): Promise<void> {
+  const scriptIds = [tab.agent?.actionScriptId, tab.agent?.webMcpScriptId].filter((id) => typeof id === 'string');
   tab.agent = null;
   if (contents.isDestroyed() || !contents.debugger.isAttached()) return;
   const networkOverridden = tab.overrides.cacheDisabled || tab.overrides.network !== null;
   await sendCommands(contents, [
+    ...scriptIds.map((identifier) => ({
+      method: 'Page.removeScriptToEvaluateOnNewDocument',
+      params: { identifier },
+      optional: true,
+    })),
+    { method: 'Runtime.removeBinding', params: { name: ACTION_BINDING }, optional: true },
+    { method: 'Page.disable', optional: true },
     { method: 'Runtime.disable', optional: true },
     { method: 'Log.disable', optional: true },
     ...(networkOverridden ? [] : [{ method: 'Network.disable', optional: true }]),

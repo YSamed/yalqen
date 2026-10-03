@@ -231,7 +231,7 @@ ProductPage › ProductDetails › PurchaseActions › AddToCartButton
 **Technical design**
 
 - **Spike (first week):** evaluate whether `bippy` (MIT, the foundation of react-grab) can be used instead of writing this from scratch. Compare license, size and React 19 support, and add the decision to the record.
-- **Hook injection:** while the bridge is on, and only in tabs in scope, `Page.addScriptToEvaluateOnNewDocument` installs a small `__REACT_DEVTOOLS_GLOBAL_HOOK__` before React loads. If the React DevTools extension is installed, it attaches to the existing hook instead of replacing it.
+- **Hook injection:** dropped after the spike. The fiber is reachable from the DOM node, so nothing runs in the page before the user picks an element (see [agent-bridge.md](decisions/agent-bridge.md)).
 - **Component chain:** find the fiber through the `__reactFiber$...` key on the selected DOM node and walk up the `return` chain, listing user (non-host) components.
 - **Source location:**
   - React 18 and earlier: `_debugSource` on the fiber.

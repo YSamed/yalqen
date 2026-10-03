@@ -57,6 +57,71 @@ Limits per tab, in memory only: the last 200 console entries and the last 300 re
 - The selection id (`yk_` and 6 hex digits) is copied to the clipboard and shown in a short notice above the page.
 - Same-process iframes can be picked. Cross-origin iframes run in their own process and are not reachable through the page's debugger session, so the inspect overlay does not enter them. Multi-select with `⇧` is not implemented: the inspect event carries no modifier keys.
 
+## Component and source mapping (phase 3)
+
+**bippy, not an in-house mapper.** [bippy](https://github.com/aidenybai/bippy) 0.7 (MIT, no runtime dependencies) already resolves React 18 `_debugSource`, React 19 `_debugStack` and source maps. Only `bippy/source` is bundled: bippy's main entry installs a DevTools hook as a side effect and imports React. The fiber lookup (`__reactFiber$` key), composite check and display name are a few lines in `src/page-scripts/react-inspector.ts` instead.
+
+**No script before page load.** The roadmap planned to install a `__REACT_DEVTOOLS_GLOBAL_HOOK__` with `Page.addScriptToEvaluateOnNewDocument`. It is not needed: the fiber is reachable from the DOM node itself, so nothing runs in the page until the user picks an element. The inspector (about 40 KB, bundled as one function by `scripts/build-preload.mjs`) runs once per pick through `Runtime.callFunctionOn` on the picked node, with a 4-second limit. If resolving sources leaves a DevTools hook the page did not have, it is removed.
+
+**Webpack inline maps.** webpack dev builds (`eval-source-map`, the Next.js default with `--webpack`) keep each module's source map inline, which the page cannot fetch. For those frames the main process enables the `Debugger` domain for the duration of the pick, reads the module's `sourceMapURL` from `Debugger.scriptParsed`, and maps the line with a small decoder (`source-map.ts`). This adds about 300 ms to that pick.
+
+**Confidence.**
+
+- `exact`: a mapped `file:line`.
+- `component`: the component is known but not the line, as with server components, whose code never reaches the browser (only the file is given), or production builds with readable names.
+- `dom`: no React, or a production build with minified names, which would send the agent after components that do not exist.
+
+**Results on the test matrix** (fixtures with three nested components, picking the button, a span and the heading):
+
+| App                   | Bundler   | React | Result                                                                       |
+| --------------------- | --------- | ----- | ---------------------------------------------------------------------------- |
+| Vite                  | Vite 7    | 19    | `exact`, 3 of 3 lines right                                                  |
+| Vite                  | Vite 7    | 18    | `exact`, 3 of 3 lines right                                                  |
+| Next.js 16 App Router | Turbopack | 19    | client components `exact` 2 of 2; server component `component`               |
+| Next.js 16 App Router | webpack   | 19    | client components `exact` 2 of 2; server component `component` with its file |
+| Vite production build | —         | 19    | `dom`                                                                        |
+| Plain HTML            | —         | —     | `dom`, no errors                                                             |
+
+Not yet measured: Pages Router, webpack with React 18 outside Next.js, and large real projects. The roadmap's 90% target needs real apps, not fixtures.
+
+## Runtime timeline (phase 4)
+
+- **User actions** come from a small listener registered with `Page.addScriptToEvaluateOnNewDocument` in an isolated world (`yalqen-agent`), reported through `Runtime.addBinding` bound to that world only. The page's scripts can neither see the listener nor call the binding. The script also runs immediately in the current document, so switching the bridge on mid-session works. The `Page` domain has to stay on while observing, or the script does not reach later documents.
+- **Privacy:** clicks, submits, `change` events and Enter are recorded with the element's tag, id, name and visible label. Typed values are never sent, only their length; password fields are skipped entirely.
+- **Cause links:** the listener reports each event twice, in the capture phase on `window` and again in the bubble phase. A request that starts between the two was made synchronously by the handler and is linked as `direct`. Handlers that stop propagation never report the second phase, so an open action counts for at most 250 ms. A request within 1 second of an action is `likely`. A response is `direct` to its request. An exception is `direct` to a response when its stack shares a named, non-library function with the request's initiator stack, otherwise `likely` to a failed response in the previous second.
+- **Episodes:** a response of 400 or above, a failed request (not a canceled one) or an uncaught exception opens an episode with the events of the preceding 10 seconds. Triggers within 3 seconds of each other extend the same episode. An episode keeps copies of its events (up to 60), so it outlives the 1,000-event timeline. The last 20 episodes per tab are kept in memory.
+- **Interface:** the developer menu lists the latest episode and offers "Copy Reference for Agent", which copies its `yk_ep_` id.
+- **Overhead:** reloading the Vite fixture, the median load event moved from 23.5 ms to 26.0 ms with the tab observed (15 reloads, three runs). Pages outside scope are unaffected.
+
+## Agent actions and verification (phase 5)
+
+- **Policy:** Settings → Developer → Agent actions: Off, Ask every time (default) or Allow. With "Ask", every action, and every replay as a whole, shows a confirmation dialog listing what will happen. `wait_for` only reads, so it never asks.
+- **Visible control:** while an action runs, the tab is brought to the front, framed in the accent color, and a banner reads "Agent in control · Stop". Stop aborts the action at its next step; the next action in that tab asks again even under "Allow".
+- **Input:** clicks are `Input.dispatchMouseEvent` at the centre of the element's content box after `DOM.scrollIntoViewIfNeeded`; `fill` focuses the field, selects all with the `selectAll` editing command and uses `Input.insertText`. No JavaScript is evaluated in the page for actions.
+- **Scope:** `navigate` only opens addresses in scope; actions only reach observed tabs.
+- **Replay:** the clicks and Enter presses of an episode are replayed by the selectors recorded with them. Typed values are not recorded, so changes to fields are skipped and reported, and fields keep their current contents. Submits are not replayed separately because the click or Enter that caused them is. Before replaying, Yalqen waits for the network to settle (as after an HMR update); afterwards it waits for the network again and 400 ms more for exceptions thrown from response handlers.
+- **Verdict:** `passed` when the replay produced no failed response (status 0 or 400 and above) and no console error or exception; the per-request outcome (`POST /api/users: 500 → 201`) and a short notice above the page show the result. Starting an action closes any open episode, so the agent's own events never leak into the user's episode.
+
+## Backlog items (phase 6)
+
+- **Request rules over MCP:** `mock_response`, `block_request` and `redirect_request` add temporary rules to one observed tab. They live in memory with the observation, come before the user's saved rules, and use the same `Fetch` interception. Adding one is an agent action (it follows the action policy); clearing never asks. The developer indicator counts them.
+- **Resending a request:** `resend_request` sends a recent request again from the main process with the tab's session (`session.fetch` with credentials), optionally with another method, body or headers. Only in-scope URLs; the response comes back masked and truncated.
+- **Playwright export:** `export_playwright_test` (and "Copy Playwright Test" in the developer menu) turns an episode into a test that replays its clicks and Enter presses, waits for the requests that failed and expects them below 400 with a clean console. Typed values are left as blank `fill` calls with a comment, since they were never recorded.
+- **Vue and Svelte:** the page inspector became `component-inspector`. Vue 3 (`__vueParentComponent`) and Vue 2 (`__vue__`) give the component, its file and owner chain but no line, so they report `component`. Svelte 5 (`__svelte_meta` with `loc` and the `parent` usage chain) gives the element's line and where the component is used, so it reports `exact`; Svelte 4 lines are zero-based and corrected.
+- **WebMCP:** observed pages get a `navigator.modelContext` stand-in (`provideContext`, `registerTool`, `unregisterTool`, `clearContext`) in their own world when the browser has none. `list_page_tools` reads what the page registered; `call_page_tool` runs one as an agent action. A page that registers at load needs one reload after the connection is turned on.
+- **Backend tracing** (Settings → Developer → Backend traces, off by default): same-origin `fetch` and XHR requests of observed tabs get a W3C `traceparent` header through `Fetch` interception limited to those resource types. Cross-origin requests never get it, because the extra header would trigger a CORS preflight the backend may refuse. The bridge accepts OTLP/HTTP JSON on `/v1/traces` with the same token; protobuf is refused with a hint to set `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json`. A request's server span and every failing span join the timeline as `backend` events linked `direct` to the request, and are added to its episode even when they arrive after it closed; `get_backend_trace` returns all spans of the request.
+- **Sending to the terminal** is not built yet; see the open question below.
+
+## Open question: sending to the terminal
+
+Status: open, to be decided later.
+
+The roadmap's first principle is that Yalqen never types into a terminal; the agent pulls through MCP, so agent updates cannot break the integration. Pushing a selection or episode id into the agent's input would need a wrapper (for example `yalqen-agent claude`) that runs the agent in a pseudo-terminal and listens on a local socket. Options:
+
+1. Leave it out: copying a `yk_` or `yk_ep_` id and pasting it is one step.
+2. A launcher only: start the agent with the Yalqen MCP server already configured, without ever writing to its input.
+3. A full terminal bridge: the wrapper owns a PTY and Yalqen writes references into it. Fragile across agents and terminals, and needs a native PTY module.
+
 ## Naming
 
 `yalqen` everywhere: the MCP server name, tool descriptions, the setup command and the docs.

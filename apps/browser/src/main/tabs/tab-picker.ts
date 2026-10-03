@@ -1,4 +1,15 @@
+import fs from 'node:fs';
 import type { WebContents } from 'electron';
+import {
+  componentInfo,
+  needsInlineMap,
+  NO_COMPONENT,
+  type ComponentInfo,
+  type InspectedSource,
+  type ComponentInspection,
+} from '../agent-bridge/component-source.js';
+import { pageScriptPath } from '../app/paths.js';
+import { inlineSourceMap, originalPosition, type RawSourceMap } from '../agent-bridge/source-map.js';
 import { truncateBytes } from '../agent-bridge/redact.js';
 import {
   OUTER_HTML_LIMIT,
@@ -13,6 +24,8 @@ import {
 } from '../agent-bridge/selection.js';
 
 const MAX_SHOT_SIDE = 2000;
+// Resolving a React 19 location fetches the dev server's source map, which can be slow on big apps.
+const INSPECT_TIMEOUT_MS = 4000;
 const HIGHLIGHT = {
   showInfo: true,
   showStyles: false,
@@ -131,6 +144,67 @@ async function describeInPage(send: Send, backendNodeId: number) {
   }
 }
 
+let componentInspector: string | null = null;
+
+function componentInspectorFunction(): string {
+  componentInspector ??= `async function () {\n${fs.readFileSync(pageScriptPath('component-inspector'), 'utf8')}\nreturn YalqenComponentInspector.inspect(this);\n}`;
+  return componentInspector;
+}
+
+async function inlineSourceMaps(contents: WebContents, urls: Set<string>): Promise<Map<string, RawSourceMap>> {
+  const maps = new Map<string, RawSourceMap>();
+  if (urls.size === 0) return maps;
+  const onMessage = (_event: Electron.Event, method: string, params: { url?: string; sourceMapURL?: string }) => {
+    if (method !== 'Debugger.scriptParsed' || !params.url || !params.sourceMapURL || !urls.has(params.url)) return;
+    const map = inlineSourceMap(params.sourceMapURL);
+    if (map) maps.set(params.url, map);
+  };
+  contents.debugger.on('message', onMessage);
+  try {
+    // Enabling the debugger reports every script already loaded, with its source map URL.
+    await contents.debugger.sendCommand('Debugger.enable');
+  } finally {
+    contents.debugger.off('message', onMessage);
+    await contents.debugger.sendCommand('Debugger.disable').catch(() => undefined);
+  }
+  return maps;
+}
+
+async function withInlineMaps(contents: WebContents, inspection: ComponentInspection): Promise<ComponentInspection> {
+  const pending = [inspection.source, inspection.componentSource].filter(needsInlineMap);
+  if (pending.length === 0) return inspection;
+  const maps = await inlineSourceMaps(contents, new Set(pending.map((source) => source.raw.file)));
+  const resolve = (source: InspectedSource | null): InspectedSource | null => {
+    if (!needsInlineMap(source) || !source.raw.line || !source.raw.column) return source;
+    const map = maps.get(source.raw.file);
+    const position = map && originalPosition(map, source.raw.line, source.raw.column);
+    return position
+      ? { ...source, file: position.source, line: position.line, column: position.column, raw: null }
+      : source;
+  };
+  return { ...inspection, source: resolve(inspection.source), componentSource: resolve(inspection.componentSource) };
+}
+
+async function inspectComponent(contents: WebContents, send: Send, backendNodeId: number): Promise<ComponentInfo> {
+  const { object } = (await send('DOM.resolveNode', { backendNodeId })) as { object: { objectId: string } };
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const inspected = (
+      send('Runtime.callFunctionOn', {
+        objectId: object.objectId,
+        functionDeclaration: componentInspectorFunction(),
+        returnByValue: true,
+        awaitPromise: true,
+      }) as Promise<{ result: { value?: ComponentInspection } }>
+    ).then(({ result }) => (result.value ? withInlineMaps(contents, result.value) : null));
+    const timeout = new Promise<null>((resolve) => (timer = setTimeout(() => resolve(null), INSPECT_TIMEOUT_MS)));
+    return componentInfo(await Promise.race([inspected, timeout]));
+  } finally {
+    clearTimeout(timer);
+    await send('Runtime.releaseObject', { objectId: object.objectId }).catch(() => undefined);
+  }
+}
+
 async function elementShot(send: Send, box: Box | null): Promise<string | null> {
   if (!box || box.width < 1 || box.height < 1) return null;
   const { cssVisualViewport } = (await send('Page.getLayoutMetrics')) as {
@@ -167,11 +241,12 @@ export async function captureSelection(
       model: { border: number[] } | null;
     };
     const box = boxFromQuad(model?.border);
-    const [page, styles, accessibility, screenshot] = await Promise.all([
+    const [page, styles, accessibility, screenshot, component] = await Promise.all([
       optional(describeInPage(send, backendNodeId), { text: '', selector: '', ancestors: [] }),
       optional(computedStyles(send, backendNodeId), {}),
       optional(accessibleName(send, backendNodeId), { role: null, name: null }),
       optional(elementShot(send, box), null),
+      optional(inspectComponent(contents, send, backendNodeId), NO_COMPONENT),
     ]);
     const tag = node.localName || node.nodeName.toLowerCase();
     const attributes = attributeMap(node.attributes);
@@ -192,6 +267,7 @@ export async function captureSelection(
       styles,
       box,
       screenshot,
+      component,
     };
   } finally {
     for (const method of ['CSS.disable', 'Overlay.disable', 'DOM.disable']) {

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import type { ComponentInfo } from './component-source.js';
 import type { Truncated } from './redact.js';
 
 export const SELECTION_LIMIT = 10;
@@ -86,6 +87,7 @@ export interface ElementSelection {
   box: Box | null;
   // Base64 PNG of the element's box, kept for get_selected_element.
   screenshot: string | null;
+  component: ComponentInfo;
 }
 
 export function newSelectionId(): string {
@@ -152,8 +154,16 @@ export function selectionSummary(selection: ElementSelection) {
 }
 
 export function selectionDetails(selection: ElementSelection) {
+  const { component: react } = selection;
   return {
     ...selectionSummary(selection),
+    framework: react.framework,
+    component: react.component,
+    source: react.source && { ...react.source, confidence: react.confidence },
+    confidence: react.confidence,
+    used_at: react.usedAt,
+    owner_chain: react.ownerChain,
+    props: react.props,
     tag: selection.tag,
     attributes: selection.attributes,
     text: selection.text,

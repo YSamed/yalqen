@@ -231,7 +231,7 @@ ProductPage › ProductDetails › PurchaseActions › AddToCartButton
 **Teknik tasarım**
 
 - **Başlangıç denemesi (ilk hafta):** Sıfırdan yazmak yerine `bippy` (MIT, react-grab'ın altyapısı) kullanılabilir mi, değerlendirilir. Lisans, boyut ve React 19 desteği karşılaştırılıp karar kayda eklenir.
-- **Hook enjeksiyonu:** Köprü açıkken ve yalnızca kapsamdaki sekmelerde `Page.addScriptToEvaluateOnNewDocument` ile, React yüklenmeden önce küçük bir `__REACT_DEVTOOLS_GLOBAL_HOOK__` yerleştirilir. React DevTools extension'ı yüklüyse onunla çakışmaz, mevcut hook'a eklenir.
+- **Kanca enjeksiyonu:** denemeden sonra kaldırıldı. Fiber'a DOM düğümünden ulaşılabildiği için kullanıcı bir öğe seçene kadar sayfada hiçbir şey çalışmaz (bkz. [agent-bridge.md](decisions/agent-bridge.md)).
 - **Component zinciri:** Seçilen DOM node'undaki `__reactFiber$...` anahtarından fiber bulunur ve `return` zinciri yukarı yürünerek kullanıcı component'leri (host olmayanlar) listelenir.
 - **Kaynak konumu:**
   - React 18 ve öncesi: fiber üzerindeki `_debugSource`.

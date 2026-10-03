@@ -143,6 +143,11 @@ async function capture() {
       '# shell profile',
       'export YALQEN_MCP_TOKEN="<token>"',
     ].join('\n'),
+    otelConfig: [
+      'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:47823/v1/traces',
+      'OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json',
+      'OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Bearer%20<token>',
+    ].join('\n'),
     observedTabs: 2,
   };
   const preloads = {
@@ -170,7 +175,7 @@ const tab = (index) => ({
   bookmarked: false, blockedPopups: 0, consoleErrors: 0,
   overrides: { cacheDisabled: false, network: null, colorScheme: null, reducedMotion: false, printMedia: false, userAgent: null, requestRules: false },
   translation: { status: 'idle', available: false }, autoReloadSeconds: null, audible: false, muted: false,
-  canGoBack: index === 0, canGoForward: false, agentObserved: index === 0, agentReadAt: null,
+  canGoBack: index === 0, canGoForward: false, agentObserved: index === 0, agentReadAt: null, agentEpisode: null, agentRules: 0,
 });
 const state = {
   tabs: [0, 1, 2, 3, 4].map(tab), listOrder: ['tab-0', 'tab-1', 'tab-2', 'tab-3', 'tab-4'], developer: false,

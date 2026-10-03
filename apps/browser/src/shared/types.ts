@@ -45,6 +45,13 @@ export interface TabSnapshot {
   canGoForward: boolean;
   agentObserved: boolean;
   agentReadAt: number | null;
+  agentEpisode: AgentEpisodePreview | null;
+  agentRules: number;
+}
+
+export interface AgentEpisodePreview {
+  id: string;
+  lines: string[];
 }
 
 export type DeviceId =
@@ -364,7 +371,11 @@ export interface SettingsValues {
   welcomeCompleted: boolean;
   agentBridge: boolean;
   agentOrigins: string[];
+  agentActions: AgentActionPolicy;
+  agentTracing: boolean;
 }
+
+export type AgentActionPolicy = 'off' | 'ask' | 'allow';
 
 export type UpdateStatus =
   | { state: 'unavailable' }
@@ -466,7 +477,7 @@ export interface PasswordsView {
   neverSave: string[];
 }
 
-export type AgentSetupKind = 'claude' | 'codex' | 'token';
+export type AgentSetupKind = 'claude' | 'codex' | 'token' | 'otel';
 
 export interface AgentBridgeView {
   enabled: boolean;
@@ -478,6 +489,7 @@ export interface AgentBridgeView {
   // Shown with the token hidden; copying puts the real one on the clipboard.
   claudeCommand: string | null;
   codexConfig: string | null;
+  otelConfig: string | null;
   observedTabs: number;
 }
 

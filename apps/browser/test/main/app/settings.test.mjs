@@ -32,6 +32,8 @@ test('unknown or mistyped fields fall back', () => {
       usageCounting: 'yes',
       agentBridge: 'on',
       agentOrigins: 'https://x.test',
+      agentActions: 'always',
+      agentTracing: 'yes',
     }),
     {
       version: 1,
@@ -62,6 +64,8 @@ test('unknown or mistyped fields fall back', () => {
       welcomeCompleted: false,
       agentBridge: false,
       agentOrigins: [],
+      agentActions: 'ask',
+      agentTracing: false,
     },
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');

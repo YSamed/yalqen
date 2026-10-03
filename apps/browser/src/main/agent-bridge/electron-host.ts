@@ -1,9 +1,9 @@
 import type { TabManager } from '../tabs/tabs.js';
 import { pageInfo, responseBody, screenshot } from '../tabs/tab-agent.js';
-import type { BridgeHost, BridgeTab } from './tools.js';
+import type { BridgeActions, BridgeHost, BridgeTab } from './tools.js';
 
 // The first tab set belongs to the focused window, so its active tab is the default target.
-export function createElectronHost(tabSets: () => TabManager[]): BridgeHost {
+export function createElectronHost(tabSets: () => TabManager[], actions: BridgeActions): BridgeHost {
   const locate = (id: string) => {
     for (const tabs of tabSets()) {
       const found = tabs.observedTab(id);
@@ -12,6 +12,7 @@ export function createElectronHost(tabSets: () => TabManager[]): BridgeHost {
     throw new Error(`Tab ${id} is not open or is not a local development tab.`);
   };
   return {
+    actions,
     tabs: () =>
       tabSets().flatMap((tabs, index) =>
         tabs.observedTabs().map((tab): BridgeTab => ({

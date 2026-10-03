@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../shared/i18n';
-  import type { AgentBridgeView, AgentSetupKind, SettingsValues } from '../../shared/types';
+  import type { AgentActionPolicy, AgentBridgeView, AgentSetupKind, SettingsValues } from '../../shared/types';
   import Button from '../ui/Button.svelte';
+  import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import SettingRow from './SettingRow.svelte';
 
@@ -10,6 +11,11 @@
     $props();
 
   const api = window.yalqenSettings;
+  const actionOptions: { value: AgentActionPolicy; label: string }[] = [
+    { value: 'off', label: t('agentBridge.actionsOff') },
+    { value: 'ask', label: t('agentBridge.actionsAsk') },
+    { value: 'allow', label: t('agentBridge.actionsAllow') },
+  ];
   let view = $state<AgentBridgeView | null>(null);
   let copied = $state<AgentSetupKind | null>(null);
   let originsText = $state('');
@@ -88,6 +94,34 @@
         {copied === 'token' ? t('agentBridge.copied') : t('agentBridge.copyToken')}
       </Button>
       <Button size="sm" onclick={regenerate}>{t('agentBridge.regenerate')}</Button>
+    </div>
+  {/if}
+
+  <SettingRow title={t('agentBridge.actions')} hint={t('agentBridge.actionsHint')} labelFor="agent-actions">
+    <Select
+      id="agent-actions"
+      options={actionOptions}
+      value={values.agentActions}
+      onchange={(value) => update({ agentActions: value })}
+    />
+  </SettingRow>
+
+  <SettingRow title={t('agentBridge.tracing')} hint={t('agentBridge.tracingHint')}>
+    <Switch
+      label={t('agentBridge.tracing')}
+      checked={values.agentTracing}
+      onchange={(checked) => update({ agentTracing: checked })}
+    />
+  </SettingRow>
+  {#if values.agentTracing && view.otelConfig}
+    <div class="setup">
+      <div class="setup-head">
+        <span>{t('agentBridge.tracingSetup')}</span>
+        <Button size="sm" onclick={() => copy('otel')}>
+          {copied === 'otel' ? t('agentBridge.copied') : t('agentBridge.copy')}
+        </Button>
+      </div>
+      <pre>{view.otelConfig}</pre>
     </div>
   {/if}
 

@@ -15,9 +15,28 @@ test('every tool has a closed object schema', () => {
       'get_console_errors',
       'get_network_requests',
       'get_request_details',
+      'get_backend_trace',
       'take_screenshot',
       'get_selected_element',
+      'get_component_tree',
       'list_selections',
+      'get_error_episode',
+      'export_playwright_test',
+      'list_error_episodes',
+      'get_timeline',
+      'click',
+      'fill',
+      'navigate',
+      'wait_for',
+      'replay_episode',
+      'mock_response',
+      'block_request',
+      'redirect_request',
+      'list_request_rules',
+      'clear_request_rules',
+      'resend_request',
+      'list_page_tools',
+      'call_page_tool',
       'reload_page',
     ],
   );
@@ -113,6 +132,16 @@ const selection = (id, time, tabId = 't1') => ({
   styles: { display: 'inline-block' },
   box: { x: 1, y: 2, width: 3, height: 4 },
   screenshot: Buffer.from('png').toString('base64'),
+  component: {
+    framework: 'react',
+    component: 'AddButton',
+    confidence: 'exact',
+    source: { file: 'src/AddButton.tsx', line: 12, column: 5 },
+    usedAt: { file: 'src/Actions.tsx', line: 8, column: 7 },
+    ownerChain: ['Page', 'Actions', 'AddButton'],
+    props: { label: '"Add"' },
+    children: [{ name: 'Icon', children: [{ name: 'Svg', children: [] }] }],
+  },
 });
 
 test('get_selected_element returns the newest selection with its screenshot', async () => {
@@ -149,4 +178,76 @@ test('list_selections lists newest first', async () => {
     listed.selections.map((item) => item.selection_id),
     ['yk_000002', 'yk_000001'],
   );
+});
+
+test('get_selected_element carries the component and its exact source', async () => {
+  const host = fakeHost();
+  host.runtimeOf.selections.push(selection('yk_000001', 100));
+  const details = parse(await callTool(host, 'get_selected_element', {}));
+  assert.equal(details.component, 'AddButton');
+  assert.deepEqual(details.source, { file: 'src/AddButton.tsx', line: 12, column: 5, confidence: 'exact' });
+  assert.deepEqual(details.owner_chain, ['Page', 'Actions', 'AddButton']);
+});
+
+test('get_component_tree trims children to the asked depth', async () => {
+  const host = fakeHost();
+  host.runtimeOf.selections.push(selection('yk_000001', 100));
+  const tree = parse(await callTool(host, 'get_component_tree', { depth: 1 }));
+  assert.deepEqual(tree.children, [{ name: 'Icon', children: [] }]);
+  const dom = { ...selection('yk_000002', 200), component: { ...selection('x', 0).component, confidence: 'dom' } };
+  host.runtimeOf.selections.push(dom);
+  assert.equal((await callTool(host, 'get_component_tree', {})).isError, true);
+});
+
+test('get_error_episode returns the latest episode with its failed requests', async () => {
+  const host = fakeHost();
+  const episode = parse(await callTool(host, 'get_error_episode', {}));
+  assert.match(episode.episode_id, /^yk_ep_/);
+  assert.deepEqual(
+    episode.failed_requests.map((request) => request.request_id),
+    ['bad'],
+  );
+  const listed = parse(await callTool(host, 'list_error_episodes', {})).episodes;
+  assert.equal(listed[0].episode_id, episode.episode_id);
+  assert.equal((await callTool(host, 'get_error_episode', { episode_id: 'yk_ep_00000' })).isError, true);
+  const events = parse(await callTool(host, 'get_timeline', { limit: 1 })).events;
+  assert.equal(events.length, 1);
+  assert.equal(events[0].kind, 'response');
+});
+
+test('action tools pass validated input to the host and report its errors', async () => {
+  const host = fakeHost();
+  const calls = [];
+  host.actions = {
+    click: async (tab, selector) => (calls.push(['click', tab, selector]), { done: 'clicked' }),
+    fill: async (tab, selector, value) => (calls.push(['fill', tab, selector, value]), { done: 'filled' }),
+    navigate: async () => {
+      throw new Error('http://evil.example/ is not a local development address the agent may open.');
+    },
+    waitFor: async (tab, options) => (calls.push(['wait', tab, options]), { matched: true }),
+    replay: async (tab, episode) => (calls.push(['replay', tab, episode.id]), { result: 'passed' }),
+  };
+  host.runtimeOf.selections.push(selection('yk_000001', 100));
+  assert.equal(parse(await callTool(host, 'click', { selector: '#save' })).done, 'clicked');
+  await callTool(host, 'click', { selection_id: 'yk_000001' });
+  await callTool(host, 'fill', { selector: '#email', value: '' });
+  await callTool(host, 'wait_for', { network_idle: true });
+  const replay = parse(await callTool(host, 'replay_episode', {}));
+  assert.equal(replay.result, 'passed');
+  assert.deepEqual(calls.slice(0, 4), [
+    ['click', 't1', '#save'],
+    ['click', 't1', 'main > button.primary'],
+    ['fill', 't1', '#email', ''],
+    ['wait', 't1', { selector: undefined, networkIdle: true, timeoutMs: 5000 }],
+  ]);
+  assert.equal(calls[4][0], 'replay');
+  const refused = await callTool(host, 'navigate', { url: 'http://evil.example/' });
+  assert.equal(refused.isError, true);
+  assert.equal((await callTool(host, 'click', {})).isError, true);
+  assert.equal((await callTool(host, 'fill', { selector: '#x' })).isError, true);
+});
+
+test('without an action host the action tools explain it', async () => {
+  const result = await callTool(fakeHost(), 'click', { selector: '#save' });
+  assert.equal(result.isError, true);
 });

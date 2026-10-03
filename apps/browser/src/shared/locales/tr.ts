@@ -25,6 +25,8 @@ export const tr: Record<MessageKey, string> = {
   'format.userAgentChanged': 'user-agent değiştirildi',
   'format.requestRulesApplied': 'istek kuralları uygulanıyor',
   'format.agentObserved': 'ajana görünür',
+  'format.agentRules': '{count} ajan istek kuralı',
+  'format.agentRules.one': '{count} ajan istek kuralı',
 
   'newTabButton.label': 'Yeni sekme',
   'newTabButton.title': 'Yeni sekme (⌘T)',
@@ -105,6 +107,16 @@ export const tr: Record<MessageKey, string> = {
   'agentBridge.originsHint':
     'Ajanın okuyabileceği ek geliştirme adresleri; her satıra bir tane, örneğin bir tünel ya da yerel ağ adresi.',
   'agentBridge.saveOrigins': 'Origin’leri kaydet',
+  'agentBridge.actions': 'Ajan eylemleri',
+  'agentBridge.actionsHint':
+    'Ajanın yerel sekmelerde tıklayıp yazabilmesi ve sayfa açabilmesi, örneğin kendi düzeltmesini kontrol etmek için.',
+  'agentBridge.actionsOff': 'Kapalı',
+  'agentBridge.actionsAsk': 'Her seferinde sor',
+  'agentBridge.actionsAllow': 'İzin ver',
+  'agentBridge.tracing': 'Backend izleri',
+  'agentBridge.tracingHint':
+    'Sayfanın kendi API isteklerine bir izleme başlığı ekler ve yerel backend’inizden OpenTelemetry izlerini kabul eder; böylece ajan sunucuda olanları da görür. Başlık yalnızca aynı origin’e giden isteklere eklenir.',
+  'agentBridge.tracingSetup': 'Backend ortam değişkenleri',
 
   'requestRulesPanel.actionBlock': 'Engelle',
   'requestRulesPanel.actionMock': 'Sahte yanıt',
@@ -505,6 +517,9 @@ export const tr: Record<MessageKey, string> = {
   'devMenu.editRequestRules': 'İstek kurallarını düzenle…',
   'devMenu.resetOverrides': 'Taklitleri sıfırla',
   'devMenu.pickElement': 'Ajan için Öğe Seç',
+  'devMenu.latestEpisode': 'Son hata · {id}',
+  'devMenu.copyEpisode': 'Ajan için Referansı Kopyala',
+  'devMenu.copyPlaywrightTest': 'Playwright Testini Kopyala',
 
   'contextMenu.openLinkInNewTab': 'Bağlantıyı yeni sekmede aç',
   'contextMenu.openLinkInNewWindow': 'Bağlantıyı yeni pencerede aç',
@@ -812,4 +827,19 @@ export const tr: Record<MessageKey, string> = {
   'picker.off': 'Önce Ayarlar → Geliştirici’den ajan bağlantısını açın',
   'picker.notLocal': 'Öğe seçimi yalnızca yerel geliştirme sekmelerinde çalışır',
   'picker.failed': 'Öğe okunamadı',
+
+  'agentActions.inControl': 'Ajan kontrolde',
+  'agentActions.stop': 'Durdur',
+  'agentActions.allow': 'İzin ver',
+  'agentActions.deny': 'İzin verme',
+  'agentActions.confirm': 'Ajan şunu yapsın mı? {action}',
+  'agentActions.confirmDetail':
+    'Yalqen bu sekmede sizin yerinize işlem yapacak. Sayfanın üstündeki Durdur butonuyla istediğiniz an durdurabilirsiniz.',
+  'agentActions.passed': 'Doğrulama başarılı',
+  'agentActions.failed': 'Doğrulama başarısız',
+  'agentActions.noErrors': 'Konsol hatası yok',
+  'agentActions.errors': '{count} konsol hatası',
+  'agentActions.errors.one': '{count} konsol hatası',
+  'agentActions.notSent': 'gönderilmedi',
+  'agentActions.requestFailed': 'başarısız',
 };

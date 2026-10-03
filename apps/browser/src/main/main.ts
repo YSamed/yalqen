@@ -16,8 +16,10 @@ import {
 import { AdBlocker } from './privacy/adblock.js';
 import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
+import { ActionRunner } from './agent-bridge/action-runner.js';
 import { createElectronHost } from './agent-bridge/electron-host.js';
 import { isInScope } from './agent-bridge/tab-scope.js';
+import { parseOtlpTraces } from './agent-bridge/tracing.js';
 import { AgentTokenStore } from './agent-bridge/token-store.js';
 import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench/bench-driver.js';
 import { BookmarkStore, runBookmarksCommand } from './library/bookmarks.js';
@@ -189,14 +191,26 @@ function startBrowser(): void {
 
   const agentTokens = new AgentTokenStore(userData, safeStorageCipher);
   const focusedFirst = () => (current ? [current, ...windows.filter((window) => window !== current)] : windows);
+  const agentActions = new ActionRunner({
+    policy: () => settings.get().agentActions,
+    windows: () => focusedFirst().map((window) => window.agentActionWindow()),
+    inScope: (url) => isInScope({ url, isPrivate: false }, settings.get().agentOrigins),
+  });
   const agentBridge = new AgentBridge({
     enabled: () => settings.get().agentBridge,
-    host: createElectronHost(() => focusedFirst().map((window) => window.tabs)),
+    host: createElectronHost(() => focusedFirst().map((window) => window.tabs), agentActions),
     token: () => agentTokens.get(),
     version: app.getVersion(),
     onChange: () => {
       eachWindow((window) => window.tabs.syncAgent());
       broadcastAgentBridge(agentView());
+    },
+    onTraces: (body) => {
+      if (!settings.get().agentTracing) return;
+      const spans = parseOtlpTraces(body);
+      eachWindow((window) => {
+        for (const tab of window.tabs.observedTabs()) tab.agent?.addSpans(spans);
+      });
     },
   });
   const agentView = (): AgentBridgeView => {
@@ -207,6 +221,7 @@ function startBrowser(): void {
       url: port ? mcpUrl(port) : null,
       claudeCommand: port ? setupSnippet('claude', port, '<token>') : null,
       codexConfig: port ? setupSnippet('codex', port, '<token>') : null,
+      otelConfig: port ? setupSnippet('otel', port, '<token>') : null,
       observedTabs: windows.reduce((count, window) => count + window.tabs.observedTabs().length, 0),
     };
   };
@@ -269,6 +284,7 @@ function startBrowser(): void {
     if (next.usageCounting !== previous.usageCounting) usage.schedule();
     if (next.agentBridge !== previous.agentBridge) void agentBridge.sync();
     else if (next.agentOrigins !== previous.agentOrigins) eachWindow((window) => window.tabs.syncAgent());
+    if (next.agentTracing !== previous.agentTracing) eachWindow((window) => window.tabs.refreshRequestRules());
     adBlocker.setEnabled(next.adBlocking);
     applyCookieBlocking(sessions, next.blockThirdPartyCookies);
     pushState();

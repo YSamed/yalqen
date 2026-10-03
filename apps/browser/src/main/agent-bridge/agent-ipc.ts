@@ -2,7 +2,7 @@ import { clipboard } from 'electron';
 import { AgentBridgeChannel, type AgentBridgeView, type AgentSetupKind } from '../../shared/types.js';
 import { handleSettingsCall } from '../app/settings-page.js';
 
-const SETUP_KINDS = new Set<unknown>(['claude', 'codex', 'token'] satisfies AgentSetupKind[]);
+const SETUP_KINDS = new Set<unknown>(['claude', 'codex', 'token', 'otel'] satisfies AgentSetupKind[]);
 
 export interface AgentIpcHost {
   view(): AgentBridgeView;

@@ -1,6 +1,6 @@
 import type { NetworkPreset, PageOverrides, RequestRule, UserAgentPreset } from '../../shared/types.js';
 import { ANDROID_UA, IOS_UA } from './devices.js';
-import { interceptPatterns } from './request-rules.js';
+import { interceptPatterns, type InterceptPattern } from './request-rules.js';
 import { t } from '../../shared/i18n.js';
 
 export const NO_OVERRIDES: PageOverrides = {
@@ -104,8 +104,10 @@ export function overrideCommands(
   fallbackUserAgent: UserAgent,
   rules: readonly RequestRule[] = [],
   observed = false,
+  extraPatterns: readonly InterceptPattern[] = [],
 ): ProtocolCommand[] {
-  const patterns = overrides.requestRules ? interceptPatterns(rules) : [];
+  // The caller passes only the rules that apply to this tab.
+  const patterns = [...interceptPatterns(rules), ...extraPatterns];
   const fetch: ProtocolCommand =
     patterns.length > 0
       ? { method: 'Fetch.enable', params: { patterns } }

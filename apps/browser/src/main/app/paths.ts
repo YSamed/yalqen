@@ -8,6 +8,10 @@ export function preloadPath(name: 'preload' | 'page-preload' | 'command-preload'
   return path.join(DIST, 'preload', `${name}.js`);
 }
 
+export function pageScriptPath(name: 'component-inspector'): string {
+  return path.join(DIST, 'page-scripts', `${name}.js`);
+}
+
 export function rendererPath(file: string): string {
   return path.join(DIST, 'renderer', file);
 }
