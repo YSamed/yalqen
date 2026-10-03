@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const REPO_URL = 'https://github.com/YSamed/yalqen';
+const REPO_URL = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).repository;
 const POST_LIMIT = 300;
 const HIGHLIGHT_SECTIONS = ['Features', 'Bug Fixes', 'Performance'];
 

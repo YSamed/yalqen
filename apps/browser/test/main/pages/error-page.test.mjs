@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { test } from 'node:test';
 import errorPage from '../../../dist/main/pages/error-page.js';
 import i18n from '../../../dist/shared/i18n.js';
@@ -6,6 +7,7 @@ import i18n from '../../../dist/shared/i18n.js';
 i18n.setLocale('tr');
 
 const { describeError, errorPageHtml, errorPageScript } = errorPage;
+const THEME = fs.readFileSync('src/renderer/public/tokens.css', 'utf8');
 
 test('common failures get a specific explanation', () => {
   assert.equal(describeError(-106, 'https://a.com/').title, 'İnternet bağlantısı yok');
@@ -18,7 +20,7 @@ test('common failures get a specific explanation', () => {
 });
 
 test('page text is escaped', () => {
-  const html = errorPageHtml(-105, 'ERR_<b>', 'https://<script>.com/');
+  const html = errorPageHtml(THEME, -105, 'ERR_<b>', 'https://<script>.com/');
   assert.ok(!html.includes('<script>'));
   assert.ok(!html.includes('ERR_<b>'));
   assert.ok(html.includes('ERR_&#60;b&#62;'));
@@ -26,7 +28,7 @@ test('page text is escaped', () => {
 
 test('the script only replaces Chromium error documents and retries the failed address', () => {
   const url = 'https://a.com/?q=\'"</script>';
-  const script = errorPageScript(-105, 'ERR_NAME_NOT_RESOLVED', url);
+  const script = errorPageScript(THEME, -105, 'ERR_NAME_NOT_RESOLVED', url);
   let replaced = null;
   const run = (protocol) => {
     const document = {
@@ -43,7 +45,14 @@ test('the script only replaces Chromium error documents and retries the failed a
 });
 
 test('HTTPS-only warnings explain the missing https and offer http', () => {
-  const html = errorPageHtml(-107, 'ERR_SSL_PROTOCOL_ERROR', 'https://old.example/', 'yalqen://proceed-http/t', true);
+  const html = errorPageHtml(
+    THEME,
+    -107,
+    'ERR_SSL_PROTOCOL_ERROR',
+    'https://old.example/',
+    'yalqen://proceed-http/t',
+    true,
+  );
   assert.match(html, /Bu site güvenli bağlantıyı desteklemiyor/);
   assert.match(html, /old\.example HTTPS ile açılamadı/);
   assert.match(html, /HTTP ile devam et \(güvenli değil\)/);
@@ -51,7 +60,7 @@ test('HTTPS-only warnings explain the missing https and offer http', () => {
 });
 
 test('certificate warnings offer to go back or proceed instead of retrying', () => {
-  const html = errorPageHtml(-202, 'ERR_CERT_AUTHORITY_INVALID', 'https://a.com/', 'yalqen://proceed/t');
+  const html = errorPageHtml(THEME, -202, 'ERR_CERT_AUTHORITY_INVALID', 'https://a.com/', 'yalqen://proceed/t');
   assert.match(html, /id="back"/);
   assert.match(html, /id="proceed"/);
   assert.doesNotMatch(html, /id="retry"/);
@@ -62,7 +71,7 @@ test('certificate warnings offer to go back or proceed instead of retrying', () 
     documentElement: { innerHTML: '' },
     getElementById: (id) => ({ addEventListener: (_type, listener) => clicks.has(id) && listener() }),
   };
-  const script = errorPageScript(-202, 'ERR_CERT_AUTHORITY_INVALID', 'https://a.com/', 'yalqen://proceed/t');
+  const script = errorPageScript(THEME, -202, 'ERR_CERT_AUTHORITY_INVALID', 'https://a.com/', 'yalqen://proceed/t');
   new Function('location', 'document', 'history', script)(
     { protocol: 'chrome-error:', assign: (next) => (assigned = next), replace: () => {} },
     document,

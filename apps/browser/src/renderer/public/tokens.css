@@ -1,0 +1,11 @@
+:root {
+  --bg: light-dark(#e6e8eb, #141517);
+  --surface: light-dark(#ffffff, #26282c);
+  --surface-hover: light-dark(rgb(16 18 24 / 0.05), rgb(255 255 255 / 0.06));
+  --border: light-dark(#d2d5da, #2f3136);
+  --text: light-dark(#1a1b1e, #eceef1);
+  --text-muted: light-dark(#6b6e75, #9a9ea6);
+  --accent: #f28c28;
+  --warn: light-dark(#a34a06, #f0a35c);
+  --page: light-dark(#ffffff, #1f2124);
+}
