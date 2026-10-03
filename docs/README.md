@@ -68,6 +68,7 @@ Read [CONTRIBUTING.md](../CONTRIBUTING.md) for Git hooks, commit messages and pu
 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Why Electron?](why-electron.md)
+- [Architecture](architecture.md)
 - [Benchmarks](benchmarks.md)
 - [Download and active-install measurements](usage-measurement.md)
 - [Security policy](../SECURITY.md)

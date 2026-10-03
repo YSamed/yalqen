@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import devCommands from '../dist/main/dev-commands.js';
+import devCommands from '../dist/main/devtools/dev-commands.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');

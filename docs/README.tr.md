@@ -68,6 +68,7 @@ Git hook'ları, commit mesajları ve pull request'ler için [CONTRIBUTING.md](..
 
 - [Klavye kısayolları](keyboard-shortcuts.tr.md)
 - [Neden Electron?](why-electron.md)
+- [Mimari](architecture.md)
 - [Benchmark'lar](benchmarks.md)
 - [İndirme ve aktif kurulum ölçümü](usage-measurement.md)
 - [Güvenlik politikası](../SECURITY.md)

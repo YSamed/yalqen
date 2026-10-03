@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { pageFrame } from '../dist/main/page-layout.js';
+import { pageFrame } from '../dist/main/window/page-layout.js';
 
 const layout = {
   panelWidth: 220,

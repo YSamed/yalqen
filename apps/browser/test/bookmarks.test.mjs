@@ -3,13 +3,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import bookmarks from '../dist/main/bookmarks.js';
-import suggestions from '../dist/main/suggestions.js';
+import bookmarks from '../dist/main/library/bookmarks.js';
+import bookmarksPage from '../dist/main/pages/bookmarks-page.js';
+import suggestions from '../dist/main/address-bar/suggestions.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');
 
-const { BookmarkStore, bookmarksMenuTemplate, canBookmark, renderBookmarks } = bookmarks;
+const { BookmarkStore, bookmarksMenuTemplate, canBookmark } = bookmarks;
+const { renderBookmarks } = bookmarksPage;
 
 function withDir(run) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-bookmarks-'));
@@ -277,6 +279,28 @@ test('the page escapes content and points its forms at commands', () => {
   }
   assert.match(renderBookmarks([], [], ''), /Henüz yer imi yok/);
   assert.match(renderBookmarks([], [], 'zzz'), /Eşleşen yer imi bulunamadı/);
+});
+
+test('the page lists folders once, however many bookmarks can be moved', () => {
+  const folders = Array.from({ length: 30 }, (_, index) => ({
+    id: `f${index}`,
+    title: `Folder ${index}`,
+    createdAt: 1,
+  }));
+  const list = Array.from({ length: 200 }, (_, index) => ({
+    id: `b${index}`,
+    title: `Bookmark ${index}`,
+    url: `https://site${index}.example/`,
+    folderId: index % 2 === 0 ? `f${index % 30}` : null,
+    createdAt: 1,
+  }));
+  const html = renderBookmarks(folders, list, '');
+  const template = /<template id="folder-options">(.*?)<\/template>/s.exec(html)?.[1] ?? '';
+  assert.equal(template.match(/<option /g)?.length, folders.length + 1);
+  assert.equal(html.match(/<option /g)?.length, folders.length + 1 + list.length);
+  assert.match(html, /<option value="f2" selected>Folder 2<\/option><\/select>/);
+  assert.match(html, /<select [^>]*data-folder-options><option value="" selected>Klasör yok<\/option><\/select>/);
+  assert.doesNotMatch(renderBookmarks([], list.slice(0, 1), ''), /folder-options/);
 });
 
 test('page commands edit the store and unknown ones are ignored', () => {

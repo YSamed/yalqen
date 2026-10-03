@@ -7,6 +7,7 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { mainModule } from './main-module.mjs';
 
 const require = createRequire(import.meta.url);
 const { values } = parseArgs({
@@ -48,7 +49,7 @@ async function run() {
   const timer = setTimeout(() => app.exit(1), 60000);
   try {
     await app.whenReady();
-    const { TabManager } = require(path.join(path.resolve(values['module-dir']), 'tabs.js'));
+    const { TabManager } = require(mainModule(values['module-dir'], 'tabs/tabs.js'));
     const manager = new TabManager({
       isBookmarked: () => false,
       hasCertificateException: () => false,

@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ElectronBlocker } from '@ghostery/adblocker-electron';
-import adblock from '../dist/main/adblock.js';
+import adblock from '../dist/main/privacy/adblock.js';
 
 const { loadEngine } = adblock;
 
@@ -32,7 +32,7 @@ test('disabled startup leaves the ad blocking engine unloaded until it is reques
           blocker.destroy();
           assert.ok(loadedEngines().length > 0);
         });`,
-        fileURLToPath(new URL('../dist/main/adblock.js', import.meta.url)),
+        fileURLToPath(new URL('../dist/main/privacy/adblock.js', import.meta.url)),
         cache,
       ],
       { encoding: 'utf8', timeout: 10_000 },

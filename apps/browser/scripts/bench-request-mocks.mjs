@@ -3,6 +3,7 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { mainModule } from './main-module.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -11,7 +12,7 @@ const { values } = parseArgs({
   },
 });
 const { newRequestRule, pausedRequestCommand } = (
-  await import(pathToFileURL(path.join(values['module-dir'], 'request-rules.js')))
+  await import(pathToFileURL(mainModule(values['module-dir'], 'devtools/request-rules.js')))
 ).default;
 const paused = {
   requestId: 'bench-request',

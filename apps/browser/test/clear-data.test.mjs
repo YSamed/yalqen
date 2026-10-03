@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import clearData from '../dist/main/clear-data.js';
-import downloads from '../dist/main/downloads.js';
-import history from '../dist/main/history.js';
+import clearData from '../dist/main/library/clear-data.js';
+import downloads from '../dist/main/library/downloads.js';
+import history from '../dist/main/library/history.js';
 
 const { clearSince, sanitizeClearRequest } = clearData;
 const HOUR = 60 * 60 * 1000;

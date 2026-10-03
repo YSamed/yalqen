@@ -3,11 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import historyModule from '../dist/main/history.js';
-import internalPages from '../dist/main/internal-pages.js';
+import historyModule from '../dist/main/library/history.js';
+import historyPage from '../dist/main/pages/history-page.js';
 
 const { HistoryStore, MAX_TITLE_CHANGES, MAX_VISITS, isSameVisit } = historyModule;
-const { renderHistory } = internalPages;
+const { renderHistory } = historyPage;
 
 test('visits survive restart, can be searched, removed, and cleared', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
@@ -63,6 +63,35 @@ test('history page escapes page titles, URLs, and search terms', () => {
   assert.ok(html.includes('q=&#34;bad&#34;'));
   assert.ok(html.includes('value="&#34; autofocus onfocus=&#34;alert(1)"'));
   assert.ok(!html.includes('<script>'));
+});
+
+test('history page starts a day heading at each local day change', () => {
+  const at = (day, hour) => new Date(2026, 0, day, hour, 30).getTime();
+  const html = renderHistory(
+    [
+      { id: 'a', url: 'https://a.example/', title: 'A', visitedAt: at(12, 23) },
+      { id: 'b', url: 'https://b.example/', title: 'B', visitedAt: at(12, 0) },
+      { id: 'c', url: 'https://c.example/', title: 'C', visitedAt: at(11, 23) },
+      { id: 'd', url: 'https://d.example/', title: 'D', visitedAt: at(12, 9) },
+      { id: 'e', url: 'https://e.example/', title: 'E', visitedAt: at(10, 1) },
+    ],
+    '',
+  );
+  const sequence = [...html.matchAll(/<h2>([^<]+)<\/h2>|<strong>([^<]+)<\/strong>/g)].map(
+    ([, day, title]) => day ?? title,
+  );
+  assert.deepEqual(sequence, [
+    'January 12, 2026',
+    'A',
+    'B',
+    'January 11, 2026',
+    'C',
+    'January 12, 2026',
+    'D',
+    'January 10, 2026',
+    'E',
+  ]);
+  assert.match(html, /aria-label="Remove from history: A"/);
 });
 
 test('the suggestion index follows every change to the visits', () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import suggestions from '../dist/main/suggestions.js';
+import suggestions from '../dist/main/address-bar/suggestions.js';
 
 const { MAX_SUGGESTIONS, indexHistory, searchKey, suggest: suggestFrom } = suggestions;
 

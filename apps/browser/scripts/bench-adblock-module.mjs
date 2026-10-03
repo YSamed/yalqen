@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { mainModule } from './main-module.mjs';
 
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { values } = parseArgs({
@@ -21,7 +22,7 @@ if (!fs.existsSync(cache)) throw new Error(`Missing serialized engine cache: ${c
 const builds = [
   ...(values['baseline-dir'] ? [{ variant: 'before', directory: values['baseline-dir'] }] : []),
   { variant: 'after', directory: values['module-dir'] },
-].map(({ variant, directory }) => ({ variant, module: path.resolve(directory, 'adblock.js') }));
+].map(({ variant, directory }) => ({ variant, module: mainModule(directory, 'privacy/adblock.js') }));
 for (const build of builds) {
   if (!fs.existsSync(build.module)) throw new Error(`Missing built module: ${build.module}`);
 }

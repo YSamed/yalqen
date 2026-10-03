@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import preferences from '../dist/main/page-preferences.js';
+import preferences from '../dist/main/app/page-preferences.js';
 
 const { acceptLanguages, chromeUserAgent, fontPreferences, spellCheckerLanguages } = preferences;
 

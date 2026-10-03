@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import changeFeed from '../dist/main/change-feed.js';
+import changeFeed from '../dist/main/library/change-feed.js';
 
 const { ChangeFeed } = changeFeed;
 

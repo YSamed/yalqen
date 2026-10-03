@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import passwords from '../dist/main/passwords.js';
+import passwords from '../dist/main/privacy/passwords.js';
 
 const { PasswordStore, passwordOrigin, sanitizeCredential } = passwords;
 const SITE = 'https://github.com';

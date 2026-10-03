@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import launch from '../dist/main/launch.js';
+import launch from '../dist/main/app/launch.js';
 
 const { externalUrls } = launch;
 const files = new Set(['/home/a/doc.pdf', '/home/a/sayfa ben.html']);

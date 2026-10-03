@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import navigation from '../dist/main/internal-navigation.js';
+import navigation from '../dist/main/pages/internal-navigation.js';
 
 const { internalNavigation, isAllowedFrom } = navigation;
 
@@ -18,10 +18,7 @@ test('command addresses are recognised with their arguments', () => {
   assert.deepEqual(internalNavigation('yalqen://history/clear'), { type: 'history-clear' });
   assert.deepEqual(internalNavigation('yalqen://newtab/search?q=%C3%A7ay'), { type: 'new-tab-search', query: 'çay' });
   assert.deepEqual(internalNavigation('yalqen://newtab/search'), { type: 'new-tab-search', query: '' });
-  assert.deepEqual(internalNavigation('yalqen://newtab/forget?url=https%3A%2F%2Fa.com%2F'), {
-    type: 'new-tab-forget',
-    url: 'https://a.com/',
-  });
+  assert.equal(internalNavigation('yalqen://newtab/forget?url=https%3A%2F%2Fa.com%2F'), null);
   assert.deepEqual(internalNavigation('yalqen://newtab/repo?action=star'), { type: 'new-tab-repo', action: 'star' });
   assert.equal(internalNavigation('yalqen://newtab/repo?action=bogus'), null);
   const command = internalNavigation('yalqen://bookmarks/rename?id=1&title=A');

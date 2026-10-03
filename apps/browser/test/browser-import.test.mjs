@@ -4,9 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import bookmarks from '../dist/main/bookmarks.js';
-import browserImport from '../dist/main/browser-import.js';
-import historyModule from '../dist/main/history.js';
+import bookmarks from '../dist/main/library/bookmarks.js';
+import browserImport from '../dist/main/library/browser-import.js';
+import historyModule from '../dist/main/library/history.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');

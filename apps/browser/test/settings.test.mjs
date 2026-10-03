@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import settings from '../dist/main/settings.js';
+import settings from '../dist/main/app/settings.js';
 
 const { SettingsStore, sanitizeSettings } = settings;
 

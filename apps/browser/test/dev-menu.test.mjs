@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import devMenu from '../dist/main/dev-menu.js';
-import pageOverrides from '../dist/main/page-overrides.js';
+import devMenu from '../dist/main/devtools/dev-menu.js';
+import pageOverrides from '../dist/main/devtools/page-overrides.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');

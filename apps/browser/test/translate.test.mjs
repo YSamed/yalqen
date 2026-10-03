@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import translate from '../dist/main/translate.js';
+import translate from '../dist/main/tabs/translate.js';
 
 const {
   applyScript,

@@ -3,20 +3,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import downloads from '../dist/main/downloads.js';
+import downloads from '../dist/main/library/downloads.js';
+import downloadsPage from '../dist/main/pages/downloads-page.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');
 
-const {
-  DownloadStore,
-  downloadStatus,
-  downloadsMenuTemplate,
-  downloadsSummary,
-  formatBytes,
-  renderDownloads,
-  uniquePath,
-} = downloads;
+const { DownloadStore, downloadStatus, downloadsMenuTemplate, downloadsSummary, formatBytes, uniquePath } = downloads;
+const { renderDownloads } = downloadsPage;
 
 const entry = (overrides = {}) => ({
   id: 'a',

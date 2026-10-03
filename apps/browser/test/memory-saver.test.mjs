@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import memorySaver from '../dist/main/memory-saver.js';
+import memorySaver from '../dist/main/tabs/memory-saver.js';
 
 const {
   DEFAULT_DISCARD_AFTER_MINUTES,

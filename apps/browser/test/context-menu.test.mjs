@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import contextMenu from '../dist/main/context-menu.js';
+import contextMenu from '../dist/main/window/context-menu.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');

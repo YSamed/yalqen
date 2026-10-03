@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import shortcuts from '../dist/main/tab-shortcuts.js';
+import shortcuts from '../dist/main/tabs/tab-shortcuts.js';
 
 const { tabForShortcut, tabListOrder } = shortcuts;
 

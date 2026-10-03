@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import usageModule from '../dist/main/usage.js';
+import usageModule from '../dist/main/app/usage.js';
 
 const { UsageReporter, USAGE_ENDPOINT, USAGE_FIRST_DELAY_MS, USAGE_INTERVAL_MS } = usageModule;
 

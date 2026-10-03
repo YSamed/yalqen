@@ -158,8 +158,10 @@ ipcRenderer.on('bench:state', (_event, state) => {
         );
       } else {
         assert.equal(
-          await window.webContents.executeJavaScript("document.querySelector('.panel .card-meta').textContent"),
-          `%${(updates + 19) % 100}`,
+          await window.webContents.executeJavaScript(
+            "document.querySelector('.toolbar .ring circle').getAttribute('stroke-dasharray')",
+          ),
+          `${Math.max(2, (((updates + 19) % 100) / 100) * 100)} 100`,
         );
       }
       samples.sort((a, b) => a - b);

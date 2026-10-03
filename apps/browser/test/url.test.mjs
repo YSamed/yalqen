@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import url from '../dist/main/url.js';
-import search from '../dist/main/search.js';
+import url from '../dist/main/address-bar/url.js';
+import search from '../dist/main/address-bar/search.js';
 
 const { resolveInput } = url;
 const { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } = search;

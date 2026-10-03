@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import repoPrompt from '../dist/main/repo-prompt.js';
+import repoPrompt from '../dist/main/app/repo-prompt.js';
 
 const { RepoPrompt, MIN_VISITS, SHOW_INTERVAL_MS, LATER_DELAY_MS, CLOSE_DELAY_MS, MAX_SHOWS } = repoPrompt;
 

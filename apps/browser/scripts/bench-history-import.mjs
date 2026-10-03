@@ -7,6 +7,7 @@ import { performance } from 'node:perf_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { mainModule } from './main-module.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -15,7 +16,7 @@ const { values } = parseArgs({
   },
 });
 const { importChromiumHistory, parseChromiumHistory } = (
-  await import(pathToFileURL(path.join(values['module-dir'], 'browser-import.js')))
+  await import(pathToFileURL(mainModule(values['module-dir'], 'library/browser-import.js')))
 ).default;
 const epoch = 13_348_540_800_000_000n;
 const counts = [5000, 250_000];

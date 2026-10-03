@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import persistence from '../dist/main/persistence.js';
+import persistence from '../dist/main/tabs/persistence.js';
 
 const { SessionStore, captureSavedHistory, pinnedOnly, trimHistory } = persistence;
 const tab = (url) => ({ id: 'tab', url, title: url, faviconUrl: null, pinnedUrl: null, history: null });

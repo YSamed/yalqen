@@ -68,6 +68,7 @@ Git hooks、提交信息和 Pull Request 流程请阅读 [CONTRIBUTING.md](../CO
 
 - [键盘快捷键](keyboard-shortcuts.md)
 - [为什么选择 Electron？](why-electron.md)
+- [架构](architecture.md)
 - [基准测试](benchmarks.md)
 - [下载和活跃安装统计](usage-measurement.md)
 - [安全策略](../SECURITY.md)

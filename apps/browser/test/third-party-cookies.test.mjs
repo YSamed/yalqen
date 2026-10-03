@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import cookies from '../dist/main/third-party-cookies.js';
+import cookies from '../dist/main/privacy/third-party-cookies.js';
 
 const { headerValues, isThirdParty, requestCookieNames, responseCookieNames, siteOf } = cookies;
 

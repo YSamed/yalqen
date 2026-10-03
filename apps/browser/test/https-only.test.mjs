@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import httpsOnly from '../dist/main/https-only.js';
+import httpsOnly from '../dist/main/privacy/https-only.js';
 
 const { HttpsOnly, hostResolverOptions, httpsUpgrade } = httpsOnly;
 

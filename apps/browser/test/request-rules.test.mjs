@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import requestRules from '../dist/main/request-rules.js';
-import pageOverrides from '../dist/main/page-overrides.js';
+import requestRules from '../dist/main/devtools/request-rules.js';
+import pageOverrides from '../dist/main/devtools/page-overrides.js';
 
 const {
   RequestRuleStore,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import processMetrics from '../dist/main/process-metrics.js';
+import processMetrics from '../dist/main/app/process-metrics.js';
 
 const { contentsKind, summarizeProcesses } = processMetrics;
 
