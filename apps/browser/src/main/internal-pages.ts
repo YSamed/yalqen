@@ -158,6 +158,11 @@ export interface InternalPages {
   settingsAsset: (name: string) => Buffer<ArrayBuffer> | null;
 }
 
+// A string replacement would expand `$&`, `` $` `` and similar patterns found in page titles.
+export function fillSlot(page: string, marker: string, content: string): string {
+  return page.replace(marker, () => content);
+}
+
 // The locale is fixed for the whole run, so page templates are translated once when loaded.
 export function localizePage(page: string): string {
   return page
@@ -168,7 +173,8 @@ export function localizePage(page: string): string {
 export function loadInternalPages(files: InternalPageFiles): InternalPages {
   const publicDir = path.dirname(files.newTab);
   const controlsCss = fs.readFileSync(path.join(publicDir, 'controls.css'), 'utf8');
-  const readPage = (file: string) => localizePage(fs.readFileSync(file, 'utf8').replace(CONTROLS_MARKER, controlsCss));
+  const readPage = (file: string) =>
+    localizePage(fillSlot(fs.readFileSync(file, 'utf8'), CONTROLS_MARKER, controlsCss));
   const settingsAssets = path.join(path.dirname(files.settings), 'assets');
   const assetCache = new Map<string, Buffer<ArrayBuffer>>();
   return {
@@ -230,7 +236,7 @@ function serveHistory(pathname: string, query: string, pages: InternalPages, sou
   } else {
     return notFound();
   }
-  return html(pages.history.replace(HISTORY_MARKER, content), INTERNAL_CSP);
+  return html(fillSlot(pages.history, HISTORY_MARKER, content), INTERNAL_CSP);
 }
 
 function serveDownloads(
@@ -256,7 +262,7 @@ function serveDownloads(
     }
     case '/': {
       const content = `<div id="downloads" data-version="${changes.version}">${renderDownloads(list())}</div>`;
-      return html(pages.downloads.replace(DOWNLOADS_MARKER, content), DOWNLOADS_CSP);
+      return html(fillSlot(pages.downloads, DOWNLOADS_MARKER, content), DOWNLOADS_CSP);
     }
     default:
       return notFound();
@@ -277,11 +283,13 @@ function serveNewTab(url: URL, pages: InternalPages, sources: InternalPageSource
       });
     case '/': {
       const welcomeVisible = sources.showWelcome();
-      const body = pages.newTab
-        .replace(WELCOME_MARKER, welcomeVisible ? renderWelcome() : '')
-        .replace(PINNED_MARKER, renderPinned(sources.pinned()))
-        .replace(TIPS_MARKER, welcomeVisible ? renderTips() : '')
-        .replace(REPO_PROMPT_MARKER, !welcomeVisible && sources.showRepoPrompt() ? renderRepoPrompt() : '');
+      const slots: [string, string][] = [
+        [WELCOME_MARKER, welcomeVisible ? renderWelcome() : ''],
+        [PINNED_MARKER, renderPinned(sources.pinned())],
+        [TIPS_MARKER, welcomeVisible ? renderTips() : ''],
+        [REPO_PROMPT_MARKER, !welcomeVisible && sources.showRepoPrompt() ? renderRepoPrompt() : ''],
+      ];
+      const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), pages.newTab);
       return html(body, NEW_TAB_CSP, false);
     }
     default:
@@ -306,7 +314,7 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         const query = url.searchParams.get('q') ?? '';
         const data = sources.bookmarks(query);
         return html(
-          pages.bookmarks.replace(BOOKMARKS_MARKER, renderBookmarks(data.folders, data.bookmarks, query)),
+          fillSlot(pages.bookmarks, BOOKMARKS_MARKER, renderBookmarks(data.folders, data.bookmarks, query)),
           INTERNAL_CSP,
         );
       }

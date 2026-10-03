@@ -136,6 +136,24 @@ test('cancelled download polls stop waiting and return no redundant HTML', async
   assert.deepEqual(await (await waiting).json(), { version: 0 });
 });
 
+test('page titles with replacement patterns are inserted literally', async () => {
+  const title = "Fiyat $& indirim $` $' $$";
+  const handle = serve({
+    visits: () => [{ id: 'v', url: 'https://example.com/', title, visitedAt: Date.now() }],
+    bookmarks: () => ({
+      folders: [],
+      bookmarks: [{ id: 'b', url: 'https://example.com/', title, folderId: null, createdAt: 1 }],
+    }),
+    pinned: () => [{ url: 'https://example.com/', title, faviconUrl: null }],
+  });
+  for (const url of ['yalqen://history/', 'yalqen://bookmarks/', 'yalqen://newtab/']) {
+    const html = await (await handle(new Request(url))).text();
+    assert.ok(html.includes('Fiyat $&#38; indirim $` $&#39; $$'), url);
+    assert.doesNotMatch(html, /__YALQEN_\w+_SLOT__/, url);
+    assert.equal(html.match(/<!doctype html>/gi)?.length, 1, url);
+  }
+});
+
 test('pinned sites render as escaped tiles with a letter fallback', () => {
   const html = internalPages.renderPinned([
     { url: 'https://github.com/', title: 'GitHub', faviconUrl: 'https://github.com/favicon.ico' },
