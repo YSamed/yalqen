@@ -44,6 +44,7 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     device: reuseFields(previous.device, next.device),
     downloads: reuseFields(previous.downloads, next.downloads)!,
     agentSession: reuseFields(previous.agentSession, next.agentSession)!,
+    agentChat: reuseFields(previous.agentChat, next.agentChat)!,
   };
   return sameFields(previous, candidate) ? previous : candidate;
 }

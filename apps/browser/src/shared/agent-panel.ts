@@ -1,4 +1,12 @@
-import type { AgentSessionState, AgentTerminalSize } from './types.js';
+import type { AgentChatState, AgentSessionState, AgentTerminalSize } from './types.js';
+
+export const EMPTY_AGENT_CHAT: AgentChatState = {
+  id: null,
+  directory: null,
+  status: 'idle',
+  model: null,
+  error: null,
+};
 
 export const EMPTY_AGENT_SESSION: AgentSessionState = {
   id: null,

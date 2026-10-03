@@ -10,6 +10,7 @@
   import type AgentPanel from './AgentPanel.svelte';
   import {
     EMPTY_AGENT_SESSION,
+    EMPTY_AGENT_CHAT,
     DEFAULT_AGENT_PANEL_WIDTH,
     MIN_AGENT_PANEL_WIDTH,
     MIN_AGENT_PAGE_WIDTH,
@@ -53,6 +54,7 @@
     profile: 'personal',
     agentPanelOpen: false,
     agentSession: { ...EMPTY_AGENT_SESSION },
+    agentChat: { ...EMPTY_AGENT_CHAT },
   });
   let stateReceived = $state(false);
   let windowWidth = $state(window.innerWidth);
@@ -84,6 +86,14 @@
   const toolbarTabs = $derived(showToolbarTabs ? tabs : activeTab ? [activeTab] : []);
   const agentPanelOpen = $derived(browser.agentPanelOpen);
   const agentSession = $derived(browser.agentSession);
+  const agentChat = $derived(browser.agentChat);
+  const agentStatus = $derived(
+    agentChat.status === 'error'
+      ? 'error'
+      : ['starting', 'thinking', 'approval', 'ready'].includes(agentChat.status)
+        ? 'running'
+        : agentSession.status,
+  );
   const collapsed = $derived(
     browser.panelCollapsed ||
       (agentPanelOpen && windowWidth < PANEL_WIDTH + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + PAGE_INSET * 2),
@@ -257,7 +267,7 @@
         {extensions}
         agentAvailable={profile !== 'private'}
         {agentPanelOpen}
-        agentStatus={agentSession.status}
+        {agentStatus}
         buttons={toolbarButtons}
         leadingInset={windowControls
           ? side === 'left'
@@ -318,6 +328,7 @@
       <AgentPanelComponent
         open={agentVisible}
         session={agentSession}
+        chat={agentChat}
         {activeTab}
         width={agentWidth}
         onresize={resizeAgentPanel}

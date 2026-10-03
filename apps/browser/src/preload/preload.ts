@@ -4,6 +4,7 @@ import {
   type BrowserState,
   type AgentSessionState,
   type AgentTerminalSnapshot,
+  type AgentChatSnapshot,
   type ChromeLayout,
   type UiAction,
   type Wallpaper,
@@ -29,6 +30,13 @@ const api: YalqenApi = {
   writeAgentTerminal: (sessionId, data) => ipcRenderer.send(channel.agentInput, sessionId, data),
   resizeAgentTerminal: (sessionId, size) => ipcRenderer.send(channel.agentResize, sessionId, size),
   onAgentOutput: (listener) => subscribe(channel.agentOutput, listener),
+  getAgentChat: () => ipcRenderer.invoke(channel.agentChatSnapshot) as Promise<AgentChatSnapshot | null>,
+  sendAgentChat: (id, text, tabId) => ipcRenderer.invoke(channel.agentChatSend, id, text, tabId) as Promise<boolean>,
+  interruptAgentChat: (id) => ipcRenderer.invoke(channel.agentChatInterrupt, id) as Promise<void>,
+  resetAgentChat: (id) => ipcRenderer.invoke(channel.agentChatReset, id) as Promise<void>,
+  respondAgentChat: (id, requestId, allow, answers) =>
+    ipcRenderer.invoke(channel.agentChatPermission, id, requestId, allow, answers) as Promise<void>,
+  onAgentChat: (listener) => subscribe<string>(channel.agentChatUpdate, listener),
 };
 
 contextBridge.exposeInMainWorld('yalqen', api);

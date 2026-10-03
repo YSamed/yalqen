@@ -3,22 +3,25 @@
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
   import '@xterm/xterm/css/xterm.css';
-  import type { AgentSessionState, AgentTerminalOutput, TabSnapshot } from '../../shared/types';
+  import type { AgentChatState, AgentSessionState, AgentTerminalOutput, TabSnapshot } from '../../shared/types';
   import { DEFAULT_AGENT_PANEL_WIDTH } from '../../shared/agent-panel';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Icon from '../ui/Icon.svelte';
+  import AgentChat from './AgentChat.svelte';
 
   let {
     open,
     session,
+    chat,
     activeTab,
     width,
     onresize,
   }: {
     open: boolean;
     session: AgentSessionState;
+    chat: AgentChatState;
     activeTab: TabSnapshot | null;
     width: number;
     onresize(width: number): void;
@@ -29,6 +32,8 @@
   let fitAddon: FitAddon;
   let terminalReady = $state(false);
   let requesting = $state(false);
+  let view = $state<'chat' | 'terminal'>('chat');
+  const terminalVisible = $derived(open && view === 'terminal');
   let failed = $state(false);
   let destroyed = false;
   let replayVersion = 0;
@@ -39,6 +44,7 @@
   let bufferedLength = 0;
   let press: { id: number; x: number; width: number } | null = null;
   const active = $derived(session.status === 'starting' || session.status === 'running');
+  const projectLocked = $derived(active || Boolean(chat.id && chat.status !== 'stopped'));
   const projectName = $derived(session.directory?.split('/').filter(Boolean).pop() ?? t('agentPanel.chooseProject'));
   const statusLabels = {
     idle: t('agentPanel.ready'),
@@ -47,6 +53,20 @@
     exited: t('agentPanel.exited'),
     error: t('agentPanel.failed'),
   };
+  const chatLabels = {
+    idle: t('agentPanel.ready'),
+    starting: t('agentPanel.starting'),
+    thinking: t('agentChat.thinking'),
+    approval: t('agentChat.waiting'),
+    ready: t('agentChat.chatReady'),
+    stopped: t('agentPanel.exited'),
+    error: t('agentPanel.failed'),
+  };
+  const status = $derived(view === 'terminal' ? statusLabels[session.status] : chatLabels[chat.status]);
+  const hasError = $derived(view === 'terminal' ? session.status === 'error' : chat.status === 'error');
+  const sessionOpen = $derived(
+    view === 'terminal' ? active : ['starting', 'thinking', 'approval', 'ready'].includes(chat.status),
+  );
   const errors = {
     'claude-not-found': t('agentPanel.claudeNotFound'),
     'invalid-directory': t('agentPanel.invalidDirectory'),
@@ -56,7 +76,7 @@
   };
 
   function fit(): void {
-    if (!open || !terminal || !container.clientWidth || !container.clientHeight) return;
+    if (!terminalVisible || !terminal || !container.clientWidth || !container.clientHeight) return;
     fitAddon.fit();
   }
 
@@ -130,6 +150,29 @@
     }
   }
 
+  function selectView(next: 'chat' | 'terminal'): void {
+    view = next;
+    try {
+      localStorage.setItem('yalqen-agent-view', next);
+    } catch {}
+  }
+
+  function viewKey(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    selectView(view === 'chat' ? 'terminal' : 'chat');
+    const list = event.currentTarget as HTMLDivElement;
+    void tick().then(() => list.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus());
+  }
+
+  async function newChat(): Promise<void> {
+    try {
+      await window.yalqen.resetAgentChat(chat.id);
+    } catch {
+      failed = true;
+    }
+  }
+
   function addCurrentTab(): void {
     if (!activeTab?.agentObserved || !session.id || session.status !== 'running') return;
     const reference = JSON.stringify({ tab_id: activeTab.id, url: activeTab.url });
@@ -165,15 +208,18 @@
   });
 
   $effect(() => {
-    if (!open || !terminalReady) return;
+    if (!terminalVisible || !terminalReady) return;
     void tick().then(() => {
-      if (destroyed || !open) return;
+      if (destroyed || !terminalVisible) return;
       fit();
-      terminal?.focus();
+      if (!document.activeElement?.closest('.view-switch')) terminal?.focus();
     });
   });
 
   onMount(() => {
+    try {
+      if (localStorage.getItem('yalqen-agent-view') === 'terminal') view = 'terminal';
+    } catch {}
     terminal = new Terminal({
       fontFamily: '"SF Mono", Menlo, Monaco, monospace',
       fontSize: 12,
@@ -194,8 +240,8 @@
       terminal.options.theme = {
         background: styles.backgroundColor,
         foreground: styles.color,
-        cursor: theme.matches ? '#a79bff' : '#7055d6',
-        selectionBackground: theme.matches ? '#514766' : '#e4dff5',
+        cursor: '#f28c28',
+        selectionBackground: theme.matches ? '#634428' : '#fce7d1',
       };
     };
     setTheme();
@@ -259,10 +305,15 @@
     ondblclick={() => onresize(DEFAULT_AGENT_PANEL_WIDTH)}
   ></button>
   <header>
-    <div class="identity"><Icon name="sparkle" /><strong>Claude Code</strong></div>
+    <div class="identity">
+      <img src="./newtab-mark.png" alt="" />
+      <div><strong>Yalqen <span>AI</span></strong><small>Claude Code</small></div>
+    </div>
     <div class="actions">
-      {#if active}
+      {#if view === 'terminal' && active}
         <IconButton icon="stop" label={t('agentPanel.stop')} size="sm" onclick={stop} />
+      {:else if view === 'chat' && chat.id}
+        <IconButton icon="plus" label={t('agentChat.newChat')} size="sm" onclick={newChat} />
       {/if}
       <IconButton
         icon="close"
@@ -275,72 +326,123 @@
   <div class="context">
     <button
       class="project"
-      title={session.directory ?? t('agentPanel.chooseProject')}
-      disabled={active || requesting}
+      title={[
+        session.directory ?? t('agentPanel.chooseProject'),
+        projectLocked ? t('agentChat.changeProjectHint') : null,
+      ]
+        .filter(Boolean)
+        .join('\n')}
+      disabled={projectLocked || requesting}
       onclick={chooseProject}
     >
-      <Icon name="folder" size={14} /><span>{projectName}</span>
+      <span class="project-icon"><Icon name="folder" size={14} /></span><span class="project-text"
+        ><small>{t('agentChat.project')}</small><span>{projectName}</span></span
+      ><Icon name="down" size={11} />
     </button>
-    <span class="status" class:active class:error={session.status === 'error'} role="status">
-      <span class="dot"></span>{statusLabels[session.status]}
+    <span
+      class="status"
+      class:active={sessionOpen}
+      class:error={hasError}
+      class:waiting={view === 'chat' && chat.status === 'approval'}
+      role="status"
+    >
+      <span class="dot"></span>{status}
     </span>
   </div>
-  {#if activeTab?.agentObserved}
-    <button class="tab-context" disabled={session.status !== 'running'} title={activeTab.url} onclick={addCurrentTab}>
-      <Icon name="globe" size={12} /><span>{activeTab.title}</span><span class="tab-action"
-        >{t('agentPanel.addTab')}</span
-      >
-    </button>
-  {/if}
-  <div class="terminal-area">
-    <div class="terminal" bind:this={container}></div>
-    {#if !session.id}
-      <div class="empty">
-        <div class="mark"><Icon name="sparkle" size={22} /></div>
-        <h2>{t('agentPanel.welcome')}</h2>
-        <p>{t('agentPanel.intro')}</p>
-        {#if session.directory}
-          <Button variant="primary" disabled={requesting} onclick={start}>{t('agentPanel.start')}</Button>
-        {:else}
-          <Button variant="primary" icon="folder" disabled={requesting} onclick={chooseProject}
-            >{t('agentPanel.chooseProject')}</Button
-          >
-        {/if}
-        <p class="note">{t('agentPanel.connectionHint')}</p>
-      </div>
+  <div class="view-switch" role="tablist" tabindex="-1" aria-label={t('agentChat.view')} onkeydown={viewKey}>
+    <button
+      role="tab"
+      id="agent-chat-tab"
+      aria-controls="agent-chat"
+      aria-selected={view === 'chat'}
+      tabindex={view === 'chat' ? 0 : -1}
+      onclick={() => selectView('chat')}><Icon name="sparkle" size={12} />{t('agentChat.chat')}</button
+    >
+    <button
+      role="tab"
+      id="agent-terminal-tab"
+      aria-controls="agent-terminal"
+      aria-selected={view === 'terminal'}
+      tabindex={view === 'terminal' ? 0 : -1}
+      onclick={() => selectView('terminal')}><Icon name="code" size={12} />{t('agentChat.terminal')}</button
+    >
+  </div>
+  <div
+    class="panel-view chat-view"
+    id="agent-chat"
+    role="tabpanel"
+    aria-labelledby="agent-chat-tab"
+    hidden={view !== 'chat'}
+  >
+    <AgentChat open={open && view === 'chat'} directory={session.directory} {activeTab} onchoose={chooseProject} />
+  </div>
+  <div
+    class="panel-view terminal-view"
+    id="agent-terminal"
+    role="tabpanel"
+    aria-labelledby="agent-terminal-tab"
+    hidden={view !== 'terminal'}
+  >
+    {#if activeTab?.agentObserved}
+      <button class="tab-context" disabled={session.status !== 'running'} title={activeTab.url} onclick={addCurrentTab}>
+        <Icon name="globe" size={12} /><span>{activeTab.title}</span><span class="tab-action"
+          >{t('agentPanel.addTab')}</span
+        >
+      </button>
+    {/if}
+    <div class="terminal-area">
+      <div class="terminal" bind:this={container}></div>
+      {#if !session.id}
+        <div class="empty">
+          <div class="mark"><Icon name="code" size={22} /></div>
+          <h2>{t('agentChat.terminalWelcome')}</h2>
+          <p>{t('agentChat.terminalIntro')}</p>
+          {#if session.directory}
+            <Button variant="primary" disabled={requesting} onclick={start}>{t('agentPanel.start')}</Button>
+          {:else}
+            <Button variant="primary" icon="folder" disabled={requesting} onclick={chooseProject}
+              >{t('agentPanel.chooseProject')}</Button
+            >
+          {/if}
+          <p class="note">{t('agentPanel.connectionHint')}</p>
+        </div>
+      {/if}
+    </div>
+    {#if failed || session.error || session.status === 'exited'}
+      <footer>
+        <p role="status">
+          {failed
+            ? t('agentPanel.startFailed')
+            : session.error
+              ? errors[session.error]
+              : session.exitCode
+                ? t('agentPanel.exitCode', { code: session.exitCode })
+                : t('agentPanel.exited')}
+        </p>
+        <div class="footer-actions">
+          {#if session.error === 'claude-not-found'}
+            <Button
+              size="sm"
+              onclick={() => window.yalqen.send({ type: 'new-tab', url: 'https://code.claude.com/docs/en/setup' })}
+              >{t('agentPanel.installGuide')}</Button
+            >
+          {/if}
+          {#if failed && active}
+            <Button size="sm" onclick={hydrate}>{t('agentPanel.retry')}</Button>
+          {:else if session.directory && !active}
+            <Button size="sm" variant="tonal" disabled={requesting} onclick={start}>{t('agentPanel.newSession')}</Button
+            >
+          {/if}
+        </div>
+      </footer>
     {/if}
   </div>
-  {#if failed || session.error || session.status === 'exited'}
-    <footer>
-      <p role="status">
-        {failed
-          ? t('agentPanel.startFailed')
-          : session.error
-            ? errors[session.error]
-            : session.exitCode
-              ? t('agentPanel.exitCode', { code: session.exitCode })
-              : t('agentPanel.exited')}
-      </p>
-      <div class="footer-actions">
-        {#if session.error === 'claude-not-found'}
-          <Button
-            size="sm"
-            onclick={() => window.yalqen.send({ type: 'new-tab', url: 'https://code.claude.com/docs/en/setup' })}
-            >{t('agentPanel.installGuide')}</Button
-          >
-        {/if}
-        {#if failed && active}
-          <Button size="sm" onclick={hydrate}>{t('agentPanel.retry')}</Button>
-        {:else if session.directory && !active}
-          <Button size="sm" variant="tonal" disabled={requesting} onclick={start}>{t('agentPanel.newSession')}</Button>
-        {/if}
-      </div>
-    </footer>
-  {/if}
 </section>
 
 <style>
   .agent-panel {
+    --agent-tint: color-mix(in srgb, var(--accent) 6%, var(--page));
+    --agent-ink: light-dark(#a95211, #f2b16e);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -348,7 +450,7 @@
     min-width: 0;
     overflow: visible;
     border-radius: 16px;
-    background: var(--page);
+    background: color-mix(in srgb, var(--accent) 1.5%, var(--page));
     box-shadow: var(--page-shadow);
     -webkit-app-region: no-drag;
   }
@@ -394,14 +496,129 @@
   }
   header {
     justify-content: space-between;
-    min-height: 42px;
-    padding: 0 10px 0 14px;
+    min-height: 58px;
+    padding: 0 14px 0 18px;
   }
   .identity {
-    gap: 8px;
+    gap: 10px;
   }
-  .identity :global(svg) {
-    color: var(--accent);
+  .identity img {
+    width: 24px;
+    height: 24px;
+  }
+  .identity strong {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    letter-spacing: -0.2px;
+  }
+  .identity strong span {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--agent-tint);
+    color: var(--agent-ink);
+    font-size: 8px;
+    letter-spacing: 0.025em;
+  }
+  .identity small {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-muted);
+    font-size: 9px;
+  }
+  .panel-view {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .panel-view[hidden] {
+    display: none;
+  }
+  .view-switch {
+    display: flex;
+    flex: none;
+    gap: 3px;
+    margin: 11px 14px 4px;
+    padding: 3px;
+    border-radius: 8px;
+    background: var(--surface-hover);
+  }
+  .view-switch button {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 27px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition:
+      background 120ms ease-out,
+      color 120ms ease-out,
+      transform 160ms ease-out;
+  }
+  .view-switch button[aria-selected='true'] {
+    background: var(--page);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+    color: var(--text);
+  }
+  .view-switch button:hover {
+    color: var(--text);
+  }
+  .view-switch button:active {
+    transform: scale(0.98);
+  }
+  .view-switch button:focus-visible,
+  .project:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .terminal-view {
+    padding-top: 10px;
+  }
+  .status.waiting {
+    color: var(--agent-ink);
+  }
+  .project-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--page-divider);
+    border-radius: 7px;
+    background: var(--page);
+  }
+  .project-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+  }
+  .project-text small {
+    color: var(--text-muted);
+    font-size: 8px;
+  }
+  .project-text > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .view-switch button {
+      transition: none;
+    }
   }
   strong {
     font-size: 12px;
@@ -412,19 +629,25 @@
   }
   .context {
     justify-content: space-between;
-    gap: 8px;
-    padding: 0 14px 10px;
+    gap: 10px;
+    margin: 0 14px;
+    padding: 9px 10px;
+    border: 1px solid var(--page-divider);
+    border-radius: 10px;
+    background: var(--surface-hover);
   }
   .project {
+    appearance: none;
     gap: 6px;
     min-width: 0;
-    padding: 3px 0;
+    padding: 0;
     border: 0;
     background: none;
     color: var(--text-muted);
     font-size: 11px;
+    text-align: left;
+    cursor: pointer;
   }
-  .project span,
   .tab-context > span:first-of-type {
     overflow: hidden;
     white-space: nowrap;
@@ -441,7 +664,7 @@
     flex: none;
     gap: 5px;
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: 9px;
   }
   .dot {
     width: 5px;
@@ -450,7 +673,7 @@
     background: var(--text-muted);
   }
   .status.active .dot {
-    background: var(--accent);
+    background: var(--agent-ink);
   }
   .status.error .dot {
     background: var(--warn);
@@ -496,10 +719,14 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: safe center;
+    overflow-y: auto;
     padding: 24px 18px;
     background: var(--page);
     text-align: center;
+  }
+  .empty > :global(*) {
+    flex-shrink: 0;
   }
   .mark {
     display: grid;

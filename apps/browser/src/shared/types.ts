@@ -124,6 +124,7 @@ export interface BrowserState {
   profile: ProfileKind;
   agentPanelOpen: boolean;
   agentSession: AgentSessionState;
+  agentChat: AgentChatState;
 }
 
 export interface AgentTerminalSize {
@@ -150,6 +151,66 @@ export interface AgentTerminalSnapshot {
   state: AgentSessionState;
   sequence: number;
   data: string;
+}
+
+export interface AgentChatState {
+  id: string | null;
+  directory: string | null;
+  status: 'idle' | 'starting' | 'thinking' | 'approval' | 'ready' | 'stopped' | 'error';
+  model: string | null;
+  error:
+    | 'claude-not-found'
+    | 'invalid-directory'
+    | 'connection-failed'
+    | 'authentication-required'
+    | 'start-failed'
+    | 'request-failed'
+    | null;
+}
+
+export type AgentChatPart =
+  | { type: 'text'; text: string }
+  | {
+      type: 'tool';
+      id: string;
+      name: string;
+      input: string;
+      output: string;
+      status: 'running' | 'done' | 'error' | 'stopped';
+    };
+
+export interface AgentChatContext {
+  id: TabId;
+  title: string;
+  url: string;
+}
+
+export interface AgentChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  parts: AgentChatPart[];
+  context: AgentChatContext | null;
+}
+
+export interface AgentChatQuestion {
+  question: string;
+  options: { label: string; description: string }[];
+  multiSelect: boolean;
+}
+
+export interface AgentChatPermission {
+  id: string;
+  tool: string;
+  title: string;
+  input: string;
+  questions: AgentChatQuestion[];
+}
+
+export interface AgentChatSnapshot {
+  state: AgentChatState;
+  revision: number;
+  messages: AgentChatMessage[];
+  permissions: AgentChatPermission[];
 }
 
 export type ProfileKind = 'personal' | 'developer' | 'private';
@@ -248,6 +309,12 @@ export const IpcChannel = {
   agentInput: 'yalqen:agent-input',
   agentResize: 'yalqen:agent-resize',
   agentOutput: 'yalqen:agent-output',
+  agentChatSnapshot: 'yalqen:agent-chat-snapshot',
+  agentChatSend: 'yalqen:agent-chat-send',
+  agentChatInterrupt: 'yalqen:agent-chat-interrupt',
+  agentChatReset: 'yalqen:agent-chat-reset',
+  agentChatPermission: 'yalqen:agent-chat-permission',
+  agentChatUpdate: 'yalqen:agent-chat-update',
 } as const;
 
 export interface Wallpaper {
@@ -269,6 +336,17 @@ export interface YalqenApi {
   writeAgentTerminal(sessionId: string, data: string): void;
   resizeAgentTerminal(sessionId: string, size: AgentTerminalSize): void;
   onAgentOutput(listener: (output: AgentTerminalOutput) => void): () => void;
+  getAgentChat(): Promise<AgentChatSnapshot | null>;
+  sendAgentChat(sessionId: string | null, text: string, tabId: TabId | null): Promise<boolean>;
+  interruptAgentChat(sessionId: string): Promise<void>;
+  resetAgentChat(sessionId: string | null): Promise<void>;
+  respondAgentChat(
+    sessionId: string,
+    requestId: string,
+    allow: boolean,
+    answers?: Record<string, string>,
+  ): Promise<void>;
+  onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
 }
 
 export interface CommandBarOpen {

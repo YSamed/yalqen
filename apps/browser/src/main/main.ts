@@ -458,7 +458,7 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.getState, (event) => senderWindow(event)?.state() ?? null);
   ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => senderWindow(event)?.setLayout(next));
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
-  // Terminal access belongs only to the browser chrome's main frame, never a browsing tab.
+  // Agent access belongs only to the browser chrome's main frame, never a browsing tab.
   const agentSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     event.senderFrame === event.sender.mainFrame ? senderWindow(event) : undefined;
   ipcMain.handle(IpcChannel.agentSnapshot, (event) => agentSenderWindow(event)?.agentSession.snapshot() ?? null);
@@ -473,6 +473,21 @@ function startBrowser(): void {
   );
   ipcMain.on(IpcChannel.agentResize, (event, id: unknown, size: unknown) =>
     agentSenderWindow(event)?.agentSession.resize(id, size),
+  );
+  ipcMain.handle(IpcChannel.agentChatSnapshot, (event) => agentSenderWindow(event)?.agentChat.snapshot() ?? null);
+  ipcMain.handle(
+    IpcChannel.agentChatSend,
+    (event, id: unknown, text: unknown, tabId: unknown) =>
+      agentSenderWindow(event)?.sendAgentChat(id, text, tabId) ?? false,
+  );
+  ipcMain.handle(IpcChannel.agentChatInterrupt, (event, id: unknown) =>
+    agentSenderWindow(event)?.agentChat.interrupt(id),
+  );
+  ipcMain.handle(IpcChannel.agentChatReset, (event, id: unknown) => agentSenderWindow(event)?.agentChat.reset(id));
+  ipcMain.handle(
+    IpcChannel.agentChatPermission,
+    (event, id: unknown, requestId: unknown, allow: unknown, answers: unknown) =>
+      agentSenderWindow(event)?.agentChat.respond(id, requestId, allow, answers),
   );
   registerWebStoreApi({
     daily,

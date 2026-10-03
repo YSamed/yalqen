@@ -73,6 +73,7 @@ import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
 import { AgentSession, type AgentConnection } from '../agent-bridge/agent-session.js';
+import { AgentChat } from '../agent-bridge/agent-chat.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -135,6 +136,7 @@ export class YalqenWindow {
   readonly isPrivate: boolean;
   readonly isDeveloper: boolean;
   readonly agentSession: AgentSession;
+  readonly agentChat: AgentChat;
   private agentPanelOpen = false;
   private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
@@ -198,6 +200,13 @@ export class YalqenWindow {
       onState: this.pushState,
       onOutput: (output) => {
         if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);
+      },
+    });
+    this.agentChat = new AgentChat({
+      connect: () => app.agentConnection(),
+      onState: this.pushState,
+      onUpdate: (snapshot) => {
+        if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
       },
     });
     if (glassAvailable) this.ui.setBackgroundColor('#00000000');
@@ -390,6 +399,7 @@ export class YalqenWindow {
       nativeTheme.off('updated', this.pushState);
       this.preconnector.cancel();
       this.agentSession.dispose();
+      this.agentChat.dispose();
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -484,6 +494,7 @@ export class YalqenWindow {
       profile: this.profile,
       agentPanelOpen: this.agentPanelOpen,
       agentSession: this.agentSession.state(),
+      agentChat: this.agentChat.state(),
     };
   }
 
@@ -496,7 +507,12 @@ export class YalqenWindow {
   }
 
   async selectAgentDirectory(): Promise<ReturnType<AgentSession['state']>> {
-    if ((this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory || this.agentSession.active) {
+    if (
+      (this.isPrivate && !this.isDeveloper) ||
+      this.selectingAgentDirectory ||
+      this.agentSession.active ||
+      this.agentChat.active
+    ) {
       return this.agentSession.state();
     }
     this.selectingAgentDirectory = true;
@@ -508,6 +524,7 @@ export class YalqenWindow {
       });
       if (!this.window.isDestroyed() && !result.canceled && result.filePaths[0]) {
         this.agentSession.selectDirectory(result.filePaths[0]);
+        this.agentChat.selectDirectory(result.filePaths[0]);
       }
     } finally {
       this.selectingAgentDirectory = false;
@@ -518,6 +535,14 @@ export class YalqenWindow {
   startAgentSession(size: unknown): Promise<ReturnType<AgentSession['state']>> {
     if (this.isPrivate && !this.isDeveloper) return Promise.resolve(this.agentSession.state());
     return this.agentSession.start(size);
+  }
+
+  sendAgentChat(id: unknown, text: unknown, tabId: unknown): Promise<boolean> {
+    if (this.isPrivate && !this.isDeveloper) return Promise.resolve(false);
+    const tab =
+      typeof tabId === 'string' ? this.state().tabs.find((entry) => entry.id === tabId && entry.agentObserved) : null;
+    if (tabId !== null && !tab) return Promise.resolve(false);
+    return this.agentChat.send(id, text, tab ? { id: tab.id, title: tab.title, url: tab.url } : null);
   }
 
   setLayout(layout: ChromeLayout): void {
