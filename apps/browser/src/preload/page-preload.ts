@@ -33,6 +33,8 @@ let lastZoomAt = 0;
 let distance = 0;
 let lastAt = 0;
 let navigatedAt = 0;
+let gestureAt = -Infinity;
+let gestureInScroller = false;
 
 if (location.href === NEW_TAB_URL && window === window.top) {
   let centerOffset = 0;
@@ -107,12 +109,20 @@ window.addEventListener(
       event.shiftKey
     )
       return;
-    if (Math.abs(event.deltaX) < Math.abs(event.deltaY) * 1.25 || hasHorizontalScroller(event)) {
+    if (Math.abs(event.deltaX) < Math.abs(event.deltaY) * 1.25) {
       distance = 0;
       return;
     }
 
     const now = performance.now();
+    // Chromium keeps a wheel gesture on one scroller, so its target is checked once per gesture
+    // instead of forcing style and layout on every event.
+    if (now - gestureAt > GAP_MS) gestureInScroller = hasHorizontalScroller(event);
+    gestureAt = now;
+    if (gestureInScroller) {
+      distance = 0;
+      return;
+    }
     if (now - navigatedAt < COOLDOWN_MS) return;
     if (now - lastAt > GAP_MS || Math.sign(event.deltaX) !== Math.sign(distance)) distance = 0;
     lastAt = now;
