@@ -54,6 +54,7 @@ const MAX_CLOSED_TABS = 20;
 const STORAGE_WORLD_ID = 1001;
 // Past this the badge reads "99+", so further errors need not re-render the chrome.
 const MAX_CONSOLE_ERRORS = 99;
+const MAX_PINCH_ZOOM = 3;
 
 type Listen = WebContents['on'];
 
@@ -876,10 +877,11 @@ export class TabManager {
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
     });
 
-    listen('ipc-message', (event, channel, direction) => {
-      if (channel !== PageChannel.zoom || event.senderFrame !== contents.mainFrame) return;
-      if (direction === 'in' || direction === 'out') this.zoomView(tab, view, direction === 'in' ? 1 : -1);
-    });
+    // A page-level wheel listener for pinch would make every scroll wait for the page's main thread,
+    // so pinch uses Chromium's own visual zoom. A new renderer after navigation starts at the defaults.
+    const allowPinch = () => void contents.setVisualZoomLevelLimits(1, MAX_PINCH_ZOOM).catch(() => {});
+    allowPinch();
+    listen('did-navigate', allowPinch);
 
     listen('ipc-message', (event, channel, direction) => {
       if (channel !== PageChannel.swipe || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
