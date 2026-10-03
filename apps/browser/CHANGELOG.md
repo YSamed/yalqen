@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.35](https://github.com/YSamed/yalqen/compare/v0.2.34...v0.2.35) (2026-10-03)
+## [0.3.0](https://github.com/YSamed/yalqen/compare/v0.2.34...v0.3.0) (2026-10-03)
 
 
 ### Features
