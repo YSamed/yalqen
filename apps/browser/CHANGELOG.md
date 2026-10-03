@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.3](https://github.com/YSamed/yalqen/compare/v0.3.2...v0.3.3) (2026-10-03)
+
+
+### Features
+
+* add one-click claude code setup and agent status tracking ([#150](https://github.com/YSamed/yalqen/issues/150)) ([2c7c1f1](https://github.com/YSamed/yalqen/commit/2c7c1f1904d8168556aa1036304ed5ea75d9d7ab))
+
+
+### Bug Fixes
+
+* load lazy images before full-page screenshots ([2a6f6fd](https://github.com/YSamed/yalqen/commit/2a6f6fd7c4d2c2be7a497e2c4552bb1979988cc8))
+
 ## [0.3.2](https://github.com/YSamed/yalqen/compare/v0.3.1...v0.3.2) (2026-10-03)
 
 
