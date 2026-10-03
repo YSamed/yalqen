@@ -154,6 +154,19 @@ test('page titles with replacement patterns are inserted literally', async () =>
   }
 });
 
+test('the bookmarks page loads its folder picker script from its own origin', async () => {
+  const handle = serve({});
+  const page = await handle(new Request('yalqen://bookmarks/'));
+  assert.match(page.headers.get('content-security-policy'), /script-src 'self'/);
+  assert.match(await page.text(), /<script src="yalqen:\/\/bookmarks\/bookmarks\.js" defer><\/script>/);
+  const script = await handle(new Request('yalqen://bookmarks/bookmarks.js'));
+  assert.match(script.headers.get('content-type'), /^application\/javascript/);
+  assert.match(await script.text(), /folder-options/);
+  assert.equal((await handle(new Request('yalqen://bookmarks/missing'))).status, 404);
+  const history = await handle(new Request('yalqen://history/'));
+  assert.doesNotMatch(history.headers.get('content-security-policy'), /script-src/);
+});
+
 test('pinned sites render as escaped tiles with a letter fallback', () => {
   const html = internalPages.renderPinned([
     { url: 'https://github.com/', title: 'GitHub', faviconUrl: 'https://github.com/favicon.ico' },

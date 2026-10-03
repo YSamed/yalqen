@@ -14,6 +14,7 @@ import { searchFieldMarkup } from './search-field-markup.js';
 import type { RecentPage } from './tabs.js';
 
 const INTERNAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
+const BOOKMARKS_CSP = `${INTERNAL_CSP}; script-src 'self'`;
 const DOWNLOADS_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'";
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
@@ -154,6 +155,7 @@ export interface InternalPages {
   downloads: string;
   downloadsScript: string;
   bookmarks: string;
+  bookmarksScript: string;
   settings: string;
   settingsAsset: (name: string) => Buffer<ArrayBuffer> | null;
 }
@@ -185,6 +187,7 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
     downloads: readPage(files.downloads),
     downloadsScript: fs.readFileSync(path.join(path.dirname(files.downloads), 'downloads.js'), 'utf8'),
     bookmarks: readPage(files.bookmarks),
+    bookmarksScript: fs.readFileSync(path.join(path.dirname(files.bookmarks), 'bookmarks.js'), 'utf8'),
     settings: localizePage(fs.readFileSync(files.settings, 'utf8')),
     settingsAsset: (name) => {
       const cached = assetCache.get(name);
@@ -269,6 +272,21 @@ function serveDownloads(
   }
 }
 
+function serveBookmarks(url: URL, pages: InternalPages, sources: InternalPageSources): Response {
+  switch (url.pathname) {
+    case '/bookmarks.js':
+      return script(pages.bookmarksScript);
+    case '/': {
+      const query = url.searchParams.get('q') ?? '';
+      const data = sources.bookmarks(query);
+      const content = renderBookmarks(data.folders, data.bookmarks, query);
+      return html(fillSlot(pages.bookmarks, BOOKMARKS_MARKER, content), BOOKMARKS_CSP);
+    }
+    default:
+      return notFound();
+  }
+}
+
 function serveNewTab(url: URL, pages: InternalPages, sources: InternalPageSources): Response {
   switch (url.pathname) {
     case '/suggestions.js':
@@ -309,15 +327,8 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         return serveDownloads(url, pages, sources, request.signal);
       case 'history':
         return serveHistory(url.pathname, url.searchParams.get('q') ?? '', pages, sources);
-      case 'bookmarks': {
-        if (url.pathname !== '/') return notFound();
-        const query = url.searchParams.get('q') ?? '';
-        const data = sources.bookmarks(query);
-        return html(
-          fillSlot(pages.bookmarks, BOOKMARKS_MARKER, renderBookmarks(data.folders, data.bookmarks, query)),
-          INTERNAL_CSP,
-        );
-      }
+      case 'bookmarks':
+        return serveBookmarks(url, pages, sources);
       default:
         return notFound();
     }
