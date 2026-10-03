@@ -40,7 +40,7 @@ export function formatAddress(format: AddressFormat, url: string, title: string)
   }
 }
 
-// Chromium cannot rasterize a texture taller or wider than this many device pixels.
+// Keep the output within a conservative raster size without cropping the page.
 const MAX_CAPTURE_PIXELS = 16384;
 
 export function fullPageClip(
@@ -48,11 +48,13 @@ export function fullPageClip(
   pixelRatio: number,
 ): { x: number; y: number; width: number; height: number; scale: number } {
   const limit = Math.floor(MAX_CAPTURE_PIXELS / Math.max(1, pixelRatio));
+  const width = Math.max(1, Math.ceil(content.width));
+  const height = Math.max(1, Math.ceil(content.height));
   return {
     x: 0,
     y: 0,
-    width: Math.max(1, Math.min(Math.ceil(content.width), limit)),
-    height: Math.max(1, Math.min(Math.ceil(content.height), limit)),
-    scale: 1,
+    width,
+    height,
+    scale: Math.min(1, limit / width, limit / height),
   };
 }

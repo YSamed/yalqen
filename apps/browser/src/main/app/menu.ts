@@ -95,7 +95,11 @@ export function buildMenu(actions: MenuActions): Menu {
         { type: 'separator' },
         { label: t('menu.savePdf'), accelerator: 'CmdOrCtrl+Shift+S', click: actions.savePdf },
         { label: t('menu.screenshot'), click: () => actions.devCommand('screenshot') },
-        { label: t('menu.fullPageScreenshot'), click: () => actions.devCommand('full-page-screenshot') },
+        {
+          label: t('menu.fullPageScreenshot'),
+          accelerator: 'CmdOrCtrl+Alt+S',
+          click: () => actions.devCommand('full-page-screenshot'),
+        },
         { label: t('menu.print'), accelerator: 'CmdOrCtrl+P', click: actions.print },
         ...(isMac ? [] : [{ type: 'separator' } as const, settingsItem]),
       ],

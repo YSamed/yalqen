@@ -42,6 +42,7 @@ function actions() {
     reload: record('reload'),
     inspect: record('inspect'),
     print: record('print'),
+    fullPageScreenshot: record('fullPageScreenshot'),
     viewSource: record('viewSource'),
     copyAddress: record('copyAddress'),
     replaceMisspelling: record('replace'),
@@ -61,6 +62,7 @@ test('a plain page offers navigation, printing, its source, its address and insp
     'Yenile',
     '-',
     'Yazdır…',
+    'Tam sayfa ekran görüntüsü al…',
     'Sayfa kaynağını görüntüle',
     'Sayfa adresini kopyala',
     '-',
@@ -69,11 +71,13 @@ test('a plain page offers navigation, printing, its source, its address and insp
   assert.equal(item(items, 'Geri').enabled, true);
   assert.equal(item(items, 'İleri').enabled, false);
   item(items, 'Yazdır…').click();
+  item(items, 'Tam sayfa ekran görüntüsü al…').click();
   item(items, 'Sayfa kaynağını görüntüle').click();
   item(items, 'İncele').click();
   for (const entry of item(items, 'Sayfa adresini kopyala').submenu) entry.click();
   assert.deepEqual(a.calls, [
     ['print'],
+    ['fullPageScreenshot'],
     ['viewSource'],
     ['inspect'],
     ['copyAddress', 'url'],

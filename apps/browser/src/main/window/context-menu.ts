@@ -33,6 +33,7 @@ export interface ContextMenuActions {
   reload(): void;
   inspect(): void;
   print(): void;
+  fullPageScreenshot(): void;
   viewSource(): void;
   copyAddress(format: AddressFormat): void;
   replaceMisspelling(word: string): void;
@@ -124,6 +125,7 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
     groups.push([
       ...(actions.translation ? [{ label: actions.translation.label, click: actions.translation.run }] : []),
       { label: t('contextMenu.print'), click: actions.print },
+      { label: t('menu.fullPageScreenshot'), click: actions.fullPageScreenshot },
       ...(actions.canViewSource
         ? [
             { label: t('contextMenu.viewSource'), click: actions.viewSource },

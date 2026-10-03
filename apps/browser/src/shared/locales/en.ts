@@ -162,6 +162,8 @@ export const en = {
   'toolbar.settingsTitle': 'Settings (⌘,)',
   'toolbar.downloadsActive': 'Downloads, {count} in progress',
   'toolbar.downloads': 'Downloads',
+  'toolbar.fullPageScreenshot': 'Take full-page screenshot',
+  'toolbar.fullPageScreenshotTitle': 'Take full-page screenshot (⌥⌘S)',
   'toolbar.back': 'Back',
   'toolbar.forward': 'Forward',
   'toolbar.stop': 'Stop',

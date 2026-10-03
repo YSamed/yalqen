@@ -909,6 +909,7 @@ export class YalqenWindow {
       reload: () => contents.reload(),
       inspect: () => contents.inspectElement(params.x, params.y),
       print: () => this.print(contents),
+      fullPageScreenshot: () => void this.saveScreenshot(true),
       viewSource: () => {
         if (canViewSource(contents.getURL())) tabs.open(`view-source:${contents.getURL()}`, { isPrivate });
       },

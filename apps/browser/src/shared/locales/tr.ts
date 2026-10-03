@@ -164,6 +164,8 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.settingsTitle': 'Ayarlar (⌘,)',
   'toolbar.downloadsActive': 'İndirilenler, {count} indirme sürüyor',
   'toolbar.downloads': 'İndirilenler',
+  'toolbar.fullPageScreenshot': 'Tam sayfa ekran görüntüsü al',
+  'toolbar.fullPageScreenshotTitle': 'Tam sayfa ekran görüntüsü al (⌥⌘S)',
   'toolbar.back': 'Geri',
   'toolbar.forward': 'İleri',
   'toolbar.stop': 'Durdur',

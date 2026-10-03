@@ -168,6 +168,14 @@
       title={t('toolbar.settingsTitle')}
       onclick={() => send({ type: 'open-settings' })}
     />
+  {:else if id === 'screenshot'}
+    <IconButton
+      icon="screenshot"
+      label={t('toolbar.fullPageScreenshot')}
+      title={t('toolbar.fullPageScreenshotTitle')}
+      disabled={!ready || !activeTab}
+      onclick={() => send({ type: 'dev-command', id: 'full-page-screenshot' })}
+    />
   {:else}
     <IconButton
       icon="download"

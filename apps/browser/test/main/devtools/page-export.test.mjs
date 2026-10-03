@@ -39,7 +39,7 @@ test('addresses are copied as plain, Markdown or curl text', () => {
   assert.equal(formatAddress('curl', "https://a.com/it's", ''), "curl -L 'https://a.com/it'\\''s'");
 });
 
-test('full page captures stay within the rasterizer limit', () => {
+test('full page captures preserve normal pages at their original scale', () => {
   assert.deepEqual(fullPageClip({ width: 1280.4, height: 5000.2 }, 2), {
     x: 0,
     y: 0,
@@ -47,7 +47,21 @@ test('full page captures stay within the rasterizer limit', () => {
     height: 5001,
     scale: 1,
   });
-  assert.equal(fullPageClip({ width: 1280, height: 50000 }, 2).height, 8192);
-  assert.equal(fullPageClip({ width: 1280, height: 50000 }, 0.5).height, 16384);
   assert.equal(fullPageClip({ width: 0, height: 0 }, 1).width, 1);
+});
+
+test('long and wide pages scale uniformly instead of losing their bottom or right edge', () => {
+  for (const pixelRatio of [0.5, 1, 2, 3]) {
+    for (const content of [
+      { width: 1280, height: 50000 },
+      { width: 50000, height: 1280 },
+    ]) {
+      const clip = fullPageClip(content, pixelRatio);
+      assert.equal(clip.width, content.width);
+      assert.equal(clip.height, content.height);
+      assert.ok(clip.width * clip.scale * Math.max(1, pixelRatio) <= 16384);
+      assert.ok(clip.height * clip.scale * Math.max(1, pixelRatio) <= 16384);
+      assert.ok(clip.scale > 0 && clip.scale < 1);
+    }
+  }
 });

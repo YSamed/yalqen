@@ -131,6 +131,7 @@ export function devCommands(): readonly DevCommand[] {
     {
       id: 'full-page-screenshot',
       title: t('devCommands.fullPageScreenshot'),
+      shortcut: '⌥⌘S',
       keywords: t('devCommands.fullPageScreenshotKeywords'),
     },
     { id: 'copy-address', title: t('devCommands.copyAddress'), keywords: t('devCommands.copyAddressKeywords') },
