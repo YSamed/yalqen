@@ -1,6 +1,6 @@
 # Directories and lists
 
-Status as of 2026-09-30.
+Status as of 2026-10-03.
 
 ## Listed or submitted
 
@@ -14,6 +14,9 @@ Status as of 2026-09-30.
 | MacUpdate                               | Submitted, reply by email expected        |
 | OpenAlternative                         | Submitted, free queue                     |
 | Homebrew tap (`YSamed/homebrew-yalqen`) | Live, 0.2.11, `brew audit --online` clean |
+| Launch Llama (free)                     | Submitted 2026-10-03, manual review       |
+| ListBulb (free)                         | Submitted 2026-10-03, pending review; footer link on yalqen.com verified the backlink |
+| Aura++ (free)                           | Scheduled for 2027-05-16 (random free slot); footer link on yalqen.com verified the backlink |
 
 ## Waiting on a date
 
@@ -50,3 +53,5 @@ Not eligible yet. The tap cask is already in the shape homebrew/cask expects (no
 ## Skipped
 
 See the project notes: awesome-macOS (iCHAIT) bans Electron apps; awesome-privacy needs a stable release older than 4 months and 100 stars; opensourcealternative.to only lists self-hosted software.
+
+Free directories picked on 2026-10-03 (copy in [directory-submissions.md](directory-submissions.md)): PeerPush skipped for now (needs an account), Noonlaunch not submitted (nofollow link on the free tier), BetterLaunch skipped (paid bulk submission).
