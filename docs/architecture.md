@@ -12,7 +12,7 @@ Yalqen is an Electron app in `apps/browser`. This page maps the source tree so a
 | Settings page    | `src/renderer/settings`                             | Svelte page served at `yalqen://settings`                                                    |
 | Web pages        | `src/preload/page-preload.ts`                       | Sandboxed preload for every tab: gestures, password autofill, settings and web store bridges |
 
-The main process pushes a complete `BrowserState` to each window interface. `src/shared/browser-state.ts` keeps unchanged tabs and arrays stable on arrival, and `App.svelte` splits the state into one signal per field, so a title or download update only re-renders what changed.
+The main process pushes a complete `BrowserState` to each window interface as a JSON string, which crosses the context bridge without the deep copy an object would need. `src/shared/browser-state.ts` keeps unchanged tabs and arrays stable on arrival, and `App.svelte` splits the state into one signal per field, so a title or download update only re-renders what changed.
 
 ## Main process
 

@@ -422,11 +422,10 @@ export class YalqenWindow {
     setImmediate(() => {
       this.pushQueued = false;
       if (this.uiContents.isDestroyed()) return;
-      const state = this.state();
-      const serialized = JSON.stringify(state);
+      const serialized = JSON.stringify(this.state());
       if (serialized === this.lastPushedState) return;
       this.lastPushedState = serialized;
-      this.uiContents.send(IpcChannel.state, state);
+      this.uiContents.send(IpcChannel.state, serialized);
     });
   };
 

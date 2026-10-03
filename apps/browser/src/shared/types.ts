@@ -204,7 +204,8 @@ export interface Wallpaper {
 
 export interface YalqenApi {
   getState(): Promise<BrowserState>;
-  onState(listener: (state: BrowserState) => void): () => void;
+  // State arrives as JSON: the context bridge deep-copies objects, but a string crosses it cheaply.
+  onState(listener: (serializedState: string) => void): () => void;
   onWallpaper(listener: (wallpaper: Wallpaper | null) => void): () => void;
   setLayout(layout: ChromeLayout): void;
   send(action: UiAction): void;
