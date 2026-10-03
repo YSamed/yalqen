@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/YSamed/yalqen/compare/v0.2.34...v0.3.0) (2026-10-03)
+
+
+### Features
+
+* add agent bridge for coding agents ([#145](https://github.com/YSamed/yalqen/issues/145)) ([bd2e4a9](https://github.com/YSamed/yalqen/commit/bd2e4a9a8bdd9d576763b86fd02a921f5cbb2b6b))
+
 ## [0.2.34](https://github.com/YSamed/yalqen/compare/v0.2.33...v0.2.34) (2026-10-03)
 
 
