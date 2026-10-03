@@ -90,8 +90,18 @@ export const en = {
   'agentBridge.toggle': 'Agent connection (experimental)',
   'agentBridge.toggleHint':
     'Lets Claude Code or Codex see your localhost tabs. Private windows are never shared, and nothing leaves your Mac.',
-  'agentBridge.ready': 'Ready',
+  'agentBridge.ready': 'Ready, waiting for an agent',
+  'agentBridge.connected': '{client} connected',
+  'agentBridge.someAgent': 'An agent',
+  'agentBridge.staleToken':
+    'An agent tried to connect with an old token at {time}. Add Yalqen to it again, or run the setup command again.',
+  'agentBridge.addToClaude': 'Add to Claude Code',
+  'agentBridge.adding': 'Adding…',
+  'agentBridge.added': 'Added. In Claude Code sessions that are already open, run /mcp to reconnect.',
+  'agentBridge.claudeNotFound': 'The claude command was not found. Copy the command and run it in your terminal.',
+  'agentBridge.addFailed': 'Could not add it: {error}',
   'agentBridge.setupHint': 'Run this once in your terminal.',
+  'agentBridge.setupHintOr': 'Or copy this and run it once in your terminal.',
   'agentBridge.advanced': 'Advanced',
   'agentBridge.listening': 'Listening on {url}',
   'agentBridge.observedTabs': '{count} local tabs visible',
@@ -520,7 +530,9 @@ export const en = {
   'devMenu.resetOverrides': 'Reset Emulations',
   'devMenu.pickElement': 'Select Element for Agent',
   'devMenu.latestEpisode': 'Latest error · {id}',
-  'devMenu.copyEpisode': 'Copy Reference for Agent',
+  'devMenu.copyEpisode': 'Copy Fix Prompt for Agent',
+  'devMenu.episodePrompt':
+    'Fix the error Yalqen recorded as {id}. Read it with get_error_episode, then confirm the fix with replay_episode.',
   'devMenu.copyPlaywrightTest': 'Copy Playwright Test',
 
   'contextMenu.openLinkInNewTab': 'Open Link in New Tab',

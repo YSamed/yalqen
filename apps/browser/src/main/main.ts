@@ -16,6 +16,7 @@ import {
 import { AdBlocker } from './privacy/adblock.js';
 import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
+import { addToClaudeCode } from './agent-bridge/claude-setup.js';
 import { ActionRunner } from './agent-bridge/action-runner.js';
 import { createElectronHost } from './agent-bridge/electron-host.js';
 import { isInScope } from './agent-bridge/tab-scope.js';
@@ -231,6 +232,11 @@ function startBrowser(): void {
     regenerateToken: () => {
       agentTokens.regenerate();
       broadcastAgentBridge(agentView());
+    },
+    addToClaude: async () => {
+      const port = agentBridge.port;
+      if (!port) return { ok: false, reason: 'failed', detail: 'The agent connection is not running.' };
+      return addToClaudeCode(mcpUrl(port), agentTokens.get());
     },
   });
 

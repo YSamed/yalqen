@@ -487,12 +487,16 @@ export interface PasswordsView {
 
 export type AgentSetupKind = 'claude' | 'codex' | 'token' | 'otel';
 
+export type ClaudeSetupResult = { ok: true } | { ok: false; reason: 'not-found' | 'failed'; detail: string };
+
 export interface AgentBridgeView {
   enabled: boolean;
   port: number | null;
   error: string | null;
   lastCallAt: number | null;
   calls: number;
+  client: string | null;
+  staleTokenAt: number | null;
   url: string | null;
   // Shown with the token hidden; copying puts the real one on the clipboard.
   claudeCommand: string | null;
@@ -505,6 +509,7 @@ export const AgentBridgeChannel = {
   status: 'yalqen-agent:status',
   copy: 'yalqen-agent:copy',
   regenerate: 'yalqen-agent:regenerate',
+  addToClaude: 'yalqen-agent:add-to-claude',
   changed: 'yalqen-agent:changed',
 } as const;
 
@@ -545,5 +550,6 @@ export interface SettingsApi {
   agentBridge(): Promise<AgentBridgeView>;
   copyAgentSetup(kind: AgentSetupKind): Promise<boolean>;
   regenerateAgentToken(): Promise<AgentBridgeView>;
+  addAgentToClaude(): Promise<ClaudeSetupResult>;
   onAgentBridgeChange(listener: (view: AgentBridgeView) => void): () => void;
 }

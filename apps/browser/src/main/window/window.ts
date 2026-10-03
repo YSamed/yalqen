@@ -725,7 +725,7 @@ export class YalqenWindow {
           devMenuTemplate(tab, {
             run: (id) => this.runDevCommand(id),
             openDevTools: () => tabs.openDevTools(),
-            copyEpisode: (id) => clipboard.writeText(id),
+            copyEpisode: (id) => clipboard.writeText(t('devMenu.episodePrompt', { id })),
             copyPlaywrightTest: (id) => {
               const source = tabs.agentPlaywrightTest(id);
               if (source) clipboard.writeText(source);
