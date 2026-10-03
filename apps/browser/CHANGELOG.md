@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.34](https://github.com/YSamed/yalqen/compare/v0.2.33...v0.2.34) (2026-10-03)
+
+
+### Bug Fixes
+
+* handle missing webContents in TabManager.openChild for noopener popups ([#143](https://github.com/YSamed/yalqen/issues/143)) ([a2e2fbc](https://github.com/YSamed/yalqen/commit/a2e2fbc6838c575742159788f667996e98c91baf))
+
 ## [0.2.33](https://github.com/YSamed/yalqen/compare/v0.2.32...v0.2.33) (2026-10-03)
 
 
