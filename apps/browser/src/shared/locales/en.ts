@@ -89,7 +89,10 @@ export const en = {
   'agentBridge.title': 'Agent connection',
   'agentBridge.toggle': 'Agent connection (experimental)',
   'agentBridge.toggleHint':
-    'Lets a coding agent such as Claude Code or Codex read console errors, failed requests and screenshots from local development tabs (localhost, *.test). Private windows are never shared, and nothing leaves your Mac.',
+    'Lets Claude Code or Codex see your localhost tabs. Private windows are never shared, and nothing leaves your Mac.',
+  'agentBridge.ready': 'Ready',
+  'agentBridge.setupHint': 'Run this once in your terminal.',
+  'agentBridge.advanced': 'Advanced',
   'agentBridge.listening': 'Listening on {url}',
   'agentBridge.observedTabs': '{count} local tabs visible',
   'agentBridge.observedTabs.one': '{count} local tab visible',
@@ -106,8 +109,7 @@ export const en = {
     'Extra development addresses the agent may read, one per line, such as a tunnel or a LAN address.',
   'agentBridge.saveOrigins': 'Save origins',
   'agentBridge.actions': 'Agent actions',
-  'agentBridge.actionsHint':
-    'Whether the agent may click, type and navigate in local tabs, for example to check its own fix.',
+  'agentBridge.actionsHint': 'Whether the agent may click and type in local tabs to check its own fix.',
   'agentBridge.actionsOff': 'Off',
   'agentBridge.actionsAsk': 'Ask every time',
   'agentBridge.actionsAllow': 'Allow',

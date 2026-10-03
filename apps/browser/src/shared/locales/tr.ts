@@ -91,7 +91,10 @@ export const tr: Record<MessageKey, string> = {
   'agentBridge.title': 'Ajan bağlantısı',
   'agentBridge.toggle': 'Ajan bağlantısı (deneysel)',
   'agentBridge.toggleHint':
-    "Claude Code veya Codex gibi bir kodlama ajanının yerel geliştirme sekmelerindeki (localhost, *.test) konsol hatalarını, başarısız istekleri ve ekran görüntülerini okumasını sağlar. Gizli pencereler hiçbir zaman paylaşılmaz ve hiçbir veri Mac'inizden çıkmaz.",
+    "Claude Code veya Codex localhost sekmelerinizi görebilir. Gizli pencereler hiçbir zaman paylaşılmaz ve hiçbir veri Mac'inizden çıkmaz.",
+  'agentBridge.ready': 'Hazır',
+  'agentBridge.setupHint': 'Bunu terminalinizde bir kez çalıştırın.',
+  'agentBridge.advanced': 'Gelişmiş',
   'agentBridge.listening': '{url} adresinde dinliyor',
   'agentBridge.observedTabs': '{count} yerel sekme görünür',
   'agentBridge.observedTabs.one': '{count} yerel sekme görünür',
@@ -108,8 +111,7 @@ export const tr: Record<MessageKey, string> = {
     'Ajanın okuyabileceği ek geliştirme adresleri; her satıra bir tane, örneğin bir tünel ya da yerel ağ adresi.',
   'agentBridge.saveOrigins': 'Origin’leri kaydet',
   'agentBridge.actions': 'Ajan eylemleri',
-  'agentBridge.actionsHint':
-    'Ajanın yerel sekmelerde tıklayıp yazabilmesi ve sayfa açabilmesi, örneğin kendi düzeltmesini kontrol etmek için.',
+  'agentBridge.actionsHint': 'Ajanın kendi düzeltmesini kontrol etmek için yerel sekmelerde tıklayıp yazabilmesi.',
   'agentBridge.actionsOff': 'Kapalı',
   'agentBridge.actionsAsk': 'Her seferinde sor',
   'agentBridge.actionsAllow': 'İzin ver',
