@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/YSamed/yalqen/compare/v0.3.3...v0.3.4) (2026-10-03)
+
+
+### Features
+
+* add claude code side panel ([174d405](https://github.com/YSamed/yalqen/commit/174d40580d7936f440b1df54ff9c419c3f78a830))
+
 ## [0.3.3](https://github.com/YSamed/yalqen/compare/v0.3.2...v0.3.3) (2026-10-03)
 
 
