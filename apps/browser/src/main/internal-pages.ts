@@ -91,6 +91,12 @@ function renderRepoPrompt(): string {
   </aside>`;
 }
 
+// Splits a message around one parameter so a long list can reuse the translation for every row.
+function messageAround(key: MessageKey, param: string): (value: string) => string {
+  const [before, after = ''] = t(key, { [param]: '\u0000' }).split('\u0000');
+  return (value) => `${before}${value}${after}`;
+}
+
 export function renderHistory(entries: HistoryEntry[], query: string): string {
   const search = query.trim().slice(0, 200);
   const form = searchFieldMarkup({
@@ -104,17 +110,29 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
     return `${form}<p class="empty">${message}</p>`;
   }
   const formats = getDateFormats();
+  const removeLabel = messageAround('internalPages.removeFromHistoryNamed', 'title');
+  const removeTitle = t('internalPages.removeFromHistory');
   let previousDay = '';
+  let dayStart = Infinity;
+  let dayEnd = -Infinity;
   const rows = entries
     .map((entry) => {
       const visitedAt = new Date(entry.visitedAt);
-      const day = formats.day.format(visitedAt);
-      const heading = day === previousDay ? '' : `<li class="day"><h2>${escapeHtml(day)}</h2></li>`;
-      previousDay = day;
+      let heading = '';
+      // Formatting the day for every row dominated the page; it only changes at local midnight.
+      if (entry.visitedAt < dayStart || entry.visitedAt >= dayEnd) {
+        const [year, month, date] = [visitedAt.getFullYear(), visitedAt.getMonth(), visitedAt.getDate()];
+        dayStart = new Date(year, month, date).getTime();
+        dayEnd = new Date(year, month, date + 1).getTime();
+        const day = formats.day.format(visitedAt);
+        if (day !== previousDay) heading = `<li class="day"><h2>${escapeHtml(day)}</h2></li>`;
+        previousDay = day;
+      }
       const time = formats.time.format(visitedAt);
       const host = displayHost(entry.url);
+      const title = escapeHtml(entry.title || host);
       const remove = `${HISTORY_URL}delete?id=${encodeURIComponent(entry.id)}`;
-      return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${escapeHtml(entry.title || host)}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="${t('internalPages.removeFromHistoryNamed', { title: escapeHtml(entry.title || host) })}" title="${t('internalPages.removeFromHistory')}">${FORGET_ICON}</a></li>`;
+      return `${heading}<li><time>${escapeHtml(time)}</time><a class="visit" href="${escapeHtml(entry.url)}"><strong>${title}</strong><span>${escapeHtml(host)}</span></a><a class="icon-btn tone-muted remove" href="${escapeHtml(remove)}" aria-label="${removeLabel(title)}" title="${removeTitle}">${FORGET_ICON}</a></li>`;
     })
     .join('');
   const clear = search

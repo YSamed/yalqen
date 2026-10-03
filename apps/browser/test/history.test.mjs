@@ -65,6 +65,35 @@ test('history page escapes page titles, URLs, and search terms', () => {
   assert.ok(!html.includes('<script>'));
 });
 
+test('history page starts a day heading at each local day change', () => {
+  const at = (day, hour) => new Date(2026, 0, day, hour, 30).getTime();
+  const html = renderHistory(
+    [
+      { id: 'a', url: 'https://a.example/', title: 'A', visitedAt: at(12, 23) },
+      { id: 'b', url: 'https://b.example/', title: 'B', visitedAt: at(12, 0) },
+      { id: 'c', url: 'https://c.example/', title: 'C', visitedAt: at(11, 23) },
+      { id: 'd', url: 'https://d.example/', title: 'D', visitedAt: at(12, 9) },
+      { id: 'e', url: 'https://e.example/', title: 'E', visitedAt: at(10, 1) },
+    ],
+    '',
+  );
+  const sequence = [...html.matchAll(/<h2>([^<]+)<\/h2>|<strong>([^<]+)<\/strong>/g)].map(
+    ([, day, title]) => day ?? title,
+  );
+  assert.deepEqual(sequence, [
+    'January 12, 2026',
+    'A',
+    'B',
+    'January 11, 2026',
+    'C',
+    'January 12, 2026',
+    'D',
+    'January 10, 2026',
+    'E',
+  ]);
+  assert.match(html, /aria-label="Remove from history: A"/);
+});
+
 test('the suggestion index follows every change to the visits', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
   try {
