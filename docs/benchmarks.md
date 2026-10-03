@@ -35,9 +35,9 @@ Second run, 10 tabs: Yalqen with ad blocking 887 MB / 2.8 s, without 1023 MB / 4
 - **Not measured:** page load speed, startup time, scrolling and rendering performance (Speedometer, JetStream, MotionMark), battery drain with `powermetrics`, and long sessions. Nothing here shows Yalqen is faster.
 - **Safari is not included.** Safari's web content processes are XPC services shared with other WebKit apps, not children of Safari, so their memory cannot be attributed to Safari reliably. Safari also cannot run with a separate profile, so measuring it would mix into the user's own session.
 - **Arc is not included:** it was not installed on the test machine.
-- **Yalqen's interface is a web page.** It is a fixed cost of roughly 120 MB (see [why-electron.md](why-electron.md)) that a native browser does not pay; it shows most with few tabs.
+- **Yalqen's interface is a web page.** It is a fixed cost of roughly 120 MB (see [why-electron.md](decisions/why-electron.md)) that a native browser does not pay; it shows most with few tabs.
 - **Bench mode differs slightly from normal use.** Yalqen runs with its benchmark switch, which keeps occluded windows painting (this can only raise Yalqen's CPU) and turns off the update check.
-- **Live pages.** The pages are real sites (`bench/pages.txt`), repeated to reach the tab count. Their content, ads and experiments change between runs, and some (Google Docs, X) redirect to a sign-in page.
+- **Live pages.** The pages are real sites (`apps/browser/bench/pages.txt`), repeated to reach the tab count. Their content, ads and experiments change between runs, and some (Google Docs, X) redirect to a sign-in page.
 
 ## Environment
 
@@ -66,7 +66,7 @@ From `apps/browser`, with Yalqen installed in `/Applications`:
 node scripts/bench-browsers.mjs
 ```
 
-Defaults: 10, 20 and 40 tabs, 3 runs, 60 seconds to settle, 120 seconds of idle sampling (about 90 minutes in total). `--help` lists the options. Records are appended to `bench/results/browsers-<date>.jsonl` and a summary with medians and ranges is printed at the end. Browser windows open and close during the run; keep the Mac otherwise idle.
+Defaults: 10, 20 and 40 tabs, 3 runs, 60 seconds to settle, 120 seconds of idle sampling (about 90 minutes in total). `--help` lists the options. Records are appended to `apps/browser/bench/results/browsers-<date>.jsonl` and a summary with medians and ranges is printed at the end. Browser windows open and close during the run; keep the Mac otherwise idle.
 
 ## Yalqen's own harness
 

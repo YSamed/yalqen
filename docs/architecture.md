@@ -49,4 +49,12 @@ Modules depend on interfaces they are handed rather than on `main.ts`, for examp
 
 ## Tests and benchmarks
 
-Tests in `apps/browser/test` import the compiled modules from `dist/`, so `npm test` builds the main process and preloads first. Benchmarks in `apps/browser/scripts` accept `--module-dir` or `--renderer-dir` to compare a preserved baseline build; `scripts/main-module.mjs` also resolves builds from before the domain folders existed.
+Tests in `apps/browser/test` mirror the source tree (`test/main/library/history.test.mjs` covers `src/main/library/history.ts`) and import the compiled modules from `dist/`, so `npm test` builds the main process and preloads first. Benchmarks in `apps/browser/scripts` read their page list from `apps/browser/bench/pages.txt`, write results to the ignored `bench/results/`, and accept `--module-dir` or `--renderer-dir` to compare a preserved baseline build; `scripts/main-module.mjs` also resolves builds from before the domain folders existed.
+
+## Packaging resources
+
+| Folder                    | Contents                                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------------------- |
+| `apps/browser/build/`     | electron-builder inputs that are not shipped as files: `icon.icns`, entitlements, `tr.lproj`    |
+| `apps/browser/resources/` | Files the main process reads at runtime; `icon-512.png` is copied to `Contents/Resources/brand` |
+| `assets/`                 | README images and website screenshots, not part of the app                                      |

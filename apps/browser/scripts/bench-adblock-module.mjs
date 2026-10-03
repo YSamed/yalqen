@@ -10,7 +10,7 @@ const { values } = parseArgs({
   options: {
     'module-dir': { type: 'string', default: path.join(project, 'dist/main') },
     'baseline-dir': { type: 'string' },
-    cache: { type: 'string', default: path.resolve(project, '../../bench/.cache/adblock-engine.bin') },
+    cache: { type: 'string', default: path.join(project, 'bench/.cache/adblock-engine.bin') },
     runs: { type: 'string', default: '15' },
     out: { type: 'string' },
   },

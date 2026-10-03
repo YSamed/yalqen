@@ -8,7 +8,6 @@ const require = createRequire(import.meta.url);
 const electronBinary = require('electron');
 const { productName } = require('../package.json');
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const repo = path.resolve(project, '../..');
 
 function brandedMacApp() {
   const source = path.dirname(path.resolve(electronBinary, '../..'));
@@ -40,7 +39,7 @@ function brandedMacApp() {
   }
 
   fs.copyFileSync(
-    path.join(repo, 'design', 'brand', 'yalqen-fitted.icns'),
+    path.join(project, 'build', 'icon.icns'),
     path.join(destination, 'Contents', 'Resources', 'yalqen-fitted.icns'),
   );
 

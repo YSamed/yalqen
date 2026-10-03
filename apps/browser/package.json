@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "npm run build:main && npm run build:preload && node --test test/*.test.mjs",
+    "test": "npm run build:main && npm run build:preload && node --test 'test/**/*.test.mjs'",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
     "bench": "npm run build && node scripts/bench.mjs",
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
@@ -51,8 +51,7 @@
     "appId": "com.yalqen.browser",
     "productName": "Yalqen",
     "directories": {
-      "output": "release",
-      "buildResources": "../../design/brand"
+      "output": "release"
     },
     "files": [
       "dist/main/**/*",
@@ -64,7 +63,7 @@
     ],
     "extraResources": [
       {
-        "from": "../../design/brand/png/fitted/icon-512.png",
+        "from": "resources/icon-512.png",
         "to": "brand/icon-512.png"
       },
       {
@@ -93,7 +92,6 @@
         "dmg",
         "zip"
       ],
-      "icon": "yalqen-fitted.icns",
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",

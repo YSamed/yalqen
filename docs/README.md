@@ -62,16 +62,16 @@ npm start
 | `npm run bench`       | Startup, page load and idle benchmarks  |
 | `npm run package:mac` | Build the macOS app bundle              |
 
-Read [CONTRIBUTING.md](../CONTRIBUTING.md) for Git hooks, commit messages and pull requests.
+Read [CONTRIBUTING.md](../.github/CONTRIBUTING.md) for Git hooks, commit messages and pull requests.
 
 ## Further reading
 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
-- [Why Electron?](why-electron.md)
+- [Why Electron?](decisions/why-electron.md)
 - [Architecture](architecture.md)
 - [Benchmarks](benchmarks.md)
 - [Download and active-install measurements](usage-measurement.md)
-- [Security policy](../SECURITY.md)
+- [Security policy](../.github/SECURITY.md)
 
 ## License
 

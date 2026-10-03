@@ -11,8 +11,7 @@ import { parseArgs } from 'node:util';
 const require = createRequire(import.meta.url);
 const electron = require('electron');
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const repo = path.resolve(project, '../..');
-const engineCache = path.join(repo, 'bench/.cache/adblock-engine.bin');
+const engineCache = path.join(project, 'bench/.cache/adblock-engine.bin');
 const RUN_TIMEOUT_MS = 5 * 60_000;
 const TICKER_INTERVAL_MS = 1000;
 const STARTUP_IDLE_MS = 5000;
@@ -50,10 +49,10 @@ function options() {
       tabs: { type: 'string', default: '50' },
       history: { type: 'string', default: '5000' },
       idle: { type: 'string', default: '15000' },
-      pages: { type: 'string', default: path.join(repo, 'bench/pages.txt') },
+      pages: { type: 'string', default: path.join(project, 'bench/pages.txt') },
       out: {
         type: 'string',
-        default: path.join(repo, `bench/results/bench-${new Date().toISOString().slice(0, 10)}.jsonl`),
+        default: path.join(project, `bench/results/bench-${new Date().toISOString().slice(0, 10)}.jsonl`),
       },
       help: { type: 'boolean', default: false },
     },
