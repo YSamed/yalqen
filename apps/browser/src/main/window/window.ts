@@ -72,6 +72,7 @@ import { TabManager, type DetachedTab } from '../tabs/tabs.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
+import { AgentSession, type AgentConnection } from '../agent-bridge/agent-session.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -116,6 +117,7 @@ export interface AppContext {
   onWindowClosing(window: YalqenWindow): void;
   onWindowClosed(window: YalqenWindow): void;
   agentScope(url: string, privateBrowsing: boolean): boolean;
+  agentConnection(): Promise<AgentConnection>;
 }
 
 export interface WindowOptions {
@@ -132,6 +134,9 @@ export class YalqenWindow {
   readonly tabs: TabManager;
   readonly isPrivate: boolean;
   readonly isDeveloper: boolean;
+  readonly agentSession: AgentSession;
+  private agentPanelOpen = false;
+  private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
   // view.webContents reads undefined once the contents are destroyed; this reference keeps answering isDestroyed().
   readonly uiContents: Electron.WebContents;
@@ -188,6 +193,13 @@ export class YalqenWindow {
       },
     });
     this.uiContents = this.ui.webContents;
+    this.agentSession = new AgentSession({
+      connect: () => app.agentConnection(),
+      onState: this.pushState,
+      onOutput: (output) => {
+        if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);
+      },
+    });
     if (glassAvailable) this.ui.setBackgroundColor('#00000000');
     this.uiContents.on('will-navigate', (event) => event.preventDefault());
     this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -377,6 +389,7 @@ export class YalqenWindow {
       app.onWindowClosing(this);
       nativeTheme.off('updated', this.pushState);
       this.preconnector.cancel();
+      this.agentSession.dispose();
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -469,7 +482,42 @@ export class YalqenWindow {
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
       profile: this.profile,
+      agentPanelOpen: this.agentPanelOpen,
+      agentSession: this.agentSession.state(),
     };
+  }
+
+  toggleAgentPanel(): void {
+    if (this.isPrivate && !this.isDeveloper) return;
+    this.agentPanelOpen = !this.agentPanelOpen;
+    if (this.agentPanelOpen) this.uiContents.focus();
+    else this.tabs.focusActive();
+    this.pushState();
+  }
+
+  async selectAgentDirectory(): Promise<ReturnType<AgentSession['state']>> {
+    if ((this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory || this.agentSession.active) {
+      return this.agentSession.state();
+    }
+    this.selectingAgentDirectory = true;
+    try {
+      const result = await dialog.showOpenDialog(this.window, {
+        title: t('agentPanel.chooseProject'),
+        defaultPath: this.agentSession.state().directory ?? app.getPath('documents'),
+        properties: ['openDirectory'],
+      });
+      if (!this.window.isDestroyed() && !result.canceled && result.filePaths[0]) {
+        this.agentSession.selectDirectory(result.filePaths[0]);
+      }
+    } finally {
+      this.selectingAgentDirectory = false;
+    }
+    return this.agentSession.state();
+  }
+
+  startAgentSession(size: unknown): Promise<ReturnType<AgentSession['state']>> {
+    if (this.isPrivate && !this.isDeveloper) return Promise.resolve(this.agentSession.state());
+    return this.agentSession.start(size);
   }
 
   setLayout(layout: ChromeLayout): void {
@@ -771,6 +819,9 @@ export class YalqenWindow {
         break;
       case 'toggle-sidebar':
         app.updateSettings({ sidebarVisible: !app.settings.get().sidebarVisible });
+        break;
+      case 'toggle-agent-panel':
+        this.toggleAgentPanel();
         break;
       case 'open-address':
         this.openAddress();

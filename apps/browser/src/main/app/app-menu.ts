@@ -50,6 +50,7 @@ export function installAppMenu(host: AppMenuHost): void {
       zoom: (direction) => current()?.tabs.zoom(direction),
       togglePanel: () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed }),
       toggleSidebar: () => updateSettings({ sidebarVisible: !settings.get().sidebarVisible }),
+      toggleAgentPanel: () => current()?.toggleAgentPanel(),
       toggleToolbar: () => updateSettings({ toolbarVisible: !settings.get().toolbarVisible }),
       toggleDevTools: () => current()?.tabs.toggleDevTools(),
       toggleDeviceView: () => current()?.tabs.toggleEmulation(host.deviceId()),

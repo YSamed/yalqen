@@ -43,6 +43,7 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     toolbarButtons: reuseArray(previous.toolbarButtons, next.toolbarButtons),
     device: reuseFields(previous.device, next.device),
     downloads: reuseFields(previous.downloads, next.downloads)!,
+    agentSession: reuseFields(previous.agentSession, next.agentSession)!,
   };
   return sameFields(previous, candidate) ? previous : candidate;
 }

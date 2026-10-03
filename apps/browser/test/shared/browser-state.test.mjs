@@ -71,6 +71,8 @@ const fixture = () => ({
   downloads: { active: 0, progress: null, started: 0 },
   extensions: false,
   profile: 'personal',
+  agentPanelOpen: false,
+  agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
 });
 const changed = (value) =>
   typeof value === 'boolean'
@@ -153,7 +155,7 @@ test('all window fields and nested summaries remain current while tabs are reuse
     assert.deepEqual(result, next, key);
     assert.equal(result.tabs, previous.tabs, key);
   }
-  for (const nested of ['device', 'downloads']) {
+  for (const nested of ['device', 'downloads', 'agentSession']) {
     for (const [key, value] of Object.entries(previous[nested])) {
       const next = structuredClone(previous);
       next[nested][key] = changed(value);

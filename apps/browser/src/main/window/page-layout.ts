@@ -13,7 +13,7 @@ export function pageFrame(width: number, height: number, layout: ChromeLayout, p
   return {
     x: layout.panelSide === 'left' ? layout.panelWidth + layout.panelSlide : layout.pageInset - layout.panelSlide,
     y: layout.chromeHeight,
-    width: Math.max(0, width - layout.panelWidth - layout.pageInset),
+    width: Math.max(0, width - layout.panelWidth - layout.pageInset - (layout.agentPanelWidth ?? 0)),
     height: Math.max(0, height - layout.chromeHeight - layout.pageInset),
     radius: layout.pageRadius,
   };

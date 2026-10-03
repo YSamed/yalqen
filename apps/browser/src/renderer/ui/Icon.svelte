@@ -11,6 +11,8 @@
     download: 'M8 2.5v7m-2.5-2.5L8 9.5 10.5 7M3 11v2h10v-2',
     screenshot: 'M2 5h3l1-2h4l1 2h3v8H2zM10.5 9a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z',
     plus: 'M8 3v10M3 8h10',
+    folder: 'M2.5 4h4l1.5 2h5.5v7h-11z',
+    stop: 'M4 4h8v8H4z',
     search: 'M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm3.3 7.8 3.2 3.2',
     close: 'm4.5 4.5 7 7m0-7-7 7',
     sidebar: 'M2.5 3.5h11v9h-11zM10 3.5v9',

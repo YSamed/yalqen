@@ -117,6 +117,8 @@ ipcRenderer.on('bench:state', (_event, state) => {
     downloads: { active: 0, progress: null, started: 0 },
     extensions: false,
     profile: 'personal',
+    agentPanelOpen: false,
+    agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
   };
   ipcMain.handle('bench:initial', () => initial);
   let window;

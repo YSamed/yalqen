@@ -67,6 +67,7 @@ Yalqen klavye öncelikli çalışır. Aşağıda güncel sürümdeki macOS kısa
 | Telefon görünümünü aç/kapat           | ⌥⌘M     |
 | Cihazı döndür                         | ⇧⌥⌘M    |
 | Ajan için öğe seç                     | ⌥⌘P     |
+| Yapay zekâ panelini aç/kapat           | ⌥⌘A     |
 
 Telefon görünümü açıkken, yeniden boyutlandırma tutamacına odaklanıp ok tuşlarıyla çerçeveyi boyutlandırabilirsin. Daha büyük adımlar için ⇧ tuşunu basılı tut.
 

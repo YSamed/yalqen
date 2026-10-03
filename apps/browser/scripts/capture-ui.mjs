@@ -186,6 +186,7 @@ const state = {
   panelCollapsed: false, panelSide: 'left', pinnedDisplay: 'list', sidebarVisible: true, toolbarVisible: true, toolbarTabs: true,
   toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'], material: ${JSON.stringify(material)}, device: null,
   zoom: 1, defaultZoom: 1, downloads: { active: 1, progress: 0.4, started: 1 }, extensions: false, profile: 'personal',
+  agentPanelOpen: false, agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
 };
 contextBridge.exposeInMainWorld('yalqen', {
   getState: async () => state, onState: () => () => {}, onWallpaper: () => () => {}, setLayout: () => {}, send: () => {},

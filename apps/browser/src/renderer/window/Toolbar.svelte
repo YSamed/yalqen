@@ -1,5 +1,12 @@
 <script lang="ts">
-  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId, TranslationStatus } from '../../shared/types';
+  import type {
+    AgentSessionState,
+    DownloadsSummary,
+    TabId,
+    TabSnapshot,
+    ToolbarButtonId,
+    TranslationStatus,
+  } from '../../shared/types';
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
   import { consoleErrorCount, devStates, isNewTab, siteLabel } from './format';
@@ -23,6 +30,9 @@
     trailingInset,
     centerOffset,
     trailingOverhang = 0,
+    agentAvailable,
+    agentPanelOpen,
+    agentStatus,
   }: {
     tabs: TabSnapshot[];
     developer: boolean;
@@ -37,6 +47,9 @@
     trailingInset: number;
     centerOffset: number;
     trailingOverhang?: number;
+    agentAvailable: boolean;
+    agentPanelOpen: boolean;
+    agentStatus: AgentSessionState['status'];
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -432,6 +445,26 @@
 
   <div class="side trailing" bind:this={trailing} style:margin-right="{-trailingOverhang}px">
     <Capsule>
+      {#if agentAvailable}
+        <IconButton
+          icon="sparkle"
+          label={t('agentPanel.toggle')}
+          title={t('agentPanel.toggleTitle')}
+          aria-expanded={agentPanelOpen}
+          aria-controls="agent-panel"
+          tone={agentPanelOpen ? 'accent' : 'default'}
+          disabled={!ready}
+          onclick={() => send({ type: 'toggle-agent-panel' })}
+        >
+          {#if agentStatus === 'running' || agentStatus === 'starting' || agentStatus === 'error'}
+            <span
+              class="agent-dot"
+              class:error={agentStatus === 'error'}
+              aria-label={t(agentStatus === 'error' ? 'agentPanel.failed' : 'agentPanel.running')}
+            ></span>
+          {/if}
+        </IconButton>
+      {/if}
       {#each buttons as id (id)}
         {@render button(id)}
       {/each}
@@ -440,6 +473,19 @@
 </header>
 
 <style>
+  .agent-dot {
+    position: absolute;
+    right: 7px;
+    bottom: 6px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 1.5px var(--badge);
+  }
+  .agent-dot.error {
+    background: var(--warn);
+  }
   .toolbar {
     display: flex;
     grid-area: bar;

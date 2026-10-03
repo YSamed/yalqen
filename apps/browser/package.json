@@ -9,6 +9,7 @@
   "repository": "https://github.com/YSamed/yalqen",
   "main": "dist/main/main.js",
   "scripts": {
+    "postinstall": "node scripts/prepare-terminal.mjs",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
     "build:main": "node -e \"for (const dir of ['dist/main', 'dist/shared']) require('node:fs').rmSync(dir, { recursive: true, force: true })\" && tsc -p tsconfig.main.json",
     "build:preload": "node scripts/build-preload.mjs",
@@ -56,6 +57,10 @@
     "directories": {
       "output": "release"
     },
+    "asarUnpack": [
+      "node_modules/node-pty/prebuilds/**/*",
+      "node_modules/node-pty/build/**/*"
+    ],
     "files": [
       "dist/main/**/*",
       "dist/preload/**/*",
@@ -124,7 +129,10 @@
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.18.2",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "electron-updater": "^6.8.9",
+    "node-pty": "^1.1.0",
     "tldts": "^7.4.15"
   },
   "engines": {

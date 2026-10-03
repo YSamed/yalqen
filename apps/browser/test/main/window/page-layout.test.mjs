@@ -55,6 +55,25 @@ test('hidden menus leave no panel rail', () => {
   });
 });
 
+test('the AI panel reserves space alongside either tab panel placement', () => {
+  for (const side of ['left', 'right']) {
+    assert.deepEqual(pageFrame(1280, 820, { ...layout, panelSide: side, agentPanelWidth: 408 }, false), {
+      x: side === 'left' ? 220 : 8,
+      y: 44,
+      width: 644,
+      height: 768,
+      radius: 16,
+    });
+  }
+  assert.deepEqual(pageFrame(1280, 820, { ...layout, agentPanelWidth: 408 }, true), {
+    x: 0,
+    y: 0,
+    width: 1280,
+    height: 820,
+    radius: 0,
+  });
+});
+
 test('a sliding panel moves the page at its final size so it never reflows mid-animation', () => {
   const collapsing = { ...layout, panelWidth: 44, panelSlide: 100 };
   assert.deepEqual(pageFrame(1280, 820, collapsing, false), { x: 144, y: 44, width: 1228, height: 768, radius: 16 });

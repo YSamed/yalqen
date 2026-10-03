@@ -384,6 +384,12 @@ function startBrowser(): void {
     },
     agentScope: (url, privateBrowsing) =>
       agentBridge.port !== null && isInScope({ url, isPrivate: privateBrowsing }, settings.get().agentOrigins),
+    agentConnection: async () => {
+      if (!settings.get().agentBridge) updateSettings({ agentBridge: true });
+      await agentBridge.sync();
+      if (agentBridge.port === null) throw new Error('Agent connection unavailable');
+      return { url: mcpUrl(agentBridge.port), token: agentTokens.get() };
+    },
     onWindowClosed: (window) => {
       const index = windows.indexOf(window);
       if (index >= 0) windows.splice(index, 1);
@@ -452,6 +458,22 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.getState, (event) => senderWindow(event)?.state() ?? null);
   ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => senderWindow(event)?.setLayout(next));
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
+  // Terminal access belongs only to the browser chrome's main frame, never a browsing tab.
+  const agentSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
+    event.senderFrame === event.sender.mainFrame ? senderWindow(event) : undefined;
+  ipcMain.handle(IpcChannel.agentSnapshot, (event) => agentSenderWindow(event)?.agentSession.snapshot() ?? null);
+  ipcMain.handle(IpcChannel.agentSelectDirectory, (event) => agentSenderWindow(event)?.selectAgentDirectory() ?? null);
+  ipcMain.handle(
+    IpcChannel.agentStart,
+    (event, size: unknown) => agentSenderWindow(event)?.startAgentSession(size) ?? null,
+  );
+  ipcMain.handle(IpcChannel.agentStop, (event, id: unknown) => agentSenderWindow(event)?.agentSession.stop(id));
+  ipcMain.on(IpcChannel.agentInput, (event, id: unknown, data: unknown) =>
+    agentSenderWindow(event)?.agentSession.write(id, data),
+  );
+  ipcMain.on(IpcChannel.agentResize, (event, id: unknown, size: unknown) =>
+    agentSenderWindow(event)?.agentSession.resize(id, size),
+  );
   registerWebStoreApi({
     daily,
     extensions,

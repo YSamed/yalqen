@@ -122,6 +122,34 @@ export interface BrowserState {
   downloads: DownloadsSummary;
   extensions: boolean;
   profile: ProfileKind;
+  agentPanelOpen: boolean;
+  agentSession: AgentSessionState;
+}
+
+export interface AgentTerminalSize {
+  cols: number;
+  rows: number;
+}
+
+export interface AgentSessionState {
+  id: string | null;
+  directory: string | null;
+  status: 'idle' | 'starting' | 'running' | 'exited' | 'error';
+  exitCode: number | null;
+  error:
+    'claude-not-found' | 'invalid-directory' | 'terminal-unavailable' | 'connection-failed' | 'start-failed' | null;
+}
+
+export interface AgentTerminalOutput {
+  sessionId: string;
+  sequence: number;
+  data: string;
+}
+
+export interface AgentTerminalSnapshot {
+  state: AgentSessionState;
+  sequence: number;
+  data: string;
 }
 
 export type ProfileKind = 'personal' | 'developer' | 'private';
@@ -142,6 +170,7 @@ export interface ChromeLayout {
   pageInset: number;
   pageRadius: number;
   newTabCenterOffset: number;
+  agentPanelWidth?: number;
 }
 
 export interface AnchorRect {
@@ -177,6 +206,7 @@ export type UiAction =
   | { type: 'open-bookmarks-menu' }
   | { type: 'toggle-panel' }
   | { type: 'toggle-sidebar' }
+  | { type: 'toggle-agent-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
   | { type: 'switch-profile'; profile: ProfileKind }
@@ -211,6 +241,13 @@ export const IpcChannel = {
   setLayout: 'yalqen:set-layout',
   action: 'yalqen:action',
   wallpaper: 'yalqen:wallpaper',
+  agentSnapshot: 'yalqen:agent-snapshot',
+  agentSelectDirectory: 'yalqen:agent-select-directory',
+  agentStart: 'yalqen:agent-start',
+  agentStop: 'yalqen:agent-stop',
+  agentInput: 'yalqen:agent-input',
+  agentResize: 'yalqen:agent-resize',
+  agentOutput: 'yalqen:agent-output',
 } as const;
 
 export interface Wallpaper {
@@ -225,6 +262,13 @@ export interface YalqenApi {
   onWallpaper(listener: (wallpaper: Wallpaper | null) => void): () => void;
   setLayout(layout: ChromeLayout): void;
   send(action: UiAction): void;
+  getAgentTerminal(): Promise<AgentTerminalSnapshot | null>;
+  selectAgentDirectory(): Promise<AgentSessionState | null>;
+  startAgentSession(size: AgentTerminalSize): Promise<AgentSessionState | null>;
+  stopAgentSession(sessionId: string): Promise<void>;
+  writeAgentTerminal(sessionId: string, data: string): void;
+  resizeAgentTerminal(sessionId: string, size: AgentTerminalSize): void;
+  onAgentOutput(listener: (output: AgentTerminalOutput) => void): () => void;
 }
 
 export interface CommandBarOpen {

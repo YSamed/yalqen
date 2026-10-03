@@ -67,6 +67,7 @@ Yalqen is keyboard-first. These are the macOS shortcuts in the current build, gr
 | Toggle phone view           | ⌥⌘M      |
 | Rotate device               | ⇧⌥⌘M     |
 | Select element for agent    | ⌥⌘P      |
+| Show or hide AI panel       | ⌥⌘A      |
 
 While phone view is on, focus the resize handle of the responsive frame and use the arrow keys to resize it, or hold ⇧ for larger steps.
 

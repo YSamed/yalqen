@@ -29,6 +29,7 @@ export interface MenuActions {
   zoom(direction: 1 | -1 | 0): void;
   togglePanel(): void;
   toggleSidebar(): void;
+  toggleAgentPanel(): void;
   toggleToolbar(): void;
   toggleDevTools(): void;
   toggleDeviceView(): void;
@@ -187,6 +188,7 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.togglePanel'), accelerator: 'CmdOrCtrl+S', click: actions.togglePanel },
         { label: t('menu.toggleToolbar'), accelerator: 'CmdOrCtrl+Shift+B', click: actions.toggleToolbar },
         { label: t('menu.toggleSidebar'), accelerator: 'CmdOrCtrl+Shift+U', click: actions.toggleSidebar },
+        { label: t('agentPanel.toggle'), accelerator: 'CmdOrCtrl+Alt+A', click: actions.toggleAgentPanel },
         { type: 'separator' },
         { label: t('menu.viewSource'), accelerator: 'Alt+CmdOrCtrl+U', click: actions.viewSource },
         { label: t('menu.developerTools'), accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },
