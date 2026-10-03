@@ -131,9 +131,11 @@ async function capture() {
     error: null,
     lastCallAt: now,
     calls: 3,
+    client: 'Claude Code',
+    staleTokenAt: null,
     url: 'http://127.0.0.1:47823/mcp',
     claudeCommand:
-      'claude mcp add --transport http yalqen http://127.0.0.1:47823/mcp --header "Authorization: Bearer <token>"',
+      'claude mcp add --scope user --transport http yalqen http://127.0.0.1:47823/mcp --header "Authorization: Bearer <token>"',
     codexConfig: [
       '# ~/.codex/config.toml',
       '[mcp_servers.yalqen]',
@@ -165,6 +167,7 @@ contextBridge.exposeInMainWorld('yalqenSettings', {
   passwords: async () => ({ available: true, passwords: [], neverSave: [] }), revealPassword: async () => null,
   copyPassword: async () => false, removePassword: async () => {}, allowSaving: async () => {}, onPasswordsChange: none,
   agentBridge: async () => agent, copyAgentSetup: async () => true, regenerateAgentToken: async () => agent,
+  addAgentToClaude: async () => ({ ok: true }),
   onAgentBridgeChange: none,
 });`,
     window: (material) => `

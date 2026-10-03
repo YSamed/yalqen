@@ -1,7 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../shared/i18n';
-  import type { AgentActionPolicy, AgentBridgeView, AgentSetupKind, SettingsValues } from '../../shared/types';
+  import type {
+    AgentActionPolicy,
+    AgentBridgeView,
+    AgentSetupKind,
+    ClaudeSetupResult,
+    SettingsValues,
+  } from '../../shared/types';
   import Button from '../ui/Button.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
@@ -40,6 +46,27 @@
     if (await api.copyAgentSetup(kind)) copied = kind;
   }
 
+  let adding = $state(false);
+  let addResult = $state<ClaudeSetupResult | null>(null);
+
+  async function addToClaude(): Promise<void> {
+    adding = true;
+    addResult = null;
+    try {
+      addResult = await api.addAgentToClaude();
+    } finally {
+      adding = false;
+    }
+  }
+
+  function addResultText(result: ClaudeSetupResult): string {
+    if (result.ok) return t('agentBridge.added');
+    if (result.reason === 'not-found') return t('agentBridge.claudeNotFound');
+    return t('agentBridge.addFailed', { error: result.detail });
+  }
+
+  const time = (at: number) => new Date(at).toLocaleTimeString();
+
   async function regenerate(): Promise<void> {
     view = await api.regenerateAgentToken();
     copied = null;
@@ -69,8 +96,19 @@
     <p class="hint error" role="alert">{t('agentBridge.failed', { error: view.error })}</p>
   {:else if view.url}
     <p class="hint status" aria-live="polite">
-      {t('agentBridge.ready')} · {t('agentBridge.observedTabs', { count: view.observedTabs })}
+      {#if view.client || view.lastCallAt}
+        {t('agentBridge.connected', { client: view.client ?? t('agentBridge.someAgent') })}
+        {#if view.lastCallAt}
+          · {t('agentBridge.lastCall', { time: time(view.lastCallAt) })}
+        {/if}
+      {:else}
+        {t('agentBridge.ready')}
+      {/if}
+      · {t('agentBridge.observedTabs', { count: view.observedTabs })}
     </p>
+    {#if view.staleTokenAt}
+      <p class="hint error" role="alert">{t('agentBridge.staleToken', { time: time(view.staleTokenAt) })}</p>
+    {/if}
 
     <div class="setup">
       <div class="setup-head">
@@ -84,8 +122,20 @@
           {copied === agent ? t('agentBridge.copied') : t('agentBridge.copy')}
         </Button>
       </div>
+      {#if agent === 'claude'}
+        <div class="actions add">
+          <Button size="sm" variant="primary" disabled={adding} onclick={addToClaude}>
+            {adding ? t('agentBridge.adding') : t('agentBridge.addToClaude')}
+          </Button>
+        </div>
+        {#if addResult}
+          <p class={['hint', !addResult.ok && 'error']} role="status">{addResultText(addResult)}</p>
+        {/if}
+        <p class="hint">{t('agentBridge.setupHintOr')}</p>
+      {:else}
+        <p class="hint">{t('agentBridge.setupHint')}</p>
+      {/if}
       <pre>{agent === 'claude' ? view.claudeCommand : view.codexConfig}</pre>
-      <p class="hint">{t('agentBridge.setupHint')}</p>
     </div>
   {/if}
 
@@ -104,9 +154,6 @@
     {#if view.url}
       <p class="hint status">
         {t('agentBridge.listening', { url: view.url })}
-        {#if view.lastCallAt}
-          · {t('agentBridge.lastCall', { time: new Date(view.lastCallAt).toLocaleTimeString() })}
-        {/if}
       </p>
       <p class="hint">{t('agentBridge.tokenHint')}</p>
       <div class="actions">
@@ -167,7 +214,11 @@
   }
 
   .setup .hint {
-    margin-top: 4px;
+    margin: 4px 0;
+  }
+
+  .actions.add {
+    margin: 8px 0 4px;
   }
 
   .advanced {

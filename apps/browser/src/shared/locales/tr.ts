@@ -92,8 +92,18 @@ export const tr: Record<MessageKey, string> = {
   'agentBridge.toggle': 'Ajan bağlantısı (deneysel)',
   'agentBridge.toggleHint':
     "Claude Code veya Codex localhost sekmelerinizi görebilir. Gizli pencereler hiçbir zaman paylaşılmaz ve hiçbir veri Mac'inizden çıkmaz.",
-  'agentBridge.ready': 'Hazır',
+  'agentBridge.ready': 'Hazır, ajan bekleniyor',
+  'agentBridge.connected': '{client} bağlı',
+  'agentBridge.someAgent': 'Bir ajan',
+  'agentBridge.staleToken':
+    'Bir ajan {time} saatinde eski bir token ile bağlanmaya çalıştı. Yalqen’i ona yeniden ekleyin ya da kurulum komutunu tekrar çalıştırın.',
+  'agentBridge.addToClaude': 'Claude Code’a ekle',
+  'agentBridge.adding': 'Ekleniyor…',
+  'agentBridge.added': 'Eklendi. Açık Claude Code oturumlarında yeniden bağlanmak için /mcp çalıştırın.',
+  'agentBridge.claudeNotFound': 'claude komutu bulunamadı. Komutu kopyalayıp terminalinizde çalıştırın.',
+  'agentBridge.addFailed': 'Eklenemedi: {error}',
   'agentBridge.setupHint': 'Bunu terminalinizde bir kez çalıştırın.',
+  'agentBridge.setupHintOr': 'Ya da bunu kopyalayıp terminalinizde bir kez çalıştırın.',
   'agentBridge.advanced': 'Gelişmiş',
   'agentBridge.listening': '{url} adresinde dinliyor',
   'agentBridge.observedTabs': '{count} yerel sekme görünür',
@@ -522,7 +532,9 @@ export const tr: Record<MessageKey, string> = {
   'devMenu.resetOverrides': 'Taklitleri sıfırla',
   'devMenu.pickElement': 'Ajan için Öğe Seç',
   'devMenu.latestEpisode': 'Son hata · {id}',
-  'devMenu.copyEpisode': 'Ajan için Referansı Kopyala',
+  'devMenu.copyEpisode': 'Ajan için Düzeltme İstemini Kopyala',
+  'devMenu.episodePrompt':
+    "Yalqen'in {id} olarak kaydettiği hatayı düzelt. get_error_episode ile oku, sonra düzeltmeyi replay_episode ile doğrula.",
   'devMenu.copyPlaywrightTest': 'Playwright Testini Kopyala',
 
   'contextMenu.openLinkInNewTab': 'Bağlantıyı yeni sekmede aç',

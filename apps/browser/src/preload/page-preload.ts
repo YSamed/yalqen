@@ -10,6 +10,7 @@ import {
   SettingsChannel as settingsChannel,
   type AgentBridgeView,
   type AgentSetupKind,
+  type ClaudeSetupResult,
   type ClearDataRequest,
   type ExtensionInfo,
   type NewTabCenter,
@@ -160,6 +161,7 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     agentBridge: () => ipcRenderer.invoke(AgentBridgeChannel.status) as Promise<AgentBridgeView>,
     copyAgentSetup: (kind: AgentSetupKind) => ipcRenderer.invoke(AgentBridgeChannel.copy, kind) as Promise<boolean>,
     regenerateAgentToken: () => ipcRenderer.invoke(AgentBridgeChannel.regenerate) as Promise<AgentBridgeView>,
+    addAgentToClaude: () => ipcRenderer.invoke(AgentBridgeChannel.addToClaude) as Promise<ClaudeSetupResult>,
     onAgentBridgeChange: (listener) => subscribe<AgentBridgeView>(AgentBridgeChannel.changed, listener),
   };
   contextBridge.exposeInMainWorld('yalqenSettings', api);

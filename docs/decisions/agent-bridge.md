@@ -112,6 +112,13 @@ Not yet measured: Pages Router, webpack with React 18 outside Next.js, and large
 - **Backend tracing** (Settings → Developer → Backend traces, off by default): same-origin `fetch` and XHR requests of observed tabs get a W3C `traceparent` header through `Fetch` interception limited to those resource types. Cross-origin requests never get it, because the extra header would trigger a CORS preflight the backend may refuse. The bridge accepts OTLP/HTTP JSON on `/v1/traces` with the same token; protobuf is refused with a hint to set `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json`. A request's server span and every failing span join the timeline as `backend` events linked `direct` to the request, and are added to its episode even when they arrive after it closed; `get_backend_trace` returns all spans of the request.
 - **Sending to the terminal** is not built yet; see the open question below.
 
+## Setup and onboarding
+
+- "Add to Claude Code" runs `claude mcp remove` then `claude mcp add --scope user` through the user's login shell (`$SHELL -ilc`), because apps opened from the Dock get a bare PATH. The URL and token go in as environment variables, never spliced into the script, and the token is masked in any error shown. The copied command also uses `--scope user`, so it works in every project rather than only the directory it was run in. Codex has no one-click setup yet: its CLI was not available to verify against.
+- The settings pane names the connected agent from `clientInfo` in `initialize`, and warns when a request arrives with a wrong bearer token (a stale config after a token change). Requests without any token are clients probing for auth and are not flagged.
+- The server's `instructions` describe the intended workflow: `get_error_episode` first, `replay_episode` after a fix. The developer menu copies a ready prompt with the episode id instead of the bare id.
+- All tools stay listed even when agent actions are off. The whole list is about 2,800 tokens, hiding tools would need a reconnect after every policy change (the server has no notification stream), and a refused call already tells the agent where the user can allow actions.
+
 ## Open question: sending to the terminal
 
 Status: open, to be decided later.

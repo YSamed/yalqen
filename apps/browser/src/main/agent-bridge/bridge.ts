@@ -1,6 +1,6 @@
 import type { AgentSetupKind } from '../../shared/types.js';
 import { TRACES_PATH } from './tracing.js';
-import { DEFAULT_PORT, MCP_PATH, startBridgeServer, type BridgeServer } from './server.js';
+import { DEFAULT_PORT, MCP_PATH, startBridgeServer, type BridgeServer, type ClientInfo } from './server.js';
 import type { BridgeHost } from './tools.js';
 
 export interface AgentBridgeStatus {
@@ -9,6 +9,8 @@ export interface AgentBridgeStatus {
   error: string | null;
   lastCallAt: number | null;
   calls: number;
+  client: string | null;
+  staleTokenAt: number | null;
 }
 
 export interface AgentBridgeOptions {
@@ -21,6 +23,16 @@ export interface AgentBridgeOptions {
   firstPort?: number;
 }
 
+const CLIENT_LABELS: [RegExp, string][] = [
+  [/^claude/i, 'Claude Code'],
+  [/codex/i, 'Codex'],
+  [/cursor/i, 'Cursor'],
+];
+
+export function clientLabel(client: ClientInfo): string {
+  return CLIENT_LABELS.find(([pattern]) => pattern.test(client.name))?.[1] ?? client.name;
+}
+
 export function mcpUrl(port: number): string {
   return `http://127.0.0.1:${port}${MCP_PATH}`;
 }
@@ -28,7 +40,7 @@ export function mcpUrl(port: number): string {
 export function setupSnippet(kind: AgentSetupKind, port: number, token: string): string {
   switch (kind) {
     case 'claude':
-      return `claude mcp add --transport http yalqen ${mcpUrl(port)} --header "Authorization: Bearer ${token}"`;
+      return `claude mcp add --scope user --transport http yalqen ${mcpUrl(port)} --header "Authorization: Bearer ${token}"`;
     case 'codex':
       return [
         `# ~/.codex/config.toml`,
@@ -55,6 +67,8 @@ export class AgentBridge {
   private error: string | null = null;
   private lastCallAt: number | null = null;
   private calls = 0;
+  private client: string | null = null;
+  private staleTokenAt: number | null = null;
   private pending: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: AgentBridgeOptions) {}
@@ -70,6 +84,8 @@ export class AgentBridge {
       error: this.error,
       lastCallAt: this.lastCallAt,
       calls: this.calls,
+      client: this.client,
+      staleTokenAt: this.staleTokenAt,
     };
   }
 
@@ -101,9 +117,19 @@ export class AgentBridge {
             token: () => this.options.token(),
             version: this.options.version,
             onTraces: this.options.onTraces && ((body) => this.options.onTraces?.(body)),
+            onInitialize: (client) => {
+              this.client = client ? clientLabel(client) : null;
+              this.staleTokenAt = null;
+              this.options.onChange();
+            },
+            onRejectedToken: () => {
+              this.staleTokenAt = Date.now();
+              this.options.onChange();
+            },
             onToolCall: () => {
               this.lastCallAt = Date.now();
               this.calls++;
+              this.staleTokenAt = null;
               this.options.onChange();
             },
           },
