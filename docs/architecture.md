@@ -51,6 +51,12 @@ Modules depend on interfaces they are handed rather than on `main.ts`, for examp
 
 Tests in `apps/browser/test` mirror the source tree (`test/main/library/history.test.mjs` covers `src/main/library/history.ts`) and import the compiled modules from `dist/`, so `npm test` builds the main process and preloads first. Benchmarks in `apps/browser/scripts` read their page list from `apps/browser/bench/pages.txt`, write results to the ignored `bench/results/`, and accept `--module-dir` or `--renderer-dir` to compare a preserved baseline build; `scripts/main-module.mjs` also resolves builds from before the domain folders existed.
 
+## Shared styles
+
+`src/renderer/public/tokens.css` holds the colors shared by the window interface, the settings page, the internal `yalqen://` pages and error pages, with `light-dark()` choosing the light or dark value. `app.css` imports it, the main process inlines it with `controls.css` into internal pages through the `__YALQEN_STYLES_SLOT__` marker (their CSP allows only inline styles), and error pages receive it as their `theme`. A page keeps a local value only where it differs on purpose, such as the stronger dark border on the history, bookmarks and downloads pages, or the new tab's glass palette.
+
+After a styling change, `node scripts/capture-ui.mjs --out <dir>` records the computed colors, borders and shadows of every element on each surface in light and dark, and `--compare <before> <after>` lists what changed.
+
 ## Packaging resources
 
 | Folder                    | Contents                                                                                        |

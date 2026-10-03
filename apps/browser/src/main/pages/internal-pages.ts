@@ -13,7 +13,7 @@ import { htmlResponse, notFound } from './responses.js';
 import type { Bookmark, BookmarkFolder } from '../library/bookmarks.js';
 
 const SETTINGS_CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
-const CONTROLS_MARKER = '__YALQEN_CONTROLS_SLOT__';
+const STYLES_MARKER = '__YALQEN_STYLES_SLOT__';
 const ASSET_TYPES: Record<string, string> = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -57,9 +57,10 @@ export function localizePage(page: string): string {
 
 export function loadInternalPages(files: InternalPageFiles): InternalPages {
   const publicDir = path.dirname(files.newTab);
-  const controlsCss = fs.readFileSync(path.join(publicDir, 'controls.css'), 'utf8');
-  const readPage = (file: string) =>
-    localizePage(fillSlot(fs.readFileSync(file, 'utf8'), CONTROLS_MARKER, controlsCss));
+  const sharedCss = ['tokens.css', 'controls.css']
+    .map((name) => fs.readFileSync(path.join(publicDir, name), 'utf8'))
+    .join('\n');
+  const readPage = (file: string) => localizePage(fillSlot(fs.readFileSync(file, 'utf8'), STYLES_MARKER, sharedCss));
   const readScript = (page: string, name: string) => fs.readFileSync(path.join(path.dirname(page), name), 'utf8');
   const settingsAssets = path.join(path.dirname(files.settings), 'assets');
   const assetCache = new Map<string, Buffer<ArrayBuffer>>();

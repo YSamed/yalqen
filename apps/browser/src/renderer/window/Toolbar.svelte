@@ -801,7 +801,7 @@
     width: 28%;
     height: 100%;
     border-radius: inherit;
-    background: #f28c28;
+    background: var(--accent);
     content: '';
     animation: search-sweep 1.4s ease-in-out infinite;
   }

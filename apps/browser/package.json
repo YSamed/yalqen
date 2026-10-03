@@ -6,6 +6,7 @@
   "license": "MIT",
   "description": "A fast, privacy-minded web browser for macOS",
   "homepage": "https://yalqen.com/",
+  "repository": "https://github.com/YSamed/yalqen",
   "main": "dist/main/main.js",
   "scripts": {
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",

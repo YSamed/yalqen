@@ -1,26 +1,18 @@
+@import './public/tokens.css';
 @import './public/controls.css';
 
 :root {
-  --bg: #e6e8eb;
-  --surface: #ffffff;
   --surface-strong: #f6f7f8;
-  --surface-hover: rgb(16 18 24 / 0.05);
   --surface-active: #ffffff;
   --well: #dcdfe3;
   --well-hover: #d3d6db;
-  --border: #d2d5da;
-  --text: #1a1b1e;
-  --text-muted: #6b6e75;
-  --accent: #f28c28;
-  --focus: #f28c28;
-  --warn: #a34a06;
+  --focus: var(--accent);
   --on-accent: #ffffff;
   --profile-developer: #7c6cf2;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 1px 3px rgb(16 18 24 / 0.08);
   --window: var(--bg);
   --chrome-base: var(--bg);
   --well-rim: none;
-  --page: var(--surface);
   --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 2px 10px rgb(16 18 24 / 0.05);
   --page-divider: rgb(16 18 24 / 0.06);
   --page-empty: #f3f4f6;
@@ -43,21 +35,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-material='glass']) {
-    --bg: #141517;
-    --surface: #26282c;
     --surface-strong: #2d2f34;
-    --surface-hover: rgb(255 255 255 / 0.06);
     --surface-active: #2d2f34;
     --well: #1e2023;
     --well-hover: #25272b;
-    --border: #2f3136;
-    --text: #eceef1;
-    --text-muted: #9a9ea6;
-    --accent: #f28c28;
-    --focus: #f28c28;
-    --warn: #f0a35c;
     --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.3);
-    --page: #1f2124;
     --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 2px 10px rgb(0 0 0 / 0.3);
     --page-divider: rgb(255 255 255 / 0.06);
     --page-empty: #1b1c1f;
@@ -67,6 +49,7 @@
 
 :root[data-material='glass'] {
   --window: transparent;
+  --warn: #a34a06;
   --bg: transparent;
   --chrome-base: rgb(250 247 243 / 0.38);
   --well-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.45);
@@ -77,12 +60,8 @@
   --well: rgb(16 18 24 / 0.06);
   --well-hover: rgb(16 18 24 / 0.1);
   --border: rgb(16 18 24 / 0.12);
-  --text: #1a1b1e;
   --text-muted: rgb(40 42 48 / 0.7);
-  --accent: #f28c28;
-  --focus: #f28c28;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 3px rgb(16 18 24 / 0.08);
-  --page: #ffffff;
   --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.13), 0 10px 28px rgb(16 18 24 / 0.12);
   --page-divider: rgb(16 18 24 / 0.06);
   --page-empty: #f3f4f6;
@@ -105,8 +84,6 @@
     --border: rgb(255 255 255 / 0.1);
     --text: #f4f4f7;
     --text-muted: rgb(235 235 245 / 0.64);
-    --accent: #f28c28;
-    --focus: #f28c28;
     --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.14), 0 1px 2px rgb(0 0 0 / 0.2);
     --page: #1f2124;
     --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.17), 0 12px 30px rgb(0 0 0 / 0.24);

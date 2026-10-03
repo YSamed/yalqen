@@ -72,3 +72,9 @@ test('state survives a restart and ignores a corrupt file', () => {
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('the repository address comes from package.json', () => {
+  const { repository } = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  assert.equal(repoPrompt.REPO_URL, repository);
+  assert.match(repoPrompt.REPO_URL, /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/);
+});
