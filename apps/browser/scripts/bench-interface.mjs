@@ -14,6 +14,8 @@ const { values } = parseArgs({
     tabs: { type: 'string', default: '200' },
     updates: { type: 'string', default: '200' },
     'active-only': { type: 'boolean', default: false },
+    // Builds before the state was sent as JSON expect an object; pass `object` with --renderer-dir for them.
+    'state-format': { type: 'string', default: 'json' },
     out: { type: 'string' },
   },
 });
@@ -23,6 +25,8 @@ const count = (name) => {
   return value;
 };
 const tabCount = count('tabs');
+const stateFormat = values['state-format'];
+if (stateFormat !== 'json' && stateFormat !== 'object') throw new Error('--state-format must be json or object');
 const updates = count('updates');
 
 if (!process.versions.electron) {
@@ -133,21 +137,31 @@ ipcRenderer.on('bench:state', (_event, state) => {
     });
     window.webContents.on('preload-error', (_event, _path, error) => console.error(error));
     await window.loadFile(path.join(path.resolve(values['renderer-dir']), 'index.html'));
-    const applied = (state) =>
-      new Promise((resolve) => {
-        ipcMain.once('bench:applied', (_event, ms) => resolve(ms));
-        window.webContents.send('bench:state', state);
+    // The main process serializes every state to detect changes, so the JSON string is not timed.
+    const applied = (state) => {
+      const message = stateFormat === 'json' ? JSON.stringify(state) : state;
+      return new Promise((resolve) => {
+        const start = performance.now();
+        ipcMain.once('bench:applied', (_event, rendererMs) =>
+          resolve({ rendererMs, roundTripMs: performance.now() - start }),
+        );
+        window.webContents.send('bench:state', message);
       });
+    };
     await applied(initial);
     const results = [];
     for (const scenario of ['background-title', 'download-progress']) {
       const samples = [];
+      const roundTrips = [];
       const state = structuredClone(initial);
       for (let index = 0; index < updates + 20; index++) {
         if (scenario === 'background-title') state.tabs[tabCount - 1].title = `Changed ${index}`;
         else state.downloads = { active: 1, progress: (index % 100) / 100, started: 1 };
-        const ms = await applied(state);
-        if (index >= 20) samples.push(ms);
+        const { rendererMs, roundTripMs } = await applied(state);
+        if (index >= 20) {
+          samples.push(rendererMs);
+          roundTrips.push(roundTripMs);
+        }
       }
       if (scenario === 'background-title') {
         assert.equal(
@@ -164,11 +178,16 @@ ipcRenderer.on('bench:state', (_event, state) => {
           `${Math.max(2, (((updates + 19) % 100) / 100) * 100)} 100`,
         );
       }
+      const median = (list) => Number(list[Math.floor(list.length / 2)].toFixed(3));
+      const p95 = (list) => Number(list[Math.floor(list.length * 0.95)].toFixed(3));
       samples.sort((a, b) => a - b);
+      roundTrips.sort((a, b) => a - b);
       results.push({
         scenario,
-        medianMs: Number(samples[Math.floor(samples.length / 2)].toFixed(3)),
-        p95Ms: Number(samples[Math.floor(samples.length * 0.95)].toFixed(3)),
+        medianMs: median(samples),
+        p95Ms: p95(samples),
+        roundTripMedianMs: median(roundTrips),
+        roundTripP95Ms: p95(roundTrips),
       });
     }
     const record = {
@@ -177,6 +196,7 @@ ipcRenderer.on('bench:state', (_event, state) => {
       tabs: tabCount,
       updates,
       toolbarTabs: initial.toolbarTabs,
+      stateFormat,
       results,
     };
     if (values.out) fs.writeFileSync(values.out, `${JSON.stringify(record, null, 2)}\n`);

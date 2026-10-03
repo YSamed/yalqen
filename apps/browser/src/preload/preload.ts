@@ -16,7 +16,7 @@ function subscribe<T>(name: string, listener: (value: T) => void): () => void {
 
 const api: YalqenApi = {
   getState: () => ipcRenderer.invoke(channel.getState) as Promise<BrowserState>,
-  onState: (listener) => subscribe<BrowserState>(channel.state, listener),
+  onState: (listener) => subscribe<string>(channel.state, listener),
   onWallpaper: (listener) => subscribe<Wallpaper | null>(channel.wallpaper, listener),
   setLayout: (layout: ChromeLayout) => ipcRenderer.send(channel.setLayout, layout),
   send: (action: UiAction) => ipcRenderer.send(channel.action, action),

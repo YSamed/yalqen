@@ -144,8 +144,8 @@
       stateReceived = true;
       requestAnimationFrame(() => (animateModeChanges = true));
     });
-    const offState = window.yalqen.onState((next) => {
-      browser = reuseBrowserState(browser, next);
+    const offState = window.yalqen.onState((serializedState) => {
+      browser = reuseBrowserState(browser, JSON.parse(serializedState));
       stateReceived = true;
     });
     const offWallpaper = window.yalqen.onWallpaper((wallpaper) => {
