@@ -69,8 +69,14 @@ export function matchRequestRule(rules: readonly RequestRule[], url: string): Re
   return rules.find((rule) => isRuleActive(rule) && matches(rule, url)) ?? null;
 }
 
+export interface InterceptPattern {
+  urlPattern: string;
+  resourceType?: string;
+  requestStage: 'Request';
+}
+
 // Fetch.enable treats an empty pattern list as "intercept everything", so callers disable it instead.
-export function interceptPatterns(rules: readonly RequestRule[]): { urlPattern: string; requestStage: 'Request' }[] {
+export function interceptPatterns(rules: readonly RequestRule[]): InterceptPattern[] {
   return rules.filter(isRuleActive).map((rule) => ({
     urlPattern: rule.pattern.replace(/[?\\]/g, '\\$&'),
     requestStage: 'Request',
@@ -128,13 +134,36 @@ function editsFor(rule: RequestRule): { key: string; name: string; value: string
 
 export interface PausedRequest {
   requestId: string;
+  networkId?: string;
+  resourceType?: string;
   request: { url: string; headers: Record<string, string> };
 }
 
-export function pausedRequestCommand(rules: readonly RequestRule[], paused: PausedRequest): ProtocolCommand {
+export interface HeaderValue {
+  name: string;
+  value: string;
+}
+
+function withHeaders(request: PausedRequest['request'], extra: readonly HeaderValue[]): HeaderValue[] {
+  const headers = new Map(
+    Object.entries(request.headers).map(([name, value]) => [name.toLowerCase(), { name, value }]),
+  );
+  for (const header of extra) headers.set(header.name.toLowerCase(), header);
+  return [...headers.values()];
+}
+
+export function pausedRequestCommand(
+  rules: readonly RequestRule[],
+  paused: PausedRequest,
+  extraHeaders: readonly HeaderValue[] = [],
+): ProtocolCommand {
   const { requestId, request } = paused;
   const rule = matchRequestRule(rules, request.url);
-  if (!rule) return { method: 'Fetch.continueRequest', params: { requestId } };
+  if (!rule) {
+    return extraHeaders.length > 0
+      ? { method: 'Fetch.continueRequest', params: { requestId, headers: withHeaders(request, extraHeaders) } }
+      : { method: 'Fetch.continueRequest', params: { requestId } };
+  }
   switch (rule.action) {
     case 'block':
       return { method: 'Fetch.failRequest', params: { requestId, errorReason: 'BlockedByClient' } };
@@ -165,9 +194,7 @@ export function pausedRequestCommand(rules: readonly RequestRule[], paused: Paus
         },
       };
     case 'headers': {
-      const headers = new Map(
-        Object.entries(request.headers).map(([name, value]) => [name.toLowerCase(), { name, value }]),
-      );
+      const headers = new Map(withHeaders(request, extraHeaders).map((header) => [header.name.toLowerCase(), header]));
       for (const { key, name, value } of editsFor(rule)) {
         if (value === null) headers.delete(key);
         else headers.set(key, { name, value });

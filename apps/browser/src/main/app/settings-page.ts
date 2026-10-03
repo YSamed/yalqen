@@ -1,9 +1,11 @@
 import { ipcMain, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import {
+  AgentBridgeChannel,
   ExtensionsChannel,
   PasswordsChannel,
   SETTINGS_URL,
   SettingsChannel,
+  type AgentBridgeView,
   type ExtensionInfo,
   type PasswordsView,
   type SettingsView,
@@ -45,6 +47,10 @@ export function broadcastSettings(view: SettingsView): void {
 
 export function broadcastExtensions(extensions: ExtensionInfo[]): void {
   broadcast(ExtensionsChannel.changed, extensions);
+}
+
+export function broadcastAgentBridge(view: AgentBridgeView): void {
+  broadcast(AgentBridgeChannel.changed, view);
 }
 
 export function broadcastPasswords(view: PasswordsView): void {

@@ -43,6 +43,15 @@ export interface TabSnapshot {
   muted: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
+  agentObserved: boolean;
+  agentReadAt: number | null;
+  agentEpisode: AgentEpisodePreview | null;
+  agentRules: number;
+}
+
+export interface AgentEpisodePreview {
+  id: string;
+  lines: string[];
 }
 
 export type DeviceId =
@@ -278,7 +287,8 @@ export type DevCommandId =
   | 'copy-markdown'
   | 'copy-curl'
   | 'clear-cache'
-  | 'clear-site-data';
+  | 'clear-site-data'
+  | 'pick-element';
 
 export interface AddressSuggestion {
   kind: 'tab' | 'bookmark' | 'history' | 'command';
@@ -359,7 +369,13 @@ export interface SettingsValues {
   usageCounting: boolean;
   askBeforeDownload: boolean;
   welcomeCompleted: boolean;
+  agentBridge: boolean;
+  agentOrigins: string[];
+  agentActions: AgentActionPolicy;
+  agentTracing: boolean;
 }
+
+export type AgentActionPolicy = 'off' | 'ask' | 'allow';
 
 export type UpdateStatus =
   | { state: 'unavailable' }
@@ -461,6 +477,29 @@ export interface PasswordsView {
   neverSave: string[];
 }
 
+export type AgentSetupKind = 'claude' | 'codex' | 'token' | 'otel';
+
+export interface AgentBridgeView {
+  enabled: boolean;
+  port: number | null;
+  error: string | null;
+  lastCallAt: number | null;
+  calls: number;
+  url: string | null;
+  // Shown with the token hidden; copying puts the real one on the clipboard.
+  claudeCommand: string | null;
+  codexConfig: string | null;
+  otelConfig: string | null;
+  observedTabs: number;
+}
+
+export const AgentBridgeChannel = {
+  status: 'yalqen-agent:status',
+  copy: 'yalqen-agent:copy',
+  regenerate: 'yalqen-agent:regenerate',
+  changed: 'yalqen-agent:changed',
+} as const;
+
 export const PasswordsChannel = {
   list: 'yalqen-passwords:list',
   reveal: 'yalqen-passwords:reveal',
@@ -495,4 +534,8 @@ export interface SettingsApi {
   removePassword(id: string): Promise<void>;
   allowSaving(origin: string): Promise<void>;
   onPasswordsChange(listener: (view: PasswordsView) => void): () => void;
+  agentBridge(): Promise<AgentBridgeView>;
+  copyAgentSetup(kind: AgentSetupKind): Promise<boolean>;
+  regenerateAgentToken(): Promise<AgentBridgeView>;
+  onAgentBridgeChange(listener: (view: AgentBridgeView) => void): () => void;
 }

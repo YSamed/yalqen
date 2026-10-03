@@ -340,17 +340,25 @@
                     />
                   {/if}
                   {#if states.length > 0}
-                    <Button
-                      size="sm"
-                      variant="tonal"
-                      icon={activeTab.consoleErrors > 0 ? 'warning' : 'gauge'}
-                      class={['dev-state', activeTab.consoleErrors > 0 && 'has-errors']}
-                      aria-label={t('toolbar.developerStatus', { states: states.join(', ') })}
-                      title={states.join(' · ')}
-                      onclick={() => send({ type: 'open-dev-menu' })}
-                    >
-                      {activeTab.consoleErrors > 0 ? consoleErrorCount(activeTab) : states.length}
-                    </Button>
+                    <!-- Re-creating the button on each agent read replays its highlight animation once. -->
+                    {#key activeTab.agentReadAt}
+                      <Button
+                        size="sm"
+                        variant="tonal"
+                        icon={activeTab.consoleErrors > 0 ? 'warning' : 'gauge'}
+                        class={[
+                          'dev-state',
+                          activeTab.consoleErrors > 0 && 'has-errors',
+                          activeTab.agentObserved && 'agent',
+                          activeTab.agentReadAt !== null && Date.now() - activeTab.agentReadAt < 1500 && 'agent-read',
+                        ]}
+                        aria-label={t('toolbar.developerStatus', { states: states.join(', ') })}
+                        title={states.join(' · ')}
+                        onclick={() => send({ type: 'open-dev-menu' })}
+                      >
+                        {activeTab.consoleErrors > 0 ? consoleErrorCount(activeTab) : states.length}
+                      </Button>
+                    {/key}
                   {/if}
                   {#if zoomChanged}
                     <Button
@@ -632,6 +640,40 @@
 
   .tab-group :global(.dev-state.has-errors) {
     color: var(--warn);
+  }
+
+  .tab-group :global(.dev-state.agent) {
+    position: relative;
+  }
+
+  .tab-group :global(.dev-state.agent)::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .tab-group :global(.dev-state.agent-read) {
+    animation: agent-read 1.2s ease-out;
+  }
+
+  @keyframes agent-read {
+    from {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+    to {
+      box-shadow: 0 0 0 2px transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tab-group :global(.dev-state.agent-read) {
+      animation: none;
+    }
   }
 
   .address.after-site {

@@ -48,6 +48,11 @@ import type { HistoryStore } from '../library/history.js';
 import type { HttpsOnly } from '../privacy/https-only.js';
 import { canViewSource, formatAddress, type AddressFormat } from '../devtools/page-export.js';
 import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
+import { PageNotice } from './page-notice.js';
+import { AgentControl } from './agent-control.js';
+import type { ActionWindow } from '../agent-bridge/action-runner.js';
+import type { Verification } from '../agent-bridge/verification.js';
+import { formatLocation } from '../agent-bridge/component-source.js';
 import { pageFrame } from './page-layout.js';
 import { fontPreferences } from '../app/page-preferences.js';
 import { permissionOrigin, type PermissionStore } from '../privacy/permissions.js';
@@ -110,6 +115,7 @@ export interface AppContext {
   onWindowFocus(window: YalqenWindow): void;
   onWindowClosing(window: YalqenWindow): void;
   onWindowClosed(window: YalqenWindow): void;
+  agentScope(url: string, privateBrowsing: boolean): boolean;
 }
 
 export interface WindowOptions {
@@ -149,6 +155,8 @@ export class YalqenWindow {
   private lastPushedState = '';
   private findTarget: { tabId: string; url: string } | null = null;
   private readonly navigationHint: NavigationHint;
+  private readonly notice: PageNotice;
+  private readonly agentControl: AgentControl;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
   constructor(
@@ -323,9 +331,18 @@ export class YalqenWindow {
         enabled: app.settings.get().pageTranslation,
         language: app.settings.get().pageLanguage,
       }),
+      // Developer windows are private only to keep their session apart; they are meant for local work.
+      agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate && !this.isDeveloper),
+      agentTracing: () => app.settings.get().agentBridge && app.settings.get().agentTracing,
     });
 
     this.navigationHint = new NavigationHint({ window: this.window, area: () => this.pageArea });
+    this.notice = new PageNotice({ window: this.window, area: () => this.pageArea });
+    this.agentControl = new AgentControl({
+      window: this.window,
+      area: () => this.pageArea,
+      labels: () => ({ inControl: t('agentActions.inControl'), stop: t('agentActions.stop') }),
+    });
     this.window.on('focus', () => app.onWindowFocus(this));
     if (process.platform === 'darwin') {
       this.window.on('swipe', (_event, direction) => {
@@ -365,6 +382,8 @@ export class YalqenWindow {
       this.commandBar.release(this.window);
       this.findBar.release(this.window);
       this.navigationHint.destroy();
+      this.notice.destroy();
+      this.agentControl.destroy();
       app.extensionPopup.close(this.window);
       if (!this.uiContents.isDestroyed()) this.uiContents.close();
       app.onWindowClosed(this);
@@ -526,6 +545,9 @@ export class YalqenWindow {
       case 'copy-curl':
         this.copyAddress('curl');
         break;
+      case 'pick-element':
+        void this.pickElement();
+        break;
       case 'devtools':
         tabs.toggleDevTools();
         break;
@@ -583,6 +605,60 @@ export class YalqenWindow {
 
   saveScreenshot(fullPage: boolean): Promise<void> {
     return saveScreenshotFile(this.window, this.tabs, fullPage);
+  }
+
+  agentActionWindow(): ActionWindow {
+    return {
+      tabs: this.tabs,
+      confirm: async (action, detail) => {
+        if (this.window.isDestroyed()) return false;
+        this.focus();
+        const { response } = await dialog.showMessageBox(this.window, {
+          type: 'question',
+          buttons: [t('agentActions.allow'), t('agentActions.deny')],
+          defaultId: 1,
+          cancelId: 1,
+          message: t('agentActions.confirm', { action }),
+          detail: [detail, t('agentActions.confirmDetail')].filter(Boolean).join('\n\n'),
+        });
+        return response === 0;
+      },
+      showControl: (onStop) => this.agentControl.show(onStop),
+      hideControl: () => this.agentControl.hide(),
+      showVerification: (verification) => this.notice.show(verificationLines(verification)),
+    };
+  }
+
+  private async pickElement(): Promise<void> {
+    if (this.tabs.isPicking) {
+      this.tabs.cancelPicking();
+      return;
+    }
+    const picking = this.tabs.pickElement(this.app.settings.get().agentBridge);
+    if (this.tabs.isPicking) this.notice.show([t('picker.start'), t('picker.cancelHint')]);
+    const outcome = await picking;
+    switch (outcome.status) {
+      case 'picked': {
+        const { id, label, component: react } = outcome.selection;
+        clipboard.writeText(id);
+        const detail = react.source ? formatLocation(react.source) : react.component ? label : null;
+        this.notice.show(
+          [t('picker.selected', { label: react.component ?? label }), detail, t('picker.copied', { id })].filter(
+            (line) => line !== null,
+          ),
+        );
+        break;
+      }
+      case 'agent-off':
+        this.notice.show([t('picker.off')]);
+        break;
+      case 'not-local':
+        this.notice.show([t('picker.notLocal')]);
+        break;
+      case 'failed':
+        this.notice.show([t('picker.failed')]);
+        break;
+    }
   }
 
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
@@ -646,7 +722,15 @@ export class YalqenWindow {
         const tab = tabs.snapshotFor();
         if (!tab) break;
         this.popup(
-          devMenuTemplate(tab, { run: (id) => this.runDevCommand(id), openDevTools: () => tabs.openDevTools() }),
+          devMenuTemplate(tab, {
+            run: (id) => this.runDevCommand(id),
+            openDevTools: () => tabs.openDevTools(),
+            copyEpisode: (id) => clipboard.writeText(id),
+            copyPlaywrightTest: (id) => {
+              const source = tabs.agentPlaywrightTest(id);
+              if (source) clipboard.writeText(source);
+            },
+          }),
         );
         break;
       }
@@ -878,6 +962,22 @@ export class YalqenWindow {
     this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
     this.pageArea = bounds;
     this.findBar.relayout(this.window);
+    this.agentControl.layout();
     return radius;
   }
+}
+
+function verificationLines({ result, requests, errors }: Verification): string[] {
+  const failed = (status: number | null) => status !== null && (status === 0 || status >= 400);
+  const status = (value: number | null) =>
+    value === null ? t('agentActions.notSent') : value === 0 ? t('agentActions.requestFailed') : String(value);
+  const changes = requests
+    .filter(({ before, after }) => failed(before) || failed(after))
+    .slice(0, 2)
+    .map(({ request, after }) => `${request} → ${status(after)}`);
+  return [
+    t(result === 'passed' ? 'agentActions.passed' : 'agentActions.failed'),
+    ...changes,
+    errors.length === 0 ? t('agentActions.noErrors') : t('agentActions.errors', { count: errors.length }),
+  ].slice(0, 3);
 }

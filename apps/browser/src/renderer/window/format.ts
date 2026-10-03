@@ -34,5 +34,7 @@ export function devStates(tab: TabSnapshot): string[] {
     overrides.printMedia ? t('format.printView') : null,
     overrides.userAgent ? t('format.userAgentChanged') : null,
     overrides.requestRules ? t('format.requestRulesApplied') : null,
+    tab.agentObserved ? t('format.agentObserved') : null,
+    tab.agentRules > 0 ? t('format.agentRules', { count: tab.agentRules }) : null,
   ].filter((state) => state !== null);
 }

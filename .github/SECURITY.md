@@ -15,3 +15,23 @@ Report vulnerabilities privately through [GitHub Security Advisories](https://gi
 - The Yalqen version and macOS version you tested
 
 You should receive a response within 7 days. Please allow time for a fix to be released before disclosing the issue publicly.
+
+## Agent connection
+
+The agent connection (Settings → Developer, off by default) runs a local MCP server so a coding agent can read local development tabs. Its threat model:
+
+| Threat                                           | Mitigation                                                                                                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A web page sending requests to the local port    | The server binds to `127.0.0.1`; requests with an `Origin` header are rejected; `Host` is validated                                               |
+| Another process on the machine reaching the port | A 32-byte bearer token, stored encrypted with the macOS Keychain and regenerable at any time                                                      |
+| The agent reading a banking or email tab         | Only `localhost`, `127.0.0.0/8`, `[::1]`, `*.localhost`, `*.test`, `*.local` and origins you add                                                  |
+| Private browsing                                 | Tabs in private windows are never visible to the agent                                                                                            |
+| Secrets in network data                          | `Authorization`, `Cookie`, `Set-Cookie` and token-like headers are masked; bodies are truncated                                                   |
+| Recording what the user types                    | Only the length of changed values is recorded; password fields are skipped; the listener runs in an isolated world                                |
+| Prompt injection from page content               | Tool outputs that contain page text are marked as untrusted data                                                                                  |
+| The agent taking unwanted actions                | Actions are off, ask every time (default) or allowed; a frame and a Stop button show while the agent is in control; navigation stays within scope |
+| A process posting fake backend traces            | `/v1/traces` needs the same bearer token; spans only attach to requests whose trace id Yalqen generated                                           |
+| Trace headers leaking to other sites             | `traceparent` is added only to same-origin requests of observed tabs, and only with backend traces turned on                                      |
+| Data becoming persistent                         | Console and network records stay in memory and are cleared when the tab closes or is discarded                                                    |
+
+When the setting is off, no port is open and no tab is observed.

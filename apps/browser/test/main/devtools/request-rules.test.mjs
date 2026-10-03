@@ -4,6 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import requestRules from '../../../dist/main/devtools/request-rules.js';
+import tabOverrides from '../../../dist/main/tabs/tab-overrides.js';
+
+const { rulesFor } = tabOverrides;
 import pageOverrides from '../../../dist/main/devtools/page-overrides.js';
 import requestRule from '../../../dist/shared/request-rule.js';
 
@@ -78,7 +81,27 @@ test('interception follows the tab switch and never enables with no patterns', (
     overrideCommands(overrides, { userAgent: '', platform: '' }, list).find((c) => c.method.startsWith('Fetch.'));
   assert.equal(fetchOf({ ...NO_OVERRIDES, requestRules: true }, rules).method, 'Fetch.enable');
   assert.deepEqual(fetchOf({ ...NO_OVERRIDES, requestRules: true }, []), { method: 'Fetch.disable', optional: true });
-  assert.equal(fetchOf(NO_OVERRIDES, rules).method, 'Fetch.disable');
+  assert.equal(fetchOf(NO_OVERRIDES, []).method, 'Fetch.disable');
+});
+
+test('rulesFor puts the agent rules first and adds the saved rules only when the tab applies them', () => {
+  const saved = [rule({ pattern: 'https://saved.test/*' })];
+  const agentRule = rule({ pattern: 'http://localhost:3000/api/*', action: 'mock' });
+  const tab = (requestRules, agent) => ({ overrides: { ...NO_OVERRIDES, requestRules }, agent });
+  assert.deepEqual(rulesFor(tab(false, null), saved), []);
+  assert.deepEqual(rulesFor(tab(true, null), saved), saved);
+  assert.deepEqual(rulesFor(tab(false, { rules: [agentRule] }), saved), [agentRule]);
+  assert.deepEqual(rulesFor(tab(true, { rules: [agentRule] }), saved), [agentRule, ...saved]);
+});
+
+test('extra headers are added to requests no rule answers', () => {
+  const paused = { requestId: '1', request: { url: 'http://localhost/api', headers: { Accept: '*/*' } } };
+  const command = pausedRequestCommand([], paused, [{ name: 'traceparent', value: '00-a-b-01' }]);
+  assert.deepEqual(command.params.headers, [
+    { name: 'Accept', value: '*/*' },
+    { name: 'traceparent', value: '00-a-b-01' },
+  ]);
+  assert.deepEqual(pausedRequestCommand([], paused), { method: 'Fetch.continueRequest', params: { requestId: '1' } });
 });
 
 test('paused requests get the reply of their rule', () => {

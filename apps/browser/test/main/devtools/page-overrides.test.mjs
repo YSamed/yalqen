@@ -38,6 +38,14 @@ test('clearing the network overrides resets and disables the domain, tolerating 
   assert.equal(commands[1].params.downloadThroughput, -1);
 });
 
+test('a tab the agent bridge observes keeps its network domain and response bodies', () => {
+  const throttled = byMethod(overrideCommands({ ...NO_OVERRIDES, network: 'slow-3g' }, noDevice, [], true));
+  assert.ok(throttled['Network.enable'].params.maxResourceBufferSize > 0);
+  const cleared = overrideCommands(NO_OVERRIDES, noDevice, [], true).map((command) => command.method);
+  assert.equal(cleared.includes('Network.disable'), false);
+  assert.ok(cleared.includes('Network.emulateNetworkConditions'));
+});
+
 test('media features are emulated and reset together', () => {
   const on = byMethod(
     overrideCommands({ ...NO_OVERRIDES, colorScheme: 'dark', reducedMotion: true, printMedia: true }, noDevice),

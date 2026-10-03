@@ -3,6 +3,7 @@ import {
   AUTO_RELOAD_SECONDS,
   NETWORK_PRESETS,
   USER_AGENT_PRESETS,
+  type AgentEpisodePreview,
   type DevCommandId,
   type PageOverrides,
 } from '../../shared/types.js';
@@ -10,6 +11,7 @@ import { NETWORK_CONDITIONS, USER_AGENTS, hasOverrides } from './page-overrides.
 import { t } from '../../shared/i18n.js';
 
 export interface DevMenuState {
+  agentEpisode?: AgentEpisodePreview | null;
   consoleErrors: number;
   autoReloadSeconds: number | null;
   overrides: PageOverrides;
@@ -17,6 +19,8 @@ export interface DevMenuState {
 
 export interface DevMenuActions {
   run(id: DevCommandId): void;
+  copyEpisode?(id: string): void;
+  copyPlaywrightTest?(id: string): void;
   openDevTools(): void;
 }
 
@@ -27,7 +31,17 @@ function radio(label: string, checked: boolean, click: () => void): MenuItemCons
 export function devMenuTemplate(state: DevMenuState, actions: DevMenuActions): MenuItemConstructorOptions[] {
   const { overrides, consoleErrors } = state;
   const run = (id: DevCommandId) => () => actions.run(id);
+  const episode = state.agentEpisode;
   return [
+    ...(episode
+      ? [
+          { label: t('devMenu.latestEpisode', { id: episode.id }), enabled: false },
+          ...episode.lines.map((line) => ({ label: line, enabled: false })),
+          { label: t('devMenu.copyEpisode', { id: episode.id }), click: () => actions.copyEpisode?.(episode.id) },
+          { label: t('devMenu.copyPlaywrightTest'), click: () => actions.copyPlaywrightTest?.(episode.id) },
+          { type: 'separator' as const },
+        ]
+      : []),
     ...(consoleErrors > 0
       ? [
           {
@@ -37,6 +51,8 @@ export function devMenuTemplate(state: DevMenuState, actions: DevMenuActions): M
           { type: 'separator' as const },
         ]
       : []),
+    { label: t('devMenu.pickElement'), accelerator: 'Alt+CmdOrCtrl+P', click: run('pick-element') },
+    { type: 'separator' },
     {
       label: t('devMenu.disableCache'),
       type: 'checkbox',
