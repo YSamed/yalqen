@@ -27,6 +27,10 @@ function createView() {
   let destroyed = false;
   contents.debugger = new EventEmitter();
   contents.setWindowOpenHandler = () => {};
+  contents.pinchLimits = [];
+  contents.setVisualZoomLevelLimits = async (min, max) => {
+    contents.pinchLimits.push([min, max]);
+  };
   contents.getURL = () => 'https://example.com/';
   contents.navigationHistory = {
     getAllEntries: () => [{ url: 'https://example.com/', title: 'Example' }],
@@ -41,6 +45,14 @@ function createView() {
 }
 
 const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
+
+test('pinch zoom is allowed when a page is attached and released with its listeners', () => {
+  const f = fixture();
+  assert.deepEqual(f.view.webContents.pinchLimits, [[1, 3]]);
+  assert.ok(f.view.webContents.listenerCount('did-navigate') > 0);
+  f.manager.discard(f.tab.id);
+  assert.equal(f.view.webContents.listenerCount('did-navigate'), 0);
+});
 
 test('discarding a tab releases native and debugger listeners before closing its view', () => {
   const f = fixture();

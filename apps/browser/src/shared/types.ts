@@ -172,7 +172,6 @@ export type UiAction =
 
 export const PageChannel = {
   swipe: 'yalqen:page-swipe',
-  zoom: 'yalqen:page-zoom',
   newTabCenter: 'yalqen:newtab-center',
   credentialSubmitted: 'yalqen:credential-submitted',
   credentialAccepted: 'yalqen:credential-accepted',
