@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import cookies from '../../../dist/main/privacy/third-party-cookies.js';
 
-const { headerValues, isThirdParty, requestCookieNames, responseCookieNames, siteOf } = cookies;
+const { headerValues, requestCookieNames, responseCookieNames, siteOf } = cookies;
 
 test('sites are registrable domains, public suffixes included', () => {
   assert.equal(siteOf('https://www.example.com/a'), 'example.com');
@@ -12,23 +12,22 @@ test('sites are registrable domains, public suffixes included', () => {
   assert.equal(siteOf('http://localhost/'), 'localhost');
   assert.equal(siteOf('wss://chat.example.com/'), 'example.com');
   assert.equal(siteOf('yalqen://newtab/'), null);
+  assert.equal(siteOf('data:text/plain,x'), null);
   assert.equal(siteOf('nope'), null);
 });
 
-test('requests to another site are third party', () => {
-  assert.equal(isThirdParty('https://cdn.example.com/x.js', 'https://www.example.com/'), false);
-  assert.equal(isThirdParty('https://tracker.net/p', 'https://www.example.com/'), true);
-  assert.equal(isThirdParty('https://a.gov.tr/', 'https://b.gov.tr/'), true);
-  assert.equal(isThirdParty('https://tracker.net/p', 'yalqen://newtab/'), true);
-  assert.equal(isThirdParty('data:text/plain,x', 'https://example.com/'), false);
+test('subdomains share a site, other domains do not', () => {
+  assert.equal(siteOf('https://cdn.example.com/x.js'), siteOf('https://www.example.com/'));
+  assert.notEqual(siteOf('https://tracker.net/p'), siteOf('https://www.example.com/'));
+  assert.notEqual(siteOf('https://a.gov.tr/'), siteOf('https://b.gov.tr/'));
 });
 
 test('private public suffixes keep hosted tenants separate', () => {
   assert.equal(siteOf('https://alice.github.io/'), 'alice.github.io');
   assert.equal(siteOf('https://static.alice.github.io/'), 'alice.github.io');
-  assert.equal(isThirdParty('https://bob.github.io/script.js', 'https://alice.github.io/'), true);
-  assert.equal(isThirdParty('https://static.alice.github.io/script.js', 'https://alice.github.io/'), false);
-  assert.equal(isThirdParty('https://first.blogspot.com/', 'https://second.blogspot.com/'), true);
+  assert.notEqual(siteOf('https://bob.github.io/script.js'), siteOf('https://alice.github.io/'));
+  assert.equal(siteOf('https://static.alice.github.io/script.js'), siteOf('https://alice.github.io/'));
+  assert.notEqual(siteOf('https://first.blogspot.com/'), siteOf('https://second.blogspot.com/'));
 });
 
 test('cookie names are read from request and response headers', () => {

@@ -70,6 +70,7 @@ Git hooks、提交信息和 Pull Request 流程请阅读 [CONTRIBUTING.md](../.g
 - [为什么选择 Electron？](decisions/why-electron.md)
 - [架构](architecture.md)
 - [基准测试](benchmarks.md)
+- [性能报告](performance/)
 - [下载和活跃安装统计](usage-measurement.md)
 - [安全策略](../.github/SECURITY.md)
 
