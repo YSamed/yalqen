@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import changeFeed from '../dist/main/change-feed.js';
-import downloadsModule from '../dist/main/downloads.js';
-import internalPages from '../dist/main/internal-pages.js';
-import suggestionModule from '../dist/main/suggestions.js';
+import changeFeed from '../dist/main/library/change-feed.js';
+import downloadsPage from '../dist/main/pages/downloads-page.js';
+import internalPages from '../dist/main/pages/internal-pages.js';
+import newTabPage from '../dist/main/pages/new-tab-page.js';
+import suggestionModule from '../dist/main/address-bar/suggestions.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');
@@ -108,7 +109,7 @@ test('the downloads page updates itself when the list changes', async () => {
   changes.notify();
   const update = await (await waiting).json();
   assert.equal(update.version, 1);
-  assert.equal(update.html, downloadsModule.renderDownloads(entries));
+  assert.equal(update.html, downloadsPage.renderDownloads(entries));
 });
 
 test('unchanged download polls omit HTML and do not read the list', async () => {
@@ -168,14 +169,14 @@ test('the bookmarks page loads its folder picker script from its own origin', as
 });
 
 test('pinned sites render as escaped tiles with a letter fallback', () => {
-  const html = internalPages.renderPinned([
+  const html = newTabPage.renderPinned([
     { url: 'https://github.com/', title: 'GitHub', faviconUrl: 'https://github.com/favicon.ico' },
     { url: 'https://example.com/?q="x"', title: '<b>Örnek</b>', faviconUrl: null },
   ]);
   assert.match(html, /<img src="https:\/\/github\.com\/favicon\.ico"/);
   assert.match(html, /<span class="letter">E<\/span>/);
   assert.doesNotMatch(html, /<b>/);
-  assert.equal(internalPages.renderPinned([]), '');
+  assert.equal(newTabPage.renderPinned([]), '');
 });
 
 test('the settings page and only its own assets are served under yalqen://settings', async () => {

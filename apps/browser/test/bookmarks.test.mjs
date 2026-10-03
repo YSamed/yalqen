@@ -3,13 +3,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import bookmarks from '../dist/main/bookmarks.js';
-import suggestions from '../dist/main/suggestions.js';
+import bookmarks from '../dist/main/library/bookmarks.js';
+import bookmarksPage from '../dist/main/pages/bookmarks-page.js';
+import suggestions from '../dist/main/address-bar/suggestions.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');
 
-const { BookmarkStore, bookmarksMenuTemplate, canBookmark, renderBookmarks } = bookmarks;
+const { BookmarkStore, bookmarksMenuTemplate, canBookmark } = bookmarks;
+const { renderBookmarks } = bookmarksPage;
 
 function withDir(run) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-bookmarks-'));

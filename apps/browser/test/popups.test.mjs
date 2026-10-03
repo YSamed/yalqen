@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import popups from '../dist/main/popups.js';
+import popups from '../dist/main/tabs/popups.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');

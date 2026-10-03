@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import devices from '../dist/main/devices.js';
+import devices from '../dist/main/devtools/devices.js';
 
 const { applyDeviceMetrics, applyEmulation } = devices;
 const emulation = { deviceId: 'iphone-15', landscape: false };

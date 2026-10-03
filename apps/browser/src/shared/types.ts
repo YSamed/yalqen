@@ -80,6 +80,9 @@ export const TOOLBAR_BUTTON_IDS = ['bookmarks', 'history', 'extensions', 'profil
 export type ToolbarButtonId = (typeof TOOLBAR_BUTTON_IDS)[number];
 export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
 
+export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
+export const DISCARD_AFTER_MINUTES = [0, 15, 30, 60, 120] as const;
+
 export interface BrowserState {
   tabs: TabSnapshot[];
   listOrder: TabId[];

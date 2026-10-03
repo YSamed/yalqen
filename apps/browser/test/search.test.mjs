@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import search from '../dist/main/search.js';
+import search from '../dist/main/address-bar/search.js';
 
 const { DEFAULT_SEARCH_ENGINE, buildSearchUrl, isValidSearchTemplate, resolveSearchEngine } = search;
 

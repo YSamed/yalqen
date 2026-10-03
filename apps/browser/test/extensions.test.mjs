@@ -5,12 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import zlib from 'node:zlib';
-import store from '../dist/main/chrome-web-store.js';
-import zip from '../dist/main/zip.js';
-import webStoreApi from '../dist/main/web-store-api.js';
-import manifests from '../dist/main/extension-manifest.js';
-import popup from '../dist/main/extension-popup.js';
-import extensions from '../dist/main/extensions.js';
+import store from '../dist/main/extensions/chrome-web-store.js';
+import zip from '../dist/main/extensions/zip.js';
+import webStoreApi from '../dist/main/extensions/web-store-api.js';
+import manifests from '../dist/main/extensions/extension-manifest.js';
+import popup from '../dist/main/extensions/extension-popup.js';
+import extensions from '../dist/main/extensions/extensions.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');

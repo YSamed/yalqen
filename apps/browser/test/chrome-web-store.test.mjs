@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import store from '../dist/main/chrome-web-store.js';
+import store from '../dist/main/extensions/chrome-web-store.js';
 
 const { downloadCrx, MAX_CRX_BYTES } = store;
 const STORE_ID = 'abcdefghijklmnopabcdefghijklmnop';

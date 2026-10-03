@@ -4,6 +4,7 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { mainModule } from './main-module.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -11,13 +12,13 @@ const { values } = parseArgs({
     out: { type: 'string' },
   },
 });
-const load = async (name) => (await import(pathToFileURL(path.join(values['module-dir'], `${name}.js`)))).default;
-const { HistoryStore } = await load('history');
-const { EMPTY_HISTORY_INDEX, indexHistory, suggest } = await load('suggestions');
-const { BookmarkStore, bookmarksMenuTemplate } = await load('bookmarks');
-const { matchRequestRule } = await load('request-rules');
-const { tabListOrder } = await load('tab-shortcuts');
-const { setThirdPartyCookieBlocking } = await load('third-party-cookies');
+const load = async (file) => (await import(pathToFileURL(mainModule(values['module-dir'], `${file}.js`)))).default;
+const { HistoryStore } = await load('library/history');
+const { EMPTY_HISTORY_INDEX, indexHistory, suggest } = await load('address-bar/suggestions');
+const { BookmarkStore, bookmarksMenuTemplate } = await load('library/bookmarks');
+const { matchRequestRule } = await load('devtools/request-rules');
+const { tabListOrder } = await load('tabs/tab-shortcuts');
+const { setThirdPartyCookieBlocking } = await load('privacy/third-party-cookies');
 
 const visits = Array.from({ length: 5000 }, (_, index) => ({
   id: String(index),

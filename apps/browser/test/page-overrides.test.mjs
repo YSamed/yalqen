@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import pageOverrides from '../dist/main/page-overrides.js';
+import pageOverrides from '../dist/main/devtools/page-overrides.js';
 
 const { NO_OVERRIDES, USER_AGENTS, hasOverrides, overrideCommands } = pageOverrides;
 const noDevice = { userAgent: '', platform: '' };

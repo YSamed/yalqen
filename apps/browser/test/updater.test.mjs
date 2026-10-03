@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { test } from 'node:test';
-import updaterModule from '../dist/main/updater.js';
+import updaterModule from '../dist/main/app/updater.js';
 
 const { Updater } = updaterModule;
 

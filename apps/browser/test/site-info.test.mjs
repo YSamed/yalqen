@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import siteInfo from '../dist/main/site-info.js';
+import siteInfo from '../dist/main/privacy/site-info.js';
 import i18n from '../dist/shared/i18n.js';
 
 i18n.setLocale('tr');

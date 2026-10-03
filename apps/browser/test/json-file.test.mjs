@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
-import jsonFile from '../dist/main/json-file.js';
+import jsonFile from '../dist/main/storage/json-file.js';
 
 const { JsonFile } = jsonFile;
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import preconnect from '../dist/main/preconnect.js';
-import search from '../dist/main/search.js';
+import preconnect from '../dist/main/address-bar/preconnect.js';
+import search from '../dist/main/address-bar/search.js';
 
 const { Preconnector, destinationOrigin } = preconnect;
 const { resolveSearchEngine } = search;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import certificates from '../dist/main/certificates.js';
+import certificates from '../dist/main/privacy/certificates.js';
 
 const { CertificateExceptions } = certificates;
 const URL_A = 'https://a.test:8443/page';

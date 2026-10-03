@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import searchFieldModule from '../dist/main/search-field-markup.js';
+import searchFieldModule from '../dist/main/pages/search-field-markup.js';
 
 const { searchFieldMarkup } = searchFieldModule;
 

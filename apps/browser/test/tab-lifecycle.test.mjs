@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { test } from 'node:test';
-import tabs from '../dist/main/tabs.js';
+import tabs from '../dist/main/tabs/tabs.js';
 
 const { TabManager } = tabs;
 

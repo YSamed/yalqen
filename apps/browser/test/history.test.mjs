@@ -3,11 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import historyModule from '../dist/main/history.js';
-import internalPages from '../dist/main/internal-pages.js';
+import historyModule from '../dist/main/library/history.js';
+import historyPage from '../dist/main/pages/history-page.js';
 
 const { HistoryStore, MAX_TITLE_CHANGES, MAX_VISITS, isSameVisit } = historyModule;
-const { renderHistory } = internalPages;
+const { renderHistory } = historyPage;
 
 test('visits survive restart, can be searched, removed, and cleared', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-history-'));
