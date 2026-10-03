@@ -75,6 +75,7 @@
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
   const listed = $derived(tabs.filter((tab) => !tab.pinned));
+  const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
   const tabsById = $derived(new Map(tabs.map((tab) => [tab.id, tab])));
   const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
@@ -328,11 +329,12 @@
 {/snippet}
 
 {#snippet tabRow(tab: TabSnapshot)}
+  {@const tabLabel = label(tab)}
   <IconButton
     size="lg"
     variant={tab.id === activeTabId ? 'surface' : 'ghost'}
     class="tab-icon"
-    label={label(tab)}
+    label={tabLabel}
     tabindex={-1}
     onclick={() => send({ type: 'activate-tab', id: tab.id })}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
@@ -340,7 +342,7 @@
     {@render favicon(tab, 16)}
   </IconButton>
   <div class="pill">
-    {@render selectButton(tab)}
+    {@render selectButton(tab, tabLabel)}
     <span class="actions">
       <IconButton
         size="sm"
@@ -353,11 +355,11 @@
   </div>
 {/snippet}
 
-{#snippet selectButton(tab: TabSnapshot)}
+{#snippet selectButton(tab: TabSnapshot, tabLabel: string)}
   <button
     class="select"
     title={tab.url}
-    aria-label={label(tab)}
+    aria-label={tabLabel}
     aria-current={tab.id === activeTabId ? 'page' : undefined}
     onclick={() => send({ type: 'activate-tab', id: tab.id })}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
@@ -451,7 +453,7 @@
         {#if entries.length > 0}
           <ol class="rows">
             {#each entries as tab (tab.id)}
-              {@const index = listed.indexOf(tab)}
+              {@const index = listedIndex.get(tab.id) ?? -1}
               <li
                 class="row"
                 class:private={tab.isPrivate}
