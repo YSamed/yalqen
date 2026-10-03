@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.33](https://github.com/YSamed/yalqen/compare/v0.2.32...v0.2.33) (2026-10-03)
+
+
+### Performance
+
+* sort imported history in sqlite and stop at the cap ([#141](https://github.com/YSamed/yalqen/issues/141)) ([2220b72](https://github.com/YSamed/yalqen/commit/2220b7289be812e59d1ca5df85e57ad727754c94))
+* use native pinch zoom so pages scroll without waiting ([#139](https://github.com/YSamed/yalqen/issues/139)) ([9a1f216](https://github.com/YSamed/yalqen/commit/9a1f216fa4f1c436c27d830ea23e47425ad34073))
+
 ## [0.2.32](https://github.com/YSamed/yalqen/compare/v0.2.31...v0.2.32) (2026-10-03)
 
 
