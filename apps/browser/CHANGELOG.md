@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/YSamed/yalqen/compare/v0.3.0...v0.3.1) (2026-10-03)
+
+
+### Features
+
+* add full-page screenshot toolbar button and preserve long pages ([cea058f](https://github.com/YSamed/yalqen/commit/cea058fb96e9c7aa8fe06c749dff5ad81821f566))
+
 ## [0.3.0](https://github.com/YSamed/yalqen/compare/v0.2.34...v0.3.0) (2026-10-03)
 
 
