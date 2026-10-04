@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.18](https://github.com/YSamed/yalqen/compare/v0.3.17...v0.3.18) (2026-10-04)
+
+
+### Bug Fixes
+
+* launch dev app through launchservices so macos lists it for permissions ([0393863](https://github.com/YSamed/yalqen/commit/0393863747c520f8aafba8bb87fd037935e82837))
+
 ## [0.3.17](https://github.com/YSamed/yalqen/compare/v0.3.16...v0.3.17) (2026-10-04)
 
 
