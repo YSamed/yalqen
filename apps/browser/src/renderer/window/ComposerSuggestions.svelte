@@ -49,7 +49,7 @@
     padding: 4px;
     overflow-y: auto;
     border-radius: var(--ai-radius);
-    background: var(--surface-strong);
+    background: var(--surface-menu);
     box-shadow: 0 0 0 1px var(--border);
     list-style: none;
   }

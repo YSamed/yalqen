@@ -3,6 +3,7 @@
 
 :root {
   --surface-strong: #f6f7f8;
+  --surface-menu: var(--surface-strong);
   --well: #dcdfe3;
   --focus: var(--accent);
   --on-accent: #ffffff;
@@ -46,6 +47,8 @@
   --chrome-base: rgb(250 247 243 / 0.38);
   --surface: rgb(255 255 255 / 0.76);
   --surface-strong: rgb(255 255 255 / 0.95);
+  /* Menus float over text, so a see-through glass fill would mix the two. */
+  --surface-menu: #fbfaf8;
   --surface-hover: rgb(16 18 24 / 0.06);
   --well: rgb(16 18 24 / 0.06);
   --border: rgb(16 18 24 / 0.12);
@@ -64,6 +67,7 @@
     --chrome-base: rgb(27 24 24 / 0.5);
     --surface: rgb(255 255 255 / 0.12);
     --surface-strong: rgb(255 255 255 / 0.18);
+    --surface-menu: #2a2c30;
     --surface-hover: rgb(255 255 255 / 0.07);
     --well: rgb(0 0 0 / 0.17);
     --border: rgb(255 255 255 / 0.1);

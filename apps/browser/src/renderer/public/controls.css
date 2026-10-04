@@ -337,7 +337,7 @@ input[type='radio'] {
   overflow-y: auto;
   border: 0;
   border-radius: calc(var(--radius-control) + 2px);
-  background: var(--surface-strong);
+  background: var(--surface-menu, var(--surface-strong));
   box-shadow:
     0 0 0 0.5px var(--border),
     0 10px 38px -10px rgb(0 0 0 / 0.35),
