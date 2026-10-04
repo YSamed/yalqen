@@ -344,7 +344,16 @@ input[type='radio'] {
     0 10px 20px -15px rgb(0 0 0 / 0.2);
   color: var(--text);
   font-size: 12px;
-  position-try-fallbacks: flip-block;
+  position-try-fallbacks:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline;
+}
+
+/* Controls at the bottom of a panel open upward, and to the left when they sit near its right edge. */
+.select-content.up {
+  top: auto;
+  bottom: anchor(top);
 }
 
 .select-content:focus-visible {

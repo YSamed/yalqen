@@ -4,7 +4,7 @@ import path from 'node:path';
 import { EMPTY_PROJECT_RUN } from '../../shared/agent-panel.js';
 import type { ProjectRunState } from '../../shared/types.js';
 
-const SCRIPT_NAMES = ['dev', 'start', 'serve'];
+const SCRIPT_NAMES = ['dev', 'start', 'serve', 'preview'];
 const SCRIPT_NAME_PATTERN = /^[\w:.-]+$/;
 const MANAGERS = ['pnpm', 'yarn', 'bun', 'npm'] as const;
 type Manager = (typeof MANAGERS)[number];
@@ -14,7 +14,7 @@ const LOCKFILES: [string, Manager][] = [
   ['bun.lock', 'bun'],
   ['bun.lockb', 'bun'],
 ];
-const URL_PATTERN = /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0):\d{2,5}/;
+const URL_PATTERN = /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1?\]|0\.0\.0\.0):\d{2,5}/;
 const ANSI_PATTERN = new RegExp(String.fromCharCode(27) + '\\[[0-9;?]*[ -/]*[@-~]', 'g');
 const SCAN_LENGTH = 2048;
 const URL_TIMEOUT_MS = 30_000;
@@ -73,7 +73,7 @@ export function findLocalUrl(text: string): string | null {
   const match = URL_PATTERN.exec(text.replace(ANSI_PATTERN, ''));
   if (!match) return null;
   const url = new URL(match[0]);
-  if (url.hostname === '0.0.0.0') url.hostname = 'localhost';
+  if (url.hostname === '0.0.0.0' || url.hostname === '[::]') url.hostname = 'localhost';
   return `${url.origin}/`;
 }
 
@@ -120,6 +120,8 @@ export class ProjectRunner {
     delete env.CLAUDECODE;
     env.BROWSER = 'none';
     env.FORCE_COLOR = '0';
+    // Python's http.server prints its address with print(), which is buffered when piped.
+    env.PYTHONUNBUFFERED = '1';
     env.YALQEN_RUN_DIRECTORY = directory;
     env.YALQEN_RUN_MANAGER = command.manager;
     env.YALQEN_RUN_SCRIPT = command.script;

@@ -7,6 +7,7 @@
     onchange,
     id,
     variant = 'default',
+    placement = 'down',
     title,
     'aria-label': ariaLabel,
   }: {
@@ -15,6 +16,7 @@
     onchange?: (value: T) => void;
     id?: string;
     variant?: 'default' | 'ghost';
+    placement?: 'down' | 'up';
     title?: string;
     'aria-label'?: string;
   } = $props();
@@ -91,6 +93,7 @@
   role="listbox"
   tabindex="-1"
   class="select-content"
+  class:up={placement === 'up'}
   popover="auto"
   aria-label={ariaLabel}
   style:position-anchor={anchor}

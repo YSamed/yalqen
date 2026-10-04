@@ -62,6 +62,10 @@ test('picks the dev script and the package manager from the project', async (t) 
     { manager: 'bun', script: 'dev' },
   );
   assert.equal(await detectProjectCommand(project(t, { 'package.json': manifest({ build: 'a' }) })), null);
+  assert.deepEqual(await detectProjectCommand(project(t, { 'package.json': manifest({ build: 'a', preview: 'b' }) })), {
+    manager: 'npm',
+    script: 'preview',
+  });
   assert.equal(await detectProjectCommand(project(t, { 'package.json': '{' })), null);
   assert.equal(await detectProjectCommand(project(t, {})), null);
 });
@@ -76,6 +80,7 @@ test('ignores unknown package managers so only a fixed set of executables can ru
 test('finds local dev server addresses in colored output', () => {
   assert.equal(findLocalUrl('  \u001b[32m➜\u001b[39m  Local:   http://localhost:5173/'), 'http://localhost:5173/');
   assert.equal(findLocalUrl('listening on http://0.0.0.0:3000'), 'http://localhost:3000/');
+  assert.equal(findLocalUrl('Serving HTTP on :: port 8000 (http://[::]:8000/) ...'), 'http://localhost:8000/');
   assert.equal(findLocalUrl('ready at http://127.0.0.1:8080/app'), 'http://127.0.0.1:8080/');
   assert.equal(findLocalUrl('see https://example.com:443'), null);
   assert.equal(findLocalUrl('no address yet'), null);
