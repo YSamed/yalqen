@@ -43,5 +43,5 @@ test('tool lists and results from the page are bounded', () => {
     { name: 'a', description: undefined, inputSchema: undefined },
   ]);
   assert.equal(pageToolResult('x'.repeat(70000)).length, 64 * 1024 + 1);
-  assert.equal(pageToolResult({ ok: true }), '{\n  "ok": true\n}');
+  assert.equal(pageToolResult({ ok: true }), '{"ok":true}');
 });

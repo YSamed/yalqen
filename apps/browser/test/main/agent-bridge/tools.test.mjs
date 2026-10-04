@@ -251,3 +251,9 @@ test('without an action host the action tools explain it', async () => {
   const result = await callTool(fakeHost(), 'click', { selector: '#save' });
   assert.equal(result.isError, true);
 });
+
+test('tool results are compact JSON', async () => {
+  const text = (await callTool(fakeHost(), 'list_tabs', {})).content[0].text;
+  assert.doesNotMatch(text, /\n/);
+  assert.equal(JSON.parse(text)[0].id, 't1');
+});

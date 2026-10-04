@@ -67,6 +67,6 @@ export function sanitizePageTools(value: unknown): PageTool[] | null {
 }
 
 export function pageToolResult(value: unknown): string {
-  const text = typeof value === 'string' ? value : JSON.stringify(value ?? null, null, 2);
+  const text = typeof value === 'string' ? value : JSON.stringify(value ?? null);
   return text.length > MAX_RESULT_CHARS ? `${text.slice(0, MAX_RESULT_CHARS)}…` : text;
 }
