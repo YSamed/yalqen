@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.14](https://github.com/YSamed/yalqen/compare/v0.3.13...v0.3.14) (2026-10-04)
+
+
+### Features
+
+* add collapsible AI panel rail and composer settings popover ([#172](https://github.com/YSamed/yalqen/issues/172)) ([f226cbf](https://github.com/YSamed/yalqen/commit/f226cbfb0bcd2ccbe07c93d2423b2d0255711e20))
+
 ## [0.3.13](https://github.com/YSamed/yalqen/compare/v0.3.12...v0.3.13) (2026-10-04)
 
 
