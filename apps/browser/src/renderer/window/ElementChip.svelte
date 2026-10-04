@@ -1,17 +1,31 @@
 <script lang="ts">
   import { t } from '../../shared/i18n';
+  import { displayHost } from '../../shared/hosts';
   import type { AgentElementRef } from '../../shared/types';
   import Icon from '../ui/Icon.svelte';
   import IconButton from '../ui/IconButton.svelte';
 
   let { element, onremove }: { element: AgentElementRef; onremove?: () => void } = $props();
 
-  const title = $derived([element.label, element.source ?? element.url].join('\n'));
+  const title = $derived(
+    [element.reference ? t('agentChat.reference') : null, element.label, element.source ?? element.url]
+      .filter(Boolean)
+      .join('\n'),
+  );
+  const name = $derived(
+    element.reference ? `${displayHost(element.url)} · ${element.label}` : (element.component ?? element.label),
+  );
 </script>
 
 <span class="chip">
-  <button type="button" class="chip-label" {title} onclick={() => void window.yalqen.highlightAgentElement(element.id)}>
-    <Icon name="code" size={12} /><span>{element.component ?? element.label}</span>
+  <button
+    type="button"
+    class="chip-label"
+    {title}
+    disabled={element.reference}
+    onclick={() => void window.yalqen.highlightAgentElement(element.id)}
+  >
+    <Icon name={element.reference ? 'image' : 'code'} size={12} /><span>{name}</span>
   </button>
   {#if onremove}
     <IconButton size="sm" icon="close" label={t('agentChat.removeElement')} onclick={onremove} />
@@ -43,6 +57,9 @@
     color: inherit;
     font: inherit;
     cursor: pointer;
+  }
+  .chip-label:disabled {
+    cursor: default;
   }
   .chip-label :global(svg) {
     flex: none;

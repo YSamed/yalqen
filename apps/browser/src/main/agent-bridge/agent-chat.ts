@@ -32,6 +32,7 @@ import type {
 import type { AgentConnection } from './agent-session.js';
 import { historyMessages, sessionOf } from './chat-history.js';
 import type { PageText } from './page-text.js';
+import { MAX_REFERENCES, referencePrompt, type ReferenceCapture } from './reference.js';
 import { findCommand } from './shell-command.js';
 import { READ_ONLY_TOOLS } from './tools.js';
 import { FILE_EDIT_TOOLS } from '../../shared/file-change.js';
@@ -205,7 +206,19 @@ function promptOf(
   elements: AgentElementRef[],
   episode: AgentEpisodePreview | null,
   page: PageText | null = null,
+  references: readonly ReferenceCapture[] = [],
 ): string {
+  return localPromptOf(text, context, elements, episode, page) + referencePrompt(references);
+}
+
+function localPromptOf(
+  text: string,
+  context: AgentChatContext | null,
+  elements: AgentElementRef[],
+  episode: AgentEpisodePreview | null,
+  page: PageText | null,
+): string {
+  const selected = elements.filter((element) => !element.reference);
   if (context?.local === false)
     return (
       text +
@@ -222,9 +235,9 @@ function promptOf(
     (context
       ? `\n\nYalqen browser context:\n${JSON.stringify({ tab_id: context.id, url: context.url, title: context.title })}`
       : '') +
-    (elements.length
+    (selected.length
       ? `\n\nYalqen selected elements (call get_selected_element with a selection_id for HTML, styles and a screenshot):\n${JSON.stringify(
-          elements.map(({ id: selectionId, url, label, component, source }) => ({
+          selected.map(({ id: selectionId, url, label, component, source }) => ({
             selection_id: selectionId,
             url,
             element: label,
@@ -248,7 +261,12 @@ export class AgentChat {
       settle(result: PermissionResult): void;
     }
   >();
-  private queue: { message: AgentChatMessage; images: AgentChatImage[]; page: PageText | null }[] = [];
+  private queue: {
+    message: AgentChatMessage;
+    images: AgentChatImage[];
+    page: PageText | null;
+    references: ReferenceCapture[];
+  }[] = [];
   private costBase = 0;
   private revertNote: string | null = null;
   private forkNext = false;
@@ -343,12 +361,18 @@ export class AgentChat {
     text: unknown,
     context: AgentChatContext | null = null,
     elements: AgentElementRef[] = [],
-    attachments: { episode?: AgentEpisodePreview | null; images?: unknown; page?: PageText | null } = {},
+    attachments: {
+      episode?: AgentEpisodePreview | null;
+      images?: unknown;
+      page?: PageText | null;
+      references?: ReferenceCapture[];
+    } = {},
   ): Promise<boolean> {
     if (this.disposed || id !== this.view.id || typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT)
       return false;
     const images = imagesOf(attachments.images);
     if (!images) return false;
+    const references = (attachments.references ?? []).slice(0, MAX_REFERENCES);
     const message: AgentChatMessage = {
       id: randomUUID(),
       role: 'user',
@@ -363,7 +387,7 @@ export class AgentChat {
     if (this.view.status === 'starting') return false;
     if (this.client && ['thinking', 'approval'].includes(this.view.status)) {
       if (this.queue.length >= MAX_QUEUE) return false;
-      this.queue.push({ message, images, page: attachments.page ?? null });
+      this.queue.push({ message, images, page: attachments.page ?? null, references });
       this.publish();
       return true;
     }
@@ -464,17 +488,23 @@ export class AgentChat {
         return false;
       }
     }
-    this.deliver(message, images, attachments.page ?? null);
+    this.deliver(message, images, attachments.page ?? null, references);
     return true;
   }
 
-  private deliver(message: AgentChatMessage, images: AgentChatImage[], page: PageText | null): void {
+  private deliver(
+    message: AgentChatMessage,
+    images: AgentChatImage[],
+    page: PageText | null,
+    references: ReferenceCapture[] = [],
+  ): void {
     const text = message.parts[0]?.type === 'text' ? message.parts[0].text : '';
     const prompt =
       (this.revertNote ?? '') +
-      promptOf(text, message.context, message.elements, message.episode, page) +
+      promptOf(text, message.context, message.elements, message.episode, page, references) +
       WORK_MODE_PROMPTS[message.workMode] +
       (this.view.replyLength === 'short' ? SHORT_REPLY_PROMPT : '');
+    const shots = references.map((reference) => reference.screenshot).filter((shot) => shot !== null);
     this.turnMode = message.workMode;
     this.revertNote = null;
     this.messages.push(message);
@@ -486,15 +516,20 @@ export class AgentChat {
       parent_tool_use_id: null,
       message: {
         role: 'user',
-        content: images.length
-          ? [
-              { type: 'text', text: prompt },
-              ...images.map((image) => ({
-                type: 'image' as const,
-                source: { type: 'base64' as const, media_type: image.mediaType, data: image.data },
-              })),
-            ]
-          : prompt,
+        content:
+          images.length || shots.length
+            ? [
+                { type: 'text', text: prompt },
+                ...images.map((image) => ({
+                  type: 'image' as const,
+                  source: { type: 'base64' as const, media_type: image.mediaType, data: image.data },
+                })),
+                ...shots.map((data) => ({
+                  type: 'image' as const,
+                  source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
+                })),
+              ]
+            : prompt,
       },
     });
     this.publish();
@@ -821,7 +856,7 @@ export class AgentChat {
             this.fail(this.view.error ?? 'request-failed');
           } else {
             const next = this.queue.shift();
-            if (next) this.deliver(next.message, next.images, next.page);
+            if (next) this.deliver(next.message, next.images, next.page, next.references);
             else this.setState({ ...this.view, status: 'ready', error: null });
           }
         }

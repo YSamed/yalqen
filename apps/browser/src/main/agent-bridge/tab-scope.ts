@@ -33,3 +33,25 @@ export function sanitizeAgentOrigins(values: readonly unknown[]): string[] {
   const origins = values.map((value) => (typeof value === 'string' ? normalizeOrigin(value) : null));
   return [...new Set(origins.filter((origin) => origin !== null))].slice(0, MAX_AGENT_ORIGINS);
 }
+
+export function originOf(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+// A project sees the tabs of origins it claimed. Until it claims one, it sees every tab no other
+// project in the window claimed, so a window with a single project works as before.
+export function projectIncludes(
+  claimed: ReadonlySet<string>,
+  claimedByOthers: readonly ReadonlySet<string>[],
+  url: string,
+): boolean {
+  const origin = originOf(url);
+  if (!origin) return false;
+  if (claimed.size > 0) return claimed.has(origin);
+  return !claimedByOthers.some((origins) => origins.has(origin));
+}

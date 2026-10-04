@@ -17,6 +17,7 @@ interface AgentBridgeOptions {
   enabled(): boolean;
   host: BridgeHost;
   token(): string;
+  scopedHost?(token: string): BridgeHost | null;
   version: string;
   onChange(): void;
   onTraces?(body: unknown): void;
@@ -115,6 +116,7 @@ export class AgentBridge {
           {
             host: this.options.host,
             token: () => this.options.token(),
+            scopedHost: (token) => this.options.scopedHost?.(token) ?? null,
             version: this.options.version,
             onTraces: this.options.onTraces && ((body) => this.options.onTraces?.(body)),
             onInitialize: (client) => {

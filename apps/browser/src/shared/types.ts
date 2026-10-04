@@ -129,6 +129,15 @@ export interface BrowserState {
   projectRun: ProjectRunState;
   agentElements: AgentElementRef[];
   agentTerminal: boolean;
+  agentProjects: AgentProjectSummary[];
+  agentProjectId: string;
+}
+
+export interface AgentProjectSummary {
+  id: string;
+  directory: string | null;
+  busy: boolean;
+  waiting: boolean;
 }
 
 export interface AgentTerminalSize {
@@ -271,6 +280,8 @@ export interface AgentElementRef {
   label: string;
   component: string | null;
   source: string | null;
+  // Picked on a site outside local development, as a design reference.
+  reference?: boolean;
 }
 
 export interface AgentChatMessage {
@@ -426,6 +437,9 @@ export const IpcChannel = {
   agentChatProvider: 'yalqen:agent-chat-provider',
   agentChatCancelQueued: 'yalqen:agent-chat-cancel-queued',
   agentChatUpdate: 'yalqen:agent-chat-update',
+  agentProjectAdd: 'yalqen:agent-project-add',
+  agentProjectSelect: 'yalqen:agent-project-select',
+  agentProjectClose: 'yalqen:agent-project-close',
   agentElementRemove: 'yalqen:agent-element-remove',
   agentElementHighlight: 'yalqen:agent-element-highlight',
   projectRunStart: 'yalqen:project-run-start',
@@ -479,6 +493,9 @@ export interface YalqenApi {
   openAgentChat(sessionId: string, fork: boolean): Promise<boolean>;
   searchAgentFiles(query: string): Promise<string[]>;
   selectAgentProvider(provider: AgentProviderId): Promise<boolean>;
+  newAgentProject(): Promise<boolean>;
+  selectAgentProject(id: string): Promise<boolean>;
+  closeAgentProject(id: string): Promise<boolean>;
   cancelQueuedAgentChat(sessionId: string, messageId: string): Promise<void>;
   onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
 }
