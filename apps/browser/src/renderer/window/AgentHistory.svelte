@@ -10,7 +10,9 @@
   let sessions: AgentChatSession[] = $state.raw([]);
   let loading = $state(true);
   let failed = $state(false);
+  let deleteFailed = $state(false);
   let opening = $state(false);
+  let confirming: string | null = $state(null);
   const relative = new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' });
   const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
     ['day', 86_400_000],
@@ -38,6 +40,20 @@
     }
   }
 
+  async function remove(session: AgentChatSession): Promise<void> {
+    opening = true;
+    deleteFailed = false;
+    try {
+      if (!(await window.yalqen.deleteAgentChat(session.id))) throw new Error('Unavailable');
+      sessions = sessions.filter((item) => item.id !== session.id);
+    } catch {
+      deleteFailed = true;
+    } finally {
+      confirming = null;
+      opening = false;
+    }
+  }
+
   onMount(() => {
     window.yalqen
       .listAgentChats()
@@ -53,6 +69,7 @@
     <IconButton icon="close" label={t('agentChat.closeHistory')} onclick={onclose} />
   </div>
   {#if failed}<p class="note warn" role="status">{t('agentChat.historyFailed')}</p>{/if}
+  {#if deleteFailed}<p class="note warn" role="status">{t('agentChat.deleteFailed')}</p>{/if}
   {#if loading}
     <p class="note">{t('agentChat.historyLoading')}</p>
   {:else if sessions.length === 0}
@@ -69,9 +86,22 @@
                 >{/if}
             </span>
           </button>
-          <Button disabled={opening} title={t('agentChat.forkTitle')} onclick={() => open(session, true)}
-            >{t('agentChat.fork')}</Button
-          >
+          {#if confirming === session.id}
+            <Button variant="danger" disabled={opening} onclick={() => remove(session)}
+              >{t('agentChat.deleteConfirm')}</Button
+            >
+          {:else}
+            <Button disabled={opening} title={t('agentChat.forkTitle')} onclick={() => open(session, true)}
+              >{t('agentChat.fork')}</Button
+            >
+          {/if}
+          <IconButton
+            icon={confirming === session.id ? 'close' : 'trash'}
+            tone="muted"
+            label={confirming === session.id ? t('agentChat.cancel') : t('agentChat.deleteTitle')}
+            disabled={opening}
+            onclick={() => (confirming = confirming === session.id ? null : session.id)}
+          />
         </li>
       {/each}
     </ul>

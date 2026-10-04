@@ -85,7 +85,10 @@ export type Client = {
   env?: NodeJS.ProcessEnv;
 };
 
-export type SessionStore = Pick<typeof import('@anthropic-ai/claude-agent-sdk'), 'listSessions' | 'getSessionMessages'>;
+export type SessionStore = Pick<
+  typeof import('@anthropic-ai/claude-agent-sdk'),
+  'listSessions' | 'getSessionMessages' | 'deleteSession'
+>;
 
 interface AgentChatOptions {
   connect(): Promise<AgentConnection>;
@@ -269,6 +272,7 @@ export class AgentChat {
   }[] = [];
   private costBase = 0;
   private modelsLoaded = false;
+  private modelsRequested = false;
   private revertNote: string | null = null;
   private forkNext = false;
   private turnMode: AgentWorkMode = 'normal';
@@ -625,6 +629,22 @@ export class AgentChat {
     }
   }
 
+  async delete(sessionId: unknown): Promise<boolean> {
+    const directory = this.view.directory;
+    const busy = ['starting', 'thinking', 'approval'].includes(this.view.status);
+    const current = sessionId === this.resumeId;
+    if (this.disposed || !directory || typeof sessionId !== 'string' || !/^[\w-]{1,100}$/.test(sessionId)) return false;
+    if (current && busy) return false;
+    try {
+      const { deleteSession } = await (this.options.loadSessions ?? loadSessions)();
+      await deleteSession(sessionId, { dir: directory });
+    } catch {
+      return false;
+    }
+    if (current && sessionId === this.resumeId) this.reset(this.view.id);
+    return true;
+  }
+
   async open(sessionId: unknown, fork: unknown): Promise<boolean> {
     const directory = this.view.directory;
     const busy = () => ['starting', 'thinking', 'approval'].includes(this.view.status);
@@ -671,6 +691,37 @@ export class AgentChat {
   private preferences(): AgentChatState {
     const { provider, replyLength, modelChoice, effort, permissionMode, models, commands } = this.view;
     return { ...EMPTY_AGENT_CHAT, provider, replyLength, modelChoice, effort, permissionMode, models, commands };
+  }
+
+  // Claude only lists its models inside a session, so a promptless one is opened just to read them
+  // before the first message; the picker would otherwise show the short fallback list.
+  async refreshModels(): Promise<void> {
+    if (this.view.provider !== 'claude' || this.modelsLoaded || this.modelsRequested || this.client) return;
+    this.modelsRequested = true;
+    let client: ChatQuery | null = null;
+    const input = new InputStream();
+    try {
+      const provider = await (this.options.loadClient ?? loadClient)();
+      if (this.disposed || this.modelsLoaded) return;
+      const env: NodeJS.ProcessEnv = { ...(provider.env ?? process.env) };
+      delete env.ELECTRON_RUN_AS_NODE;
+      delete env.ELECTRON_NO_ASAR;
+      delete env.CLAUDECODE;
+      client = provider.query({
+        prompt: input,
+        options: {
+          pathToClaudeCodeExecutable: provider.executable,
+          env,
+          settingSources: ['user'],
+          stderr: () => undefined,
+        },
+      });
+      await this.loadModels(client, this.generation);
+    } catch {
+    } finally {
+      input.close();
+      client?.close();
+    }
   }
 
   dispose(): void {

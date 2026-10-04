@@ -133,6 +133,21 @@ test('starts a persistent Claude conversation lazily with the installed CLI and 
   assert.equal((await client.input.next()).value.session_id, 'cli-id');
 });
 
+test('lists every Claude model before the first message and closes the promptless session', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.refreshModels();
+  assert.equal(calls.queries.length, 1);
+  const [client] = calls.queries;
+  assert.equal(client.closed, 1);
+  assert.equal(client.params.options.env.CLAUDECODE, undefined);
+  assert.deepEqual(
+    chat.state().models.map((model) => model.value),
+    ['default', 'haiku'],
+  );
+  await chat.refreshModels();
+  assert.equal(calls.queries.length, 1);
+});
+
 test('tells Claude which elements the user selected and keeps them on the message', async (t) => {
   const { chat, calls } = fixture(t);
   const elements = [
@@ -759,6 +774,33 @@ test('lists past conversations and resumes or forks one', async (t) => {
   await chat.send(chat.state().id, 'Again');
   assert.equal(calls.queries[1].params.options.forkSession, undefined);
   assert.equal(calls.queries[1].params.options.resume, 'old-1');
+});
+
+test('deletes a past conversation and clears it when it is the open one', async (t) => {
+  const deleted = [];
+  const { chat, directory } = fixture(t, {
+    loadSessions: async () => ({
+      listSessions: async () => [],
+      getSessionMessages: async () => [
+        { type: 'user', uuid: 'u1', message: { role: 'user', content: 'Fix login' }, parent_tool_use_id: null },
+      ],
+      deleteSession: async (sessionId, options) => {
+        if (sessionId === 'missing') throw new Error('Session not found');
+        deleted.push([sessionId, options.dir]);
+      },
+    }),
+  });
+  assert.equal(await chat.delete('../etc'), false);
+  assert.equal(await chat.delete('missing'), false);
+  assert.equal(await chat.open('old-1', false), true);
+  assert.equal(await chat.delete('other'), true);
+  assert.equal(chat.snapshot().messages.length, 1);
+  assert.equal(await chat.delete('old-1'), true);
+  assert.equal(chat.snapshot().messages.length, 0);
+  assert.deepEqual(deleted, [
+    ['other', directory],
+    ['old-1', directory],
+  ]);
 });
 
 test('does not open a past conversation while Claude is working', async (t) => {

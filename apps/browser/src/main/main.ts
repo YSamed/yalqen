@@ -538,6 +538,10 @@ function startBrowser(): void {
     (event, sessionId: unknown, fork: unknown) => agentSenderWindow(event)?.agentChat.open(sessionId, fork) ?? false,
   );
   ipcMain.handle(
+    IpcChannel.agentChatDelete,
+    (event, sessionId: unknown) => agentSenderWindow(event)?.agentChat.delete(sessionId) ?? false,
+  );
+  ipcMain.handle(
     IpcChannel.agentChatProvider,
     (event, provider: unknown) => agentSenderWindow(event)?.selectAgentProvider(provider) ?? false,
   );

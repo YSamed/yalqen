@@ -25,6 +25,8 @@
   import { FILE_EDIT_TOOLS } from '../../shared/file-change';
   import ElementChip from './ElementChip.svelte';
   import { modelName } from './format';
+  import ComposerSettings from './ComposerSettings.svelte';
+  import ProviderMark from './ProviderMark.svelte';
 
   let {
     open,
@@ -105,15 +107,40 @@
       label: snapshot.state.model
         ? `${t('agentChat.modelDefault')} · ${modelName(snapshot.state.model)}`
         : t('agentChat.modelDefault'),
+      short: snapshot.state.model ? modelName(snapshot.state.model) : t('agentChat.modelLabel'),
     },
     ...snapshot.state.models.filter((model) => model.value !== 'default'),
   ]);
+  const replyLengths = [
+    { value: 'short' as const, label: t('agentChat.replyShort'), short: t('agentChat.replyShortChip') },
+    { value: 'detailed' as const, label: t('agentChat.replyDetailed'), short: t('agentChat.replyDetailedChip') },
+  ];
   const efforts = $derived(
     snapshot.state.models.find((model) =>
       [snapshot.state.modelChoice ?? 'default', snapshot.state.model].includes(model.value),
     )?.efforts ?? [],
   );
   const usage = $derived(snapshot.state.usage);
+  const effortOptions = $derived([
+    { value: '', label: t('agentChat.effortDefault'), short: t('agentChat.effortAuto') },
+    ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
+  ]);
+  const settingsSummary = $derived(
+    [
+      snapshot.state.provider === 'claude' &&
+        snapshot.state.permissionMode !== 'default' &&
+        chipOf(modes, snapshot.state.permissionMode),
+      snapshot.state.workMode !== 'normal' && workModeLabels[snapshot.state.workMode],
+      models.length > 1 ? chipOf(models, snapshot.state.modelChoice ?? '') : t('agentChat.settings'),
+    ]
+      .filter(Boolean)
+      .join(' · '),
+  );
+
+  function chipOf<T>(options: readonly { value: T; label: string; short?: string }[], value: T): string {
+    const option = options.find((item) => item.value === value);
+    return option ? (option.short ?? option.label) : '';
+  }
   const trigger = $derived(findTrigger(draft, caret));
   const agentName = $derived(AGENT_NAMES[snapshot.state.provider]);
   const attachable = $derived(activeTab && !activeTab.isPrivate && /^https?:/.test(activeTab.url) ? activeTab : null);
@@ -453,11 +480,12 @@
   >
     {#if snapshot.messages.length === 0}
       <div class="welcome">
+        <span class="welcome-mark"><ProviderMark mark={snapshot.state.provider} activity="idle" /></span>
         <h2>{t('agentChat.welcome')}</h2>
         <p class="intro">{t('agentChat.intro')}</p>
         {#if !directory}
           <Button variant="primary" icon="folder" onclick={onchoose}>{t('agentPanel.chooseProject')}</Button>
-          <p class="intro">{t('agentChat.noProjectHint')}</p>
+          <p class="hint">{t('agentChat.noProjectHint')}</p>
         {:else}
           <div class="suggestions">
             {#each prompts as prompt (prompt.title)}
@@ -651,7 +679,7 @@
     }}
     ondrop={dropImages}
   >
-    <div class="composer-box">
+    <div class="composer-box" style:anchor-name="--composer-box">
       {#if snapshot.queue.length}
         <ol class="queue" aria-label={t('agentChat.queued')}>
           {#each snapshot.queue as message (message.id)}
@@ -761,18 +789,19 @@
           disabled={images.length >= MAX_IMAGES}
           onclick={() => fileInput?.click()}
         />
-        {#if snapshot.state.provider === 'claude'}
-          <Select
-            variant="ghost"
-            placement="up"
-            aria-label={t('agentChat.modeLabel')}
-            title={t('agentChat.modeLabel')}
-            value={snapshot.state.permissionMode}
-            options={modes}
-            onchange={(permissionMode) => configure({ permissionMode })}
-          />
-        {/if}
+        {@render settings()}
         <span class="spacer"></span>
+        {#if usage}
+          <span class="usage">
+            {#if usage.contextTokens !== null && usage.contextLimit}<span
+                title={t('agentChat.context', {
+                  used: numbers.format(usage.contextTokens),
+                  limit: numbers.format(usage.contextLimit),
+                })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
+              >{/if}
+            <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
+          </span>
+        {/if}
         {#if busy && !draft.trim()}<IconButton
             class="send-button"
             icon="stop"
@@ -793,67 +822,58 @@
           />{/if}
       </div>
     </div>
-    <div class="composer-meta">
-      <Select
-        variant="ghost"
-        placement="up"
-        aria-label={t('agentChat.workMode')}
-        title={t(`agentChat.workHint.${snapshot.state.workMode}`)}
-        value={snapshot.state.workMode}
-        options={workModes}
-        onchange={(workMode) => configure({ workMode })}
-      />
-      <Select
-        variant="ghost"
-        placement="up"
-        aria-label={t('agentChat.replyLength')}
-        title={t(snapshot.state.replyLength === 'short' ? 'agentChat.replyShortHint' : 'agentChat.replyDetailedHint')}
-        value={snapshot.state.replyLength}
-        options={[
-          { value: 'short', label: t('agentChat.replyShort') },
-          { value: 'detailed', label: t('agentChat.replyDetailed') },
-        ]}
-        onchange={(replyLength) => configure({ replyLength })}
-      />
-      {#if models.length > 1}
-        <Select
-          variant="ghost"
-          placement="up"
-          aria-label={t('agentChat.modelLabel')}
-          title={snapshot.state.model ?? t('agentChat.modelLabel')}
-          value={snapshot.state.modelChoice ?? ''}
-          options={models}
-          onchange={(model) => configure({ model: model || null })}
-        />
-      {/if}
-      {#if efforts.length}
-        <Select
-          variant="ghost"
-          placement="up"
-          aria-label={t('agentChat.effortLabel')}
-          title={t('agentChat.effortLabel')}
-          value={snapshot.state.effort ?? ''}
-          options={[
-            { value: '', label: t('agentChat.effortDefault') },
-            ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
-          ]}
-          onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
-        />
-      {/if}
-      {#if usage}
-        <span class="usage">
-          {#if usage.contextTokens !== null && usage.contextLimit}<span
-              title={t('agentChat.context', {
-                used: numbers.format(usage.contextTokens),
-                limit: numbers.format(usage.contextLimit),
-              })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
-            >{/if}
-          <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
-        </span>
-      {/if}
-    </div>
   </form>
 </div>
+
+{#snippet settings()}
+  <ComposerSettings label={t('agentChat.settings')} summary={settingsSummary} area="--composer-box">
+    {#if snapshot.state.provider === 'claude'}
+      <span class="setting-label">{t('agentChat.modeLabel')}</span>
+      <Select
+        aria-label={t('agentChat.modeLabel')}
+        value={snapshot.state.permissionMode}
+        options={modes}
+        onchange={(permissionMode) => configure({ permissionMode })}
+      />
+    {/if}
+    <span class="setting-label">{t('agentChat.workMode')}</span>
+    <Select
+      aria-label={t('agentChat.workMode')}
+      title={t(`agentChat.workHint.${snapshot.state.workMode}`)}
+      value={snapshot.state.workMode}
+      options={workModes}
+      onchange={(workMode) => configure({ workMode })}
+    />
+    <span class="setting-label">{t('agentChat.replyLength')}</span>
+    <Select
+      aria-label={t('agentChat.replyLength')}
+      title={t(snapshot.state.replyLength === 'short' ? 'agentChat.replyShortHint' : 'agentChat.replyDetailedHint')}
+      value={snapshot.state.replyLength}
+      options={replyLengths}
+      onchange={(replyLength) => configure({ replyLength })}
+    />
+    {#if models.length > 1}
+      <span class="setting-label">{t('agentChat.modelLabel')}</span>
+      <Select
+        aria-label={t('agentChat.modelLabel')}
+        title={snapshot.state.model ?? t('agentChat.modelLabel')}
+        value={snapshot.state.modelChoice ?? ''}
+        options={models}
+        onchange={(model) => configure({ model: model || null })}
+      />
+    {/if}
+    {#if efforts.length}
+      <span class="setting-label">{t('agentChat.effortLabel')}</span>
+      <Select
+        aria-label={t('agentChat.effortLabel')}
+        title={t('agentChat.effortLabel')}
+        value={snapshot.state.effort ?? ''}
+        options={effortOptions}
+        onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
+      />
+    {/if}
+  </ComposerSettings>
+{/snippet}
 
 <style>
   .chat {
@@ -872,7 +892,31 @@
     scrollbar-color: var(--border) transparent;
   }
   .welcome {
-    padding: 28px 0 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 100%;
+    padding: 16px 0 32px;
+  }
+  .welcome-mark {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    margin: 0 0 14px -2px;
+  }
+  .welcome-mark :global(.glyph) {
+    width: 28px;
+    height: 28px;
+    opacity: 1;
+  }
+  .hint {
+    max-width: 320px;
+    margin: 14px 0 0;
+    color: var(--text-muted);
+    font-size: var(--ai-small);
+    line-height: 1.5;
+    opacity: 0.8;
   }
   h2 {
     margin: 0;
@@ -1188,22 +1232,18 @@
   .composer-controls :global(.send-button) {
     flex: none;
   }
+  .composer-controls :global(.send-button.accent:disabled) {
+    background-color: var(--surface-hover);
+    color: var(--text-muted);
+    opacity: 1;
+  }
   .spacer {
     flex: 1;
   }
-  .composer-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0 2px;
-    min-height: var(--control-md);
-    margin: 4px -2px 0;
-  }
   .usage {
     display: flex;
-    gap: 10px;
-    margin-left: auto;
-    padding: 0 6px;
+    gap: 8px;
+    padding: 0 4px;
     color: var(--text-muted);
     font-size: var(--ai-meta);
     font-variant-numeric: tabular-nums;
