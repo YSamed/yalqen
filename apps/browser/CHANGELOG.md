@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.7](https://github.com/YSamed/yalqen/compare/v0.3.6...v0.3.7) (2026-10-04)
+
+
+### Features
+
+* add agent chat controls, fix with claude flow and image attachments ([#156](https://github.com/YSamed/yalqen/issues/156)) ([8726ca9](https://github.com/YSamed/yalqen/commit/8726ca9a1512690e15361c3d88f05da68d1d53e7))
+
 ## [0.3.6](https://github.com/YSamed/yalqen/compare/v0.3.5...v0.3.6) (2026-10-04)
 
 
