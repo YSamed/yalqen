@@ -1,6 +1,6 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { checkRequest } from './auth.js';
+import { bearer, checkSource, tokenMatches } from './auth.js';
 import { callTool, TOOLS, type BridgeHost } from './tools.js';
 import { TRACES_PATH } from './tracing.js';
 
@@ -36,6 +36,8 @@ export interface ClientInfo {
 interface BridgeServerOptions {
   host: BridgeHost;
   token: () => string;
+  // Agents Yalqen starts in a window get their own token, which limits them to that window's tabs.
+  scopedHost?: (token: string) => BridgeHost | null;
   version: string;
   onInitialize?: (client: ClientInfo | null) => void;
   onRejectedToken?: () => void;
@@ -60,7 +62,11 @@ function isRequest(value: unknown): value is JsonRpcRequest {
   );
 }
 
-async function handleMessage(message: JsonRpcRequest, options: BridgeServerOptions): Promise<JsonRpcResponse | null> {
+async function handleMessage(
+  message: JsonRpcRequest,
+  options: BridgeServerOptions,
+  host: BridgeHost,
+): Promise<JsonRpcResponse | null> {
   const { id, method, params = {} } = message;
   if (id === undefined) return null;
   switch (method) {
@@ -86,7 +92,7 @@ async function handleMessage(message: JsonRpcRequest, options: BridgeServerOptio
       const name = typeof params.name === 'string' ? params.name : '';
       if (!TOOLS.some((tool) => tool.name === name)) return rpcError(id, -32602, `Unknown tool: ${name}`);
       options.onToolCall?.(name);
-      return { jsonrpc: '2.0', id, result: await callTool(options.host, name, params.arguments) };
+      return { jsonrpc: '2.0', id, result: await callTool(host, name, params.arguments) };
     }
     default:
       return rpcError(id, -32601, `Method not found: ${method}`);
@@ -148,18 +154,24 @@ async function receiveTraces(
   send(res, 200, { partialSuccess: {} });
 }
 
+function hostFor(options: BridgeServerOptions, token: string): BridgeHost | null {
+  if (tokenMatches(token, options.token())) return options.host;
+  return token ? (options.scopedHost?.(token) ?? null) : null;
+}
+
 function createRequestHandler(options: BridgeServerOptions, port: () => number): http.RequestListener {
   return async (req, res) => {
-    const rejection = checkRequest(req.headers, port(), options.token());
-    if (rejection === 'token') {
+    const rejection = checkSource(req.headers, port());
+    if (rejection) {
+      send(res, 403, { error: 'forbidden' });
+      return;
+    }
+    const host = hostFor(options, bearer(req.headers.authorization));
+    if (!host) {
       // A request without a token is a client probing for auth; one with a wrong token holds an old one.
       if (req.headers.authorization) options.onRejectedToken?.();
       res.setHeader('WWW-Authenticate', 'Bearer');
       send(res, 401, { error: 'unauthorized' });
-      return;
-    }
-    if (rejection) {
-      send(res, 403, { error: 'forbidden' });
       return;
     }
     const pathname = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
@@ -200,7 +212,7 @@ function createRequestHandler(options: BridgeServerOptions, port: () => number):
       else send(res, 400, rpcError(null, -32600, 'Invalid request'));
       return;
     }
-    const response = await handleMessage(message, options);
+    const response = await handleMessage(message, options, host);
     if (response) send(res, 200, response);
     else send(res, 202);
   };

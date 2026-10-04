@@ -16,8 +16,11 @@ import {
 import { AdBlocker } from './privacy/adblock.js';
 import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
+import type { BridgeHost } from './agent-bridge/tools.js';
+import type { AgentProject } from './window/agent-project.js';
 import { addToClaudeCode } from './agent-bridge/claude-setup.js';
 import { ActionRunner } from './agent-bridge/action-runner.js';
+import { generateToken, tokenMatches } from './agent-bridge/auth.js';
 import { createElectronHost } from './agent-bridge/electron-host.js';
 import { isInScope } from './agent-bridge/tab-scope.js';
 import { parseOtlpTraces } from './agent-bridge/tracing.js';
@@ -192,6 +195,20 @@ function startBrowser(): void {
 
   const agentTokens = new AgentTokenStore(userData, safeStorageCipher);
   const focusedFirst = () => (current ? [current, ...windows.filter((window) => window !== current)] : windows);
+  const projectAgents = new Map<AgentProject, { token: string; host: BridgeHost }>();
+  const projectAgent = (window: YalqenWindow, project: AgentProject) => {
+    let agent = projectAgents.get(project);
+    if (!agent) {
+      const host = createElectronHost(
+        () => [window.tabs],
+        agentActions,
+        (url) => window.projectIncludes(project, url),
+      );
+      agent = { token: generateToken(), host };
+      projectAgents.set(project, agent);
+    }
+    return agent;
+  };
   const agentActions = new ActionRunner({
     policy: () => settings.get().agentActions,
     windows: () => focusedFirst().map((window) => window.agentActionWindow()),
@@ -201,6 +218,7 @@ function startBrowser(): void {
     enabled: () => settings.get().agentBridge,
     host: createElectronHost(() => focusedFirst().map((window) => window.tabs), agentActions),
     token: () => agentTokens.get(),
+    scopedHost: (token) => [...projectAgents.values()].find((agent) => tokenMatches(token, agent.token))?.host ?? null,
     version: app.getVersion(),
     onChange: () => {
       eachWindow((window) => window.tabs.syncAgent());
@@ -384,12 +402,13 @@ function startBrowser(): void {
     },
     agentScope: (url, privateBrowsing) =>
       agentBridge.port !== null && isInScope({ url, isPrivate: privateBrowsing }, settings.get().agentOrigins),
-    agentConnection: async () => {
+    agentConnection: async (window, project) => {
       if (!settings.get().agentBridge) updateSettings({ agentBridge: true });
       await agentBridge.sync();
       if (agentBridge.port === null) throw new Error('Agent connection unavailable');
-      return { url: mcpUrl(agentBridge.port), token: agentTokens.get() };
+      return { url: mcpUrl(agentBridge.port), token: projectAgent(window, project).token };
     },
+    releaseAgentConnection: (project) => projectAgents.delete(project),
     onWindowClosed: (window) => {
       const index = windows.indexOf(window);
       if (index >= 0) windows.splice(index, 1);
@@ -518,6 +537,15 @@ function startBrowser(): void {
   ipcMain.handle(
     IpcChannel.agentChatProvider,
     (event, provider: unknown) => agentSenderWindow(event)?.selectAgentProvider(provider) ?? false,
+  );
+  ipcMain.handle(IpcChannel.agentProjectAdd, (event) => agentSenderWindow(event)?.newAgentProject() ?? false);
+  ipcMain.handle(
+    IpcChannel.agentProjectSelect,
+    (event, id: unknown) => agentSenderWindow(event)?.selectAgentProject(id) ?? false,
+  );
+  ipcMain.handle(
+    IpcChannel.agentProjectClose,
+    (event, id: unknown) => agentSenderWindow(event)?.closeAgentProject(id) ?? false,
   );
   ipcMain.handle(
     IpcChannel.agentChatFiles,

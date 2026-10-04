@@ -60,6 +60,8 @@
     projectRun: { ...EMPTY_PROJECT_RUN },
     agentElements: [],
     agentTerminal: false,
+    agentProjects: [],
+    agentProjectId: '',
   });
   let stateReceived = $state(false);
   let windowWidth = $state(window.innerWidth);
@@ -338,6 +340,8 @@
         run={browser.projectRun}
         elements={browser.agentElements}
         terminal={browser.agentTerminal}
+        projects={browser.agentProjects}
+        projectId={browser.agentProjectId}
         {activeTab}
         width={agentWidth}
         onresize={resizeAgentPanel}

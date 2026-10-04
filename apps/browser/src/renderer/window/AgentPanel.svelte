@@ -3,6 +3,7 @@
   import type {
     AgentChatState,
     AgentElementRef,
+    AgentProjectSummary,
     AgentProviderId,
     AgentSessionState,
     ProjectRunState,
@@ -16,6 +17,7 @@
   import Select from '../ui/Select.svelte';
   import AgentChat from './AgentChat.svelte';
   import AgentHistory from './AgentHistory.svelte';
+  import AgentProjects from './AgentProjects.svelte';
 
   let {
     open,
@@ -26,6 +28,8 @@
     run,
     elements,
     terminal,
+    projects,
+    projectId,
     width,
     onresize,
   }: {
@@ -37,6 +41,8 @@
     run: ProjectRunState;
     elements: AgentElementRef[];
     terminal: boolean;
+    projects: AgentProjectSummary[];
+    projectId: string;
     width: number;
     onresize(width: number): void;
   } = $props();
@@ -146,6 +152,11 @@
       void import('./AgentTerminal.svelte').then((module) => (TerminalView = module.default)).catch(() => undefined);
   });
 
+  $effect(() => {
+    void projectId;
+    historyOpen = false;
+  });
+
   onMount(() => {
     try {
       if (localStorage.getItem('yalqen-agent-view') === 'terminal') preferredView = 'terminal';
@@ -213,6 +224,7 @@
       />
     </div>
   </header>
+  {#if projects.length > 1 || session.directory}<AgentProjects {projects} activeId={projectId} />{/if}
   {#if session.directory || terminal}
     <div class="bar">
       {#if session.directory}<Button
@@ -270,22 +282,24 @@
   {#if historyOpen && view === 'chat'}
     <div class="panel-view"><AgentHistory onclose={() => (historyOpen = false)} /></div>
   {/if}
-  <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat' || historyOpen}>
-    <AgentChat
-      open={open && view === 'chat' && !historyOpen}
-      directory={session.directory}
-      {activeTab}
-      {elements}
-      onchoose={() => void chooseProject()}
-    />
-  </div>
-  {#if terminal}
-    <div class="panel-view" id="agent-terminal" hidden={view !== 'terminal'}>
-      {#if TerminalView}
-        <TerminalView open={open && view === 'terminal'} {session} {activeTab} onchoose={chooseProject} />
-      {/if}
+  {#key projectId}
+    <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat' || historyOpen}>
+      <AgentChat
+        open={open && view === 'chat' && !historyOpen}
+        directory={session.directory}
+        {activeTab}
+        {elements}
+        onchoose={() => void chooseProject()}
+      />
     </div>
-  {/if}
+    {#if terminal}
+      <div class="panel-view" id="agent-terminal" hidden={view !== 'terminal'}>
+        {#if TerminalView}
+          <TerminalView open={open && view === 'terminal'} {session} {activeTab} onchoose={chooseProject} />
+        {/if}
+      </div>
+    {/if}
+  {/key}
 </section>
 
 <style>

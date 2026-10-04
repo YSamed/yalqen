@@ -40,3 +40,17 @@ test('normalizeOrigin keeps only http and https origins', () => {
   assert.equal(normalizeOrigin('ftp://host/'), null);
   assert.equal(normalizeOrigin('not a url'), null);
 });
+
+test('a project sees the origins it claimed, or everything unclaimed until it claims one', () => {
+  const { projectIncludes, originOf } = tabScope;
+  const shop = new Set(['http://localhost:3000']);
+  const none = new Set();
+  assert.equal(originOf('http://localhost:3000/cart?x=1'), 'http://localhost:3000');
+  assert.equal(originOf('file:///tmp/a.html'), null);
+  assert.equal(projectIncludes(shop, [none], 'http://localhost:3000/cart'), true);
+  assert.equal(projectIncludes(shop, [none], 'http://localhost:5173/'), false);
+  assert.equal(projectIncludes(none, [shop], 'http://localhost:3000/'), false);
+  assert.equal(projectIncludes(none, [shop], 'http://localhost:5173/'), true);
+  assert.equal(projectIncludes(none, [], 'http://localhost:3000/'), true);
+  assert.equal(projectIncludes(none, [], 'not a url'), false);
+});

@@ -10,8 +10,22 @@ const TOKEN = 'test-token';
 let server;
 let url;
 
+const WINDOW_TOKEN = 'window-token';
+const windowHost = {
+  ...fakeHost(),
+  tabs: () => [{ id: 't9', url: 'http://localhost:4000/', title: 'Docs', active: true }],
+};
+
 before(async () => {
-  server = await startBridgeServer({ host: fakeHost(), token: () => TOKEN, version: '0.0.0' }, 0);
+  server = await startBridgeServer(
+    {
+      host: fakeHost(),
+      token: () => TOKEN,
+      scopedHost: (token) => (token === WINDOW_TOKEN ? windowHost : null),
+      version: '0.0.0',
+    },
+    0,
+  );
   url = `http://127.0.0.1:${server.port}/mcp`;
 });
 
@@ -40,6 +54,21 @@ test('the official MCP client connects, lists tools and calls one', async () => 
 test('requests without the token are refused', async () => {
   const response = await post({ jsonrpc: '2.0', id: 1, method: 'ping' }, { Authorization: 'Bearer nope' });
   assert.equal(response.status, 401);
+});
+
+test('a window token sees only its window and the shared token sees every window', async () => {
+  const listTabs = { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_tabs', arguments: {} } };
+  const scoped = await (await post(listTabs, { Authorization: `Bearer ${WINDOW_TOKEN}` })).json();
+  assert.deepEqual(
+    JSON.parse(scoped.result.content[0].text).map((tab) => tab.id),
+    ['t9'],
+  );
+  const shared = await (await post(listTabs)).json();
+  assert.deepEqual(
+    JSON.parse(shared.result.content[0].text).map((tab) => tab.id),
+    ['t1', 't2'],
+  );
+  assert.equal((await post(listTabs, { Authorization: 'Bearer ' })).status, 401);
 });
 
 test('requests from a web page are refused', async () => {

@@ -27,7 +27,7 @@ import {
 import { withoutHash } from '../address-bar/url.js';
 import { REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import { resizeEmulation, rotateEmulation, scaleEmulation, type Emulation } from '../devtools/devices.js';
-import { captureFullPage } from '../devtools/page-debugger.js';
+import { attachDebugger, captureFullPage } from '../devtools/page-debugger.js';
 import { canViewSource } from '../devtools/page-export.js';
 import { NO_OVERRIDES, hasOverrides } from '../devtools/page-overrides.js';
 import type { HeaderValue, PausedRequest } from '../devtools/request-rules.js';
@@ -48,7 +48,9 @@ import { captureHistory, createTab, liveContents, savedTab, type RecentPage, typ
 import { TabFreezer } from './tab-freezer.js';
 import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger, rulesFor } from './tab-overrides.js';
 import { observeTab, unobserveTab } from './tab-agent.js';
-import { captureSelection, highlightSelector, startPicking, type PickSession } from './tab-picker.js';
+import { captureReference, captureSelection, highlightSelector, startPicking, type PickSession } from './tab-picker.js';
+import type { ReferenceCapture } from '../agent-bridge/reference.js';
+import { isDevelopmentHost } from '../../shared/hosts.js';
 import type { ElementSelection } from '../agent-bridge/selection.js';
 import { episodePreview } from '../agent-bridge/timeline.js';
 import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } from '../agent-bridge/page-text.js';
@@ -111,7 +113,9 @@ interface TabManagerOptions {
 export type DetachedTab = Tab;
 
 type PickOutcome =
-  { status: 'picked'; selection: ElementSelection } | { status: 'cancelled' | 'failed' | 'agent-off' | 'not-local' };
+  | { status: 'picked'; selection: ElementSelection }
+  | { status: 'referenced'; tabId: TabId; reference: ReferenceCapture }
+  | { status: 'cancelled' | 'failed' | 'agent-off' | 'not-local' };
 
 export class TabManager {
   private readonly tabs: Tab[] = [];
@@ -652,7 +656,10 @@ export class TabManager {
     const tab = this.active();
     const contents = liveContents(tab);
     if (!tab || !contents) return { status: 'cancelled' };
-    if (!tab.agent) return { status: agentOn ? 'not-local' : 'agent-off' };
+    if (!tab.agent) {
+      if (!agentOn && isDevelopmentUrl(tab.url)) return { status: 'agent-off' };
+      return this.pickReference(tab, contents);
+    }
     this.picking?.cancel();
     const session = startPicking(contents);
     this.picking = session;
@@ -668,6 +675,33 @@ export class TabManager {
     } catch (error) {
       console.warn(`[picker] could not read the element: ${(error as Error).message}`);
       return { status: 'failed' };
+    }
+  }
+
+  // Pages outside local development are read once, when the user picks a part of them; the agent gets
+  // no access to the tab itself.
+  private async pickReference(tab: Tab, contents: WebContents): Promise<PickOutcome> {
+    if (tab.isPrivate || !/^https?:/.test(tab.url)) return { status: 'not-local' };
+    this.picking?.cancel();
+    try {
+      attachDebugger(contents);
+    } catch {
+      return { status: 'failed' };
+    }
+    const session = startPicking(contents);
+    this.picking = session;
+    contents.focus();
+    try {
+      const backendNodeId = await session.result;
+      if (backendNodeId === null || contents.isDestroyed()) return { status: 'cancelled' };
+      const reference = await captureReference(contents, backendNodeId, { url: tab.url, title: tab.title });
+      return { status: 'referenced', tabId: tab.id, reference };
+    } catch (error) {
+      console.warn(`[picker] could not read the reference: ${(error as Error).message}`);
+      return { status: 'failed' };
+    } finally {
+      if (this.picking === session) this.picking = null;
+      if (!contents.isDestroyed()) releaseDebugger(tab, contents);
     }
   }
 
@@ -1344,6 +1378,14 @@ export class TabManager {
 function isSameOrigin(url: string, pageUrl: string): boolean {
   try {
     return new URL(url).origin === new URL(pageUrl).origin;
+  } catch {
+    return false;
+  }
+}
+
+function isDevelopmentUrl(url: string): boolean {
+  try {
+    return isDevelopmentHost(new URL(url).hostname);
   } catch {
     return false;
   }

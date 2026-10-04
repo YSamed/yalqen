@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import auth from '../../../dist/main/agent-bridge/auth.js';
 
-const { checkRequest, generateToken, tokenMatches } = auth;
+const { checkRequest, checkSource, generateToken, tokenMatches } = auth;
 const PORT = 47823;
 const TOKEN = 'secret-token';
 const ok = { host: `127.0.0.1:${PORT}`, authorization: `Bearer ${TOKEN}` };
@@ -36,4 +36,10 @@ test('tokens are random, url-safe and 32 bytes', () => {
   assert.notEqual(a, generateToken());
   assert.equal(tokenMatches(a, a), true);
   assert.equal(tokenMatches(`${a}x`, a), false);
+});
+
+test('the source check ignores the token', () => {
+  assert.equal(checkSource({ host: ok.host }, PORT), null);
+  assert.equal(checkSource({ ...ok, origin: 'http://localhost:3000' }, PORT), 'origin');
+  assert.equal(checkSource({ ...ok, host: `evil.example:${PORT}` }, PORT), 'host');
 });

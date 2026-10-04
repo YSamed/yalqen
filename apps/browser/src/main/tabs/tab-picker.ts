@@ -16,6 +16,15 @@ import {
   type Box,
   type ElementSelection,
 } from '../agent-bridge/selection.js';
+import {
+  DESCRIBE_REFERENCE,
+  EMPTY_DESIGN,
+  REFERENCE_HTML_LIMIT,
+  newReferenceId,
+  referenceStyles,
+  type ReferenceCapture,
+  type ReferenceDesign,
+} from '../agent-bridge/reference.js';
 
 const MAX_SHOT_SIDE = 2000;
 // Resolving a React 19 location fetches the dev server's source map, which can be slow on big apps.
@@ -132,7 +141,11 @@ export async function highlightSelector(contents: WebContents, selector: string)
   }
 }
 
-async function computedStyles(send: Send, backendNodeId: number): Promise<Record<string, string>> {
+async function computedStyles(
+  send: Send,
+  backendNodeId: number,
+  pick: (computed: { name: string; value: string }[]) => Record<string, string> = layoutStyles,
+): Promise<Record<string, string>> {
   await send('DOM.getDocument', { depth: 0 });
   const { nodeIds } = (await send('DOM.pushNodesByBackendIdsToFrontend', { backendNodeIds: [backendNodeId] })) as {
     nodeIds: number[];
@@ -141,7 +154,7 @@ async function computedStyles(send: Send, backendNodeId: number): Promise<Record
   const { computedStyle } = (await send('CSS.getComputedStyleForNode', { nodeId: nodeIds[0] })) as {
     computedStyle: { name: string; value: string }[];
   };
-  return layoutStyles(computedStyle);
+  return pick(computedStyle);
 }
 
 async function accessibleName(
@@ -155,18 +168,27 @@ async function accessibleName(
   return { role: node?.role?.value ?? null, name: node?.name?.value || null };
 }
 
-async function describeInPage(send: Send, backendNodeId: number) {
+async function callOnNode<T>(send: Send, backendNodeId: number, functionDeclaration: string): Promise<T | undefined> {
   const { object } = (await send('DOM.resolveNode', { backendNodeId })) as { object: { objectId: string } };
   try {
     const { result } = (await send('Runtime.callFunctionOn', {
       objectId: object.objectId,
-      functionDeclaration: DESCRIBE_NODE,
+      functionDeclaration,
       returnByValue: true,
-    })) as { result: { value?: { text: string; selector: string; ancestors: string[] } } };
-    return result.value ?? { text: '', selector: '', ancestors: [] };
+    })) as { result: { value?: T } };
+    return result.value;
   } finally {
     await send('Runtime.releaseObject', { objectId: object.objectId }).catch(() => undefined);
   }
+}
+
+async function describeInPage(send: Send, backendNodeId: number) {
+  const value = await callOnNode<{ text: string; selector: string; ancestors: string[] }>(
+    send,
+    backendNodeId,
+    DESCRIBE_NODE,
+  );
+  return value ?? { text: '', selector: '', ancestors: [] };
 }
 
 let componentInspector: string | null = null;
@@ -250,6 +272,78 @@ async function elementShot(send: Send, box: Box | null): Promise<string | null> 
 }
 
 const optional = <T>(promise: Promise<T>, fallback: T) => promise.catch(() => fallback);
+
+const REFERENCE_SHOT_WIDTH = 1280;
+const REFERENCE_SHOT_HEIGHT = 2400;
+
+// JPEG and at most 1280 CSS pixels wide: a section of a marketing page is often several screens tall.
+async function referenceShot(send: Send, box: Box | null): Promise<string | null> {
+  if (!box || box.width < 1 || box.height < 1) return null;
+  const { cssVisualViewport } = (await send('Page.getLayoutMetrics')) as {
+    cssVisualViewport: { pageX: number; pageY: number };
+  };
+  const { data } = (await send('Page.captureScreenshot', {
+    format: 'jpeg',
+    quality: 80,
+    captureBeyondViewport: true,
+    clip: {
+      x: box.x + cssVisualViewport.pageX,
+      y: box.y + cssVisualViewport.pageY,
+      width: box.width,
+      height: Math.min(box.height, REFERENCE_SHOT_HEIGHT),
+      scale: Math.min(1, REFERENCE_SHOT_WIDTH / box.width),
+    },
+  })) as { data: string };
+  return data;
+}
+
+interface DescribedReference {
+  design: ReferenceDesign;
+  outline: string;
+  html: string;
+}
+
+export async function captureReference(
+  contents: WebContents,
+  backendNodeId: number,
+  page: { url: string; title: string },
+): Promise<ReferenceCapture> {
+  const send: Send = (method, params) => contents.debugger.sendCommand(method, params);
+  try {
+    const { node } = (await send('DOM.describeNode', { backendNodeId })) as {
+      node: { localName: string; nodeName: string; attributes?: string[] };
+    };
+    const { model } = (await optional(send('DOM.getBoxModel', { backendNodeId }), { model: null })) as {
+      model: { border: number[] } | null;
+    };
+    const box = boxFromQuad(model?.border);
+    const [described, styles, details, screenshot] = await Promise.all([
+      optional(describeInPage(send, backendNodeId), { text: '', selector: '', ancestors: [] }),
+      optional(computedStyles(send, backendNodeId, referenceStyles), {}),
+      optional(callOnNode<DescribedReference>(send, backendNodeId, DESCRIBE_REFERENCE), undefined),
+      optional(referenceShot(send, box), null),
+    ]);
+    const tag = node.localName || node.nodeName.toLowerCase();
+    return {
+      id: newReferenceId(),
+      url: page.url,
+      title: page.title,
+      label: elementLabel(tag, attributeMap(node.attributes), described.text),
+      tag,
+      selector: described.selector,
+      box,
+      styles,
+      design: details?.design ?? EMPTY_DESIGN,
+      outline: details?.outline ?? '',
+      html: truncateBytes(details?.html ?? '', REFERENCE_HTML_LIMIT),
+      screenshot,
+    };
+  } finally {
+    for (const method of ['CSS.disable', 'Overlay.disable', 'DOM.disable']) {
+      await send(method).catch(() => undefined);
+    }
+  }
+}
 
 export async function captureSelection(
   contents: WebContents,

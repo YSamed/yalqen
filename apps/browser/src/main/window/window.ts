@@ -76,18 +76,21 @@ import { TabManager, type DetachedTab } from '../tabs/tabs.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
-import { AgentSession, type AgentConnection } from '../agent-bridge/agent-session.js';
-import { AgentChat } from '../agent-bridge/agent-chat.js';
+import type { AgentSession, AgentConnection } from '../agent-bridge/agent-session.js';
+import type { AgentChat } from '../agent-bridge/agent-chat.js';
 import { ProjectFiles } from '../agent-bridge/project-files.js';
-import { acpClient } from '../agent-bridge/acp-client.js';
-import { ACP_AGENTS, availableProviders, isAgentProvider } from '../agent-bridge/agent-providers.js';
-import { ProjectRunner } from '../agent-bridge/project-runner.js';
+import { availableProviders, isAgentProvider } from '../agent-bridge/agent-providers.js';
+import type { ProjectRunner } from '../agent-bridge/project-runner.js';
+import { projectIncludes } from '../agent-bridge/tab-scope.js';
+import { AgentProject } from './agent-project.js';
 import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
+import { MAX_REFERENCES, referenceRef, type ReferenceCapture } from '../agent-bridge/reference.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
 const REVEAL_FALLBACK_MS = 1000;
 const MAX_PICKED_ELEMENTS = 5;
+const MAX_AGENT_PROJECTS = 6;
 
 export interface AppContext {
   icon: string;
@@ -128,7 +131,8 @@ export interface AppContext {
   onWindowClosing(window: YalqenWindow): void;
   onWindowClosed(window: YalqenWindow): void;
   agentScope(url: string, privateBrowsing: boolean): boolean;
-  agentConnection(): Promise<AgentConnection>;
+  agentConnection(window: YalqenWindow, project: AgentProject): Promise<AgentConnection>;
+  releaseAgentConnection(project: AgentProject): void;
 }
 
 export interface WindowOptions {
@@ -145,14 +149,13 @@ export class YalqenWindow {
   readonly tabs: TabManager;
   readonly isPrivate: boolean;
   readonly isDeveloper: boolean;
-  readonly agentSession: AgentSession;
-  private readonly agentChats = new Map<AgentProviderId, AgentChat>();
-  private agentProvider: AgentProviderId = 'claude';
+  private agentProjects: AgentProject[] = [];
+  private activeProjectId = '';
   private agentProviders: AgentProviderId[] = ['claude'];
   private readonly projectFiles = new ProjectFiles();
-  readonly projectRunner: ProjectRunner;
   private agentPanelOpen = false;
   private pickedElements: AgentElementRef[] = [];
+  private readonly references = new Map<string, ReferenceCapture>();
   private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
   // view.webContents reads undefined once the contents are destroyed; this reference keeps answering isDestroyed().
@@ -210,17 +213,7 @@ export class YalqenWindow {
       },
     });
     this.uiContents = this.ui.webContents;
-    this.agentSession = new AgentSession({
-      connect: () => app.agentConnection(),
-      onState: this.pushState,
-      onOutput: (output) => {
-        if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);
-      },
-    });
-    this.projectRunner = new ProjectRunner({
-      onState: this.pushState,
-      onUrl: (url) => this.tabs.open(url),
-    });
+    this.activeProjectId = this.addProject().id;
     if (glassAvailable) this.ui.setBackgroundColor('#00000000');
     this.uiContents.on('will-navigate', (event) => event.preventDefault());
     this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -410,9 +403,10 @@ export class YalqenWindow {
       app.onWindowClosing(this);
       nativeTheme.off('updated', this.pushState);
       this.preconnector.cancel();
-      this.agentSession.dispose();
-      for (const chat of this.agentChats.values()) chat.dispose();
-      this.projectRunner.dispose();
+      for (const project of this.agentProjects) {
+        project.dispose();
+        app.releaseAgentConnection(project);
+      }
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -512,6 +506,8 @@ export class YalqenWindow {
       projectRun: this.projectRunner.state(),
       agentElements: this.pickedElements,
       agentTerminal: this.app.settings.get().agentTerminal,
+      agentProjects: this.agentProjects.map((project) => project.summary()),
+      agentProjectId: this.activeProjectId,
     };
   }
 
@@ -530,13 +526,7 @@ export class YalqenWindow {
   }
 
   async selectAgentDirectory(): Promise<ReturnType<AgentSession['state']>> {
-    if (
-      (this.isPrivate && !this.isDeveloper) ||
-      this.selectingAgentDirectory ||
-      this.agentSession.active ||
-      this.agentChat.active ||
-      this.projectRunner.active
-    ) {
+    if ((this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory || this.agentProject.busy) {
       return this.agentSession.state();
     }
     this.selectingAgentDirectory = true;
@@ -546,11 +536,8 @@ export class YalqenWindow {
         defaultPath: this.agentSession.state().directory ?? app.getPath('documents'),
         properties: ['openDirectory'],
       });
-      if (!this.window.isDestroyed() && !result.canceled && result.filePaths[0]) {
-        this.agentSession.selectDirectory(result.filePaths[0]);
-        for (const chat of this.agentChats.values()) chat.selectDirectory(result.filePaths[0]);
-        void this.projectRunner.selectDirectory(result.filePaths[0]);
-      }
+      if (!this.window.isDestroyed() && !result.canceled && result.filePaths[0])
+        this.agentProject.selectDirectory(result.filePaths[0]);
     } finally {
       this.selectingAgentDirectory = false;
     }
@@ -564,16 +551,35 @@ export class YalqenWindow {
 
   private addPickedElement(selection: ElementSelection): void {
     if (this.isPrivate && !this.isDeveloper) return;
-    this.pickedElements = [
+    this.setPickedElements([
       ...this.pickedElements.filter((element) => element.id !== selection.id),
       selectionRef(selection),
-    ].slice(-MAX_PICKED_ELEMENTS);
+    ]);
     if (this.agentPanelOpen) this.pushState();
     else this.toggleAgentPanel();
   }
 
+  private addPickedReference(tabId: string, reference: ReferenceCapture): void {
+    if (this.isPrivate && !this.isDeveloper) return;
+    const older = this.pickedElements.filter((element) => element.reference);
+    const dropped = new Set(older.slice(0, Math.max(0, older.length - MAX_REFERENCES + 1)).map(({ id }) => id));
+    this.references.set(reference.id, reference);
+    this.setPickedElements([
+      ...this.pickedElements.filter((element) => !dropped.has(element.id)),
+      referenceRef(reference, tabId),
+    ]);
+    if (this.agentPanelOpen) this.pushState();
+    else this.toggleAgentPanel();
+  }
+
+  private setPickedElements(elements: AgentElementRef[]): void {
+    this.pickedElements = elements.slice(-MAX_PICKED_ELEMENTS);
+    const kept = new Set(this.pickedElements.map(({ id }) => id));
+    for (const id of this.references.keys()) if (!kept.has(id)) this.references.delete(id);
+  }
+
   removeAgentElement(id: unknown): void {
-    this.pickedElements = this.pickedElements.filter((element) => element.id !== id);
+    this.setPickedElements(this.pickedElements.filter((element) => element.id !== id));
     this.pushState();
   }
 
@@ -586,33 +592,70 @@ export class YalqenWindow {
     return this.projectRunner.start();
   }
 
+  get agentProject(): AgentProject {
+    return this.agentProjects.find((project) => project.id === this.activeProjectId) ?? this.agentProjects[0];
+  }
+
+  get agentSession(): AgentSession {
+    return this.agentProject.session;
+  }
+
+  get projectRunner(): ProjectRunner {
+    return this.agentProject.runner;
+  }
+
   get agentChat(): AgentChat {
-    let chat = this.agentChats.get(this.agentProvider);
-    if (!chat) {
-      const provider = this.agentProvider;
-      chat = new AgentChat({
-        provider,
-        connect: () => this.app.agentConnection(),
-        onState: this.pushState,
-        onUpdate: (snapshot) => {
-          if (provider === this.agentProvider && !this.uiContents.isDestroyed())
-            this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
-        },
-        workspace: async () => {
-          const directory = path.join(app.getPath('userData'), 'agent-workspace');
-          await fs.mkdir(directory, { recursive: true });
-          return directory;
-        },
-        ...(provider !== 'claude' && {
-          loadClient: acpClient(ACP_AGENTS[provider]),
-          loadSessions: async () => ({ listSessions: async () => [], getSessionMessages: async () => [] }),
-        }),
-      });
-      const directory = this.agentSession.state().directory;
-      if (directory) chat.selectDirectory(directory);
-      this.agentChats.set(provider, chat);
-    }
-    return chat;
+    return this.agentProject.chat;
+  }
+
+  projectIncludes(project: AgentProject, url: string): boolean {
+    const others = this.agentProjects.filter((other) => other !== project).map((other) => other.origins);
+    return projectIncludes(project.origins, others, url);
+  }
+
+  private addProject(): AgentProject {
+    const isActive = (project: AgentProject) => project.id === this.activeProjectId;
+    const project = new AgentProject({
+      connect: (target) => this.app.agentConnection(this, target),
+      onState: this.pushState,
+      onOutput: (target, output) => {
+        if (isActive(target) && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);
+      },
+      onChatUpdate: (target, snapshot) => {
+        if (isActive(target) && !this.uiContents.isDestroyed())
+          this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
+      },
+      onUrl: (_target, url) => this.tabs.open(url),
+    });
+    this.agentProjects.push(project);
+    return project;
+  }
+
+  newAgentProject(): boolean {
+    if ((this.isPrivate && !this.isDeveloper) || this.agentProjects.length >= MAX_AGENT_PROJECTS) return false;
+    return this.selectAgentProject(this.addProject().id);
+  }
+
+  selectAgentProject(id: unknown): boolean {
+    if (!this.agentProjects.some((project) => project.id === id)) return false;
+    this.activeProjectId = id as string;
+    if (!this.uiContents.isDestroyed())
+      this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
+    this.pushState();
+    return true;
+  }
+
+  closeAgentProject(id: unknown): boolean {
+    const project = this.agentProjects.find((candidate) => candidate.id === id);
+    if (!project || project.busy || this.agentProjects.length === 1) return false;
+    const index = this.agentProjects.indexOf(project);
+    this.agentProjects.splice(index, 1);
+    project.dispose();
+    this.app.releaseAgentConnection(project);
+    if (this.activeProjectId === project.id)
+      return this.selectAgentProject(this.agentProjects[Math.min(index, this.agentProjects.length - 1)].id);
+    this.pushState();
+    return true;
   }
 
   selectAgentProvider(provider: unknown): boolean {
@@ -620,10 +663,9 @@ export class YalqenWindow {
       (this.isPrivate && !this.isDeveloper) ||
       !isAgentProvider(provider) ||
       !this.agentProviders.includes(provider) ||
-      this.agentChat.active
+      !this.agentProject.selectProvider(provider)
     )
       return false;
-    this.agentProvider = provider;
     if (!this.uiContents.isDestroyed())
       this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
     this.pushState();
@@ -660,6 +702,7 @@ export class YalqenWindow {
       typeof tabId === 'string' ? this.state().tabs.find((entry) => entry.id === tabId && entry.agentObserved) : null;
     if (!tab?.agentEpisode) return false;
     if (!this.agentPanelOpen) this.toggleAgentPanel();
+    this.agentProject.claim(tab.url);
     return this.agentChat.send(
       this.agentChat.state().id,
       t('agentChat.fixPrompt', { id: tab.agentEpisode.id }),
@@ -679,16 +722,20 @@ export class YalqenWindow {
     // Pages outside local development are read only when the user attaches them to this message.
     const page = tab && !tab.agentObserved ? await this.tabs.pageText(tab.id) : null;
     if (tab && !tab.agentObserved && !page) return false;
+    if (tab?.agentObserved) this.agentProject.claim(tab.url);
     const elements = this.pickedElements;
+    const references = elements
+      .map((element) => this.references.get(element.id))
+      .filter((reference) => reference !== undefined);
     const sent = await this.agentChat.send(
       id,
       text,
       tab ? { id: tab.id, title: tab.title, url: tab.url, local: tab.agentObserved } : null,
       elements,
-      { images, page },
+      { images, page, references },
     );
     if (sent) {
-      this.pickedElements = this.pickedElements.filter((element) => !elements.includes(element));
+      this.setPickedElements(this.pickedElements.filter((element) => !elements.includes(element)));
       this.pushState();
     }
     return sent;
@@ -872,6 +919,10 @@ export class YalqenWindow {
         );
         break;
       }
+      case 'referenced':
+        this.addPickedReference(outcome.tabId, outcome.reference);
+        this.notice.show([t('picker.referenced', { label: outcome.reference.label }), t('picker.referenceHint')]);
+        break;
       case 'agent-off':
         this.notice.show([t('picker.off')]);
         break;
