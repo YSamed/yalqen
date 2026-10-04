@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.10](https://github.com/YSamed/yalqen/compare/v0.3.9...v0.3.10) (2026-10-04)
+
+
+### Features
+
+* add agent work modes, short replies and compact tool output ([#163](https://github.com/YSamed/yalqen/issues/163)) ([8f00728](https://github.com/YSamed/yalqen/commit/8f00728656fff85d1d9c28c502043b2478acc704))
+
 ## [0.3.9](https://github.com/YSamed/yalqen/compare/v0.3.8...v0.3.9) (2026-10-04)
 
 
