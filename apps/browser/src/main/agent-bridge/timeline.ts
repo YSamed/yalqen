@@ -3,22 +3,22 @@ import type { ConsoleEntry, NetworkRecord, StackFrame } from './cdp-events.js';
 import { RingBuffer } from './ring-buffer.js';
 import { spanSummary, type BackendSpan } from './tracing.js';
 
-export const EVENT_LIMIT = 1000;
-export const EPISODE_LIMIT = 20;
+const EVENT_LIMIT = 1000;
+const EPISODE_LIMIT = 20;
 export const EPISODE_LOOKBACK_MS = 10_000;
 // Errors that follow each other this closely belong to the same episode.
-export const EPISODE_GAP_MS = 3000;
-export const LIKELY_CAUSE_MS = 1000;
+const EPISODE_GAP_MS = 3000;
+const LIKELY_CAUSE_MS = 1000;
 const EPISODE_EVENT_LIMIT = 60;
 const SUMMARY_LENGTH = 160;
 // Assets only matter when they fail; requests the app's code makes always do.
 const TRACKED_TYPES = new Set(['Document', 'Fetch', 'XHR', 'EventSource', 'WebSocket', 'Other']);
 
-export type ActionKind = 'click' | 'submit' | 'input' | 'key';
-export type TimelineKind = 'navigation' | ActionKind | 'request' | 'response' | 'backend' | 'console' | 'exception';
-export type CauseConfidence = 'direct' | 'likely';
+type ActionKind = 'click' | 'submit' | 'input' | 'key';
+type TimelineKind = 'navigation' | ActionKind | 'request' | 'response' | 'backend' | 'console' | 'exception';
+type CauseConfidence = 'direct' | 'likely';
 
-export interface ActionTarget {
+interface ActionTarget {
   tag: string;
   id?: string;
   name?: string;
@@ -37,7 +37,7 @@ export interface PageAction {
   key?: string;
 }
 
-export interface RecordedAction {
+interface RecordedAction {
   kind: ActionKind;
   selector?: string;
   key?: string;
@@ -78,7 +78,7 @@ export function episodePreview(episode: ErrorEpisode | null): { id: string; line
   return { id: episode.id, lines };
 }
 
-export function newEpisodeId(): string {
+function newEpisodeId(): string {
   return `yk_ep_${randomBytes(3).toString('hex').slice(0, 5)}`;
 }
 
@@ -87,7 +87,7 @@ function clip(text: string): string {
   return line.length > SUMMARY_LENGTH ? `${line.slice(0, SUMMARY_LENGTH - 1)}…` : line;
 }
 
-export function describeTarget(target: ActionTarget): string {
+function describeTarget(target: ActionTarget): string {
   const id = target.id ? `#${target.id}` : '';
   const name = !id && target.name ? `[name=${target.name}]` : '';
   const text = target.text ? ` "${clip(target.text).slice(0, 40)}"` : '';

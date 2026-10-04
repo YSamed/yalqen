@@ -18,13 +18,11 @@ export interface Device {
 // Safari 26+ freezes the OS token at 18_7; only Version/ tracks the real release.
 export const IOS_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1';
-export const IPAD_UA =
+const IPAD_UA =
   'Mozilla/5.0 (iPad; CPU OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/15E148 Safari/604.1';
 // Chrome's reduced UA hides the model and Android version, so every Android phone sends this.
 export const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36';
-
-export const GALAXY_UA = ANDROID_UA;
 
 export const DEVICES: readonly Device[] = [
   {
@@ -100,7 +98,7 @@ export const DEVICES: readonly Device[] = [
     height: 780,
     deviceScaleFactor: 3,
     cornerRadius: 32,
-    userAgent: GALAXY_UA,
+    userAgent: ANDROID_UA,
     platform: 'Linux armv8l',
     mobile: true,
   },
@@ -130,8 +128,8 @@ export const DEVICES: readonly Device[] = [
   },
 ];
 
-export const RESPONSIVE_SIZE_LIMITS = { min: 200, max: 4000 };
-export const DEVICE_SCALE_FACTORS = [1, 2, 3] as const;
+const RESPONSIVE_SIZE_LIMITS = { min: 200, max: 4000 };
+const DEVICE_SCALE_FACTORS = [1, 2, 3] as const;
 
 export const DEFAULT_DEVICE_ID: DeviceId = 'iphone-15';
 
@@ -146,7 +144,7 @@ export interface Emulation {
   scaleFactor?: number;
 }
 
-export function deviceSize(emulation: Emulation): { width: number; height: number } {
+function deviceSize(emulation: Emulation): { width: number; height: number } {
   const { width, height } = emulation.size ?? findDevice(emulation.deviceId);
   return emulation.landscape ? { width: height, height: width } : { width, height };
 }

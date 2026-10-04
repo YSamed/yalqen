@@ -3,6 +3,7 @@
 // Only bippy/source is used: bippy's main entry installs a DevTools hook and pulls in React.
 import type { Fiber } from 'bippy';
 import { getRawSource, getSource, isSourceFile, normalizeFileName } from 'bippy/source';
+import type { ComponentInspection, ComponentNode, InspectedSource } from '../shared/component-inspection.js';
 
 const MAX_OWNERS = 12;
 const MAX_PROPS = 12;
@@ -10,36 +11,6 @@ const MAX_STRING = 80;
 const TREE_DEPTH = 3;
 const TREE_NODES = 40;
 const TREE_VISITS = 2000;
-
-export interface RawLocation {
-  file: string;
-  line: number | null;
-  column: number | null;
-}
-
-export interface InspectedSource extends RawLocation {
-  mapped: boolean;
-  // The location before source maps, for maps the page itself cannot fetch.
-  raw: RawLocation | null;
-}
-
-export interface ComponentNode {
-  name: string;
-  children: ComponentNode[];
-}
-
-export type Framework = 'react' | 'vue' | 'svelte';
-
-export interface ComponentInspection {
-  framework: Framework | null;
-  development: boolean;
-  component: string | null;
-  source: InspectedSource | null;
-  componentSource: InspectedSource | null;
-  owners: string[];
-  props: Record<string, string>;
-  children: ComponentNode[];
-}
 
 // React work tags for function, class, forwardRef, memo and simple memo components.
 const COMPOSITE_TAGS = new Set([0, 1, 11, 14, 15]);
@@ -53,7 +24,7 @@ function isCompositeFiber(fiber: Fiber): boolean {
   return COMPOSITE_TAGS.has(fiber.tag);
 }
 
-export function getDisplayName(type: unknown): string | null {
+function getDisplayName(type: unknown): string | null {
   if (typeof type === 'function') {
     const component = type as { displayName?: string; name?: string };
     return component.displayName || component.name || null;
@@ -102,7 +73,7 @@ function ownerNames(fiber: Fiber): string[] {
   return names;
 }
 
-export function describeValue(value: unknown): string {
+function describeValue(value: unknown): string {
   if (typeof value === 'function') return `[Function ${value.name || 'anonymous'}]`;
   if (typeof value === 'string')
     return JSON.stringify(value.length > MAX_STRING ? `${value.slice(0, MAX_STRING)}…` : value);

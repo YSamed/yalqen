@@ -213,7 +213,7 @@ export interface AgentChatMessage {
   elements: AgentElementRef[];
 }
 
-export interface AgentChatQuestion {
+interface AgentChatQuestion {
   question: string;
   options: { label: string; description: string }[];
   multiSelect: boolean;

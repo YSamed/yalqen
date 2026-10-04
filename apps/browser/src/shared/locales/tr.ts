@@ -43,9 +43,6 @@ export const tr: Record<MessageKey, string> = {
   'agentPanel.close': 'Paneli gizle · oturum devam eder',
   'agentPanel.resize': 'Yapay zekâ panelini boyutlandır (ok tuşları; sıfırlamak için çift tıkla)',
   'agentPanel.chooseProject': 'Proje seç…',
-  'agentPanel.welcome': 'Claude, tarayıcının yanında',
-  'agentPanel.intro':
-    'Projenizi seçip Claude Code’u burada açın. Mevcut hesabınız ve terminal kontrollerinizle çalışın.',
   'agentPanel.connectionHint': 'Başlatmak, yerel geliştirme sekmeleri için ajan bağlantısını açar.',
   'agentPanel.start': 'Claude Code’u başlat',
   'agentPanel.newSession': 'Yeni oturum',
@@ -75,7 +72,6 @@ export const tr: Record<MessageKey, string> = {
   'agentRun.failed': 'Proje durdu. Tekrar çalıştır ({command})',
   'agentChat.welcome': 'Birlikte ne geliştirelim?',
   'agentChat.intro': 'Projen hakkında sor, kod yaz, değişiklikleri tarayıcıda gör.',
-  'agentChat.project': 'PROJE',
   'agentChat.view': 'Yapay zekâ görünümü',
   'agentChat.chat': 'Sohbet',
   'agentChat.terminal': 'Terminal',

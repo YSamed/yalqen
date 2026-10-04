@@ -1,14 +1,14 @@
 import type { WebContents } from 'electron';
 import type { TabRuntime } from '../agent-bridge/runtime-buffer.js';
 
-export const FIND_TIMEOUT_MS = 3000;
+const FIND_TIMEOUT_MS = 3000;
 const POLL_MS = 100;
 const IDLE_MS = 500;
 // Streams and long polls never finish, so only recent requests count as pending.
 const PENDING_WINDOW_MS = 10_000;
 const META = 4;
 
-export class ActionStopped extends Error {
+class ActionStopped extends Error {
   constructor() {
     super('Stopped by the user in Yalqen.');
   }
@@ -28,7 +28,7 @@ function sender(contents: WebContents): Send {
   return (method, params) => contents.debugger.sendCommand(method, params);
 }
 
-export function throwIfStopped(signal: AbortSignal): void {
+function throwIfStopped(signal: AbortSignal): void {
   if (signal.aborted) throw new ActionStopped();
 }
 

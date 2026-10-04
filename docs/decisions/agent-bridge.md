@@ -1,8 +1,8 @@
 # Agent bridge
 
-Status: accepted · Date: 2026-10-03 · Roadmap: [developer-mode-roadmap.md](../developer-mode-roadmap.md)
+Status: accepted · Date: 2026-10-03
 
-The agent bridge lets a coding agent (Claude Code, Codex, Cursor or any other MCP client) read what happens in local development tabs. This record fixes the technical choices made in phase 0.
+The agent bridge lets a coding agent (Claude Code, Codex, Cursor or any other MCP client) read what happens in local development tabs. This record describes the implemented bridge and its technical choices.
 
 ## Transport: Streamable HTTP on 127.0.0.1
 
@@ -59,7 +59,7 @@ Limits per tab, in memory only: the last 200 console entries and the last 300 re
 
 ## Component and source mapping (phase 3)
 
-**bippy, not an in-house mapper.** [bippy](https://github.com/aidenybai/bippy) 0.7 (MIT, no runtime dependencies) already resolves React 18 `_debugSource`, React 19 `_debugStack` and source maps. Only `bippy/source` is bundled: bippy's main entry installs a DevTools hook as a side effect and imports React. The fiber lookup (`__reactFiber$` key), composite check and display name are a few lines in `src/page-scripts/react-inspector.ts` instead.
+**bippy, not an in-house mapper.** [bippy](https://github.com/aidenybai/bippy) 0.7 (MIT, no runtime dependencies) already resolves React 18 `_debugSource`, React 19 `_debugStack` and source maps. Only `bippy/source` is bundled: bippy's main entry installs a DevTools hook as a side effect and imports React. The fiber lookup (`__reactFiber$` key), composite check and display name are a few lines in `src/page-scripts/component-inspector.ts` instead.
 
 **No script before page load.** The roadmap planned to install a `__REACT_DEVTOOLS_GLOBAL_HOOK__` with `Page.addScriptToEvaluateOnNewDocument`. It is not needed: the fiber is reachable from the DOM node itself, so nothing runs in the page until the user picks an element. The inspector (about 40 KB, bundled as one function by `scripts/build-preload.mjs`) runs once per pick through `Runtime.callFunctionOn` on the picked node, with a 4-second limit. If resolving sources leaves a DevTools hook the page did not have, it is removed.
 
@@ -110,7 +110,6 @@ Not yet measured: Pages Router, webpack with React 18 outside Next.js, and large
 - **Vue and Svelte:** the page inspector became `component-inspector`. Vue 3 (`__vueParentComponent`) and Vue 2 (`__vue__`) give the component, its file and owner chain but no line, so they report `component`. Svelte 5 (`__svelte_meta` with `loc` and the `parent` usage chain) gives the element's line and where the component is used, so it reports `exact`; Svelte 4 lines are zero-based and corrected.
 - **WebMCP:** observed pages get a `navigator.modelContext` stand-in (`provideContext`, `registerTool`, `unregisterTool`, `clearContext`) in their own world when the browser has none. `list_page_tools` reads what the page registered; `call_page_tool` runs one as an agent action. A page that registers at load needs one reload after the connection is turned on.
 - **Backend tracing** (Settings → Developer → Backend traces, off by default): same-origin `fetch` and XHR requests of observed tabs get a W3C `traceparent` header through `Fetch` interception limited to those resource types. Cross-origin requests never get it, because the extra header would trigger a CORS preflight the backend may refuse. The bridge accepts OTLP/HTTP JSON on `/v1/traces` with the same token; protobuf is refused with a hint to set `OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json`. A request's server span and every failing span join the timeline as `backend` events linked `direct` to the request, and are added to its episode even when they arrive after it closed; `get_backend_trace` returns all spans of the request.
-- **Sending to the terminal** is not built yet; see the open question below.
 
 ## Setup and onboarding
 
@@ -119,15 +118,9 @@ Not yet measured: Pages Router, webpack with React 18 outside Next.js, and large
 - The server's `instructions` describe the intended workflow: `get_error_episode` first, `replay_episode` after a fix. The developer menu copies a ready prompt with the episode id instead of the bare id.
 - All tools stay listed even when agent actions are off. The whole list is about 2,800 tokens, hiding tools would need a reconnect after every policy change (the server has no notification stream), and a refused call already tells the agent where the user can allow actions.
 
-## Open question: sending to the terminal
+## Agent panel
 
-Status: open, to be decided later.
-
-The roadmap's first principle is that Yalqen never types into a terminal; the agent pulls through MCP, so agent updates cannot break the integration. Pushing a selection or episode id into the agent's input would need a wrapper (for example `yalqen-agent claude`) that runs the agent in a pseudo-terminal and listens on a local socket. Options:
-
-1. Leave it out: copying a `yk_` or `yk_ep_` id and pasting it is one step.
-2. A launcher only: start the agent with the Yalqen MCP server already configured, without ever writing to its input.
-3. A full terminal bridge: the wrapper owns a PTY and Yalqen writes references into it. Fragile across agents and terminals, and needs a native PTY module.
+The window's agent panel runs Claude through the native chat interface (`agent-chat.ts`) or an optional PTY terminal (`agent-session.ts`). Both receive the local MCP connection. The terminal can receive the current tab reference, while chat messages can include tabs and picked elements. `project-runner.ts` starts the selected project's development server and opens its local URL in a tab.
 
 ## Naming
 

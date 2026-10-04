@@ -3,7 +3,7 @@ import { TRACES_PATH } from './tracing.js';
 import { DEFAULT_PORT, MCP_PATH, startBridgeServer, type BridgeServer, type ClientInfo } from './server.js';
 import type { BridgeHost } from './tools.js';
 
-export interface AgentBridgeStatus {
+interface AgentBridgeStatus {
   enabled: boolean;
   port: number | null;
   error: string | null;
@@ -13,7 +13,7 @@ export interface AgentBridgeStatus {
   staleTokenAt: number | null;
 }
 
-export interface AgentBridgeOptions {
+interface AgentBridgeOptions {
   enabled(): boolean;
   host: BridgeHost;
   token(): string;

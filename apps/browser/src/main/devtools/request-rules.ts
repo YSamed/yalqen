@@ -41,7 +41,7 @@ export function sanitizeRequestRules(raw: unknown): RequestRule[] {
     .filter((rule) => rule !== null);
 }
 
-export function isRuleActive(rule: RequestRule): boolean {
+function isRuleActive(rule: RequestRule): boolean {
   if (!rule.enabled || rule.pattern === '') return false;
   return rule.action !== 'redirect' || /^https?:\/\//i.test(rule.redirectUrl);
 }

@@ -3,32 +3,26 @@
 
 :root {
   --surface-strong: #f6f7f8;
-  --surface-active: #ffffff;
   --well: #dcdfe3;
-  --well-hover: #d3d6db;
   --focus: var(--accent);
   --on-accent: #ffffff;
   --profile-developer: #7c6cf2;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 1px 3px rgb(16 18 24 / 0.08);
   --window: var(--bg);
   --chrome-base: var(--bg);
-  --well-rim: none;
   --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 2px 10px rgb(16 18 24 / 0.05);
   --page-divider: rgb(16 18 24 / 0.06);
   --page-empty: #f3f4f6;
   --badge: var(--bg);
-  --platter: transparent;
   --rim: none;
 
   --radius: 10px;
-  --panel-radius: 14px;
   --chrome-control-size: 34px;
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
   --font-size: 13px;
   --font-size-small: 11px;
   --transition: 120ms ease-out;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   color-scheme: light;
 }
@@ -36,9 +30,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-material='glass']) {
     --surface-strong: #2d2f34;
-    --surface-active: #2d2f34;
     --well: #1e2023;
-    --well-hover: #25272b;
     --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.3);
     --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 2px 10px rgb(0 0 0 / 0.3);
     --page-divider: rgb(255 255 255 / 0.06);
@@ -52,13 +44,10 @@
   --warn: #a34a06;
   --bg: transparent;
   --chrome-base: rgb(250 247 243 / 0.38);
-  --well-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.45);
   --surface: rgb(255 255 255 / 0.76);
   --surface-strong: rgb(255 255 255 / 0.95);
   --surface-hover: rgb(16 18 24 / 0.06);
-  --surface-active: rgb(255 255 255 / 0.86);
   --well: rgb(16 18 24 / 0.06);
-  --well-hover: rgb(16 18 24 / 0.1);
   --border: rgb(16 18 24 / 0.12);
   --text-muted: rgb(40 42 48 / 0.7);
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 3px rgb(16 18 24 / 0.08);
@@ -66,7 +55,6 @@
   --page-divider: rgb(16 18 24 / 0.06);
   --page-empty: #f3f4f6;
   --badge: #eceef1;
-  --platter: rgb(255 255 255 / 0.48);
   --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.5);
   color-scheme: light;
 }
@@ -74,13 +62,10 @@
 @media (prefers-color-scheme: dark) {
   :root[data-material='glass'] {
     --chrome-base: rgb(27 24 24 / 0.5);
-    --well-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.09);
     --surface: rgb(255 255 255 / 0.12);
     --surface-strong: rgb(255 255 255 / 0.18);
     --surface-hover: rgb(255 255 255 / 0.07);
-    --surface-active: rgb(255 255 255 / 0.14);
     --well: rgb(0 0 0 / 0.17);
-    --well-hover: rgb(255 255 255 / 0.1);
     --border: rgb(255 255 255 / 0.1);
     --text: #f4f4f7;
     --text-muted: rgb(235 235 245 / 0.64);
@@ -90,7 +75,6 @@
     --page-divider: rgb(255 255 255 / 0.06);
     --page-empty: #1b1c1f;
     --badge: #2a2c30;
-    --platter: rgb(255 255 255 / 0.08);
     --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.22), inset 0 1px 0 rgb(255 255 255 / 0.12);
     color-scheme: dark;
   }
@@ -100,7 +84,6 @@
   :root[data-material='glass'] {
     --chrome-base: rgb(246 245 243 / 0.94);
     --surface: #fff;
-    --surface-active: #fff;
     --well: rgb(0 0 0 / 0.08);
     --text-muted: #45464a;
   }
@@ -110,7 +93,6 @@
   :root[data-material='glass'] {
     --chrome-base: rgb(21 21 23 / 0.95);
     --surface: #37383c;
-    --surface-active: #414247;
     --well: rgb(0 0 0 / 0.32);
     --text-muted: #d0d1d5;
   }

@@ -2,19 +2,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { monitorEventLoopDelay, performance, type ELDHistogram } from 'node:perf_hooks';
 
-export interface LoopDelay {
+interface LoopDelay {
   p50Ms: number;
   p99Ms: number;
   maxMs: number;
 }
 
-export interface WriteCounter {
+interface WriteCounter {
   count: number;
   bytes: number;
   serializeMs: number;
 }
 
-export interface BenchOptions {
+interface BenchOptions {
   file: string;
   fields: Record<string, unknown>;
   spawnedAt: number | null;

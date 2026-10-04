@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { IncomingHttpHeaders } from 'node:http';
 
-export type Rejection = 'origin' | 'host' | 'token';
+type Rejection = 'origin' | 'host' | 'token';
 
 export function generateToken(): string {
   return randomBytes(32).toString('base64url');

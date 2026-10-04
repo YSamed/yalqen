@@ -1,5 +1,5 @@
 // Serialized into an isolated page world: keep this function self-contained.
-export async function prepareScreenshot(maxWaitMs = 10000): Promise<void> {
+async function prepareScreenshot(maxWaitMs = 10000): Promise<void> {
   const originalX = window.scrollX;
   const originalY = window.scrollY;
   const deadline = Date.now() + maxWaitMs;

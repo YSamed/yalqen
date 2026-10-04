@@ -11,7 +11,7 @@ export interface ImportSource {
   file: string;
 }
 
-export interface ParsedBookmarks {
+interface ParsedBookmarks {
   bookmarks: ImportedBookmark[];
   skipped: number;
 }
@@ -95,7 +95,7 @@ export function firefoxTimeToUnixMs(value: unknown): number | null {
 }
 
 // Yalqen folders are flat, so a nested source folder becomes one `Parent / Child` folder.
-export function folderTitle(segments: readonly string[]): string | null {
+function folderTitle(segments: readonly string[]): string | null {
   return (
     segments
       .map((segment) => segment.trim())

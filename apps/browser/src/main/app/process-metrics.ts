@@ -1,19 +1,19 @@
 import { app, webContents } from 'electron';
 import type { PageProcess, ProcessGroup, ProcessGroupKind, ProcessUsage } from '../../shared/types.js';
 
-export interface ProcessSample {
+interface ProcessSample {
   pid: number;
   type: string;
   workingSetKB: number;
 }
 
-export interface ContentsSample {
+interface ContentsSample {
   pid: number;
   url: string;
   title: string;
 }
 
-export const MAX_PAGE_PROCESSES = 8;
+const MAX_PAGE_PROCESSES = 8;
 const GROUP_ORDER: readonly ProcessGroupKind[] = [
   'pages',
   'interface',

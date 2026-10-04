@@ -4,7 +4,7 @@ import { t } from '../../shared/i18n.js';
 
 const SNIPPET_LENGTH = 30;
 
-export type PageContext = Pick<
+type PageContext = Pick<
   ContextMenuParams,
   | 'linkURL'
   | 'srcURL'
@@ -18,7 +18,7 @@ export type PageContext = Pick<
 
 const MAX_SPELLING_SUGGESTIONS = 5;
 
-export interface ContextMenuActions {
+interface ContextMenuActions {
   canGoBack: boolean;
   canGoForward: boolean;
   canViewSource: boolean;

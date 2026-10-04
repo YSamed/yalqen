@@ -4,7 +4,7 @@ const SENSITIVE_PATTERN = /token|secret|api[-_]?key|session/;
 
 export type Headers = Record<string, string>;
 
-export function isSensitiveHeader(name: string): boolean {
+function isSensitiveHeader(name: string): boolean {
   const lower = name.toLowerCase();
   return SENSITIVE_HEADERS.has(lower) || SENSITIVE_PATTERN.test(lower);
 }

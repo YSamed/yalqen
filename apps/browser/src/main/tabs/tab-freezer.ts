@@ -1,7 +1,7 @@
 import { attachDebugger, detachDebugger } from '../devtools/page-debugger.js';
 import type { Tab } from './tab.js';
 
-export interface FreezeHost {
+interface FreezeHost {
   enabled(): boolean;
   isActive(tab: Tab): boolean;
   hasLiveChild(tab: Tab): boolean;

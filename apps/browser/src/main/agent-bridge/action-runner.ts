@@ -28,7 +28,7 @@ const RESEND_BODY_LIMIT = 64 * 1024;
 // The session supplies these itself, or they describe the old connection.
 const RESEND_DROPPED_HEADERS = new Set(['host', 'content-length', 'cookie', 'connection', 'accept-encoding']);
 
-export class ActionDenied extends Error {}
+class ActionDenied extends Error {}
 
 export interface ActionWindow {
   tabs: TabManager;
@@ -38,7 +38,7 @@ export interface ActionWindow {
   showVerification(verification: Verification): void;
 }
 
-export interface ActionRunnerOptions {
+interface ActionRunnerOptions {
   policy(): AgentActionPolicy;
   windows(): ActionWindow[];
   inScope(url: string): boolean;
@@ -51,7 +51,7 @@ interface ActionContext {
   signal: AbortSignal;
 }
 
-export interface ActionResult {
+interface ActionResult {
   done: string;
   followed_by: ReturnType<typeof eventView>[];
 }

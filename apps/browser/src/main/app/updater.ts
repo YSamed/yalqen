@@ -4,12 +4,12 @@ import type { UpdateStatus } from '../../shared/types.js';
 export const FIRST_CHECK_DELAY_MS = 30_000;
 export const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
-export type UpdaterBackend = Pick<
+type UpdaterBackend = Pick<
   AppUpdater,
   'autoDownload' | 'autoInstallOnAppQuit' | 'logger' | 'on' | 'checkForUpdates' | 'quitAndInstall'
 >;
 
-export interface UpdaterOptions {
+interface UpdaterOptions {
   load: (() => UpdaterBackend) | null;
   automatic(): boolean;
   onChange(): void;

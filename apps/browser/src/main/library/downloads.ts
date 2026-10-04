@@ -5,7 +5,7 @@ import { getLocale, t } from '../../shared/i18n.js';
 import type { DownloadsSummary } from '../../shared/types.js';
 import { JsonFile } from '../storage/json-file.js';
 
-export type DownloadState = 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted';
+type DownloadState = 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted';
 
 export interface DownloadEntry {
   id: string;

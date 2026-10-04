@@ -101,7 +101,7 @@ export function crxPublicKey(file: Buffer, id: string): string | null {
   return key ? key.toString('base64') : null;
 }
 
-export interface DownloadedCrx {
+interface DownloadedCrx {
   zip: Buffer;
   key: string | null;
 }

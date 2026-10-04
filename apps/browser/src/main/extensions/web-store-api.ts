@@ -27,7 +27,7 @@ const MAX_LISTED_PERMISSIONS = 12;
 const MAX_NAME_LENGTH = 100;
 const REFERRER_CHAIN = 'EgIIAA==';
 
-export interface WebStoreHost {
+interface WebStoreHost {
   daily: Session;
   extensions: ExtensionManager;
   parentWindow(contents: WebContents): BaseWindow | null;

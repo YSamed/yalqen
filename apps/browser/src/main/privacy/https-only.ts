@@ -5,7 +5,7 @@ import { INTERNAL_SCHEME, type SecureDnsSetting } from '../../shared/types.js';
 
 export const PROCEED_HTTP_URL = `${INTERNAL_SCHEME}://proceed-http/`;
 
-export const SECURE_DNS_SERVERS: Record<Exclude<SecureDnsSetting, 'off' | 'automatic'>, string> = {
+const SECURE_DNS_SERVERS: Record<Exclude<SecureDnsSetting, 'off' | 'automatic'>, string> = {
   cloudflare: 'https://cloudflare-dns.com/dns-query',
   google: 'https://dns.google/dns-query{?dns}',
   quad9: 'https://dns.quad9.net/dns-query',

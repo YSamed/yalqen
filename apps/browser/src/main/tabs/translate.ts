@@ -1,6 +1,6 @@
 import type { PageLanguage } from '../../shared/types.js';
 
-export const TRANSLATE_WORLD_ID = 1002;
+const TRANSLATE_WORLD_ID = 1002;
 
 const ENDPOINT = 'https://translate.googleapis.com/translate_a/single';
 const MAX_CHUNK_CHARS = 4000;
@@ -9,7 +9,7 @@ const MAX_PAGE_CHARS = 80_000;
 const CONCURRENCY = 4;
 const SEPARATOR = '\n';
 
-export interface FetchResponse {
+interface FetchResponse {
   ok: boolean;
   json(): Promise<unknown>;
 }
@@ -19,7 +19,7 @@ export type FetchLike = (
   init: { method: 'POST'; headers: Record<string, string>; body: string },
 ) => Promise<FetchResponse>;
 
-export interface ScriptTarget {
+interface ScriptTarget {
   isDestroyed(): boolean;
   executeJavaScriptInIsolatedWorld(worldId: number, scripts: { code: string }[]): Promise<unknown>;
 }
@@ -29,9 +29,9 @@ export interface Collected {
   texts: string[];
 }
 
-export const DETECT_LANGUAGE_SCRIPT = `(() => (document.documentElement.lang || '').trim().toLowerCase().split(/[-_]/)[0] || null)()`;
+const DETECT_LANGUAGE_SCRIPT = `(() => (document.documentElement.lang || '').trim().toLowerCase().split(/[-_]/)[0] || null)()`;
 
-export const COLLECT_SCRIPT = `(() => {
+const COLLECT_SCRIPT = `(() => {
   const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'CODE', 'PRE', 'TEXTAREA', 'INPUT', 'SELECT', 'SVG', 'MATH', 'IFRAME']);
   const skipped = (element) =>
     element.closest('[translate="no"], .notranslate, [contenteditable=""], [contenteditable="true"]') !== null;
@@ -57,7 +57,7 @@ export const COLLECT_SCRIPT = `(() => {
   return { token, texts };
 })()`;
 
-export const COLLECT_SELECTION_SCRIPT = `(() => {
+const COLLECT_SELECTION_SCRIPT = `(() => {
   const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'SELECT']);
   const selection = window.getSelection();
   const nodes = [];
@@ -121,7 +121,7 @@ export function applySelectionScript(token: string, translations: string[]): str
   })()`;
 }
 
-export const RESTORE_SCRIPT = `(() => {
+const RESTORE_SCRIPT = `(() => {
   const state = window.__yalqenTranslation;
   if (!state) return false;
   state.nodes.forEach((node, index) => {
@@ -267,7 +267,7 @@ export async function detectLanguage(target: ScriptTarget): Promise<string | nul
   return normalizeLanguage(raw);
 }
 
-export interface TranslationRun {
+interface TranslationRun {
   cancelled(): boolean;
 }
 

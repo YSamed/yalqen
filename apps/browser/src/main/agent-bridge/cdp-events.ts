@@ -1,7 +1,7 @@
 import type { Headers } from './redact.js';
 
-export type ConsoleLevel = 'error' | 'warning' | 'info' | 'log' | 'debug';
-export type ConsoleSource = 'console' | 'exception' | 'browser';
+type ConsoleLevel = 'error' | 'warning' | 'info' | 'log' | 'debug';
+type ConsoleSource = 'console' | 'exception' | 'browser';
 
 export interface StackFrame {
   functionName: string;
@@ -21,7 +21,7 @@ export interface ConsoleEntry {
   stack?: StackFrame[];
 }
 
-export interface Initiator {
+interface Initiator {
   type: string;
   url?: string;
   line?: number;
@@ -100,7 +100,7 @@ function oneBased(value: unknown): number | undefined {
   return n === undefined ? undefined : n + 1;
 }
 
-export function stackFrames(trace: unknown): StackFrame[] | undefined {
+function stackFrames(trace: unknown): StackFrame[] | undefined {
   const frames = record(trace as StackTrace).callFrames;
   if (!Array.isArray(frames) || frames.length === 0) return undefined;
   return frames.slice(0, MAX_STACK_FRAMES).map((frame: CallFrame) => ({

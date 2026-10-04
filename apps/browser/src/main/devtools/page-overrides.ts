@@ -50,7 +50,7 @@ export const NETWORK_CONDITIONS: Record<NetworkPreset, { label: string; conditio
   },
 };
 
-export interface UserAgent {
+interface UserAgent {
   userAgent: string;
   platform: string;
 }

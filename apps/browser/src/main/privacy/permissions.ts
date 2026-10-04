@@ -6,7 +6,7 @@ import { JsonFile } from '../storage/json-file.js';
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
 export type Decision = 'allow' | 'deny';
 
-export const SITE_PERMISSIONS: readonly SitePermission[] = [
+const SITE_PERMISSIONS: readonly SitePermission[] = [
   'camera',
   'microphone',
   'geolocation',

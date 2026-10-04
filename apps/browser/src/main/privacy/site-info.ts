@@ -15,14 +15,14 @@ export function securityState(url: string, certificateException = false): Securi
 
 const stateText = (state: SecurityState): string => t(`siteInfo.${state}`);
 
-export interface SiteInfo {
+interface SiteInfo {
   url: string;
   security: SecurityState;
   permissions: { kind: SitePermission; decision: Decision }[];
   data?: SiteData;
 }
 
-export interface SiteInfoActions extends SiteDataActions {
+interface SiteInfoActions extends SiteDataActions {
   revokeCertificateException(): void;
   setPermission(kind: SitePermission, decision: Decision | null): void;
 }

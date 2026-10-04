@@ -18,12 +18,12 @@ export interface AgentConnection {
   token: string;
 }
 
-export interface AgentPtyHost {
+interface AgentPtyHost {
   spawn(file: string, args: string[], options: IPtyForkOptions): IPty;
   terminate(terminal: IPty): void;
 }
 
-export interface AgentSessionOptions {
+interface AgentSessionOptions {
   connect(): Promise<AgentConnection>;
   onState(): void;
   onOutput(output: AgentTerminalOutput): void;

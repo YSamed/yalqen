@@ -2,13 +2,13 @@ import { Menu, type MenuItemConstructorOptions } from 'electron';
 import { AUTO_RELOAD_SECONDS, type DevCommandId, type DeviceId } from '../../shared/types.js';
 import { t } from '../../shared/i18n.js';
 
-export interface DeviceMenuItem {
+interface DeviceMenuItem {
   id: DeviceId;
   label: string;
   checked: boolean;
 }
 
-export interface MenuActions {
+interface MenuActions {
   newTab(): void;
   newWindow(): void;
   newPrivateWindow(): void;

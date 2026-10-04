@@ -31,14 +31,14 @@ const NAVIGATION_TIMING_SCRIPT = `(() => {
 
 type LoadOutcome = 'loaded' | 'failed' | 'timeout';
 
-export interface BenchPlan {
+interface BenchPlan {
   urls: string[];
   commandBar: boolean;
   idleMs: number;
   quitWhenDone: boolean;
 }
 
-export interface BenchHost {
+interface BenchHost {
   window(): YalqenWindow | null;
   adBlockerReady(): Promise<void>;
   commandBarPainted(): Promise<void>;

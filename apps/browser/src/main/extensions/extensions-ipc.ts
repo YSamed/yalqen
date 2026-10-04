@@ -5,7 +5,7 @@ import { handleSettingsCall } from '../app/settings-page.js';
 import { STORE_HOME } from './chrome-web-store.js';
 import type { ExtensionManager } from './extensions.js';
 
-export interface ExtensionsIpcHost {
+interface ExtensionsIpcHost {
   extensions: ExtensionManager;
   parentWindow(contents: WebContents): BaseWindow | undefined;
   openTab(contents: WebContents, url: string): void;

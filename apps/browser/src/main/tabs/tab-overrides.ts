@@ -26,7 +26,7 @@ export function rulesFor(tab: Tab, userRules: readonly RequestRule[]): readonly 
 }
 
 // Backend tracing only needs the requests the app's own code makes.
-export const TRACED_REQUESTS: InterceptPattern[] = [
+const TRACED_REQUESTS: InterceptPattern[] = [
   { urlPattern: '*', resourceType: 'Fetch', requestStage: 'Request' },
   { urlPattern: '*', resourceType: 'XHR', requestStage: 'Request' },
 ];

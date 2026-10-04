@@ -6,7 +6,7 @@ const MAX_TEXT = 500;
 const SPAN_KIND_SERVER = 2;
 const STATUS_ERROR = 2;
 
-export interface Traceparent {
+interface Traceparent {
   traceId: string;
   header: string;
 }

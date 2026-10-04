@@ -356,10 +356,6 @@
     font-size: 11px;
     line-height: 1.5;
   }
-  .footer-actions {
-    display: flex;
-    align-items: center;
-  }
   :global([data-material='glass']) .terminal,
   :global([data-material='glass']) .empty {
     background: transparent;

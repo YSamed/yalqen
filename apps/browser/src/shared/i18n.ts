@@ -1,7 +1,7 @@
 import { en, type MessageKey } from './locales/en.js';
 import { tr } from './locales/tr.js';
 
-export type Locale = 'en' | 'tr';
+type Locale = 'en' | 'tr';
 export type { MessageKey };
 
 const MESSAGES: Record<Locale, Record<MessageKey, string>> = { en, tr };

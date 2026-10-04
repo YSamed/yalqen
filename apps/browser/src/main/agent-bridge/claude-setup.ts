@@ -9,7 +9,7 @@ const SCRIPT = [
   'claude mcp add --scope user --transport http yalqen "$YALQEN_MCP_URL" --header "Authorization: Bearer $YALQEN_MCP_TOKEN"',
 ].join('\n');
 
-export interface ClaudeSetupOptions {
+interface ClaudeSetupOptions {
   shell?: string;
   env?: NodeJS.ProcessEnv;
 }

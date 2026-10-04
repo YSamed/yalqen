@@ -273,7 +273,7 @@ export function menuTitle(title: string): string {
   return title.length > MENU_TITLE ? `${title.slice(0, MENU_TITLE - 1)}…` : title;
 }
 
-export interface BookmarksMenuActions {
+interface BookmarksMenuActions {
   open(url: string): void;
   showAll(): void;
   // Without a file, the user picks one.

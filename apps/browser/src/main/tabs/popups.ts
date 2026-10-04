@@ -22,7 +22,7 @@ export function recordBlocked(blocked: readonly string[], url: string): string[]
   return [...blocked.filter((item) => item !== url), url].slice(-MAX_BLOCKED);
 }
 
-export interface BlockedPopupsActions {
+interface BlockedPopupsActions {
   open(url: string): void;
   allowSite(): void;
 }

@@ -10,14 +10,14 @@ import {
 import { NETWORK_CONDITIONS, USER_AGENTS, hasOverrides } from './page-overrides.js';
 import { t } from '../../shared/i18n.js';
 
-export interface DevMenuState {
+interface DevMenuState {
   agentEpisode?: AgentEpisodePreview | null;
   consoleErrors: number;
   autoReloadSeconds: number | null;
   overrides: PageOverrides;
 }
 
-export interface DevMenuActions {
+interface DevMenuActions {
   run(id: DevCommandId): void;
   copyEpisode?(id: string): void;
   copyPlaywrightTest?(id: string): void;

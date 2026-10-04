@@ -2,10 +2,10 @@ import { execFile } from 'node:child_process';
 import { DISCARD_AFTER_MINUTES } from '../../shared/types.js';
 
 export const DEFAULT_DISCARD_AFTER_MINUTES = 30;
-export const DISCARD_CHECK_MS = 15_000;
+const DISCARD_CHECK_MS = 15_000;
 export const PRESSURE_MIN_IDLE_MS = 60_000;
 
-export type MemoryPressure = 'normal' | 'warning' | 'critical';
+type MemoryPressure = 'normal' | 'warning' | 'critical';
 
 export interface DiscardCandidate {
   live: boolean;
@@ -39,7 +39,7 @@ export function pressureVictim<T extends DiscardCandidate>(tabs: readonly T[], n
   return oldest;
 }
 
-export function readMemoryPressure(): Promise<MemoryPressure> {
+function readMemoryPressure(): Promise<MemoryPressure> {
   if (process.platform !== 'darwin') return Promise.resolve('normal');
   return new Promise((resolve) => {
     execFile('sysctl', ['-n', 'kern.memorystatus_vm_pressure_level'], (error, stdout) => {
@@ -55,13 +55,13 @@ export function parsePressureLevel(output: string): MemoryPressure {
   return 'normal';
 }
 
-export interface DiscardableTabs {
+interface DiscardableTabs {
   discardCandidates(): (DiscardCandidate & { id: string })[];
   discard(id: string): boolean;
   discardInactive(now: number, afterMinutes: number): number;
 }
 
-export interface MemorySaverHost {
+interface MemorySaverHost {
   tabSets(): DiscardableTabs[];
   afterMinutes(): number;
 }

@@ -10,7 +10,7 @@ import { t } from '../../shared/i18n.js';
 
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 
-export interface PermissionHandlerOptions {
+interface PermissionHandlerOptions {
   sessions: readonly (readonly [Session, boolean])[];
   storeFor: (isPrivate: boolean) => PermissionStore;
   parentOf: (contents: WebContents) => BaseWindow | undefined;

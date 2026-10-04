@@ -1,13 +1,7 @@
 import fs from 'node:fs';
 import type { WebContents } from 'electron';
-import {
-  componentInfo,
-  needsInlineMap,
-  NO_COMPONENT,
-  type ComponentInfo,
-  type InspectedSource,
-  type ComponentInspection,
-} from '../agent-bridge/component-source.js';
+import { componentInfo, needsInlineMap, NO_COMPONENT, type ComponentInfo } from '../agent-bridge/component-source.js';
+import type { ComponentInspection, InspectedSource } from '../../shared/component-inspection.js';
 import { pageScriptPath } from '../app/paths.js';
 import { inlineSourceMap, originalPosition, type RawSourceMap } from '../agent-bridge/source-map.js';
 import { truncateBytes } from '../agent-bridge/redact.js';

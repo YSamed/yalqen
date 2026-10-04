@@ -1,7 +1,7 @@
 import type { Session } from 'electron';
 import { getDomain } from 'tldts';
 
-function resolveSite(url: string, domains?: Map<string, string>): string | null {
+export function siteOf(url: string, domains?: Map<string, string>): string | null {
   try {
     const { protocol, hostname } = new URL(url);
     if (!['http:', 'https:', 'ws:', 'wss:'].includes(protocol) || hostname === '') return null;
@@ -19,10 +19,6 @@ function resolveSite(url: string, domains?: Map<string, string>): string | null 
   } catch {
     return null;
   }
-}
-
-export function siteOf(url: string): string | null {
-  return resolveSite(url);
 }
 
 export function headerValues(headers: Record<string, string | string[]> | undefined, name: string): string[] {
@@ -69,7 +65,7 @@ export function setThirdPartyCookieBlocking(session: Session, enabled: boolean):
     if (!url) return null;
     let page = pages.get(contents);
     if (page?.url !== url) {
-      page = { url, site: resolveSite(url, domains) };
+      page = { url, site: siteOf(url, domains) };
       pages.set(contents, page);
     }
     return page;
@@ -79,7 +75,7 @@ export function setThirdPartyCookieBlocking(session: Session, enabled: boolean):
     // Redirects keep the request id; classification belongs to the current hop.
     existing.delete(details.id);
     const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
-    const request = page ? resolveSite(details.url, domains) : null;
+    const request = page ? siteOf(details.url, domains) : null;
     if (!page || request === null || request === page.site) {
       callback({});
       return;

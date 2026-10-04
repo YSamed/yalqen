@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JsonFile } from '../storage/json-file.js';
 
-export const ZOOM_FACTORS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
+const ZOOM_FACTORS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
 const MIN_FACTOR = ZOOM_FACTORS[0];
 const MAX_FACTOR = ZOOM_FACTORS[ZOOM_FACTORS.length - 1];
 const EPSILON = 0.001;

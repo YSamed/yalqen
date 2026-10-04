@@ -1,40 +1,12 @@
-export type SourceConfidence = 'exact' | 'component' | 'dom';
+import type {
+  ComponentInspection,
+  ComponentNode,
+  Framework,
+  InspectedSource,
+  SourceLocation,
+} from '../../shared/component-inspection.js';
 
-export interface RawLocation {
-  file: string;
-  line: number | null;
-  column: number | null;
-}
-
-export interface InspectedSource extends RawLocation {
-  mapped: boolean;
-  raw: RawLocation | null;
-}
-
-export interface ComponentNode {
-  name: string;
-  children: ComponentNode[];
-}
-
-// What the page-side inspector (src/page-scripts/component-inspector.ts) returns.
-export type Framework = 'react' | 'vue' | 'svelte';
-
-export interface ComponentInspection {
-  framework: Framework | null;
-  development: boolean;
-  component: string | null;
-  source: InspectedSource | null;
-  componentSource: InspectedSource | null;
-  owners: string[];
-  props: Record<string, string>;
-  children: ComponentNode[];
-}
-
-export interface SourceLocation {
-  file: string;
-  line: number | null;
-  column: number | null;
-}
+type SourceConfidence = 'exact' | 'component' | 'dom';
 
 export interface ComponentInfo {
   framework: Framework | null;
@@ -83,13 +55,13 @@ export function projectPath(file: string): string {
 
 const SERVER_FRAME = /^(about:\/\/React\/Server\/|rsc:\/\/)/;
 
-export function isServerFrame(source: InspectedSource): boolean {
+function isServerFrame(source: InspectedSource): boolean {
   return SERVER_FRAME.test(source.raw?.file ?? '');
 }
 
 // Webpack evaluates each module with its source map inline, which the page cannot fetch, so
 // such a location is still the compiled one until the main process maps it.
-export function needsInlineMap(source: InspectedSource | null): source is InspectedSource & { raw: RawLocation } {
+export function needsInlineMap(source: InspectedSource | null): source is InspectedSource & { raw: SourceLocation } {
   return (
     !!source?.raw?.file.startsWith('webpack-internal:') &&
     source.raw.line === source.line &&

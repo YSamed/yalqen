@@ -54,7 +54,7 @@ const PAGE = `<!doctype html>
 </body>
 </html>`;
 
-export interface PageNoticeHost {
+interface PageNoticeHost {
   window: BaseWindow;
   area: () => Rectangle;
 }

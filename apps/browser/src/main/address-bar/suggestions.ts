@@ -57,7 +57,7 @@ export interface HistoryIndex {
   favicons: ReadonlyMap<string, string>;
 }
 
-export interface SuggestionSources {
+interface SuggestionSources {
   tabs: readonly { id: string; title: string; url: string }[];
   bookmarks: readonly { title: string; url: string }[];
   history: HistoryIndex;

@@ -64,7 +64,7 @@ const MAX_PINCH_ZOOM = 3;
 
 type Listen = WebContents['on'];
 
-export interface TabManagerOptions {
+interface TabManagerOptions {
   window: BaseWindow;
   pagePreload: string;
   pageTheme: string;
@@ -109,7 +109,7 @@ export interface TabManagerOptions {
 
 export type DetachedTab = Tab;
 
-export type PickOutcome =
+type PickOutcome =
   { status: 'picked'; selection: ElementSelection } | { status: 'cancelled' | 'failed' | 'agent-off' | 'not-local' };
 
 export class TabManager {

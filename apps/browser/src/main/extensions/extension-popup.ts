@@ -26,7 +26,7 @@ export function popupBounds(anchor: AnchorRect, preferred: Size, area: Size): Re
   return { x, y, width, height };
 }
 
-export interface ExtensionPopupRequest {
+interface ExtensionPopupRequest {
   window: BaseWindow;
   session: Session;
   url: string;

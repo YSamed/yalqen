@@ -7,7 +7,7 @@ const WIDTH = 380;
 const HEIGHT = 60;
 const INSET = 4;
 
-export interface FindBarOptions {
+interface FindBarOptions {
   preload: string;
   page: string;
 }

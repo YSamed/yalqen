@@ -8,7 +8,7 @@ export const OUTER_HTML_LIMIT = 4 * 1024;
 const LABEL_TEXT_LENGTH = 40;
 const LABEL_CLASSES = 2;
 
-export const LAYOUT_PROPERTIES = [
+const LAYOUT_PROPERTIES = [
   'display',
   'position',
   'top',

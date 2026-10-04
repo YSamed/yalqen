@@ -10,7 +10,7 @@ import {
 import { NETWORK_CONDITIONS, NO_OVERRIDES, USER_AGENTS } from './page-overrides.js';
 import { getLocale, t } from '../../shared/i18n.js';
 
-export const DEV_COMMAND_PREFIX = '>';
+const DEV_COMMAND_PREFIX = '>';
 
 interface DevCommand {
   id: DevCommandId;

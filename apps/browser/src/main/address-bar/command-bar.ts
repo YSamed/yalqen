@@ -13,7 +13,7 @@ import { createOverlayView, raiseToTop } from '../window/overlay-view.js';
 
 const NEXT_FRAME_SCRIPT = 'new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))';
 
-export interface CommandBarOptions {
+interface CommandBarOptions {
   preload: string;
   page: string;
 }

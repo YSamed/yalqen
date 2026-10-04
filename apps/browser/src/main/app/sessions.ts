@@ -3,7 +3,7 @@ import type { PageLanguage } from '../../shared/types.js';
 import { setThirdPartyCookieBlocking } from '../privacy/third-party-cookies.js';
 import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
 
-export interface BrowsingSessions {
+interface BrowsingSessions {
   daily: Session;
   privateBrowsing: Session;
   developer: Session;

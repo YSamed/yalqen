@@ -25,7 +25,7 @@ export function registerInternalScheme(): void {
   ]);
 }
 
-export interface InternalPageFiles {
+interface InternalPageFiles {
   newTab: string;
   newTabScript: string;
   history: string;
@@ -34,13 +34,13 @@ export interface InternalPageFiles {
   settings: string;
 }
 
-export interface InternalPageSources extends NewTabSources {
+interface InternalPageSources extends NewTabSources {
   visits: (query: string) => HistoryEntry[];
   downloads: DownloadsPageSource;
   bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] };
 }
 
-export interface InternalPages {
+interface InternalPages {
   newTab: NewTabAssets;
   history: string;
   downloads: DownloadsPageAssets;
@@ -49,7 +49,7 @@ export interface InternalPages {
 }
 
 // The locale is fixed for the whole run, so page templates are translated once when loaded.
-export function localizePage(page: string): string {
+function localizePage(page: string): string {
   return page
     .replace('<html lang="en">', `<html lang="${getLocale()}">`)
     .replace(/\{\{([\w.]+)\}\}/g, (_match, key: string) => escapeHtml(t(key as MessageKey)));

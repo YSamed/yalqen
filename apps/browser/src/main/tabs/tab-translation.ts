@@ -5,7 +5,7 @@ import { detectLanguage, restorePage, translatePage, translateSelection, type Fe
 
 const translationFetch: FetchLike = (endpoint, init) => net.fetch(endpoint, { ...init, credentials: 'omit' });
 
-export interface TranslationHost {
+interface TranslationHost {
   settings(): { enabled: boolean; language: PageLanguage };
   changed(): void;
 }

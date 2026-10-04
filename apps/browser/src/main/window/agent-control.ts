@@ -47,7 +47,7 @@ function strip(): WebContentsView {
   return view;
 }
 
-export interface AgentControlHost {
+interface AgentControlHost {
   window: BaseWindow;
   area: () => Rectangle;
   labels: () => { inControl: string; stop: string };

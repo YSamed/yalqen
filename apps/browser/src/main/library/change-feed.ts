@@ -1,4 +1,4 @@
-export const CHANGE_WAIT_MS = 25_000;
+const CHANGE_WAIT_MS = 25_000;
 
 export class ChangeFeed {
   private current = 0;

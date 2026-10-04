@@ -26,16 +26,16 @@ const MENU_ICON_SIZE = 16;
 const LIST_ICON_SIZE = 64;
 const STORE_DIRECTORY = 'store-extensions';
 
-export type StoreExtensionStatus = 'available' | 'installing' | 'installed';
+type StoreExtensionStatus = 'available' | 'installing' | 'installed';
 
-export interface ExtensionAction {
+interface ExtensionAction {
   title: string;
   icon: NativeImage | null;
   popupUrl: string | null;
   optionsUrl: string | null;
 }
 
-export interface ExtensionsMenuHandlers {
+interface ExtensionsMenuHandlers {
   openPopup(url: string): void;
   openOptions(url: string): void;
   openStore(): void;

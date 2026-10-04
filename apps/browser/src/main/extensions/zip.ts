@@ -14,7 +14,7 @@ const MAX_TOTAL_BYTES = 512 * 1024 * 1024;
 const STORED = 0;
 const DEFLATED = 8;
 
-export interface ZipEntry {
+interface ZipEntry {
   name: string;
   data: Buffer;
 }
@@ -27,7 +27,7 @@ function findEnd(zip: Buffer): number {
   throw new Error(t('zip.invalidPackage'));
 }
 
-export function readZip(zip: Buffer): ZipEntry[] {
+function readZip(zip: Buffer): ZipEntry[] {
   const end = findEnd(zip);
   const count = zip.readUInt16LE(end + 10);
   if (count === 0xffff || zip.readUInt32LE(end + 16) === 0xffffffff) throw new Error(t('zip.tooLarge'));

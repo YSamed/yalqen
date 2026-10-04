@@ -1,6 +1,6 @@
 import type { ChromeLayout } from '../../shared/types.js';
 
-export interface PageFrame {
+interface PageFrame {
   x: number;
   y: number;
   width: number;

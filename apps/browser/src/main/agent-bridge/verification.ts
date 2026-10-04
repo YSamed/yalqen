@@ -7,12 +7,12 @@ export interface ReplayStep {
   summary: string;
 }
 
-export interface ReplayPlan {
+interface ReplayPlan {
   steps: ReplayStep[];
   skipped: string[];
 }
 
-export interface RequestOutcome {
+interface RequestOutcome {
   request: string;
   before: number | null;
   after: number | null;

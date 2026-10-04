@@ -5,7 +5,7 @@ import { escapeHtml } from './html.js';
 
 export const ERR_ABORTED = -3;
 
-export interface ErrorText {
+interface ErrorText {
   title: string;
   message: string;
 }
@@ -46,7 +46,7 @@ export function describeError(code: number, url: string): ErrorText {
   }
 }
 
-export function describeHttpsOnly(url: string): ErrorText {
+function describeHttpsOnly(url: string): ErrorText {
   return {
     title: t('errorPage.httpsOnlyTitle'),
     message: t('errorPage.httpsOnlyMessage', { host: hostOf(url) ?? url }),

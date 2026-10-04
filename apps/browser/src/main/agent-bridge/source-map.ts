@@ -7,7 +7,7 @@ export interface RawSourceMap {
   mappings: string;
 }
 
-export interface OriginalPosition {
+interface OriginalPosition {
   source: string;
   line: number;
   column: number;

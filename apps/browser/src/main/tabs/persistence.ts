@@ -9,7 +9,7 @@ export interface SavedHistory {
   index: number;
 }
 
-export const SAVED_ENTRIES_AROUND_ACTIVE = 6;
+const SAVED_ENTRIES_AROUND_ACTIVE = 6;
 
 export type PersistChange = boolean | 'lazy';
 

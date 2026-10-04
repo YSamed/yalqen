@@ -23,7 +23,7 @@ export const safeStorageCipher: Cipher = {
   decrypt: (secret) => safeStorage.decryptString(Buffer.from(secret, 'base64')),
 };
 
-export interface PasswordHandlerOptions {
+interface PasswordHandlerOptions {
   store: PasswordStore;
   savesPasswords: (contents: WebContents) => boolean;
   parentOf: (contents: WebContents) => BaseWindow | undefined;

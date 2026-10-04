@@ -63,7 +63,7 @@ export async function unobserveTab(tab: Tab, contents: WebContents): Promise<voi
   if (!contents.isDestroyed()) releaseDebugger(tab, contents);
 }
 
-export function activeOverrideNames(overrides: PageOverrides): string[] {
+function activeOverrideNames(overrides: PageOverrides): string[] {
   return (Object.keys(NO_OVERRIDES) as (keyof PageOverrides)[]).filter((key) => overrides[key] !== NO_OVERRIDES[key]);
 }
 

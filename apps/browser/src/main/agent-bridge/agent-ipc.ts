@@ -9,7 +9,7 @@ import { handleSettingsCall } from '../app/settings-page.js';
 
 const SETUP_KINDS = new Set<unknown>(['claude', 'codex', 'token', 'otel'] satisfies AgentSetupKind[]);
 
-export interface AgentIpcHost {
+interface AgentIpcHost {
   view(): AgentBridgeView;
   snippet(kind: AgentSetupKind): string | null;
   regenerateToken(): void;

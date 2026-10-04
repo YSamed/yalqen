@@ -20,7 +20,7 @@ const STATE_PUSH_MS = 250;
 const PAGE_PUSH_MS = 500;
 const ITEM_COMMANDS = new Set<string>(['open', 'show', 'pause', 'resume', 'cancel', 'retry', 'remove']);
 
-export interface DownloadManagerOptions {
+interface DownloadManagerOptions {
   store: DownloadStore;
   daily: Session;
   privateBrowsing: Session;

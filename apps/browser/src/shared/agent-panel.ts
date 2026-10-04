@@ -26,7 +26,7 @@ export const EMPTY_PROJECT_RUN: ProjectRunState = {
 
 export const DEFAULT_AGENT_PANEL_WIDTH = 400;
 export const MIN_AGENT_PANEL_WIDTH = 280;
-export const MAX_AGENT_PANEL_WIDTH = 800;
+const MAX_AGENT_PANEL_WIDTH = 800;
 export const MIN_AGENT_PAGE_WIDTH = 300;
 
 export function fitAgentPanelWidth(requested: number, windowWidth: number, tabPanelWidth: number): number {

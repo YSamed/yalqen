@@ -52,7 +52,7 @@ const PAGE = `<!doctype html>
 </body>
 </html>`;
 
-export interface NavigationHintHost {
+interface NavigationHintHost {
   window: BaseWindow;
   area: () => Rectangle;
 }

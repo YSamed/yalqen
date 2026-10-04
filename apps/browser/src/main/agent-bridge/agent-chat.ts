@@ -32,7 +32,7 @@ type Client = {
   env?: NodeJS.ProcessEnv;
 };
 
-export interface AgentChatOptions {
+interface AgentChatOptions {
   connect(): Promise<AgentConnection>;
   onState(): void;
   onUpdate(snapshot: AgentChatSnapshot): void;

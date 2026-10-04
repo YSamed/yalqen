@@ -9,7 +9,7 @@ import { cookieUrl, cookiesForHost } from '../privacy/site-data.js';
 import { siteInfoTemplate } from '../privacy/site-info.js';
 import type { TabManager } from '../tabs/tabs.js';
 
-export interface TabMenuActions {
+interface TabMenuActions {
   togglePin(): void;
   toggleMute(): void;
   discard(): void;
@@ -34,7 +34,7 @@ export function tabMenuTemplate(
   return template;
 }
 
-export interface ProfileMenuActions {
+interface ProfileMenuActions {
   newWindow(): void;
   newPrivateWindow(): void;
   newPrivateTab(): void;
@@ -55,7 +55,7 @@ export function profileMenuTemplate(actions: ProfileMenuActions): MenuItemConstr
   ];
 }
 
-export interface LibraryMenuActions {
+interface LibraryMenuActions {
   open(url: string): void;
   showAll(): void;
   importBookmarks(file?: string): void;
@@ -78,7 +78,7 @@ export function libraryMenuTemplate(
   return template;
 }
 
-export interface SiteInfoHost {
+interface SiteInfoHost {
   tabs: TabManager;
   permissions(isPrivate: boolean): PermissionStore;
   session(isPrivate: boolean): Session;

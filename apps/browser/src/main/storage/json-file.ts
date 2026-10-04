@@ -3,9 +3,9 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { bench } from '../bench/bench.js';
 
-export const SAVE_DELAY_MS = 500;
+const SAVE_DELAY_MS = 500;
 export const LAZY_SAVE_DELAY_MS = 5000;
-export const MAX_SAVE_WAIT_MS = 5000;
+const MAX_SAVE_WAIT_MS = 5000;
 
 export class JsonFile {
   private timer: NodeJS.Timeout | null = null;

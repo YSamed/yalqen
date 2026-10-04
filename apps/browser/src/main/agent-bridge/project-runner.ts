@@ -24,12 +24,12 @@ const SCRIPT = [
   'exec "$YALQEN_RUN_MANAGER" run "$YALQEN_RUN_SCRIPT"',
 ].join('\n');
 
-export interface ProjectCommand {
+interface ProjectCommand {
   manager: Manager;
   script: string;
 }
 
-export interface ProjectRunnerOptions {
+interface ProjectRunnerOptions {
   onState(): void;
   onUrl(url: string): void;
   spawn?(command: string, args: string[], options: SpawnOptions): ChildProcess;

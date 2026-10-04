@@ -5,7 +5,7 @@ import { callTool, TOOLS, type BridgeHost } from './tools.js';
 import { TRACES_PATH } from './tracing.js';
 
 export const DEFAULT_PORT = 47823;
-export const PORT_ATTEMPTS = 10;
+const PORT_ATTEMPTS = 10;
 export const MCP_PATH = '/mcp';
 const MAX_BODY_BYTES = 1024 * 1024;
 const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
@@ -33,7 +33,7 @@ export interface ClientInfo {
   version: string;
 }
 
-export interface BridgeServerOptions {
+interface BridgeServerOptions {
   host: BridgeHost;
   token: () => string;
   version: string;
@@ -60,7 +60,7 @@ function isRequest(value: unknown): value is JsonRpcRequest {
   );
 }
 
-export async function handleMessage(
+async function handleMessage(
   message: JsonRpcRequest,
   options: BridgeServerOptions,
 ): Promise<JsonRpcResponse | null> {
@@ -151,7 +151,7 @@ async function receiveTraces(
   send(res, 200, { partialSuccess: {} });
 }
 
-export function createRequestHandler(options: BridgeServerOptions, port: () => number): http.RequestListener {
+function createRequestHandler(options: BridgeServerOptions, port: () => number): http.RequestListener {
   return async (req, res) => {
     const rejection = checkRequest(req.headers, port(), options.token());
     if (rejection === 'token') {

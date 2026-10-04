@@ -3,7 +3,7 @@ interface Listable {
   pinnedUrl: string | null;
 }
 
-export type OpenedPinned = ReadonlyMap<string, string | null>;
+type OpenedPinned = ReadonlyMap<string, string | null>;
 
 export function tabListOrder<T extends Listable>(tabs: readonly T[], opened: OpenedPinned): T[] {
   const unpinned = tabs.filter((tab) => !tab.pinnedUrl);

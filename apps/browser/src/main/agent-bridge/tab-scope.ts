@@ -1,6 +1,6 @@
 import { isDevelopmentHost } from '../../shared/hosts.js';
 
-export interface ScopeCandidate {
+interface ScopeCandidate {
   url: string;
   isPrivate: boolean;
 }

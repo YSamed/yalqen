@@ -45,7 +45,7 @@ export function callPageToolExpression(name: string, input: unknown): string {
   return `navigator.modelContext.__yalqenTools.call(${JSON.stringify(name)}, ${JSON.stringify(input ?? {})})`;
 }
 
-export interface PageTool {
+interface PageTool {
   name: string;
   description?: string;
   inputSchema?: unknown;

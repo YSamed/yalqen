@@ -11,7 +11,7 @@ export const CONSOLE_LIMIT = 200;
 export const NETWORK_LIMIT = 300;
 
 export const ACTION_BINDING = '__yalqenAgentAction';
-export const TRACE_LIMIT = 100;
+const TRACE_LIMIT = 100;
 const SPANS_PER_TRACE = 100;
 
 export class TabRuntime {
