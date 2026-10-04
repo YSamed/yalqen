@@ -33,7 +33,7 @@
   class:subagent={part.task !== null || part.steps.length > 0}
 >
   <summary>
-    <Icon name={failed ? 'warning' : running ? 'code' : 'check'} size={12} />
+    <Icon name={failed ? 'warning' : running ? 'code' : 'check'} size={14} />
     <span class="label">
       <span class="name" title={change?.path}>{label}</span>
       {#if running && part.steps.length}<span class="step">{part.steps.at(-1)}</span>{/if}
@@ -43,7 +43,7 @@
       >{/if}
     {#if part.task?.toolUses}<span class="counts">{t('agentChat.toolUses', { count: part.task.toolUses })}</span>{/if}
     <span class="status">{t(status)}</span>
-    <Icon name="down" size={10} />
+    <Icon name="down" size={12} />
   </summary>
   {#if change}
     <div class="file-bar">
@@ -74,19 +74,19 @@
 
 <style>
   .tool {
-    margin: 10px 0;
+    margin: 8px 0;
     overflow: hidden;
     border: 1px solid var(--border);
-    border-radius: var(--radius-control);
+    border-radius: 10px;
   }
   summary {
     display: flex;
     align-items: center;
-    gap: 7px;
-    min-height: 34px;
-    padding: 4px 10px;
+    gap: 8px;
+    min-height: 36px;
+    padding: 4px 10px 4px 12px;
     color: var(--text-muted);
-    font-size: var(--font-size-small);
+    font-size: var(--ai-small);
     cursor: pointer;
     list-style: none;
   }
@@ -126,14 +126,18 @@
   }
   .step {
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: var(--ai-meta);
   }
   .counts,
   .status {
     flex: none;
   }
   .counts {
+    font-size: var(--ai-meta);
     font-variant-numeric: tabular-nums;
+  }
+  .status {
+    font-size: var(--ai-meta);
   }
   .added {
     color: var(--success);
@@ -142,7 +146,7 @@
     color: var(--warn);
   }
   .file-bar {
-    padding: 6px 10px;
+    padding: 6px 12px;
     border-top: 1px solid var(--page-divider);
   }
   .file {
@@ -152,10 +156,7 @@
     border: 0;
     background: none;
     color: var(--accent);
-    font:
-      10px/1.5 'SF Mono',
-      Menlo,
-      monospace;
+    font: var(--ai-meta) / 1.5 var(--ai-mono-font);
     text-align: start;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -168,10 +169,7 @@
     max-height: 260px;
     overflow: auto;
     background: var(--surface-strong);
-    font:
-      10px/1.65 'SF Mono',
-      Menlo,
-      monospace;
+    font: var(--ai-meta) / 1.6 var(--ai-mono-font);
     user-select: text;
   }
   .line {
@@ -181,7 +179,7 @@
   }
   .sign {
     display: inline-block;
-    width: 18px;
+    width: 20px;
     text-align: center;
     user-select: none;
   }
@@ -196,24 +194,24 @@
     color: var(--text-muted);
   }
   .line.more {
-    padding-left: 18px;
+    padding-left: 20px;
   }
   .summary-text {
     margin: 0;
-    padding: 8px 10px;
+    padding: 8px 12px;
     border-top: 1px solid var(--page-divider);
-    font-size: 11px;
-    line-height: 1.55;
+    font-size: var(--ai-small);
+    line-height: 1.5;
   }
   .steps {
     max-height: 180px;
     margin: 0;
-    padding: 8px 10px 8px 30px;
+    padding: 8px 12px 8px 32px;
     overflow: auto;
     border-top: 1px solid var(--page-divider);
     color: var(--text-muted);
-    font-size: 10px;
-    line-height: 1.7;
+    font-size: var(--ai-meta);
+    line-height: 1.6;
   }
   .steps li {
     overflow-wrap: anywhere;
@@ -221,15 +219,12 @@
   pre {
     max-height: 180px;
     margin: 0;
-    padding: 10px;
+    padding: 10px 12px;
     overflow: auto;
     border-top: 1px solid var(--page-divider);
     background: var(--surface-strong);
     color: var(--text-muted);
-    font:
-      10px/1.7 'SF Mono',
-      Menlo,
-      monospace;
+    font: var(--ai-meta) / 1.6 var(--ai-mono-font);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     user-select: text;

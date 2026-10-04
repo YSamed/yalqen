@@ -33,7 +33,7 @@
 
 <div class="rewind">
   {#if reverted}
-    <span class="note"><Icon name="check" size={11} />{t('agentChat.reverted')}</span>
+    <span class="note"><Icon name="check" size={12} />{t('agentChat.reverted')}</span>
   {:else if preview && !nothing}
     <div class="confirm" role="alertdialog" aria-label={t('agentChat.revert')}>
       <p>
@@ -73,7 +73,7 @@
     gap: 6px;
     margin-top: 4px;
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--ai-meta);
   }
   .note {
     display: inline-flex;
@@ -86,13 +86,14 @@
   .confirm {
     width: 100%;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: var(--ai-radius);
     background: var(--surface);
     box-shadow: var(--shadow);
   }
   .confirm p {
-    margin: 0 0 8px;
+    margin: 0 0 10px;
     color: var(--text);
+    font-size: var(--ai-small);
     line-height: 1.5;
   }
   .actions {

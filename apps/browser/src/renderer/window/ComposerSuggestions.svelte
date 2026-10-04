@@ -33,7 +33,7 @@
         onpick(index);
       }}
     >
-      <Icon name={item.icon} size={12} />
+      <Icon name={item.icon} size={14} />
       <span class="label">{item.label}</span>
       {#if item.detail}<span class="detail">{item.detail}</span>{/if}
     </li>
@@ -48,7 +48,7 @@
     margin: 0 0 8px;
     padding: 4px;
     overflow-y: auto;
-    border-radius: 10px;
+    border-radius: var(--ai-radius);
     background: var(--surface-strong);
     box-shadow: 0 0 0 1px var(--border);
     list-style: none;
@@ -58,10 +58,11 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
-    padding: 5px 8px;
-    border-radius: 7px;
+    min-height: 28px;
+    padding: 0 8px;
+    border-radius: var(--radius-control);
     color: var(--text);
-    font-size: 11px;
+    font-size: var(--ai-small);
     cursor: pointer;
   }
   li > :global(svg) {
@@ -80,7 +81,7 @@
     flex: none;
     max-width: 60%;
     overflow: hidden;
-    font-family: 'SF Mono', Menlo, monospace;
+    font-family: var(--ai-mono-font);
     text-overflow: ellipsis;
     white-space: nowrap;
   }

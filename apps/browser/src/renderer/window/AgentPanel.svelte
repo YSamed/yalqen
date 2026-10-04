@@ -179,9 +179,9 @@
     </div>
     <div class="actions">
       {#if view === 'terminal' && active}
-        <IconButton icon="stop" label={t('agentPanel.stop')} size="sm" onclick={stop} />
+        <IconButton icon="stop" label={t('agentPanel.stop')} onclick={stop} />
       {:else if view === 'chat' && chat.id}
-        <IconButton icon="plus" label={t('agentChat.newChat')} size="sm" onclick={newChat} />
+        <IconButton icon="plus" label={t('agentChat.newChat')} onclick={newChat} />
       {/if}
       {#if view === 'chat' && providers.length > 1}
         {#if providerLocked}
@@ -201,7 +201,6 @@
         <IconButton
           icon="history"
           label={t('agentChat.history')}
-          size="sm"
           aria-pressed={historyOpen}
           disabled={chatBusy}
           onclick={() => (historyOpen = !historyOpen)}
@@ -210,7 +209,6 @@
       <IconButton
         icon="close"
         label={t('agentPanel.close')}
-        size="sm"
         onclick={() => window.yalqen.send({ type: 'toggle-agent-panel' })}
       />
     </div>
@@ -220,7 +218,6 @@
       {#if session.directory}<Button
           class="project"
           variant="tonal"
-          size="sm"
           icon="folder"
           title={[
             session.directory ?? t('agentPanel.chooseProject'),
@@ -235,7 +232,7 @@
         <div class="run">
           {#if run.status === 'running' && run.url}
             <Button
-              size="sm"
+              class="run-url"
               variant="tonal"
               icon="globe"
               title={t('agentRun.open', { url: run.url })}
@@ -245,11 +242,10 @@
             <span class="run-status">{t(run.status === 'starting' ? 'agentRun.starting' : 'agentRun.running')}</span>
           {/if}
           {#if runActive}
-            <IconButton icon="stop" size="sm" label={t('agentRun.stop')} onclick={stopRun} />
+            <IconButton icon="stop" label={t('agentRun.stop')} onclick={stopRun} />
           {:else}
             <IconButton
               icon="play"
-              size="sm"
               tone={runFailed ? 'warn' : 'accent'}
               label={runFailed
                 ? t('agentRun.failed', { command: run.command })
@@ -294,6 +290,14 @@
 
 <style>
   .agent-panel {
+    --ai-gutter: 16px;
+    --ai-text: 13px;
+    --ai-small: 12px;
+    --ai-meta: 11px;
+    --ai-mono: 11.5px;
+    --ai-mono-font: 'SF Mono', Menlo, monospace;
+    --ai-radius: 12px;
+    container: agent-panel / inline-size;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -347,33 +351,44 @@
     align-items: center;
   }
   header {
+    flex: none;
     justify-content: space-between;
-    min-height: 48px;
-    padding: 0 12px 0 18px;
+    gap: 8px;
+    height: 48px;
+    padding: 0 10px 0 var(--ai-gutter);
   }
   .identity {
-    gap: 8px;
+    flex: 1;
+    gap: 10px;
     min-width: 0;
   }
   .identity strong {
-    font-size: 13px;
+    flex: none;
+    font-size: 14px;
     font-weight: 600;
     letter-spacing: -0.2px;
+    white-space: nowrap;
   }
   .actions {
+    flex: none;
     gap: 2px;
   }
   .status {
-    gap: 5px;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
     color: var(--text-muted);
-    font-size: var(--font-size-small);
+    font-size: var(--ai-meta);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .status.waiting {
     color: var(--accent);
   }
   .dot {
-    width: 5px;
-    height: 5px;
+    flex: none;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--text-muted);
   }
@@ -384,32 +399,74 @@
     background: var(--warn);
   }
   .bar {
-    justify-content: flex-start;
-    gap: 10px;
-    padding: 0 12px 8px 14px;
+    flex: none;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 10px 10px var(--ai-gutter);
   }
   .bar :global(.segmented) {
     margin-left: auto;
   }
   .bar :global(.project) {
-    min-width: 0;
-    max-width: 50%;
+    flex: none;
+    max-width: 45%;
+  }
+  .bar :global(.project:disabled) {
+    color: var(--text);
+    opacity: 1;
   }
   .run {
     display: flex;
+    flex: 0 1 auto;
     align-items: center;
-    gap: 2px;
     min-width: 0;
+    border-radius: var(--radius-pill);
+    background: var(--surface-hover);
+  }
+  .run :global(.run-url) {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding-right: 4px;
+    background: none;
+  }
+  .run :global(.icon-btn:not([class*='tone-'])) {
+    color: var(--text-muted);
+  }
+  .run :global(.icon-btn:not([class*='tone-']):hover:not(:disabled)) {
+    color: var(--text);
   }
   .run-status {
-    padding: 0 6px;
+    padding: 0 4px 0 12px;
     color: var(--text-muted);
-    font-size: var(--font-size-small);
+    font-size: var(--ai-meta);
+    white-space: nowrap;
   }
   .provider {
-    padding: 0 6px;
+    padding: 0 8px;
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--ai-small);
+  }
+  .agent-panel :global(.select-trigger.ghost) {
+    height: var(--control-md);
+    padding: 0 6px 0 8px;
+    border-radius: var(--radius-control);
+    font-size: var(--ai-small);
+  }
+  .agent-panel :global(.select-trigger.ghost:hover),
+  .agent-panel :global(.select-trigger.ghost[aria-expanded='true']) {
+    background-color: var(--surface-hover);
+  }
+  .agent-panel :global(.select-content) {
+    font-size: var(--ai-small);
+  }
+  @container agent-panel (width < 360px) {
+    .run :global(.run-url > span) {
+      display: none;
+    }
+    .run :global(.run-url) {
+      width: var(--control-md);
+      padding: 0;
+    }
   }
   .panel-view {
     display: flex;

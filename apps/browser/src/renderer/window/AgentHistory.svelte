@@ -50,7 +50,7 @@
 <div class="history">
   <div class="heading">
     <h2>{t('agentChat.history')}</h2>
-    <IconButton size="sm" icon="close" label={t('agentChat.closeHistory')} onclick={onclose} />
+    <IconButton icon="close" label={t('agentChat.closeHistory')} onclick={onclose} />
   </div>
   {#if failed}<p class="note warn" role="status">{t('agentChat.historyFailed')}</p>{/if}
   {#if loading}
@@ -65,11 +65,11 @@
             <span class="title">{session.title}</span>
             <span class="meta">
               {ago(session.updatedAt)}{#if session.branch}<span class="branch"
-                  ><Icon name="code" size={10} />{session.branch}</span
+                  ><Icon name="code" size={11} />{session.branch}</span
                 >{/if}
             </span>
           </button>
-          <Button size="sm" disabled={opening} title={t('agentChat.forkTitle')} onclick={() => open(session, true)}
+          <Button disabled={opening} title={t('agentChat.forkTitle')} onclick={() => open(session, true)}
             >{t('agentChat.fork')}</Button
           >
         </li>
@@ -84,17 +84,19 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    padding: 4px 14px 14px;
+    padding: 0 12px 12px;
   }
   .heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-height: var(--control-md);
     margin-bottom: 8px;
+    padding-left: 4px;
   }
   h2 {
     margin: 0;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
   }
   ul {
@@ -110,7 +112,7 @@
     align-items: center;
     gap: 6px;
     padding-right: 4px;
-    border-radius: 10px;
+    border-radius: var(--ai-radius);
   }
   li:hover {
     background: var(--surface-hover);
@@ -120,9 +122,9 @@
     flex: 1;
     gap: 2px;
     min-width: 0;
-    padding: 8px 10px;
+    padding: 8px 4px 8px 10px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--ai-radius);
     background: none;
     color: var(--text);
     font: inherit;
@@ -135,7 +137,7 @@
   }
   .title {
     overflow: hidden;
-    font-size: 12px;
+    font-size: var(--ai-text);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -143,7 +145,7 @@
     display: flex;
     gap: 8px;
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--ai-meta);
   }
   .branch {
     display: inline-flex;
@@ -155,9 +157,9 @@
     white-space: nowrap;
   }
   .note {
-    margin: 8px 0;
+    margin: 8px 4px;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--ai-small);
   }
   .warn {
     color: var(--warn);

@@ -208,7 +208,7 @@
 <div class="terminal-view">
   {#if activeTab?.agentObserved}
     <button class="tab-context" disabled={session.status !== 'running'} title={activeTab.url} onclick={addCurrentTab}>
-      <Icon name="globe" size={12} /><span>{activeTab.title}</span><span class="tab-action"
+      <Icon name="globe" size={14} /><span>{activeTab.title}</span><span class="tab-action"
         >{t('agentPanel.addTab')}</span
       >
     </button>
@@ -243,16 +243,14 @@
       </p>
       <div class="footer-actions">
         {#if session.error === 'claude-not-found'}
-          <Button
-            size="sm"
-            onclick={() => window.yalqen.send({ type: 'new-tab', url: 'https://code.claude.com/docs/en/setup' })}
+          <Button onclick={() => window.yalqen.send({ type: 'new-tab', url: 'https://code.claude.com/docs/en/setup' })}
             >{t('agentPanel.installGuide')}</Button
           >
         {/if}
         {#if failed && active}
-          <Button size="sm" onclick={hydrate}>{t('agentPanel.retry')}</Button>
+          <Button onclick={hydrate}>{t('agentPanel.retry')}</Button>
         {:else if session.directory && !active}
-          <Button size="sm" variant="tonal" disabled={requesting} onclick={start}>{t('agentPanel.newSession')}</Button>
+          <Button variant="tonal" disabled={requesting} onclick={start}>{t('agentPanel.newSession')}</Button>
         {/if}
       </div>
     </footer>
@@ -265,7 +263,7 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    padding-top: 10px;
+    padding-top: 4px;
   }
   .tab-context,
   .footer-actions {
@@ -273,14 +271,15 @@
     align-items: center;
   }
   .tab-context {
-    gap: 6px;
-    margin: 0 12px 6px;
-    padding: 6px 12px;
+    gap: 8px;
+    min-height: var(--control-md);
+    margin: 0 12px 8px;
+    padding: 0 12px;
     border: 0;
     border-radius: var(--radius-pill);
     background: var(--surface-hover);
     color: var(--text-muted);
-    font-size: var(--font-size-small);
+    font-size: var(--ai-small);
     text-align: left;
   }
   .tab-context > span:first-of-type {
@@ -303,7 +302,7 @@
     position: relative;
     flex: 1;
     min-height: 0;
-    margin: 0 8px 10px 12px;
+    margin: 0 10px 12px var(--ai-gutter);
     overflow: hidden;
   }
   .terminal {
@@ -332,28 +331,28 @@
   }
   h2 {
     margin: 0;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
   }
   .empty p {
-    max-width: 240px;
-    margin: 8px 0 18px;
+    max-width: 280px;
+    margin: 8px 0 20px;
     color: var(--text-muted);
-    font-size: 12px;
-    line-height: 1.6;
+    font-size: var(--ai-text);
+    line-height: 1.55;
   }
   .empty p.note {
     margin: 16px 0 0;
-    font-size: 10px;
+    font-size: var(--ai-meta);
   }
   footer {
-    padding: 10px 14px 12px;
+    padding: 10px 12px 12px var(--ai-gutter);
     border-top: 1px solid var(--border);
   }
   footer p {
     margin: 0 0 8px;
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--ai-small);
     line-height: 1.5;
   }
   :global([data-material='glass']) .terminal,
