@@ -11,12 +11,14 @@ import type {
 import { acpClient } from '../agent-bridge/acp-client.js';
 import { AgentChat } from '../agent-bridge/agent-chat.js';
 import { ACP_AGENTS } from '../agent-bridge/agent-providers.js';
+import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
 import { AgentSession, type AgentConnection } from '../agent-bridge/agent-session.js';
 import { ProjectRunner } from '../agent-bridge/project-runner.js';
 import { originOf } from '../agent-bridge/tab-scope.js';
 
 interface AgentProjectOptions {
   connect(project: AgentProject): Promise<AgentConnection>;
+  preferences?: ChatPreferenceStore;
   onState(): void;
   onOutput(project: AgentProject, output: AgentTerminalOutput): void;
   onChatUpdate(project: AgentProject, snapshot: AgentChatSnapshot): void;
@@ -64,6 +66,7 @@ export class AgentProject {
       chat = new AgentChat({
         provider,
         connect: () => this.options.connect(this),
+        preferences: this.options.preferences,
         onState: this.options.onState,
         onUpdate: (snapshot) => {
           if (provider === this.provider) this.options.onChatUpdate(this, snapshot);

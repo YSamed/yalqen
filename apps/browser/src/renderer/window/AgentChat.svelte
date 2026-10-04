@@ -24,6 +24,7 @@
   import { complete, findTrigger } from '../../shared/composer-trigger';
   import { FILE_EDIT_TOOLS } from '../../shared/file-change';
   import ElementChip from './ElementChip.svelte';
+  import { modelName } from './format';
 
   let {
     open,
@@ -88,6 +89,7 @@
   const modes: { value: AgentPermissionMode; label: string }[] = [
     { value: 'default', label: t('agentChat.modeDefault') },
     { value: 'acceptEdits', label: t('agentChat.modeAcceptEdits') },
+    { value: 'auto', label: t('agentChat.modeAuto') },
     { value: 'plan', label: t('agentChat.modePlan') },
   ];
   const effortLabels: Record<AgentEffort, string> = {
@@ -98,7 +100,12 @@
     max: t('agentChat.effortMax'),
   };
   const models = $derived([
-    { value: '', label: t('agentChat.modelDefault') },
+    {
+      value: '',
+      label: snapshot.state.model
+        ? `${t('agentChat.modelDefault')} · ${modelName(snapshot.state.model)}`
+        : t('agentChat.modelDefault'),
+    },
     ...snapshot.state.models.filter((model) => model.value !== 'default'),
   ]);
   const efforts = $derived(

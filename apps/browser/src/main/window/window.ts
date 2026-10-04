@@ -64,6 +64,7 @@ import type { PersistChange, SavedTab, SavedWindow } from '../tabs/persistence.j
 import { blockedPopupsTemplate } from '../tabs/popups.js';
 import { Preconnector } from '../address-bar/preconnect.js';
 import type { RepoPrompt } from '../app/repo-prompt.js';
+import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
 import { importBookmarksWithDialog, importHistoryWithDialog } from './import-dialogs.js';
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
 import { loadWallpaper } from './wallpaper.js';
@@ -103,6 +104,7 @@ export interface AppContext {
   findBar: FindBar;
   history: HistoryStore;
   repoPrompt: RepoPrompt;
+  chatPreferences: ChatPreferenceStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
   extensions: ExtensionManager;
@@ -617,6 +619,7 @@ export class YalqenWindow {
     const isActive = (project: AgentProject) => project.id === this.activeProjectId;
     const project = new AgentProject({
       connect: (target) => this.app.agentConnection(this, target),
+      preferences: this.app.chatPreferences,
       onState: this.pushState,
       onOutput: (target, output) => {
         if (isActive(target) && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);

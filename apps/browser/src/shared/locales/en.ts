@@ -116,6 +116,7 @@ export const en = {
   'agentChat.modeLabel': 'Permission mode',
   'agentChat.modeDefault': 'Ask first',
   'agentChat.modeAcceptEdits': 'Auto-edit',
+  'agentChat.modeAuto': 'Auto (no prompts)',
   'agentChat.modePlan': 'Plan',
   'agentChat.modelLabel': 'Model',
   'agentChat.modelDefault': 'Default model',
@@ -177,7 +178,8 @@ export const en = {
   'agentChat.replyLength': 'Reply length',
   'agentChat.replyShort': 'Short replies',
   'agentChat.replyDetailed': 'Detailed replies',
-  'agentChat.replyShortHint': 'Reply length: one sentence for simple changes, which saves output tokens',
+  'agentChat.replyShortHint':
+    'Reply length: as few words as possible, just “Done.” when a task finishes cleanly, which saves output tokens',
   'agentChat.replyDetailedHint': 'Reply length: the agent explains in its usual detail',
   'agentChat.provider': 'AI agent',
   'agentChat.agentNotFound': '{agent} was not found. Install it, then start a new conversation.',

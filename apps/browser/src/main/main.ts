@@ -83,6 +83,7 @@ import { EMPTY_HISTORY_INDEX, suggest } from './address-bar/suggestions.js';
 import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
+import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window/window.js';
 import { ZoomStore } from './tabs/zoom.js';
 
@@ -110,6 +111,7 @@ function startBrowser(): void {
   const settings = new SettingsStore(userData, getLocale());
   const history = new HistoryStore(userData);
   const repoPrompt = new RepoPrompt(userData);
+  const chatPreferences = new ChatPreferenceStore(userData);
   const downloads = new DownloadStore(userData);
   const bookmarks = new BookmarkStore(userData);
   const store = new SessionStore(userData);
@@ -333,6 +335,7 @@ function startBrowser(): void {
     findBar,
     history,
     repoPrompt,
+    chatPreferences,
     downloads,
     bookmarks,
     extensions,
@@ -617,6 +620,7 @@ function startBrowser(): void {
     extensions.saveNow();
     history.saveNow();
     repoPrompt.saveNow();
+    chatPreferences.saveNow();
     downloads.saveNow();
     bookmarks.saveNow();
     zoom.saveNow();
