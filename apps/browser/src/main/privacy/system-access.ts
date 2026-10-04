@@ -30,6 +30,10 @@ export async function requestSystemAccess(device: 'camera' | 'microphone'): Prom
   return false;
 }
 
+export function screenAccessGranted(): boolean {
+  return process.platform !== 'darwin' || systemPreferences.getMediaAccessStatus('screen') === 'granted';
+}
+
 export function openSystemSettings(device: SystemDevice): void {
   if (process.platform === 'darwin') void shell.openExternal(PRIVACY_PANES[device]);
 }

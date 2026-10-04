@@ -1,14 +1,17 @@
 import {
   desktopCapturer,
+  dialog,
   Menu,
   webContents,
   type BaseWindow,
+  type MessageBoxOptions,
   type DesktopCapturerSource,
   type Session,
   type WebContents,
 } from 'electron';
 import { t } from '../../shared/i18n.js';
 import { permissionOrigin } from './permissions.js';
+import { openSystemSettings, screenAccessGranted } from './system-access.js';
 
 interface DisplayMediaOptions {
   sessions: readonly Session[];
@@ -34,7 +37,22 @@ function pickSource(
   });
 }
 
-// Uses the macOS screen picker where available (macOS 15+); the handler below is the fallback.
+// The macOS system picker needs no Screen Recording permission, so Yalqen would never be listed under
+// Privacy & Security. Capturing through desktopCapturer makes macOS ask and list it.
+async function explainScreenAccess(parent: BaseWindow | undefined): Promise<void> {
+  const options: MessageBoxOptions = {
+    type: 'warning',
+    message: t('displayMedia.systemOff'),
+    detail: t('displayMedia.systemDetail'),
+    buttons: [t('permissionHandlers.openSystemSettings'), t('permissionHandlers.notNow')],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  };
+  const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
+  if (response === 0) openSystemSettings('screen');
+}
+
 export function installDisplayMediaHandler({ sessions, parentOf }: DisplayMediaOptions): void {
   for (const browsing of sessions) {
     browsing.setDisplayMediaRequestHandler(
@@ -45,15 +63,20 @@ export function installDisplayMediaHandler({ sessions, parentOf }: DisplayMediaO
           callback({});
           return;
         }
+        const parent = parentOf(contents);
         desktopCapturer
           .getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } })
-          .then((sources) => pickSource(sources, parentOf(contents)))
+          .then(async (sources) => {
+            if (screenAccessGranted()) return pickSource(sources, parent);
+            await explainScreenAccess(parent);
+            return null;
+          })
           .then(
             (source) => callback(source ? { video: source } : {}),
             () => callback({}),
           );
       },
-      { useSystemPicker: true },
+      { useSystemPicker: false },
     );
   }
 }

@@ -1039,6 +1039,9 @@ export const en = {
   'sitePermissions.systemRestricted': 'Restricted by your organization',
   'sitePermissions.systemNotAsked': 'macOS will ask the first time a site uses it',
   'displayMedia.pick': 'Choose what to share',
+  'displayMedia.systemOff': 'macOS is blocking Yalqen from recording the screen',
+  'displayMedia.systemDetail':
+    'Turn on Yalqen in System Settings › Privacy & Security › Screen & System Audio Recording, restart Yalqen, then share again.',
   'permissions.camera': 'Camera',
   'permissions.microphone': 'Microphone',
   'permissions.geolocation': 'Location',

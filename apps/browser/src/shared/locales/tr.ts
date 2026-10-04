@@ -1042,6 +1042,9 @@ export const tr: Record<MessageKey, string> = {
   'sitePermissions.systemRestricted': 'Kuruluşunuz tarafından kısıtlanmış',
   'sitePermissions.systemNotAsked': 'Bir site ilk kullandığında macOS soracak',
   'displayMedia.pick': 'Paylaşılacak ekranı seçin',
+  'displayMedia.systemOff': 'macOS, Yalqen’in ekranı kaydetmesini engelliyor',
+  'displayMedia.systemDetail':
+    'Sistem Ayarları › Gizlilik ve Güvenlik › Ekran ve Sistem Ses Kaydı bölümünde Yalqen’i açın, Yalqen’i yeniden başlatın ve tekrar paylaşın.',
   'permissions.camera': 'Kamera',
   'permissions.microphone': 'Mikrofon',
   'permissions.geolocation': 'Konum',
