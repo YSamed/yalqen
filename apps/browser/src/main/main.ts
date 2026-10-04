@@ -505,6 +505,28 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.agentChatConfigure, (event, id: unknown, settings: unknown) =>
     agentSenderWindow(event)?.agentChat.configure(id, settings),
   );
+  ipcMain.handle(
+    IpcChannel.agentChatRewind,
+    (event, id: unknown, messageId: unknown, dryRun: unknown) =>
+      agentSenderWindow(event)?.agentChat.rewind(id, messageId, dryRun) ?? null,
+  );
+  ipcMain.handle(IpcChannel.agentChatHistory, (event) => agentSenderWindow(event)?.agentChat.history() ?? []);
+  ipcMain.handle(
+    IpcChannel.agentChatOpen,
+    (event, sessionId: unknown, fork: unknown) => agentSenderWindow(event)?.agentChat.open(sessionId, fork) ?? false,
+  );
+  ipcMain.handle(
+    IpcChannel.agentChatProvider,
+    (event, provider: unknown) => agentSenderWindow(event)?.selectAgentProvider(provider) ?? false,
+  );
+  ipcMain.handle(
+    IpcChannel.agentChatFiles,
+    (event, query: unknown) => agentSenderWindow(event)?.searchAgentFiles(query) ?? [],
+  );
+  ipcMain.handle(
+    IpcChannel.agentChatOpenFile,
+    (event, path: unknown) => agentSenderWindow(event)?.openAgentFile(path) ?? false,
+  );
   ipcMain.handle(IpcChannel.agentChatCancelQueued, (event, id: unknown, messageId: unknown) =>
     agentSenderWindow(event)?.agentChat.cancelQueued(id, messageId),
   );

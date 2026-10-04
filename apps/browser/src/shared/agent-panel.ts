@@ -2,6 +2,7 @@ import type { AgentChatState, AgentSessionState, AgentTerminalSize, ProjectRunSt
 
 export const EMPTY_AGENT_CHAT: AgentChatState = {
   id: null,
+  provider: 'claude',
   directory: null,
   status: 'idle',
   model: null,
@@ -9,6 +10,7 @@ export const EMPTY_AGENT_CHAT: AgentChatState = {
   effort: null,
   permissionMode: 'default',
   models: [],
+  commands: [],
   usage: null,
   error: null,
 };

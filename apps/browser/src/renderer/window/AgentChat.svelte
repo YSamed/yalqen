@@ -17,6 +17,11 @@
   import Icon from '../ui/Icon.svelte';
   import Select from '../ui/Select.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
+  import AgentRewind from './AgentRewind.svelte';
+  import AgentToolCard from './AgentToolCard.svelte';
+  import ComposerSuggestions, { type ComposerSuggestion } from './ComposerSuggestions.svelte';
+  import { complete, findTrigger } from '../../shared/composer-trigger';
+  import { FILE_EDIT_TOOLS } from '../../shared/file-change';
   import ElementChip from './ElementChip.svelte';
 
   let {
@@ -39,12 +44,23 @@
     queue: [],
     permissions: [],
   });
+  const AGENT_NAMES = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' } as const;
+  const SETUP_GUIDES = {
+    claude: 'https://code.claude.com/docs/en/setup',
+    codex: 'https://github.com/zed-industries/codex-acp',
+    gemini: 'https://github.com/google-gemini/gemini-cli',
+  } as const;
   let draft = $state('');
   let attachment: TabSnapshot | null = $state.raw(null);
   let images: AgentChatImage[] = $state.raw([]);
   let imageRejected = $state(false);
   let dismissed: string[] = $state([]);
   let fileInput: HTMLInputElement | undefined = $state();
+  let caret = $state(0);
+  let suggestionIndex = $state(0);
+  let dismissedTrigger: string | null = $state(null);
+  let files: string[] = $state.raw([]);
+  const suggestionsId = $props.id();
   let failed = $state(false);
   let sending = $state(false);
   let cancelling = $state(false);
@@ -56,14 +72,7 @@
   let destroyed = false;
   const busy = $derived(['starting', 'thinking', 'approval'].includes(snapshot.state.status));
   const canSend = $derived(
-    Boolean(
-      directory &&
-      draft.trim() &&
-      snapshot.state.status !== 'starting' &&
-      snapshot.queue.length < 5 &&
-      !sending &&
-      !loading,
-    ),
+    Boolean(draft.trim() && snapshot.state.status !== 'starting' && snapshot.queue.length < 5 && !sending && !loading),
   );
   const modes: { value: AgentPermissionMode; label: string }[] = [
     { value: 'default', label: t('agentChat.modeDefault') },
@@ -87,6 +96,63 @@
     )?.efforts ?? [],
   );
   const usage = $derived(snapshot.state.usage);
+  const trigger = $derived(findTrigger(draft, caret));
+  const agentName = $derived(AGENT_NAMES[snapshot.state.provider]);
+  const attachable = $derived(activeTab && !activeTab.isPrivate && /^https?:/.test(activeTab.url) ? activeTab : null);
+  const mentionTab = $derived(attachable);
+  const suggestions: (ComposerSuggestion & { insert: string | null })[] = $derived.by(() => {
+    if (!trigger || dismissedTrigger === `${trigger.kind}:${trigger.start}`) return [];
+    const query = trigger.query.toLowerCase();
+    if (trigger.kind === 'command')
+      return snapshot.state.commands
+        .filter((command) => command.name.toLowerCase().startsWith(query))
+        .slice(0, 8)
+        .map((command) => ({
+          key: `command:${command.name}`,
+          label: `/${command.name}`,
+          detail: command.argumentHint ? `${command.argumentHint} · ${command.description}` : command.description,
+          icon: 'code' as const,
+          insert: `/${command.name}`,
+        }));
+    const tab =
+      mentionTab && (mentionTab.title.toLowerCase().includes(query) || mentionTab.url.toLowerCase().includes(query))
+        ? [
+            {
+              key: `tab:${mentionTab.id}`,
+              label: mentionTab.title,
+              detail: mentionTab.url,
+              icon: 'globe' as const,
+              insert: null,
+            },
+          ]
+        : [];
+    return [
+      ...tab,
+      ...files.map((file) => ({
+        key: `file:${file}`,
+        label: file,
+        detail: '',
+        icon: 'folder' as const,
+        insert: `@${file}`,
+      })),
+    ].slice(0, 8);
+  });
+  const editedAfter = $derived.by(() => {
+    const edited: string[] = [];
+    let seen = false;
+    for (let index = snapshot.messages.length - 1; index >= 0; index--) {
+      const message = snapshot.messages[index];
+      if (message.role === 'user') {
+        if (seen || message.reverted) edited.push(message.id);
+      } else if (
+        message.parts.some(
+          (part) => part.type === 'tool' && FILE_EDIT_TOOLS.includes(part.name) && part.status === 'done',
+        )
+      )
+        seen = true;
+    }
+    return edited;
+  });
   const episode = $derived.by(() => {
     const candidate = activeTab?.agentObserved ? activeTab.agentEpisode : null;
     if (!candidate || dismissed.includes(candidate.id)) return null;
@@ -104,7 +170,7 @@
   const MAX_IMAGES = 4;
   const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const errors = {
-    'claude-not-found': t('agentPanel.claudeNotFound'),
+    'claude-not-found': '',
     'invalid-directory': t('agentPanel.invalidDirectory'),
     'connection-failed': t('agentPanel.connectionFailed'),
     'authentication-required': t('agentChat.authenticationRequired'),
@@ -113,7 +179,7 @@
   };
 
   function receive(next: AgentChatSnapshot): void {
-    if (destroyed || next.revision <= snapshot.revision) return;
+    if (destroyed || (next.revision <= snapshot.revision && next.state.provider === snapshot.state.provider)) return;
     if (next.state.id !== snapshot.state.id) answers = {};
     snapshot = next;
     loading = false;
@@ -266,7 +332,41 @@
     answers = { ...answers, [requestId]: { ...answers[requestId], [question]: next } };
   }
 
+  async function pickSuggestion(index: number): Promise<void> {
+    const item = suggestions[index];
+    if (!item || !trigger) return;
+    if (item.insert === null && mentionTab) attachment = mentionTab;
+    const next = complete(draft, trigger, item.insert ?? '');
+    draft = next.text;
+    caret = next.caret;
+    await tick();
+    textarea?.focus();
+    textarea?.setSelectionRange(next.caret, next.caret);
+  }
+
+  function trackCaret(): void {
+    caret = textarea?.selectionStart ?? draft.length;
+  }
+
   function composeKey(event: KeyboardEvent): void {
+    if (suggestions.length && !event.isComposing) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        suggestionIndex = (suggestionIndex + step + suggestions.length) % suggestions.length;
+        return;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        void pickSuggestion(suggestionIndex);
+        return;
+      }
+      if (event.key === 'Escape' && trigger) {
+        event.preventDefault();
+        dismissedTrigger = `${trigger.kind}:${trigger.start}`;
+        return;
+      }
+    }
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       void send();
@@ -275,9 +375,28 @@
 
   function suggest(prompt: string): void {
     draft = prompt;
-    if (activeTab?.agentObserved) attachment = activeTab;
+    if (attachable?.agentObserved) attachment = attachable;
     textarea?.focus();
   }
+
+  $effect(() => {
+    void suggestions.length;
+    suggestionIndex = 0;
+  });
+
+  $effect(() => {
+    if (trigger?.kind !== 'mention') return;
+    const query = trigger.query;
+    const timer = setTimeout(() => {
+      window.yalqen
+        .searchAgentFiles(query)
+        .then((found) => {
+          if (!destroyed && trigger?.kind === 'mention' && trigger.query === query) files = found;
+        })
+        .catch(() => undefined);
+    }, 120);
+    return () => clearTimeout(timer);
+  });
 
   $effect(() => {
     void snapshot.revision;
@@ -320,6 +439,7 @@
         <p class="intro">{t('agentChat.intro')}</p>
         {#if !directory}
           <Button variant="primary" icon="folder" onclick={onchoose}>{t('agentPanel.chooseProject')}</Button>
+          <p class="intro">{t('agentChat.noProjectHint')}</p>
         {:else}
           <div class="suggestions">
             {#each prompts as prompt (prompt.title)}
@@ -334,7 +454,7 @@
           <article
             class="message"
             class:user={message.role === 'user'}
-            aria-label={message.role === 'user' ? t('agentChat.you') : 'Claude'}
+            aria-label={message.role === 'user' ? t('agentChat.you') : agentName}
           >
             <div class="message-content">
               {#if message.context}<div class="message-context" title={message.context.url}>
@@ -355,44 +475,17 @@
                       text={part.text}
                     />{/if}
                 {:else}
-                  <details
-                    class="tool"
-                    class:error={part.status === 'error'}
-                    class:verified={part.verification === 'passed'}
-                    class:unverified={part.verification === 'failed'}
-                  >
-                    <summary>
-                      <Icon
-                        name={part.status === 'error' || part.verification === 'failed'
-                          ? 'warning'
-                          : part.status === 'done'
-                            ? 'check'
-                            : 'code'}
-                        size={12}
-                      />
-                      <span class="tool-name">{part.name.replace(/^mcp__yalqen__/, 'Yalqen · ')}</span>
-                      <span class="tool-status"
-                        >{t(
-                          part.verification === 'passed'
-                            ? 'agentChat.verified'
-                            : part.verification === 'failed'
-                              ? 'agentChat.notVerified'
-                              : part.status === 'done'
-                                ? 'agentChat.toolDone'
-                                : part.status === 'error'
-                                  ? 'agentChat.toolError'
-                                  : part.status === 'stopped'
-                                    ? 'agentChat.toolStopped'
-                                    : 'agentChat.toolRunning',
-                        )}</span
-                      >
-                      <Icon name="down" size={10} />
-                    </summary>
-                    <pre>{part.input}</pre>
-                    {#if part.output}<pre class="tool-output">{part.output}</pre>{/if}
-                  </details>
+                  <AgentToolCard {part} {directory} />
                 {/if}
               {/each}
+              {#if message.role === 'user' && snapshot.state.id && editedAfter.includes(message.id)}
+                <AgentRewind
+                  sessionId={snapshot.state.id}
+                  messageId={message.id}
+                  reverted={message.reverted}
+                  disabled={snapshot.state.status !== 'ready'}
+                />
+              {/if}
             </div>
           </article>
         {/each}
@@ -485,11 +578,19 @@
   {#if snapshot.state.error || failed}
     <div class="chat-error" role="status">
       <Icon name="warning" size={13} />
-      <p>{snapshot.state.error ? errors[snapshot.state.error] : t('agentChat.sendFailed')}</p>
+      <p>
+        {snapshot.state.error === 'claude-not-found'
+          ? snapshot.state.provider === 'claude'
+            ? t('agentPanel.claudeNotFound')
+            : t('agentChat.agentNotFound', { agent: agentName })
+          : snapshot.state.error
+            ? errors[snapshot.state.error]
+            : t('agentChat.sendFailed')}
+      </p>
       {#if snapshot.state.error === 'claude-not-found' || snapshot.state.error === 'authentication-required'}
         <Button
           size="sm"
-          onclick={() => window.yalqen.send({ type: 'new-tab', url: 'https://code.claude.com/docs/en/setup' })}
+          onclick={() => window.yalqen.send({ type: 'new-tab', url: SETUP_GUIDES[snapshot.state.provider] })}
           >{t('agentPanel.installGuide')}</Button
         >
       {:else if failed && !snapshot.state.error}<IconButton
@@ -516,104 +617,127 @@
       />
     </div>
   {/if}
-  {#if directory}
-    <form
-      class="composer"
-      onsubmit={(event) => {
-        event.preventDefault();
-        void send();
-      }}
-      ondragover={(event) => {
-        if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
-      }}
-      ondrop={dropImages}
-    >
-      {#if snapshot.queue.length}
-        <ol class="queue" aria-label={t('agentChat.queued')}>
-          {#each snapshot.queue as message (message.id)}
-            <li>
-              <span class="queue-label">{t('agentChat.queued')}</span>
-              <span class="queue-text">{message.parts[0]?.type === 'text' ? message.parts[0].text : ''}</span>
-              <IconButton
-                size="sm"
-                icon="close"
-                label={t('agentChat.cancelQueued')}
-                onclick={() => cancelQueued(message.id)}
-              />
-            </li>
-          {/each}
-        </ol>
-      {/if}
-      {#if images.length}
-        <div class="thumbnails">
-          {#each images as image, index (index)}
-            <div class="thumbnail">
-              <img src={image.thumbnail} alt="" />
-              <IconButton
-                size="sm"
-                icon="close"
-                label={t('agentChat.removeImage')}
-                onclick={() => (images = images.filter((entry) => entry !== image))}
-              />
-            </div>
-          {/each}
-        </div>
-      {/if}
-      {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
-      {#if attachment || elements.length}
-        <div class="chips">
-          {#if attachment}
-            <div class="attachment" title={attachment.url}>
-              <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
-                size="sm"
-                icon="close"
-                label={t('agentChat.removeTab')}
-                onclick={() => (attachment = null)}
-              />
-            </div>
-          {/if}
-          {#each elements as element (element.id)}
-            <ElementChip {element} onremove={() => void window.yalqen.removeAgentElement(element.id)} />
-          {/each}
-        </div>
-      {/if}
-      <textarea
-        bind:this={textarea}
-        bind:value={draft}
-        rows="1"
-        maxlength="65536"
-        aria-label={t('agentChat.message')}
-        placeholder={t('agentChat.placeholder')}
-        disabled={loading}
-        onpaste={pasteImages}
-        onkeydown={composeKey}></textarea>
-      <input
-        bind:this={fileInput}
-        type="file"
-        accept="image/png,image/jpeg,image/gif,image/webp"
-        multiple
-        hidden
-        onchange={(event) => {
-          void addImages([...(event.currentTarget.files ?? [])]);
-          event.currentTarget.value = '';
-        }}
+  <form
+    class="composer"
+    onsubmit={(event) => {
+      event.preventDefault();
+      void send();
+    }}
+    ondragover={(event) => {
+      if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
+    }}
+    ondrop={dropImages}
+  >
+    {#if snapshot.queue.length}
+      <ol class="queue" aria-label={t('agentChat.queued')}>
+        {#each snapshot.queue as message (message.id)}
+          <li>
+            <span class="queue-label">{t('agentChat.queued')}</span>
+            <span class="queue-text">{message.parts[0]?.type === 'text' ? message.parts[0].text : ''}</span>
+            <IconButton
+              size="sm"
+              icon="close"
+              label={t('agentChat.cancelQueued')}
+              onclick={() => cancelQueued(message.id)}
+            />
+          </li>
+        {/each}
+      </ol>
+    {/if}
+    {#if images.length}
+      <div class="thumbnails">
+        {#each images as image, index (index)}
+          <div class="thumbnail">
+            <img src={image.thumbnail} alt="" />
+            <IconButton
+              size="sm"
+              icon="close"
+              label={t('agentChat.removeImage')}
+              onclick={() => (images = images.filter((entry) => entry !== image))}
+            />
+          </div>
+        {/each}
+      </div>
+    {/if}
+    {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
+    {#if attachment || elements.length}
+      <div class="chips">
+        {#if attachment}
+          <div class="attachment" title={attachment.url}>
+            <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
+              size="sm"
+              icon="close"
+              label={t('agentChat.removeTab')}
+              onclick={() => (attachment = null)}
+            />
+          </div>
+        {/if}
+        {#each elements as element (element.id)}
+          <ElementChip {element} onremove={() => void window.yalqen.removeAgentElement(element.id)} />
+        {/each}
+      </div>
+    {/if}
+    {#if suggestions.length}
+      <ComposerSuggestions
+        id={suggestionsId}
+        label={t(trigger?.kind === 'command' ? 'agentChat.commands' : 'agentChat.mentions')}
+        items={suggestions}
+        active={suggestionIndex}
+        onpick={(index) => void pickSuggestion(index)}
       />
-      <div class="composer-controls">
-        <Button
-          size="sm"
-          icon="globe"
-          disabled={!activeTab?.agentObserved || !directory}
-          aria-pressed={Boolean(attachment)}
-          title={activeTab?.agentObserved ? activeTab.url : t('agentChat.localTabHint')}
-          onclick={() => (attachment = attachment ? null : activeTab)}>{t('agentPanel.addTab')}</Button
-        >
-        <IconButton
-          size="sm"
-          icon="image"
-          label={t('agentChat.addImage')}
-          disabled={images.length >= MAX_IMAGES}
-          onclick={() => fileInput?.click()}
-        />
+    {/if}
+    <textarea
+      bind:this={textarea}
+      bind:value={draft}
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded={suggestions.length > 0}
+      aria-controls={suggestions.length ? suggestionsId : undefined}
+      aria-activedescendant={suggestions.length ? `${suggestionsId}-${suggestionIndex}` : undefined}
+      oninput={trackCaret}
+      onclick={trackCaret}
+      onkeyup={(event) => {
+        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) trackCaret();
+      }}
+      rows="1"
+      maxlength="65536"
+      aria-label={t('agentChat.messageAgent', { agent: agentName })}
+      placeholder={t('agentChat.placeholderAgent', { agent: agentName })}
+      disabled={loading}
+      onpaste={pasteImages}
+      onkeydown={composeKey}></textarea>
+    <input
+      bind:this={fileInput}
+      type="file"
+      accept="image/png,image/jpeg,image/gif,image/webp"
+      multiple
+      hidden
+      onchange={(event) => {
+        void addImages([...(event.currentTarget.files ?? [])]);
+        event.currentTarget.value = '';
+      }}
+    />
+    <div class="composer-controls">
+      <Button
+        size="sm"
+        icon="globe"
+        disabled={!attachable}
+        aria-pressed={Boolean(attachment)}
+        title={!attachable
+          ? t('agentChat.attachHint')
+          : attachable.agentObserved
+            ? attachable.url
+            : t('agentChat.pageSendHint', { url: attachable.url })}
+        onclick={() => (attachment = attachment ? null : attachable)}>{t('agentPanel.addTab')}</Button
+      >
+      <IconButton
+        size="sm"
+        icon="image"
+        label={t('agentChat.addImage')}
+        disabled={images.length >= MAX_IMAGES}
+        onclick={() => fileInput?.click()}
+      />
+      {#if snapshot.state.provider === 'claude'}
         <Select
           variant="ghost"
           aria-label={t('agentChat.modeLabel')}
@@ -622,66 +746,66 @@
           options={modes}
           onchange={(permissionMode) => configure({ permissionMode })}
         />
-        <span class="spacer"></span>
-        {#if busy && !draft.trim()}<IconButton
-            class="send-button"
-            icon="stop"
-            size="md"
-            variant="tonal"
-            label={t('agentChat.interrupt')}
-            disabled={cancelling}
-            onclick={interrupt}
-          />
-        {:else}<IconButton
-            class="send-button"
-            type="submit"
-            icon="up"
-            size="md"
-            variant="accent"
-            label={t('agentChat.send')}
-            disabled={!canSend}
-          />{/if}
-      </div>
-      {#if models.length > 1 || usage}
-        <div class="composer-meta">
-          {#if models.length > 1}
-            <Select
-              variant="ghost"
-              aria-label={t('agentChat.modelLabel')}
-              title={snapshot.state.model ?? t('agentChat.modelLabel')}
-              value={snapshot.state.modelChoice ?? ''}
-              options={models}
-              onchange={(model) => configure({ model: model || null })}
-            />
-          {/if}
-          {#if efforts.length}
-            <Select
-              variant="ghost"
-              aria-label={t('agentChat.effortLabel')}
-              title={t('agentChat.effortLabel')}
-              value={snapshot.state.effort ?? ''}
-              options={[
-                { value: '', label: t('agentChat.effortDefault') },
-                ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
-              ]}
-              onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
-            />
-          {/if}
-          {#if usage}
-            <span class="usage">
-              {#if usage.contextTokens !== null && usage.contextLimit}<span
-                  title={t('agentChat.context', {
-                    used: numbers.format(usage.contextTokens),
-                    limit: numbers.format(usage.contextLimit),
-                  })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
-                >{/if}
-              <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
-            </span>
-          {/if}
-        </div>
       {/if}
-    </form>
-  {/if}
+      <span class="spacer"></span>
+      {#if busy && !draft.trim()}<IconButton
+          class="send-button"
+          icon="stop"
+          size="md"
+          variant="tonal"
+          label={t('agentChat.interrupt')}
+          disabled={cancelling}
+          onclick={interrupt}
+        />
+      {:else}<IconButton
+          class="send-button"
+          type="submit"
+          icon="up"
+          size="md"
+          variant="accent"
+          label={t('agentChat.send')}
+          disabled={!canSend}
+        />{/if}
+    </div>
+    {#if models.length > 1 || usage}
+      <div class="composer-meta">
+        {#if models.length > 1}
+          <Select
+            variant="ghost"
+            aria-label={t('agentChat.modelLabel')}
+            title={snapshot.state.model ?? t('agentChat.modelLabel')}
+            value={snapshot.state.modelChoice ?? ''}
+            options={models}
+            onchange={(model) => configure({ model: model || null })}
+          />
+        {/if}
+        {#if efforts.length}
+          <Select
+            variant="ghost"
+            aria-label={t('agentChat.effortLabel')}
+            title={t('agentChat.effortLabel')}
+            value={snapshot.state.effort ?? ''}
+            options={[
+              { value: '', label: t('agentChat.effortDefault') },
+              ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
+            ]}
+            onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
+          />
+        {/if}
+        {#if usage}
+          <span class="usage">
+            {#if usage.contextTokens !== null && usage.contextLimit}<span
+                title={t('agentChat.context', {
+                  used: numbers.format(usage.contextTokens),
+                  limit: numbers.format(usage.contextLimit),
+                })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
+              >{/if}
+            <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
+          </span>
+        {/if}
+      </div>
+    {/if}
+  </form>
 </div>
 
 <style>
@@ -781,47 +905,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .tool {
-    margin: 10px 0;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-control);
-  }
-  .tool summary {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    min-height: 34px;
-    padding: 0 10px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    cursor: pointer;
-    list-style: none;
-  }
-  .tool summary::-webkit-details-marker {
-    display: none;
-  }
-  .tool summary:hover {
-    background: var(--surface-hover);
-  }
-  .tool summary :global(svg:first-child) {
-    flex: none;
-  }
-  .tool.error summary :global(svg:first-child) {
-    color: var(--warn);
-  }
-  .tool-name {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text);
-  }
-  .tool-status {
-    flex: none;
-    font-size: var(--font-size-small);
-  }
   pre {
     max-height: 180px;
     margin: 0;
@@ -837,9 +920,6 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     user-select: text;
-  }
-  .tool-output {
-    color: var(--text);
   }
   .approval {
     margin: 16px 0 4px;
@@ -1060,12 +1140,6 @@
     color: var(--warn);
     font-size: 11px;
   }
-  .tool.verified summary {
-    color: var(--success);
-  }
-  .tool.unverified summary {
-    color: var(--warn);
-  }
   .composer-controls :global(.send-button) {
     flex: none;
   }
@@ -1138,7 +1212,6 @@
     flex: none;
   }
   button:focus-visible,
-  summary:focus-visible,
   .free-answer:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 3px;

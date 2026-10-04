@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
   BaseWindow,
@@ -18,6 +20,7 @@ import {
   type AnchorRect,
   type BrowserState,
   type AgentElementRef,
+  type AgentProviderId,
   type ChromeLayout,
   type DevCommandId,
   type DeviceId,
@@ -75,6 +78,9 @@ import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
 import { AgentSession, type AgentConnection } from '../agent-bridge/agent-session.js';
 import { AgentChat } from '../agent-bridge/agent-chat.js';
+import { ProjectFiles } from '../agent-bridge/project-files.js';
+import { acpClient } from '../agent-bridge/acp-client.js';
+import { ACP_AGENTS, availableProviders, isAgentProvider } from '../agent-bridge/agent-providers.js';
 import { ProjectRunner } from '../agent-bridge/project-runner.js';
 import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
 
@@ -140,7 +146,10 @@ export class YalqenWindow {
   readonly isPrivate: boolean;
   readonly isDeveloper: boolean;
   readonly agentSession: AgentSession;
-  readonly agentChat: AgentChat;
+  private readonly agentChats = new Map<AgentProviderId, AgentChat>();
+  private agentProvider: AgentProviderId = 'claude';
+  private agentProviders: AgentProviderId[] = ['claude'];
+  private readonly projectFiles = new ProjectFiles();
   readonly projectRunner: ProjectRunner;
   private agentPanelOpen = false;
   private pickedElements: AgentElementRef[] = [];
@@ -206,13 +215,6 @@ export class YalqenWindow {
       onState: this.pushState,
       onOutput: (output) => {
         if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);
-      },
-    });
-    this.agentChat = new AgentChat({
-      connect: () => app.agentConnection(),
-      onState: this.pushState,
-      onUpdate: (snapshot) => {
-        if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
       },
     });
     this.projectRunner = new ProjectRunner({
@@ -409,7 +411,7 @@ export class YalqenWindow {
       nativeTheme.off('updated', this.pushState);
       this.preconnector.cancel();
       this.agentSession.dispose();
-      this.agentChat.dispose();
+      for (const chat of this.agentChats.values()) chat.dispose();
       this.projectRunner.dispose();
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
@@ -506,6 +508,7 @@ export class YalqenWindow {
       agentPanelOpen: this.agentPanelOpen,
       agentSession: this.agentSession.state(),
       agentChat: this.agentChat.state(),
+      agentProviders: this.agentProviders,
       projectRun: this.projectRunner.state(),
       agentElements: this.pickedElements,
       agentTerminal: this.app.settings.get().agentTerminal,
@@ -515,8 +518,14 @@ export class YalqenWindow {
   toggleAgentPanel(): void {
     if (this.isPrivate && !this.isDeveloper) return;
     this.agentPanelOpen = !this.agentPanelOpen;
-    if (this.agentPanelOpen) this.uiContents.focus();
-    else this.tabs.focusActive();
+    if (this.agentPanelOpen) {
+      this.uiContents.focus();
+      void availableProviders().then((providers) => {
+        if (providers.length === this.agentProviders.length) return;
+        this.agentProviders = providers;
+        this.pushState();
+      });
+    } else this.tabs.focusActive();
     this.pushState();
   }
 
@@ -539,7 +548,7 @@ export class YalqenWindow {
       });
       if (!this.window.isDestroyed() && !result.canceled && result.filePaths[0]) {
         this.agentSession.selectDirectory(result.filePaths[0]);
-        this.agentChat.selectDirectory(result.filePaths[0]);
+        for (const chat of this.agentChats.values()) chat.selectDirectory(result.filePaths[0]);
         void this.projectRunner.selectDirectory(result.filePaths[0]);
       }
     } finally {
@@ -577,6 +586,74 @@ export class YalqenWindow {
     return this.projectRunner.start();
   }
 
+  get agentChat(): AgentChat {
+    let chat = this.agentChats.get(this.agentProvider);
+    if (!chat) {
+      const provider = this.agentProvider;
+      chat = new AgentChat({
+        provider,
+        connect: () => this.app.agentConnection(),
+        onState: this.pushState,
+        onUpdate: (snapshot) => {
+          if (provider === this.agentProvider && !this.uiContents.isDestroyed())
+            this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
+        },
+        workspace: async () => {
+          const directory = path.join(app.getPath('userData'), 'agent-workspace');
+          await fs.mkdir(directory, { recursive: true });
+          return directory;
+        },
+        ...(provider !== 'claude' && {
+          loadClient: acpClient(ACP_AGENTS[provider]),
+          loadSessions: async () => ({ listSessions: async () => [], getSessionMessages: async () => [] }),
+        }),
+      });
+      const directory = this.agentSession.state().directory;
+      if (directory) chat.selectDirectory(directory);
+      this.agentChats.set(provider, chat);
+    }
+    return chat;
+  }
+
+  selectAgentProvider(provider: unknown): boolean {
+    if (
+      (this.isPrivate && !this.isDeveloper) ||
+      !isAgentProvider(provider) ||
+      !this.agentProviders.includes(provider) ||
+      this.agentChat.active
+    )
+      return false;
+    this.agentProvider = provider;
+    if (!this.uiContents.isDestroyed())
+      this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
+    this.pushState();
+    return true;
+  }
+
+  searchAgentFiles(query: unknown): Promise<string[]> {
+    const directory = this.agentChat.state().directory;
+    if ((this.isPrivate && !this.isDeveloper) || typeof query !== 'string' || query.length > 200 || !directory)
+      return Promise.resolve([]);
+    return this.projectFiles.search(directory, query);
+  }
+
+  async openAgentFile(file: unknown): Promise<boolean> {
+    const directory = this.agentChat.state().directory;
+    if ((this.isPrivate && !this.isDeveloper) || typeof file !== 'string' || !directory || !path.isAbsolute(file))
+      return false;
+    try {
+      const [real, root] = await Promise.all([fs.realpath(file), fs.realpath(directory)]);
+      if (!real.startsWith(root + path.sep) || !(await fs.stat(real)).isFile()) return false;
+      // -t opens the file as text, so a script or app bundle Claude wrote is never launched.
+      await new Promise<void>((resolve, reject) =>
+        execFile('/usr/bin/open', ['-t', real], (error) => (error ? reject(error) : resolve())),
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async fixAgentEpisode(tabId: unknown): Promise<boolean> {
     if (this.isPrivate && !this.isDeveloper) return false;
     const tab =
@@ -586,7 +663,7 @@ export class YalqenWindow {
     return this.agentChat.send(
       this.agentChat.state().id,
       t('agentChat.fixPrompt', { id: tab.agentEpisode.id }),
-      { id: tab.id, title: tab.title, url: tab.url },
+      { id: tab.id, title: tab.title, url: tab.url, local: true },
       [],
       { episode: tab.agentEpisode },
     );
@@ -595,15 +672,20 @@ export class YalqenWindow {
   async sendAgentChat(id: unknown, text: unknown, tabId: unknown, images?: unknown): Promise<boolean> {
     if (this.isPrivate && !this.isDeveloper) return false;
     const tab =
-      typeof tabId === 'string' ? this.state().tabs.find((entry) => entry.id === tabId && entry.agentObserved) : null;
+      typeof tabId === 'string'
+        ? this.state().tabs.find((entry) => entry.id === tabId && !entry.isPrivate && /^https?:/.test(entry.url))
+        : null;
     if (tabId !== null && !tab) return false;
+    // Pages outside local development are read only when the user attaches them to this message.
+    const page = tab && !tab.agentObserved ? await this.tabs.pageText(tab.id) : null;
+    if (tab && !tab.agentObserved && !page) return false;
     const elements = this.pickedElements;
     const sent = await this.agentChat.send(
       id,
       text,
-      tab ? { id: tab.id, title: tab.title, url: tab.url } : null,
+      tab ? { id: tab.id, title: tab.title, url: tab.url, local: tab.agentObserved } : null,
       elements,
-      { images },
+      { images, page },
     );
     if (sent) {
       this.pickedElements = this.pickedElements.filter((element) => !elements.includes(element));

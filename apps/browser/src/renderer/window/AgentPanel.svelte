@@ -3,6 +3,7 @@
   import type {
     AgentChatState,
     AgentElementRef,
+    AgentProviderId,
     AgentSessionState,
     ProjectRunState,
     TabSnapshot,
@@ -12,12 +13,15 @@
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
+  import Select from '../ui/Select.svelte';
   import AgentChat from './AgentChat.svelte';
+  import AgentHistory from './AgentHistory.svelte';
 
   let {
     open,
     session,
     chat,
+    providers,
     activeTab,
     run,
     elements,
@@ -28,6 +32,7 @@
     open: boolean;
     session: AgentSessionState;
     chat: AgentChatState;
+    providers: AgentProviderId[];
     activeTab: TabSnapshot | null;
     run: ProjectRunState;
     elements: AgentElementRef[];
@@ -37,6 +42,11 @@
   } = $props();
 
   let requesting = $state(false);
+  let historyOpen = $state(false);
+  const chatBusy = $derived(['starting', 'thinking', 'approval'].includes(chat.status));
+  const PROVIDER_LABELS: Record<AgentProviderId, string> = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' };
+  const providerOptions = $derived(providers.map((value) => ({ value, label: PROVIDER_LABELS[value] })));
+  const providerLocked = $derived(chatBusy || chat.status === 'ready');
   let preferredView = $state<'chat' | 'terminal'>('chat');
   let TerminalView = $state.raw<typeof import('./AgentTerminal.svelte').default | null>(null);
   const view = $derived(terminal ? preferredView : 'chat');
@@ -173,6 +183,30 @@
       {:else if view === 'chat' && chat.id}
         <IconButton icon="plus" label={t('agentChat.newChat')} size="sm" onclick={newChat} />
       {/if}
+      {#if view === 'chat' && providers.length > 1}
+        {#if providerLocked}
+          <span class="provider" title={t('agentChat.provider')}>{PROVIDER_LABELS[chat.provider]}</span>
+        {:else}
+          <Select
+            variant="ghost"
+            aria-label={t('agentChat.provider')}
+            title={t('agentChat.provider')}
+            value={chat.provider}
+            options={providerOptions}
+            onchange={(provider) => void window.yalqen.selectAgentProvider(provider).catch(() => false)}
+          />
+        {/if}
+      {/if}
+      {#if view === 'chat' && session.directory && chat.provider === 'claude'}
+        <IconButton
+          icon="history"
+          label={t('agentChat.history')}
+          size="sm"
+          aria-pressed={historyOpen}
+          disabled={chatBusy}
+          onclick={() => (historyOpen = !historyOpen)}
+        />
+      {/if}
       <IconButton
         icon="close"
         label={t('agentPanel.close')}
@@ -237,9 +271,12 @@
         />{/if}
     </div>
   {/if}
-  <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat'}>
+  {#if historyOpen && view === 'chat'}
+    <div class="panel-view"><AgentHistory onclose={() => (historyOpen = false)} /></div>
+  {/if}
+  <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat' || historyOpen}>
     <AgentChat
-      open={open && view === 'chat'}
+      open={open && view === 'chat' && !historyOpen}
       directory={session.directory}
       {activeTab}
       {elements}
@@ -368,6 +405,11 @@
     padding: 0 6px;
     color: var(--text-muted);
     font-size: var(--font-size-small);
+  }
+  .provider {
+    padding: 0 6px;
+    color: var(--text-muted);
+    font-size: 11px;
   }
   .panel-view {
     display: flex;

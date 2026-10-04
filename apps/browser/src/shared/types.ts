@@ -125,6 +125,7 @@ export interface BrowserState {
   agentPanelOpen: boolean;
   agentSession: AgentSessionState;
   agentChat: AgentChatState;
+  agentProviders: AgentProviderId[];
   projectRun: ProjectRunState;
   agentElements: AgentElementRef[];
   agentTerminal: boolean;
@@ -165,12 +166,26 @@ export interface AgentTerminalSnapshot {
 }
 
 export type AgentPermissionMode = 'default' | 'acceptEdits' | 'plan';
+export type AgentProviderId = 'claude' | 'codex' | 'gemini';
 export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AgentChatModel {
   value: string;
   label: string;
   efforts: AgentEffort[];
+}
+
+export interface AgentChatCommand {
+  name: string;
+  description: string;
+  argumentHint: string;
+}
+
+export interface AgentChatSession {
+  id: string;
+  title: string;
+  updatedAt: number;
+  branch: string | null;
 }
 
 export interface AgentChatUsage {
@@ -187,6 +202,7 @@ export interface AgentChatSettings {
 
 export interface AgentChatState {
   id: string | null;
+  provider: AgentProviderId;
   directory: string | null;
   status: 'idle' | 'starting' | 'thinking' | 'approval' | 'ready' | 'stopped' | 'error';
   model: string | null;
@@ -194,6 +210,7 @@ export interface AgentChatState {
   effort: AgentEffort | null;
   permissionMode: AgentPermissionMode;
   models: AgentChatModel[];
+  commands: AgentChatCommand[];
   usage: AgentChatUsage | null;
   error:
     | 'claude-not-found'
@@ -215,12 +232,30 @@ export type AgentChatPart =
       output: string;
       status: 'running' | 'done' | 'error' | 'stopped';
       verification: 'passed' | 'failed' | null;
+      task: AgentChatTask | null;
+      steps: string[];
     };
+
+export interface AgentChatTask {
+  description: string;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  toolUses: number;
+  summary: string | null;
+}
+
+export interface AgentRewindPreview {
+  canRewind: boolean;
+  error: string | null;
+  files: string[];
+  insertions: number;
+  deletions: number;
+}
 
 export interface AgentChatContext {
   id: TabId;
   title: string;
   url: string;
+  local: boolean;
 }
 
 export interface AgentElementRef {
@@ -240,6 +275,7 @@ export interface AgentChatMessage {
   elements: AgentElementRef[];
   episode: AgentEpisodePreview | null;
   images: string[];
+  reverted: boolean;
 }
 
 export interface AgentChatImage {
@@ -375,6 +411,12 @@ export const IpcChannel = {
   agentChatReset: 'yalqen:agent-chat-reset',
   agentChatPermission: 'yalqen:agent-chat-permission',
   agentChatConfigure: 'yalqen:agent-chat-configure',
+  agentChatRewind: 'yalqen:agent-chat-rewind',
+  agentChatOpenFile: 'yalqen:agent-chat-open-file',
+  agentChatHistory: 'yalqen:agent-chat-history',
+  agentChatOpen: 'yalqen:agent-chat-open',
+  agentChatFiles: 'yalqen:agent-chat-files',
+  agentChatProvider: 'yalqen:agent-chat-provider',
   agentChatCancelQueued: 'yalqen:agent-chat-cancel-queued',
   agentChatUpdate: 'yalqen:agent-chat-update',
   agentElementRemove: 'yalqen:agent-element-remove',
@@ -424,6 +466,12 @@ export interface YalqenApi {
     always?: boolean,
   ): Promise<void>;
   configureAgentChat(sessionId: string | null, settings: AgentChatSettings): Promise<void>;
+  rewindAgentChat(sessionId: string, messageId: string, dryRun: boolean): Promise<AgentRewindPreview | null>;
+  openAgentFile(path: string): Promise<boolean>;
+  listAgentChats(): Promise<AgentChatSession[]>;
+  openAgentChat(sessionId: string, fork: boolean): Promise<boolean>;
+  searchAgentFiles(query: string): Promise<string[]>;
+  selectAgentProvider(provider: AgentProviderId): Promise<boolean>;
   cancelQueuedAgentChat(sessionId: string, messageId: string): Promise<void>;
   onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
 }
