@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/YSamed/yalqen/compare/v0.3.5...v0.3.6) (2026-10-04)
+
+
+### Features
+
+* redesign agent panel with project runner and element selection ([1b9ca7f](https://github.com/YSamed/yalqen/commit/1b9ca7f79acc42077f5761f6e598110e4001889f))
+
 ## [0.3.5](https://github.com/YSamed/yalqen/compare/v0.3.4...v0.3.5) (2026-10-03)
 
 
