@@ -46,7 +46,17 @@ function userText(text: string): string {
 }
 
 function message(id: string, role: AgentChatMessage['role'], parts: AgentChatPart[]): AgentChatMessage {
-  return { id, role, parts, context: null, elements: [], episode: null, images: [], reverted: false };
+  return {
+    id,
+    role,
+    parts,
+    context: null,
+    elements: [],
+    episode: null,
+    images: [],
+    reverted: false,
+    workMode: 'normal',
+  };
 }
 
 export function sessionOf(session: StoredSession): AgentChatSession {

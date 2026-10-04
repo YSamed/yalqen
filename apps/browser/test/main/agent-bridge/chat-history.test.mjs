@@ -21,7 +21,7 @@ const assistant = (uuid, id, content, extra = {}) => ({
 test('rebuilds a stored conversation with tool results and without Yalqen context', () => {
   const messages = historyMessages(
     [
-      user('u1', 'Fix the button\n\nYalqen browser context:\n{"tab_id":"t"}'),
+      user('u1', 'Fix the button\n\nYalqen browser context:\n{"tab_id":"t"}\n\nYalqen work mode: Verify. Check.'),
       assistant('a1', 'msg-1', [{ type: 'text', text: 'Looking.' }]),
       assistant('a2', 'msg-1', [{ type: 'tool_use', id: 'tool-1', name: 'Read', input: { file_path: 'a.ts' } }]),
       user('u2', [{ type: 'tool_result', tool_use_id: 'tool-1', content: 'file text' }]),
@@ -46,6 +46,7 @@ test('rebuilds a stored conversation with tool results and without Yalqen contex
   assert.equal(tool.output, 'file text');
   assert.match(tool.input, /a\.ts/);
   assert.equal(messages[0].reverted, false);
+  assert.equal(messages[0].workMode, 'normal');
 });
 
 test('keeps only the newest messages', () => {
@@ -63,4 +64,17 @@ test('names a session by its custom title, summary or first prompt', () => {
   );
   assert.equal(sessionOf({ sessionId: 's2', summary: '', lastModified: 1, firstPrompt: 'Hello' }).title, 'Hello');
   assert.equal(sessionOf({ sessionId: 's3', summary: 'x'.repeat(300), lastModified: 1 }).title.length, 200);
+});
+
+test('a stored message does not show the text of a page the user attached', () => {
+  const [message] = historyMessages(
+    [
+      user(
+        'u1',
+        'Summarize\n\nYalqen attached the web page "Docs" (https://example.com). Its text follows.\n<page>\nsecret\n</page>',
+      ),
+    ],
+    10,
+  );
+  assert.equal(message.parts[0].text, 'Summarize');
 });

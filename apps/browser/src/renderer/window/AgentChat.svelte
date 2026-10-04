@@ -10,6 +10,7 @@
     AgentEffort,
     AgentElementRef,
     AgentPermissionMode,
+    AgentWorkMode,
     TabSnapshot,
   } from '../../shared/types';
   import Button from '../ui/Button.svelte';
@@ -74,6 +75,16 @@
   const canSend = $derived(
     Boolean(draft.trim() && snapshot.state.status !== 'starting' && snapshot.queue.length < 5 && !sending && !loading),
   );
+  const workModeLabels: Record<AgentWorkMode, string> = {
+    normal: t('agentChat.workNormal'),
+    verify: t('agentChat.workVerify'),
+    review: t('agentChat.workReview'),
+    design: t('agentChat.workDesign'),
+  };
+  const workModes = (Object.keys(workModeLabels) as AgentWorkMode[]).map((value) => ({
+    value,
+    label: workModeLabels[value],
+  }));
   const modes: { value: AgentPermissionMode; label: string }[] = [
     { value: 'default', label: t('agentChat.modeDefault') },
     { value: 'acceptEdits', label: t('agentChat.modeAcceptEdits') },
@@ -460,6 +471,9 @@
               {#if message.context}<div class="message-context" title={message.context.url}>
                   <Icon name="globe" size={11} /><span>{message.context.title}</span>
                 </div>{/if}
+              {#if message.workMode !== 'normal'}<div class="message-context work-mode">
+                  <Icon name="sparkle" size={11} /><span>{workModeLabels[message.workMode]}</span>
+                </div>{/if}
               {#if message.episode}<div class="message-context episode-ref">
                   <Icon name="warning" size={11} /><span>{message.episode.id}</span>
                 </div>{/if}
@@ -770,46 +784,65 @@
           disabled={!canSend}
         />{/if}
     </div>
-    {#if models.length > 1 || usage}
-      <div class="composer-meta">
-        {#if models.length > 1}
-          <Select
-            variant="ghost"
-            placement="up"
-            aria-label={t('agentChat.modelLabel')}
-            title={snapshot.state.model ?? t('agentChat.modelLabel')}
-            value={snapshot.state.modelChoice ?? ''}
-            options={models}
-            onchange={(model) => configure({ model: model || null })}
-          />
-        {/if}
-        {#if efforts.length}
-          <Select
-            variant="ghost"
-            placement="up"
-            aria-label={t('agentChat.effortLabel')}
-            title={t('agentChat.effortLabel')}
-            value={snapshot.state.effort ?? ''}
-            options={[
-              { value: '', label: t('agentChat.effortDefault') },
-              ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
-            ]}
-            onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
-          />
-        {/if}
-        {#if usage}
-          <span class="usage">
-            {#if usage.contextTokens !== null && usage.contextLimit}<span
-                title={t('agentChat.context', {
-                  used: numbers.format(usage.contextTokens),
-                  limit: numbers.format(usage.contextLimit),
-                })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
-              >{/if}
-            <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
-          </span>
-        {/if}
-      </div>
-    {/if}
+    <div class="composer-meta">
+      <Select
+        variant="ghost"
+        placement="up"
+        aria-label={t('agentChat.workMode')}
+        title={t(`agentChat.workHint.${snapshot.state.workMode}`)}
+        value={snapshot.state.workMode}
+        options={workModes}
+        onchange={(workMode) => configure({ workMode })}
+      />
+      <Select
+        variant="ghost"
+        placement="up"
+        aria-label={t('agentChat.replyLength')}
+        title={t(snapshot.state.replyLength === 'short' ? 'agentChat.replyShortHint' : 'agentChat.replyDetailedHint')}
+        value={snapshot.state.replyLength}
+        options={[
+          { value: 'short', label: t('agentChat.replyShort') },
+          { value: 'detailed', label: t('agentChat.replyDetailed') },
+        ]}
+        onchange={(replyLength) => configure({ replyLength })}
+      />
+      {#if models.length > 1}
+        <Select
+          variant="ghost"
+          placement="up"
+          aria-label={t('agentChat.modelLabel')}
+          title={snapshot.state.model ?? t('agentChat.modelLabel')}
+          value={snapshot.state.modelChoice ?? ''}
+          options={models}
+          onchange={(model) => configure({ model: model || null })}
+        />
+      {/if}
+      {#if efforts.length}
+        <Select
+          variant="ghost"
+          placement="up"
+          aria-label={t('agentChat.effortLabel')}
+          title={t('agentChat.effortLabel')}
+          value={snapshot.state.effort ?? ''}
+          options={[
+            { value: '', label: t('agentChat.effortDefault') },
+            ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
+          ]}
+          onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
+        />
+      {/if}
+      {#if usage}
+        <span class="usage">
+          {#if usage.contextTokens !== null && usage.contextLimit}<span
+              title={t('agentChat.context', {
+                used: numbers.format(usage.contextTokens),
+                limit: numbers.format(usage.contextLimit),
+              })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
+            >{/if}
+          <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
+        </span>
+      {/if}
+    </div>
   </form>
 </div>
 
@@ -1116,6 +1149,9 @@
   }
   .episode-ref {
     color: var(--warn);
+  }
+  .work-mode {
+    color: var(--accent);
   }
   .thumbnails {
     display: flex;
