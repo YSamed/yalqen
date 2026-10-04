@@ -406,12 +406,13 @@ export function resolveTab(tabs: readonly BridgeTab[], requested: string | undef
   return tab;
 }
 
+// Compact JSON: agents parse it as well as indented JSON, and indentation was about a quarter of every result.
 function json(value: unknown): ToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] };
+  return { content: [{ type: 'text', text: JSON.stringify(value) }] };
 }
 
 function untrusted(value: unknown): ToolResult {
-  return { content: [{ type: 'text', text: `${UNTRUSTED_NOTE}\n\n${JSON.stringify(value, null, 2)}` }] };
+  return { content: [{ type: 'text', text: `${UNTRUSTED_NOTE}\n\n${JSON.stringify(value)}` }] };
 }
 
 function filterConsole(entries: readonly ConsoleEntry[], since?: number, includeWarnings = false): ConsoleEntry[] {

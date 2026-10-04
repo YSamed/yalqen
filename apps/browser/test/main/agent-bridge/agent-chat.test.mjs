@@ -768,3 +768,69 @@ test('keeps its agent provider across new conversations', async (t) => {
   chat.reset(chat.state().id);
   assert.equal(chat.state().provider, 'gemini');
 });
+
+test('adds the work mode instructions to each message and keeps them out of the conversation', async (t) => {
+  const { chat, calls } = fixture(t);
+  chat.configure(null, { workMode: 'verify' });
+  chat.configure(null, { workMode: 'turbo' });
+  assert.equal(chat.state().workMode, 'verify');
+  await chat.send(null, 'Fix the header');
+  const client = calls.queries[0];
+  assert.match((await client.input.next()).value.message.content, /Fix the header\n\nYalqen work mode: Verify/);
+  assert.equal(chat.snapshot().messages[0].workMode, 'verify');
+  assert.equal(chat.snapshot().messages[0].parts[0].text, 'Fix the header');
+  chat.configure(chat.state().id, { workMode: 'design' });
+  await chat.send(chat.state().id, 'Queued in design');
+  chat.configure(chat.state().id, { workMode: 'normal' });
+  client.emit(result());
+  const queued = (await client.input.next()).value.message.content;
+  assert.match(queued, /Yalqen work mode: Design/);
+  chat.reset(chat.state().id);
+  assert.equal(chat.state().workMode, 'normal');
+});
+
+test('review-only mode blocks file edits through the hook and through approvals', async (t) => {
+  const { chat, calls } = fixture(t);
+  chat.configure(null, { workMode: 'review' });
+  await chat.send(null, 'Review the checkout');
+  await calls.queries[0].input.next();
+  const { hooks, canUseTool } = calls.queries[0].params.options;
+  const [matcher] = hooks.PreToolUse;
+  assert.match('Write', new RegExp(`^(${matcher.matcher})$`));
+  const decision = await matcher.hooks[0]({}, 'tool', { signal: new AbortController().signal });
+  assert.equal(decision.hookSpecificOutput.permissionDecision, 'deny');
+  const denied = await canUseTool('Edit', { file_path: 'a.ts' }, { signal: new AbortController().signal });
+  assert.equal(denied.behavior, 'deny');
+  assert.match(denied.message, /review-only/);
+  assert.equal(chat.snapshot().permissions.length, 0);
+  void canUseTool('Bash', { command: 'ls' }, { signal: new AbortController().signal });
+  assert.equal(chat.snapshot().permissions.length, 1);
+});
+
+test('the review hook allows edits in other modes', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.send(null, 'Edit');
+  await calls.queries[0].input.next();
+  const decision = await calls.queries[0].params.options.hooks.PreToolUse[0].hooks[0]({}, 'tool', {
+    signal: new AbortController().signal,
+  });
+  assert.deepEqual(decision, {});
+});
+
+test('asks for short replies by default and stops when detailed replies are chosen', async (t) => {
+  const { chat, calls } = fixture(t);
+  assert.equal(chat.state().replyLength, 'short');
+  await chat.send(null, 'Make the button blue');
+  const client = calls.queries[0];
+  const short = (await client.input.next()).value.message.content;
+  assert.match(short, /Yalqen reply style: Keep your reply short/);
+  client.emit(result());
+  await tick();
+  chat.configure(chat.state().id, { replyLength: 'detailed' });
+  chat.configure(chat.state().id, { replyLength: 'tiny' });
+  assert.equal(chat.state().replyLength, 'detailed');
+  await chat.send(chat.state().id, 'Explain the layout');
+  assert.doesNotMatch((await client.input.next()).value.message.content, /reply style/);
+  chat.reset(chat.state().id);
+  assert.equal(chat.state().replyLength, 'detailed');
+});

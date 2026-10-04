@@ -167,6 +167,8 @@ export interface AgentTerminalSnapshot {
 
 export type AgentPermissionMode = 'default' | 'acceptEdits' | 'plan';
 export type AgentProviderId = 'claude' | 'codex' | 'gemini';
+export type AgentWorkMode = 'normal' | 'verify' | 'review' | 'design';
+export type AgentReplyLength = 'short' | 'detailed';
 export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AgentChatModel {
@@ -195,6 +197,8 @@ export interface AgentChatUsage {
 }
 
 export interface AgentChatSettings {
+  workMode?: AgentWorkMode;
+  replyLength?: AgentReplyLength;
   permissionMode?: AgentPermissionMode;
   model?: string | null;
   effort?: AgentEffort | null;
@@ -203,6 +207,8 @@ export interface AgentChatSettings {
 export interface AgentChatState {
   id: string | null;
   provider: AgentProviderId;
+  workMode: AgentWorkMode;
+  replyLength: AgentReplyLength;
   directory: string | null;
   status: 'idle' | 'starting' | 'thinking' | 'approval' | 'ready' | 'stopped' | 'error';
   model: string | null;
@@ -276,6 +282,7 @@ export interface AgentChatMessage {
   episode: AgentEpisodePreview | null;
   images: string[];
   reverted: boolean;
+  workMode: AgentWorkMode;
 }
 
 export interface AgentChatImage {

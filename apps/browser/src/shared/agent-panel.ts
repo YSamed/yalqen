@@ -3,6 +3,8 @@ import type { AgentChatState, AgentSessionState, AgentTerminalSize, ProjectRunSt
 export const EMPTY_AGENT_CHAT: AgentChatState = {
   id: null,
   provider: 'claude',
+  workMode: 'normal',
+  replyLength: 'short',
   directory: null,
   status: 'idle',
   model: null,
