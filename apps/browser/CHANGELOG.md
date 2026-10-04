@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.8](https://github.com/YSamed/yalqen/compare/v0.3.7...v0.3.8) (2026-10-04)
+
+
+### Features
+
+* add undo, diffs, chat history, completions and acp agents to agent chat ([#159](https://github.com/YSamed/yalqen/issues/159)) ([e8eb81c](https://github.com/YSamed/yalqen/commit/e8eb81c322c5c59853638d4b2d2207381bc1f2a7))
+
 ## [0.3.7](https://github.com/YSamed/yalqen/compare/v0.3.6...v0.3.7) (2026-10-04)
 
 
