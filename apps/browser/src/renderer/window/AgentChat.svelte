@@ -718,18 +718,20 @@
       }}
     />
     <div class="composer-controls">
-      <Button
+      <IconButton
         size="sm"
         icon="globe"
+        label={t('agentPanel.addTab')}
+        variant={attachment ? 'tonal' : 'ghost'}
         disabled={!attachable}
         aria-pressed={Boolean(attachment)}
         title={!attachable
           ? t('agentChat.attachHint')
           : attachable.agentObserved
-            ? attachable.url
+            ? `${t('agentPanel.addTab')}: ${attachable.url}`
             : t('agentChat.pageSendHint', { url: attachable.url })}
-        onclick={() => (attachment = attachment ? null : attachable)}>{t('agentPanel.addTab')}</Button
-      >
+        onclick={() => (attachment = attachment ? null : attachable)}
+      />
       <IconButton
         size="sm"
         icon="image"
@@ -740,6 +742,7 @@
       {#if snapshot.state.provider === 'claude'}
         <Select
           variant="ghost"
+          placement="up"
           aria-label={t('agentChat.modeLabel')}
           title={t('agentChat.modeLabel')}
           value={snapshot.state.permissionMode}
@@ -772,6 +775,7 @@
         {#if models.length > 1}
           <Select
             variant="ghost"
+            placement="up"
             aria-label={t('agentChat.modelLabel')}
             title={snapshot.state.model ?? t('agentChat.modelLabel')}
             value={snapshot.state.modelChoice ?? ''}
@@ -782,6 +786,7 @@
         {#if efforts.length}
           <Select
             variant="ghost"
+            placement="up"
             aria-label={t('agentChat.effortLabel')}
             title={t('agentChat.effortLabel')}
             value={snapshot.state.effort ?? ''}
@@ -1072,8 +1077,8 @@
   .composer-controls {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 4px;
+    min-width: 0;
     margin-top: 8px;
   }
   .spacer {
@@ -1145,6 +1150,7 @@
   }
   .composer-meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 2px;
     margin: 6px -4px 0;
