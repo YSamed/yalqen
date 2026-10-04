@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.15](https://github.com/YSamed/yalqen/compare/v0.3.14...v0.3.15) (2026-10-04)
+
+
+### Bug Fixes
+
+* request macos camera and microphone access for sites ([8c84c6d](https://github.com/YSamed/yalqen/commit/8c84c6df5a31f5393b218e6a3ef5c0a067405310))
+
 ## [0.3.14](https://github.com/YSamed/yalqen/compare/v0.3.13...v0.3.14) (2026-10-04)
 
 
