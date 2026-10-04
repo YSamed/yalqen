@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.11](https://github.com/YSamed/yalqen/compare/v0.3.10...v0.3.11) (2026-10-04)
+
+
+### Features
+
+* add design references, per-project agent scope and multiple projects ([#166](https://github.com/YSamed/yalqen/issues/166)) ([27214f3](https://github.com/YSamed/yalqen/commit/27214f31bf9c0d93e1f6f7026615d9e82c94fc3c))
+
 ## [0.3.10](https://github.com/YSamed/yalqen/compare/v0.3.9...v0.3.10) (2026-10-04)
 
 
