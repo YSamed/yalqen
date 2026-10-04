@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.20](https://github.com/YSamed/yalqen/compare/v0.3.19...v0.3.20) (2026-10-04)
+
+
+### Bug Fixes
+
+* list yalqen under macos screen recording permissions ([4b4fcfc](https://github.com/YSamed/yalqen/commit/4b4fcfcc444fa64385134863384006b4b29e804e))
+
 ## [0.3.19](https://github.com/YSamed/yalqen/compare/v0.3.18...v0.3.19) (2026-10-04)
 
 
