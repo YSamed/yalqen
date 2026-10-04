@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.12](https://github.com/YSamed/yalqen/compare/v0.3.11...v0.3.12) (2026-10-04)
+
+
+### Features
+
+* add auto permission mode and persist chat model and effort ([#168](https://github.com/YSamed/yalqen/issues/168)) ([9e53312](https://github.com/YSamed/yalqen/commit/9e533129a8345ea395b2501162044b63ee233baa))
+
 ## [0.3.11](https://github.com/YSamed/yalqen/compare/v0.3.10...v0.3.11) (2026-10-04)
 
 
