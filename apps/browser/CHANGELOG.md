@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.13](https://github.com/YSamed/yalqen/compare/v0.3.12...v0.3.13) (2026-10-04)
+
+
+### Bug Fixes
+
+* make menus opaque in the glass theme ([#170](https://github.com/YSamed/yalqen/issues/170)) ([229d0a7](https://github.com/YSamed/yalqen/commit/229d0a7c3a7595558855cc77b97a3de52bfc4f90))
+
 ## [0.3.12](https://github.com/YSamed/yalqen/compare/v0.3.11...v0.3.12) (2026-10-04)
 
 
