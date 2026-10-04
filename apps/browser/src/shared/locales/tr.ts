@@ -117,6 +117,7 @@ export const tr: Record<MessageKey, string> = {
   'agentChat.modeLabel': 'İzin modu',
   'agentChat.modeDefault': 'Önce sor',
   'agentChat.modeAcceptEdits': 'Otomatik düzenle',
+  'agentChat.modeAuto': 'Otomatik (sormadan)',
   'agentChat.modePlan': 'Plan',
   'agentChat.modelLabel': 'Model',
   'agentChat.modelDefault': 'Varsayılan model',
@@ -178,7 +179,8 @@ export const tr: Record<MessageKey, string> = {
   'agentChat.replyLength': 'Yanıt uzunluğu',
   'agentChat.replyShort': 'Kısa yanıt',
   'agentChat.replyDetailed': 'Ayrıntılı yanıt',
-  'agentChat.replyShortHint': 'Yanıt uzunluğu: basit değişikliklerde tek cümle; çıktı token’ı tasarrufu sağlar',
+  'agentChat.replyShortHint':
+    'Yanıt uzunluğu: en az kelime, sorunsuz biten işte yalnızca “İşlem bitti.”; çıktı token’ı tasarrufu sağlar',
   'agentChat.replyDetailedHint': 'Yanıt uzunluğu: ajan her zamanki ayrıntısıyla açıklar',
   'agentChat.provider': 'Yapay zekâ ajanı',
   'agentChat.agentNotFound': '{agent} bulunamadı. Kurduktan sonra yeni bir sohbet başlatın.',

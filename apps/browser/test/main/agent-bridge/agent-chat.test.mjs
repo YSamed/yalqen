@@ -432,6 +432,47 @@ test('loads models after init and applies model, effort and mode changes to the 
   assert.equal(chat.state().usage, null);
 });
 
+test('starts with saved model and effort, and saves new choices and the loaded model list', async (t) => {
+  const saved = [];
+  const preferences = {
+    get: () => ({
+      modelChoice: 'default',
+      effort: 'high',
+      models: [{ value: 'default', label: 'Default', efforts: ['low', 'high'] }],
+    }),
+    set: (value) => saved.push(value),
+  };
+  const { chat, calls } = fixture(t, { preferences });
+  assert.equal(chat.state().modelChoice, 'default');
+  assert.equal(chat.state().effort, 'high');
+  chat.configure(null, { effort: 'low' });
+  assert.deepEqual(saved, [{ modelChoice: 'default', effort: 'low' }]);
+  await chat.send(null, 'Hello');
+  const client = calls.queries[0];
+  assert.equal(client.params.options.model, 'default');
+  assert.equal(client.params.options.effort, 'low');
+  client.emit({
+    type: 'system',
+    subtype: 'init',
+    session_id: 'cli-id',
+    model: 'test-model',
+    permissionMode: 'default',
+  });
+  await tick();
+  await tick();
+  assert.deepEqual(
+    saved.at(-1).models.map((model) => model.value),
+    ['default', 'haiku'],
+  );
+});
+
+test('ignores saved preferences for agents other than Claude', (t) => {
+  const preferences = { get: () => ({ modelChoice: 'opus', effort: 'max', models: [] }), set: () => {} };
+  const { chat } = fixture(t, { preferences, provider: 'codex' });
+  assert.equal(chat.state().modelChoice, null);
+  assert.equal(chat.state().effort, null);
+});
+
 test('queues messages sent while Claude works and delivers them in order after each turn', async (t) => {
   const { chat, calls } = fixture(t);
   await chat.send(null, 'First');

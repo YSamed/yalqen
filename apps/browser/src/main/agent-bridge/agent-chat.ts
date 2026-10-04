@@ -15,7 +15,6 @@ import type {
   AgentChatImage,
   AgentChatSession,
   AgentChatSettings,
-  AgentEffort,
   AgentElementRef,
   AgentEpisodePreview,
   AgentPermissionMode,
@@ -31,6 +30,7 @@ import type {
 } from '../../shared/types.js';
 import type { AgentConnection } from './agent-session.js';
 import { historyMessages, sessionOf } from './chat-history.js';
+import { EFFORTS, MAX_MODELS, type ChatPreferences } from './chat-preferences.js';
 import type { PageText } from './page-text.js';
 import { MAX_REFERENCES, referencePrompt, type ReferenceCapture } from './reference.js';
 import { findCommand } from './shell-command.js';
@@ -43,13 +43,12 @@ const MAX_HISTORY = 1024 * 1024;
 const MAX_QUEUE = 5;
 const MAX_SESSIONS = 50;
 const MAX_COMMANDS = 200;
-const PERMISSION_MODES: AgentPermissionMode[] = ['default', 'acceptEdits', 'plan'];
-const EFFORTS: AgentEffort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+const PERMISSION_MODES: AgentPermissionMode[] = ['default', 'acceptEdits', 'auto', 'plan'];
 const WORK_MODES: AgentWorkMode[] = ['normal', 'verify', 'review', 'design'];
 const REPLY_LENGTHS: AgentReplyLength[] = ['short', 'detailed'];
 // Output tokens cost several times more than input, so a one-line steer per message pays for itself quickly.
 const SHORT_REPLY_PROMPT =
-  '\n\nYalqen reply style: Keep your reply short and plain. When a change is done, say what changed and where in one sentence, for example "The button is now blue (src/Button.tsx)." Do not repeat the request, list the steps you took, use headings, or paste code unless the user asks for it.';
+  '\n\nYalqen reply style: Keep your reply short and plain, with as few words as possible. When a task finishes without errors, reply only with a short confirmation in the user\'s language, for example "Done." in English or "İşlem bitti." in Turkish. Add more only for errors, warnings, or something the user must decide or check, in one sentence each. Do not repeat the request, list the steps you took, use headings, or paste code unless the user asks for it.';
 const REVIEW_DENIAL = 'Yalqen is in review-only mode: do not change files. Report the change you would make instead.';
 const WORK_MODE_PROMPTS: Record<AgentWorkMode, string> = {
   normal: '',
@@ -94,6 +93,7 @@ interface AgentChatOptions {
   onUpdate(snapshot: AgentChatSnapshot): void;
   loadClient?(): Promise<Client>;
   loadSessions?(): Promise<SessionStore>;
+  preferences?: { get(): ChatPreferences; set(preferences: Partial<ChatPreferences>): void };
   provider?: AgentProviderId;
   workspace?(): Promise<string>;
 }
@@ -268,6 +268,7 @@ export class AgentChat {
     references: ReferenceCapture[];
   }[] = [];
   private costBase = 0;
+  private modelsLoaded = false;
   private revertNote: string | null = null;
   private forkNext = false;
   private turnMode: AgentWorkMode = 'normal';
@@ -285,6 +286,8 @@ export class AgentChat {
 
   constructor(private readonly options: AgentChatOptions) {
     this.view = { ...EMPTY_AGENT_CHAT, provider: options.provider ?? 'claude' };
+    if (this.view.provider === 'claude' && options.preferences)
+      this.view = { ...this.view, ...options.preferences.get() };
   }
 
   state(): AgentChatState {
@@ -340,6 +343,8 @@ export class AgentChat {
     const client = this.client;
     const effortChanged = next.effort !== this.view.effort;
     this.setState(next);
+    if (model !== undefined || effortChanged)
+      this.savePreferences({ modelChoice: next.modelChoice, effort: next.effort });
     if (!client) return;
     const apply = async () => {
       if (permissionMode !== undefined) await client.setPermissionMode(next.permissionMode);
@@ -790,7 +795,7 @@ export class AgentChat {
               ? message.permissionMode
               : this.view.permissionMode,
           });
-          if (!this.view.models.length) void this.loadModels(client, generation);
+          if (!this.modelsLoaded) void this.loadModels(client, generation);
           if (!this.view.commands.length) void this.loadCommands(client, generation);
         } else if (message.type === 'system' && message.subtype === 'status') {
           if (isPermissionMode(message.permissionMode) && message.permissionMode !== this.view.permissionMode)
@@ -876,13 +881,20 @@ export class AgentChat {
 
   private async loadModels(client: ChatQuery, generation: number): Promise<void> {
     try {
-      const models = (await client.supportedModels()).slice(0, 20).map((model) => ({
+      const models = (await client.supportedModels()).slice(0, MAX_MODELS).map((model) => ({
         value: model.value.slice(0, 200),
         label: (model.displayName || model.value).slice(0, 200),
         efforts: (model.supportedEffortLevels ?? []).filter((effort) => EFFORTS.includes(effort)),
       }));
-      if (!this.disposed && generation === this.generation) this.setState({ ...this.view, models });
+      if (this.disposed || generation !== this.generation) return;
+      this.modelsLoaded = true;
+      this.setState({ ...this.view, models });
+      this.savePreferences({ models });
     } catch {}
+  }
+
+  private savePreferences(preferences: Partial<ChatPreferences>): void {
+    if (this.view.provider === 'claude') this.options.preferences?.set(preferences);
   }
 
   private async loadCommands(client: ChatQuery, generation: number): Promise<void> {

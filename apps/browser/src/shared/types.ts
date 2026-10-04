@@ -174,7 +174,7 @@ export interface AgentTerminalSnapshot {
   data: string;
 }
 
-export type AgentPermissionMode = 'default' | 'acceptEdits' | 'plan';
+export type AgentPermissionMode = 'default' | 'acceptEdits' | 'auto' | 'plan';
 export type AgentProviderId = 'claude' | 'codex' | 'gemini';
 export type AgentWorkMode = 'normal' | 'verify' | 'review' | 'design';
 export type AgentReplyLength = 'short' | 'detailed';
