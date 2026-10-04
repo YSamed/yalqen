@@ -31,10 +31,19 @@ function fixture(t, overrides = {}) {
           next({ value: message, done: false });
         } else messages.push(message);
       },
+      settings: [],
       interrupt: async () => {
         client.interrupted++;
         client.emit(result());
       },
+      setPermissionMode: async (mode) => client.settings.push({ mode }),
+      setModel: async (model) => client.settings.push({ model }),
+      applyFlagSettings: async (flags) => client.settings.push(flags),
+      supportedModels: async () => [
+        { value: 'default', displayName: 'Default', description: '', supportedEffortLevels: ['low', 'high', 'bogus'] },
+        { value: 'haiku', displayName: 'Haiku', description: '' },
+      ],
+      getContextUsage: async () => ({ totalTokens: 50000, maxTokens: 200000 }),
       close() {
         client.closed++;
         ended = true;
@@ -100,7 +109,9 @@ test('starts a persistent Claude conversation lazily with the installed CLI and 
   assert.match(input.value.message.content, /Explain the project/);
   assert.match(input.value.message.content, /"tab_id":"tab-1"/);
   assert.deepEqual(chat.snapshot().messages[0].context, context);
-  assert.equal(await chat.send(chat.state().id, 'Concurrent message'), false);
+  assert.equal(await chat.send(chat.state().id, 'Concurrent message'), true);
+  assert.equal(chat.snapshot().queue.length, 1);
+  chat.cancelQueued(chat.state().id, chat.snapshot().queue[0].id);
   client.emit({ type: 'system', subtype: 'init', session_id: 'cli-id', model: 'test-model' });
   client.emit(result({ result: 'Project explained.' }));
   await tick();
@@ -356,4 +367,128 @@ test('validates user input and bounds the conversation replay', async (t) => {
   client.emit(result());
   await tick();
   assert.equal(calls.updates.length, count);
+});
+
+test('pre-approves only read-only Yalqen tools and starts in the chosen permission mode and model', async (t) => {
+  const { chat, calls } = fixture(t);
+  chat.configure(null, { permissionMode: 'plan' });
+  chat.configure(null, { permissionMode: 'bypassPermissions' });
+  chat.configure(null, { model: 'unknown-model' });
+  assert.equal(chat.state().permissionMode, 'plan');
+  assert.equal(chat.state().modelChoice, null);
+  await chat.send(null, 'Plan a change');
+  const { options } = calls.queries[0].params;
+  assert.equal(options.permissionMode, 'plan');
+  assert.ok(options.allowedTools.includes('mcp__yalqen__get_console_errors'));
+  assert.ok(!options.allowedTools.some((tool) => /click|fill|navigate|mock_response|reload_page/.test(tool)));
+});
+
+test('loads models after init and applies model, effort and mode changes to the running session', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.send(null, 'Hello');
+  const client = calls.queries[0];
+  client.emit({
+    type: 'system',
+    subtype: 'init',
+    session_id: 'cli-id',
+    model: 'test-model',
+    permissionMode: 'default',
+  });
+  await tick();
+  await tick();
+  assert.deepEqual(
+    chat.state().models.map((model) => [model.value, model.efforts]),
+    [
+      ['default', ['low', 'high']],
+      ['haiku', []],
+    ],
+  );
+  chat.configure(chat.state().id, { effort: 'high' });
+  chat.configure(chat.state().id, { model: 'haiku', permissionMode: 'acceptEdits' });
+  await tick();
+  assert.equal(chat.state().effort, null);
+  assert.deepEqual(client.settings, [
+    { effortLevel: 'high' },
+    { mode: 'acceptEdits' },
+    { model: 'haiku' },
+    { effortLevel: null },
+  ]);
+  client.emit({ type: 'system', subtype: 'status', status: null, permissionMode: 'plan' });
+  await tick();
+  assert.equal(chat.state().permissionMode, 'plan');
+  chat.reset(chat.state().id);
+  assert.equal(chat.state().modelChoice, 'haiku');
+  assert.equal(chat.state().usage, null);
+});
+
+test('queues messages sent while Claude works and delivers them in order after each turn', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.send(null, 'First');
+  const client = calls.queries[0];
+  await client.input.next();
+  assert.equal(await chat.send(chat.state().id, 'Second'), true);
+  assert.equal(await chat.send(chat.state().id, 'Third'), true);
+  assert.deepEqual(
+    chat.snapshot().queue.map((message) => message.parts[0].text),
+    ['Second', 'Third'],
+  );
+  chat.cancelQueued(chat.state().id, chat.snapshot().queue[1].id);
+  client.emit(assistant('reply-1', [{ type: 'text', text: 'Done one' }]));
+  client.emit(result({ total_cost_usd: 0.25 }));
+  const next = await client.input.next();
+  assert.match(next.value.message.content, /Second/);
+  assert.equal(chat.state().status, 'thinking');
+  assert.equal(chat.snapshot().queue.length, 0);
+  assert.deepEqual(
+    chat.snapshot().messages.map((message) => message.role),
+    ['user', 'assistant', 'user'],
+  );
+  assert.equal(chat.state().usage.cost, 0.25);
+  await tick();
+  assert.equal(chat.state().usage.contextTokens, 50000);
+  assert.equal(chat.state().usage.contextLimit, 200000);
+  await chat.send(chat.state().id, 'Dropped on interrupt');
+  await chat.interrupt(chat.state().id);
+  await tick();
+  assert.equal(chat.snapshot().queue.length, 0);
+  assert.equal(chat.state().status, 'ready');
+});
+
+test('always-allow keeps permission updates scoped to the session and syncs a mode change', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.send(null, 'Edit');
+  const canUseTool = calls.queries[0].params.options.canUseTool;
+  const suggestions = [
+    {
+      type: 'addRules',
+      rules: [{ toolName: 'Bash', ruleContent: 'npm test' }],
+      behavior: 'allow',
+      destination: 'localSettings',
+    },
+    { type: 'setMode', mode: 'acceptEdits', destination: 'session' },
+  ];
+  const pending = canUseTool('Bash', { command: 'npm test' }, { signal: new AbortController().signal, suggestions });
+  const request = chat.snapshot().permissions[0];
+  assert.equal(request.canAlwaysAllow, true);
+  chat.respond(chat.state().id, request.id, true, undefined, true);
+  const outcome = await pending;
+  assert.equal(outcome.behavior, 'allow');
+  assert.ok(outcome.updatedPermissions.every((update) => update.destination === 'session'));
+  assert.equal(chat.state().permissionMode, 'acceptEdits');
+  const plain = canUseTool('Read', {}, { signal: new AbortController().signal });
+  const second = chat.snapshot().permissions[0];
+  assert.equal(second.canAlwaysAllow, false);
+  chat.respond(chat.state().id, second.id, true, undefined, true);
+  assert.equal((await plain).updatedPermissions, undefined);
+});
+
+test('shows a plan from ExitPlanMode for approval', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.send(null, 'Plan');
+  void calls.queries[0].params.options.canUseTool(
+    'ExitPlanMode',
+    { plan: '1. Change the button' },
+    { signal: new AbortController().signal },
+  );
+  assert.equal(chat.snapshot().permissions[0].plan, '1. Change the button');
 });

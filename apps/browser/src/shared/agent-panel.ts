@@ -5,6 +5,11 @@ export const EMPTY_AGENT_CHAT: AgentChatState = {
   directory: null,
   status: 'idle',
   model: null,
+  modelChoice: null,
+  effort: null,
+  permissionMode: 'default',
+  models: [],
+  usage: null,
   error: null,
 };
 

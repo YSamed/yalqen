@@ -2,10 +2,19 @@
   import { onMount, tick } from 'svelte';
   import { t } from '../../shared/i18n';
   import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel';
-  import type { AgentChatPermission, AgentChatSnapshot, AgentElementRef, TabSnapshot } from '../../shared/types';
+  import type {
+    AgentChatPermission,
+    AgentChatSettings,
+    AgentChatSnapshot,
+    AgentEffort,
+    AgentElementRef,
+    AgentPermissionMode,
+    TabSnapshot,
+  } from '../../shared/types';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Icon from '../ui/Icon.svelte';
+  import Select from '../ui/Select.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
   import ElementChip from './ElementChip.svelte';
 
@@ -26,6 +35,7 @@
     state: { ...EMPTY_AGENT_CHAT },
     revision: -1,
     messages: [],
+    queue: [],
     permissions: [],
   });
   let draft = $state('');
@@ -40,7 +50,40 @@
   let follow = $state(true);
   let destroyed = false;
   const busy = $derived(['starting', 'thinking', 'approval'].includes(snapshot.state.status));
-  const canSend = $derived(Boolean(directory && draft.trim() && !busy && !sending && !loading));
+  const canSend = $derived(
+    Boolean(
+      directory &&
+      draft.trim() &&
+      snapshot.state.status !== 'starting' &&
+      snapshot.queue.length < 5 &&
+      !sending &&
+      !loading,
+    ),
+  );
+  const modes: { value: AgentPermissionMode; label: string }[] = [
+    { value: 'default', label: t('agentChat.modeDefault') },
+    { value: 'acceptEdits', label: t('agentChat.modeAcceptEdits') },
+    { value: 'plan', label: t('agentChat.modePlan') },
+  ];
+  const effortLabels: Record<AgentEffort, string> = {
+    low: t('agentChat.effortLow'),
+    medium: t('agentChat.effortMedium'),
+    high: t('agentChat.effortHigh'),
+    xhigh: t('agentChat.effortXhigh'),
+    max: t('agentChat.effortMax'),
+  };
+  const models = $derived([
+    { value: '', label: t('agentChat.modelDefault') },
+    ...snapshot.state.models.filter((model) => model.value !== 'default'),
+  ]);
+  const efforts = $derived(
+    snapshot.state.models.find((model) =>
+      [snapshot.state.modelChoice ?? 'default', snapshot.state.model].includes(model.value),
+    )?.efforts ?? [],
+  );
+  const usage = $derived(snapshot.state.usage);
+  const numbers = new Intl.NumberFormat(undefined, { notation: 'compact' });
+  const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
   const prompts = [
     { title: t('agentChat.suggestionProject'), prompt: t('agentChat.promptProject') },
     { title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors') },
@@ -97,6 +140,23 @@
     }
   }
 
+  async function configure(settings: AgentChatSettings): Promise<void> {
+    try {
+      await window.yalqen.configureAgentChat(snapshot.state.id, settings);
+    } catch {
+      failed = true;
+    }
+  }
+
+  async function cancelQueued(messageId: string): Promise<void> {
+    if (!snapshot.state.id) return;
+    try {
+      await window.yalqen.cancelQueuedAgentChat(snapshot.state.id, messageId);
+    } catch {
+      failed = true;
+    }
+  }
+
   async function interrupt(): Promise<void> {
     if (!snapshot.state.id || cancelling) return;
     cancelling = true;
@@ -109,11 +169,11 @@
     }
   }
 
-  async function respond(request: AgentChatPermission, allow: boolean): Promise<void> {
+  async function respond(request: AgentChatPermission, allow: boolean, always = false): Promise<void> {
     if (!snapshot.state.id) return;
     try {
       const selected = answers[request.id] ? { ...answers[request.id] } : undefined;
-      await window.yalqen.respondAgentChat(snapshot.state.id, request.id, allow, selected);
+      await window.yalqen.respondAgentChat(snapshot.state.id, request.id, allow, selected, always);
     } catch {
       failed = true;
     }
@@ -245,7 +305,13 @@
       <div class="approval">
         <div class="approval-heading">
           <Icon name={request.questions.length ? 'info' : 'lock'} size={14} /><strong
-            >{t(request.questions.length ? 'agentChat.question' : 'agentChat.approval')}</strong
+            >{t(
+              request.questions.length
+                ? 'agentChat.question'
+                : request.plan !== null
+                  ? 'agentChat.planReady'
+                  : 'agentChat.approval',
+            )}</strong
           >
         </div>
         {#if request.questions.length}
@@ -279,18 +345,29 @@
               />
             </fieldset>
           {/each}
+        {:else if request.plan !== null}
+          <div class="plan"><AgentMarkdown text={request.plan} /></div>
         {:else}
           <p>{request.title}</p>
           <pre>{request.input}</pre>
         {/if}
         <div class="approval-actions">
           <Button size="sm" onclick={() => respond(request, false)}>{t('agentChat.deny')}</Button>
+          {#if request.canAlwaysAllow}<Button size="sm" onclick={() => respond(request, true, true)}
+              >{t('agentChat.alwaysAllow')}</Button
+            >{/if}
           <Button
             size="sm"
             variant="primary"
             disabled={request.questions.some((question) => !answers[request.id]?.[question.question]?.trim())}
             onclick={() => respond(request, true)}
-            >{t(request.questions.length ? 'agentChat.answer' : 'agentChat.allow')}</Button
+            >{t(
+              request.questions.length
+                ? 'agentChat.answer'
+                : request.plan !== null
+                  ? 'agentChat.approvePlan'
+                  : 'agentChat.allow',
+            )}</Button
           >
         </div>
       </div>
@@ -334,6 +411,22 @@
         void send();
       }}
     >
+      {#if snapshot.queue.length}
+        <ol class="queue" aria-label={t('agentChat.queued')}>
+          {#each snapshot.queue as message (message.id)}
+            <li>
+              <span class="queue-label">{t('agentChat.queued')}</span>
+              <span class="queue-text">{message.parts[0]?.type === 'text' ? message.parts[0].text : ''}</span>
+              <IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.cancelQueued')}
+                onclick={() => cancelQueued(message.id)}
+              />
+            </li>
+          {/each}
+        </ol>
+      {/if}
       {#if attachment || elements.length}
         <div class="chips">
           {#if attachment}
@@ -369,7 +462,16 @@
           title={activeTab?.agentObserved ? activeTab.url : t('agentChat.localTabHint')}
           onclick={() => (attachment = attachment ? null : activeTab)}>{t('agentPanel.addTab')}</Button
         >
-        {#if busy}<IconButton
+        <Select
+          variant="ghost"
+          aria-label={t('agentChat.modeLabel')}
+          title={t('agentChat.modeLabel')}
+          value={snapshot.state.permissionMode}
+          options={modes}
+          onchange={(permissionMode) => configure({ permissionMode })}
+        />
+        <span class="spacer"></span>
+        {#if busy && !draft.trim()}<IconButton
             class="send-button"
             icon="stop"
             size="md"
@@ -388,6 +490,44 @@
             disabled={!canSend}
           />{/if}
       </div>
+      {#if models.length > 1 || usage}
+        <div class="composer-meta">
+          {#if models.length > 1}
+            <Select
+              variant="ghost"
+              aria-label={t('agentChat.modelLabel')}
+              title={snapshot.state.model ?? t('agentChat.modelLabel')}
+              value={snapshot.state.modelChoice ?? ''}
+              options={models}
+              onchange={(model) => configure({ model: model || null })}
+            />
+          {/if}
+          {#if efforts.length}
+            <Select
+              variant="ghost"
+              aria-label={t('agentChat.effortLabel')}
+              title={t('agentChat.effortLabel')}
+              value={snapshot.state.effort ?? ''}
+              options={[
+                { value: '', label: t('agentChat.effortDefault') },
+                ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
+              ]}
+              onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
+            />
+          {/if}
+          {#if usage}
+            <span class="usage">
+              {#if usage.contextTokens !== null && usage.contextLimit}<span
+                  title={t('agentChat.context', {
+                    used: numbers.format(usage.contextTokens),
+                    limit: numbers.format(usage.contextLimit),
+                  })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
+                >{/if}
+              <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
+            </span>
+          {/if}
+        </div>
+      {/if}
     </form>
   {/if}
 </div>
@@ -703,6 +843,61 @@
     justify-content: space-between;
     gap: 8px;
     margin-top: 8px;
+  }
+  .spacer {
+    flex: 1;
+  }
+  .composer-controls :global(.send-button) {
+    flex: none;
+  }
+  .composer-meta {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 6px -4px 0;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .usage {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    padding-right: 4px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .queue {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    margin: 0 0 7px;
+    padding: 0;
+    list-style: none;
+  }
+  .queue li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 2px 2px 8px;
+    border-radius: 8px;
+    background: var(--surface-hover);
+    font-size: 11px;
+  }
+  .queue-label {
+    flex: none;
+    color: var(--text-muted);
+  }
+  .queue-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .plan {
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 4px 0 8px;
   }
   .chips {
     display: flex;

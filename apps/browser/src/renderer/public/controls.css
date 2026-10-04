@@ -292,6 +292,21 @@ input[type='radio'] {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+.select-trigger.ghost {
+  gap: 4px;
+  height: var(--control-sm);
+  padding: 0 4px 0 6px;
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.select-trigger.ghost:hover,
+.select-trigger.ghost[aria-expanded='true'] {
+  color: var(--text);
+}
+
 .select-trigger > svg {
   flex: none;
   color: var(--text-muted);

@@ -495,8 +495,14 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.agentChatReset, (event, id: unknown) => agentSenderWindow(event)?.agentChat.reset(id));
   ipcMain.handle(
     IpcChannel.agentChatPermission,
-    (event, id: unknown, requestId: unknown, allow: unknown, answers: unknown) =>
-      agentSenderWindow(event)?.agentChat.respond(id, requestId, allow, answers),
+    (event, id: unknown, requestId: unknown, allow: unknown, answers: unknown, always: unknown) =>
+      agentSenderWindow(event)?.agentChat.respond(id, requestId, allow, answers, always),
+  );
+  ipcMain.handle(IpcChannel.agentChatConfigure, (event, id: unknown, settings: unknown) =>
+    agentSenderWindow(event)?.agentChat.configure(id, settings),
+  );
+  ipcMain.handle(IpcChannel.agentChatCancelQueued, (event, id: unknown, messageId: unknown) =>
+    agentSenderWindow(event)?.agentChat.cancelQueued(id, messageId),
   );
   registerWebStoreApi({
     daily,
