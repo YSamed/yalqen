@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.19](https://github.com/YSamed/yalqen/compare/v0.3.18...v0.3.19) (2026-10-04)
+
+
+### Features
+
+* add responsive scan and flow verification to agent chat ([9f0ce9a](https://github.com/YSamed/yalqen/commit/9f0ce9a55b5ce63ca6b1de8c17efb336c08c0ec3))
+
 ## [0.3.18](https://github.com/YSamed/yalqen/compare/v0.3.17...v0.3.18) (2026-10-04)
 
 
