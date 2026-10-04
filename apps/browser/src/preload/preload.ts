@@ -50,6 +50,7 @@ const api: YalqenApi = {
   openAgentFile: (path) => ipcRenderer.invoke(channel.agentChatOpenFile, path) as Promise<boolean>,
   listAgentChats: () => ipcRenderer.invoke(channel.agentChatHistory) as Promise<AgentChatSession[]>,
   openAgentChat: (sessionId, fork) => ipcRenderer.invoke(channel.agentChatOpen, sessionId, fork) as Promise<boolean>,
+  deleteAgentChat: (sessionId) => ipcRenderer.invoke(channel.agentChatDelete, sessionId) as Promise<boolean>,
   searchAgentFiles: (query) => ipcRenderer.invoke(channel.agentChatFiles, query) as Promise<string[]>,
   selectAgentProvider: (provider) => ipcRenderer.invoke(channel.agentChatProvider, provider) as Promise<boolean>,
   newAgentProject: () => ipcRenderer.invoke(channel.agentProjectAdd) as Promise<boolean>,

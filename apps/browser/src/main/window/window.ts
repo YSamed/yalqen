@@ -518,6 +518,7 @@ export class YalqenWindow {
     this.agentPanelOpen = !this.agentPanelOpen;
     if (this.agentPanelOpen) {
       this.uiContents.focus();
+      void this.agentProject.chat.refreshModels();
       void availableProviders().then((providers) => {
         if (providers.length === this.agentProviders.length) return;
         this.agentProviders = providers;

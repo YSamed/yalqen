@@ -12,7 +12,7 @@
     'aria-label': ariaLabel,
   }: {
     value: T;
-    options: readonly { value: T; label: string }[];
+    options: readonly { value: T; label: string; short?: string }[];
     onchange?: (value: T) => void;
     id?: string;
     variant?: 'default' | 'ghost';
@@ -81,7 +81,7 @@
   <!-- every label sits in one grid cell so the trigger keeps the widest option's width -->
   <span class="select-value">
     {#each options as option (option.value)}
-      <span class:current={option.value === value}>{option.label}</span>
+      <span class:current={option.value === value}>{option.short ?? option.label}</span>
     {/each}
   </span>
   <Icon name="down" size={12} />

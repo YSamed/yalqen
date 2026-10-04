@@ -18,6 +18,7 @@
   import AgentChat from './AgentChat.svelte';
   import AgentHistory from './AgentHistory.svelte';
   import AgentProjects from './AgentProjects.svelte';
+  import ProviderMark, { type ProviderActivity } from './ProviderMark.svelte';
 
   let {
     open,
@@ -31,7 +32,10 @@
     projects,
     projectId,
     width,
+    collapsed,
+    fading,
     onresize,
+    oncollapse,
   }: {
     open: boolean;
     session: AgentSessionState;
@@ -44,7 +48,10 @@
     projects: AgentProjectSummary[];
     projectId: string;
     width: number;
+    collapsed: boolean;
+    fading: boolean;
     onresize(width: number): void;
+    oncollapse(collapsed: boolean): void;
   } = $props();
 
   let requesting = $state(false);
@@ -86,6 +93,30 @@
   const sessionOpen = $derived(
     view === 'terminal' ? active : ['starting', 'thinking', 'approval', 'ready'].includes(chat.status),
   );
+  let finishedUnseen = $state(false);
+  let wasWorking = false;
+  const working = $derived(
+    view === 'terminal' ? session.status === 'starting' : chatBusy && chat.status !== 'approval',
+  );
+  const activity: ProviderActivity = $derived(
+    hasError
+      ? 'error'
+      : view === 'chat' && chat.status === 'approval'
+        ? 'waiting'
+        : working
+          ? 'working'
+          : finishedUnseen
+            ? 'done'
+            : 'idle',
+  );
+
+  $effect(() => {
+    const busy = working || (view === 'chat' && chat.status === 'approval');
+    if (wasWorking && !busy && collapsed) finishedUnseen = true;
+    if (busy || !collapsed) finishedUnseen = false;
+    wasWorking = busy;
+  });
+
   async function chooseProject(): Promise<boolean> {
     requesting = true;
     try {
@@ -130,6 +161,11 @@
     void window.yalqen.resetAgentChat(chat.id).catch(() => undefined);
   }
 
+  function startNewChat(): void {
+    if (chat.id) newChat();
+    oncollapse(false);
+  }
+
   function beginResize(event: PointerEvent & { currentTarget: HTMLButtonElement }): void {
     if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
@@ -164,8 +200,44 @@
   });
 </script>
 
-<section class="agent-panel" aria-label={t('agentPanel.toggle')}>
+<section
+  class="agent-panel"
+  class:collapsed
+  class:fading
+  style:width={collapsed ? null : `${width}px`}
+  aria-label={t('agentPanel.toggle')}
+>
+  {#if collapsed}
+    <div class="rail">
+      <IconButton
+        size="lg"
+        variant="surface"
+        label="{t('agentPanel.expand')} · {view === 'terminal'
+          ? 'Claude Code'
+          : PROVIDER_LABELS[chat.provider]}{showStatus ? ` · ${status}` : ''}"
+        title={showStatus ? status : t('agentPanel.expand')}
+        onclick={() => oncollapse(false)}
+      >
+        <ProviderMark mark={view === 'terminal' ? 'claude-code' : chat.provider} {activity} />
+      </IconButton>
+      <span class="visually-hidden" role="status">{showStatus ? status : ''}</span>
+      {#if view === 'chat'}
+        <IconButton size="lg" variant="surface" icon="plus" label={t('agentChat.newChat')} onclick={startNewChat} />
+      {/if}
+      <IconButton
+        class="rail-toggle"
+        size="lg"
+        variant="surface"
+        tone="muted"
+        icon="panel-expand-right"
+        label={t('agentPanel.expand')}
+        aria-expanded="false"
+        onclick={() => oncollapse(false)}
+      />
+    </div>
+  {/if}
   <button
+    hidden={collapsed}
     class="resize-handle"
     aria-label={t('agentPanel.resize')}
     title={t('agentPanel.resize')}
@@ -177,8 +249,11 @@
     onkeydown={resizeByKeyboard}
     ondblclick={() => onresize(DEFAULT_AGENT_PANEL_WIDTH)}
   ></button>
-  <header>
+  <header hidden={collapsed}>
     <div class="identity">
+      <span class="header-mark"
+        ><ProviderMark mark={view === 'terminal' ? 'claude-code' : chat.provider} {activity} /></span
+      >
       <strong>Yalqen AI</strong>
       <span
         class="status"
@@ -191,7 +266,7 @@
     <div class="actions">
       {#if view === 'terminal' && active}
         <IconButton icon="stop" label={t('agentPanel.stop')} onclick={stop} />
-      {:else if view === 'chat' && chat.id}
+      {:else if view === 'chat'}
         <IconButton icon="plus" label={t('agentChat.newChat')} onclick={newChat} />
       {/if}
       {#if view === 'chat' && providers.length > 1}
@@ -218,14 +293,20 @@
         />
       {/if}
       <IconButton
+        icon="panel-close-right"
+        label={t('agentPanel.collapse')}
+        aria-expanded="true"
+        onclick={() => oncollapse(true)}
+      />
+      <IconButton
         icon="close"
         label={t('agentPanel.close')}
         onclick={() => window.yalqen.send({ type: 'toggle-agent-panel' })}
       />
     </div>
   </header>
-  {#if projects.length > 1 || session.directory}<AgentProjects {projects} activeId={projectId} />{/if}
-  {#if session.directory || terminal}
+  {#if !collapsed && (projects.length > 1 || session.directory)}<AgentProjects {projects} activeId={projectId} />{/if}
+  {#if !collapsed && (session.directory || terminal)}
     <div class="bar">
       {#if session.directory}<Button
           class="project"
@@ -279,13 +360,13 @@
         />{/if}
     </div>
   {/if}
-  {#if historyOpen && view === 'chat'}
+  {#if historyOpen && view === 'chat' && !collapsed}
     <div class="panel-view"><AgentHistory onclose={() => (historyOpen = false)} /></div>
   {/if}
   {#key projectId}
-    <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat' || historyOpen}>
+    <div class="panel-view chat-view" id="agent-chat" hidden={collapsed || view !== 'chat' || historyOpen}>
       <AgentChat
-        open={open && view === 'chat' && !historyOpen}
+        open={open && !collapsed && view === 'chat' && !historyOpen}
         directory={session.directory}
         {activeTab}
         {elements}
@@ -293,9 +374,14 @@
       />
     </div>
     {#if terminal}
-      <div class="panel-view" id="agent-terminal" hidden={view !== 'terminal'}>
+      <div class="panel-view" id="agent-terminal" hidden={collapsed || view !== 'terminal'}>
         {#if TerminalView}
-          <TerminalView open={open && view === 'terminal'} {session} {activeTab} onchoose={chooseProject} />
+          <TerminalView
+            open={open && !collapsed && view === 'terminal'}
+            {session}
+            {activeTab}
+            onchoose={chooseProject}
+          />
         {/if}
       </div>
     {/if}
@@ -327,6 +413,39 @@
     background: transparent;
     box-shadow: none;
   }
+  .agent-panel > * {
+    transition: opacity 120ms ease-out;
+  }
+  .fading > * {
+    opacity: 0;
+  }
+  .agent-panel.collapsed {
+    background: transparent;
+    box-shadow: none;
+  }
+  .rail {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 4px 5px 0 0;
+  }
+  .rail :global(.rail-toggle) {
+    margin-top: auto;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .resize-handle[hidden],
+  header[hidden] {
+    display: none;
+  }
   .resize-handle {
     position: absolute;
     z-index: 2;
@@ -339,22 +458,6 @@
     background: transparent;
     cursor: col-resize;
     touch-action: none;
-  }
-  .resize-handle::after {
-    position: absolute;
-    top: 12px;
-    bottom: 12px;
-    left: 3px;
-    width: 2px;
-    border-radius: 2px;
-    background: var(--accent);
-    content: '';
-    opacity: 0;
-    transition: opacity var(--transition);
-  }
-  .resize-handle:hover::after,
-  .resize-handle:focus-visible::after {
-    opacity: 1;
   }
   header,
   .bar,
@@ -373,8 +476,19 @@
   }
   .identity {
     flex: 1;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
+  }
+  .header-mark {
+    display: grid;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    margin-left: -4px;
+  }
+  .header-mark :global(.glyph) {
+    width: 16px;
+    height: 16px;
   }
   .identity strong {
     flex: none;

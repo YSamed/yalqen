@@ -66,6 +66,13 @@
   let stateReceived = $state(false);
   let windowWidth = $state(window.innerWidth);
   let requestedAgentWidth = $state(DEFAULT_AGENT_PANEL_WIDTH);
+  let agentCollapsed = $state(false);
+  let shownAgentWidth = $state(0);
+  let pageAgentWidth = $state(0);
+  let agentContentCollapsed = $state(false);
+  let agentFading = $state(false);
+  let agentMode = '';
+  let agentAnimation = 0;
   let AgentPanelComponent: typeof AgentPanel | null = $state(null);
   let agentPanelLoading = $state(false);
   let agentPanelLoadFailed = $state(false);
@@ -103,7 +110,9 @@
   );
   const collapsed = $derived(
     browser.panelCollapsed ||
-      (agentPanelOpen && windowWidth < PANEL_WIDTH + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + PAGE_INSET * 2),
+      (agentPanelOpen &&
+        !agentCollapsed &&
+        windowWidth < PANEL_WIDTH + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + PAGE_INSET * 2),
   );
   const material = $derived(browser.material);
   const pageFullScreen = $derived(browser.pageFullScreen);
@@ -111,8 +120,13 @@
   const windowFullScreen = $derived(browser.windowFullScreen);
   const panelWidth = $derived(sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : PANEL_WIDTH) : PAGE_INSET);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
-  const agentReservedWidth = $derived(agentVisible ? agentWidth + PAGE_INSET : 0);
   const side = $derived(browser.panelSide);
+  // The page already keeps an inset on its right edge, so a collapsed rail beside it takes that
+  // much less to match the tab rail's spacing.
+  const collapsedAgentWidth = $derived(side === 'left' ? COLLAPSED_WIDTH - PAGE_INSET : COLLAPSED_WIDTH);
+  const agentReservedWidth = $derived(
+    agentVisible ? (agentCollapsed ? collapsedAgentWidth : agentWidth + PAGE_INSET) : 0,
+  );
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let shownWidth = $state(PANEL_WIDTH);
   let panelSlide = $state(0);
@@ -143,6 +157,46 @@
     requestedAgentWidth = fitAgentPanelWidth(width, windowWidth, panelWidth);
     try {
       localStorage.setItem('yalqen:agent-panel-width', String(requestedAgentWidth));
+    } catch {}
+  }
+
+  $effect(() => {
+    const target = agentReservedWidth;
+    const mode = `${agentCollapsed}|${agentVisible}`;
+    const previousMode = agentMode;
+    agentMode = mode;
+    const toggled = agentVisible && previousMode !== mode && previousMode.endsWith('|true');
+    cancelAnimationFrame(agentAnimation);
+    const from = untrack(() => shownAgentWidth);
+    if (!toggled || !animateModeChanges || reducedMotion.matches || from === target) {
+      shownAgentWidth = target;
+      pageAgentWidth = target;
+      agentContentCollapsed = agentCollapsed;
+      agentFading = false;
+      return;
+    }
+    // The native page takes the narrower of both sizes for the whole animation instead of
+    // reflowing every frame; the panel then grows over, or shrinks away from, its edge.
+    pageAgentWidth = Math.max(from, target);
+    agentFading = true;
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - start) / PANEL_ANIMATION_MS);
+      shownAgentWidth = Math.round(from + (target - from) * (1 - (1 - progress) ** 3));
+      if (agentFading && progress >= CONTENT_SWAP_PROGRESS) {
+        agentContentCollapsed = agentCollapsed;
+        agentFading = false;
+      }
+      if (progress < 1) agentAnimation = requestAnimationFrame(step);
+      else pageAgentWidth = target;
+    };
+    agentAnimation = requestAnimationFrame(step);
+  });
+
+  function collapseAgentPanel(next: boolean): void {
+    agentCollapsed = next;
+    try {
+      localStorage.setItem('yalqen:agent-panel-collapsed', String(next));
     } catch {}
   }
 
@@ -194,10 +248,10 @@
       chromeHeight: topInset,
       pageInset: PAGE_INSET,
       pageRadius: PAGE_RADIUS,
-      agentPanelWidth: agentReservedWidth,
+      agentPanelWidth: pageAgentWidth,
       newTabCenterOffset:
         material === 'glass' && !pageFullScreen
-          ? ((side === 'right' ? 1 : -1) * Math.max(0, panelWidth - COLLAPSED_WIDTH)) / 2
+          ? ((side === 'right' ? 1 : -1) * Math.max(0, panelWidth - COLLAPSED_WIDTH) + pageAgentWidth) / 2
           : 0,
     });
   });
@@ -206,6 +260,7 @@
     try {
       const savedWidth = Number(localStorage.getItem('yalqen:agent-panel-width'));
       if (Number.isFinite(savedWidth) && savedWidth >= MIN_AGENT_PANEL_WIDTH) requestedAgentWidth = savedWidth;
+      agentCollapsed = localStorage.getItem('yalqen:agent-panel-collapsed') === 'true';
     } catch {}
     void window.yalqen.getState().then((next) => {
       browser = reuseBrowserState(browser, next);
@@ -240,8 +295,8 @@
   style:grid-template-columns={pageFullScreen
     ? 'minmax(0, 1fr)'
     : side === 'left'
-      ? `${shownWidth}px minmax(0, 1fr)${agentVisible ? ` ${agentReservedWidth}px` : ''}`
-      : `minmax(0, 1fr) ${shownWidth}px${agentVisible ? ` ${agentReservedWidth}px` : ''}`}
+      ? `${shownWidth}px minmax(0, 1fr)${agentVisible ? ` ${shownAgentWidth}px` : ''}`
+      : `minmax(0, 1fr) ${shownWidth}px${agentVisible ? ` ${shownAgentWidth}px` : ''}`}
   style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !pageFullScreen}
@@ -282,10 +337,10 @@
             : WINDOW_CONTROLS_END
           : 0}
         trailingInset={PAGE_INSET}
-        centerOffset={(side === 'left' ? -shownWidth - agentReservedWidth : shownWidth) / 2}
+        centerOffset={(side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
         trailingOverhang={(rightPanel
           ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET)
-          : 0) + (side === 'right' ? agentReservedWidth : 0)}
+          : 0) + (side === 'right' ? shownAgentWidth : 0)}
       />
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
@@ -330,7 +385,13 @@
     {/if}
   </section>
   {#if agentVisible && side === 'right'}<div class="agent-titlebar" aria-hidden="true"></div>{/if}
-  <div class="agent-slot" id="agent-panel" hidden={!agentVisible}>
+  <div
+    class="agent-slot"
+    class:animating={shownAgentWidth !== agentReservedWidth}
+    class:collapsed={agentContentCollapsed}
+    id="agent-panel"
+    hidden={!agentVisible}
+  >
     {#if AgentPanelComponent}
       <AgentPanelComponent
         open={agentVisible}
@@ -344,7 +405,10 @@
         projectId={browser.agentProjectId}
         {activeTab}
         width={agentWidth}
+        collapsed={agentContentCollapsed}
+        fading={agentFading}
         onresize={resizeAgentPanel}
+        oncollapse={collapseAgentPanel}
       />
     {:else}
       <div class="agent-loading" role="status">
@@ -396,6 +460,14 @@
     min-width: 0;
     min-height: 0;
     margin: 0 8px 8px 0;
+  }
+
+  .agent-slot.collapsed {
+    margin-right: 0;
+  }
+
+  .agent-slot.animating {
+    overflow: clip;
   }
 
   .agent-slot[hidden] {

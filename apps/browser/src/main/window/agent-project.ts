@@ -78,7 +78,13 @@ export class AgentProject {
         },
         ...(provider !== 'claude' && {
           loadClient: acpClient(ACP_AGENTS[provider]),
-          loadSessions: async () => ({ listSessions: async () => [], getSessionMessages: async () => [] }),
+          loadSessions: async () => ({
+            listSessions: async () => [],
+            getSessionMessages: async () => [],
+            deleteSession: async () => {
+              throw new Error('Unsupported');
+            },
+          }),
         }),
       });
       const directory = this.directory;

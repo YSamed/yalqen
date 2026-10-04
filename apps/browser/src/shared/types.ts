@@ -433,6 +433,7 @@ export const IpcChannel = {
   agentChatOpenFile: 'yalqen:agent-chat-open-file',
   agentChatHistory: 'yalqen:agent-chat-history',
   agentChatOpen: 'yalqen:agent-chat-open',
+  agentChatDelete: 'yalqen:agent-chat-delete',
   agentChatFiles: 'yalqen:agent-chat-files',
   agentChatProvider: 'yalqen:agent-chat-provider',
   agentChatCancelQueued: 'yalqen:agent-chat-cancel-queued',
@@ -491,6 +492,7 @@ export interface YalqenApi {
   openAgentFile(path: string): Promise<boolean>;
   listAgentChats(): Promise<AgentChatSession[]>;
   openAgentChat(sessionId: string, fork: boolean): Promise<boolean>;
+  deleteAgentChat(sessionId: string): Promise<boolean>;
   searchAgentFiles(query: string): Promise<string[]>;
   selectAgentProvider(provider: AgentProviderId): Promise<boolean>;
   newAgentProject(): Promise<boolean>;
