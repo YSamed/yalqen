@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.9](https://github.com/YSamed/yalqen/compare/v0.3.8...v0.3.9) (2026-10-04)
+
+
+### Bug Fixes
+
+* show run button for preview scripts and keep composer controls in the panel ([#161](https://github.com/YSamed/yalqen/issues/161)) ([42cc78e](https://github.com/YSamed/yalqen/commit/42cc78e58063419964ad995753d21cc98004200c))
+
 ## [0.3.8](https://github.com/YSamed/yalqen/compare/v0.3.7...v0.3.8) (2026-10-04)
 
 
