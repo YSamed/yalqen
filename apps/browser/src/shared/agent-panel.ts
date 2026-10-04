@@ -1,4 +1,4 @@
-import type { AgentChatState, AgentSessionState, AgentTerminalSize } from './types.js';
+import type { AgentChatState, AgentSessionState, AgentTerminalSize, ProjectRunState } from './types.js';
 
 export const EMPTY_AGENT_CHAT: AgentChatState = {
   id: null,
@@ -14,6 +14,14 @@ export const EMPTY_AGENT_SESSION: AgentSessionState = {
   status: 'idle',
   exitCode: null,
   error: null,
+};
+
+export const EMPTY_PROJECT_RUN: ProjectRunState = {
+  directory: null,
+  command: null,
+  status: 'idle',
+  url: null,
+  exitCode: null,
 };
 
 export const DEFAULT_AGENT_PANEL_WIDTH = 400;

@@ -474,6 +474,15 @@ function startBrowser(): void {
   ipcMain.on(IpcChannel.agentResize, (event, id: unknown, size: unknown) =>
     agentSenderWindow(event)?.agentSession.resize(id, size),
   );
+  ipcMain.handle(IpcChannel.agentElementRemove, (event, id: unknown) =>
+    agentSenderWindow(event)?.removeAgentElement(id),
+  );
+  ipcMain.handle(
+    IpcChannel.agentElementHighlight,
+    (event, id: unknown) => agentSenderWindow(event)?.highlightAgentElement(id) ?? false,
+  );
+  ipcMain.handle(IpcChannel.projectRunStart, (event) => agentSenderWindow(event)?.startProjectRun() ?? false);
+  ipcMain.handle(IpcChannel.projectRunStop, (event) => agentSenderWindow(event)?.projectRunner.stop());
   ipcMain.handle(IpcChannel.agentChatSnapshot, (event) => agentSenderWindow(event)?.agentChat.snapshot() ?? null);
   ipcMain.handle(
     IpcChannel.agentChatSend,

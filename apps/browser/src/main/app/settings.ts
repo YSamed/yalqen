@@ -53,6 +53,7 @@ const DEFAULTS: Settings = {
   agentOrigins: [],
   agentActions: 'ask',
   agentTracing: false,
+  agentTerminal: false,
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
@@ -103,6 +104,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     agentOrigins,
     agentActions,
     agentTracing,
+    agentTerminal,
   } = input;
   return {
     version: 1,
@@ -155,6 +157,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? (agentActions as AgentActionPolicy)
         : base.agentActions,
     agentTracing: typeof agentTracing === 'boolean' ? agentTracing : base.agentTracing,
+    agentTerminal: typeof agentTerminal === 'boolean' ? agentTerminal : base.agentTerminal,
   };
 }
 

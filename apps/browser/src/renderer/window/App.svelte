@@ -11,6 +11,7 @@
   import {
     EMPTY_AGENT_SESSION,
     EMPTY_AGENT_CHAT,
+    EMPTY_PROJECT_RUN,
     DEFAULT_AGENT_PANEL_WIDTH,
     MIN_AGENT_PANEL_WIDTH,
     MIN_AGENT_PAGE_WIDTH,
@@ -55,6 +56,9 @@
     agentPanelOpen: false,
     agentSession: { ...EMPTY_AGENT_SESSION },
     agentChat: { ...EMPTY_AGENT_CHAT },
+    projectRun: { ...EMPTY_PROJECT_RUN },
+    agentElements: [],
+    agentTerminal: false,
   });
   let stateReceived = $state(false);
   let windowWidth = $state(window.innerWidth);
@@ -329,6 +333,9 @@
         open={agentVisible}
         session={agentSession}
         chat={agentChat}
+        run={browser.projectRun}
+        elements={browser.agentElements}
+        terminal={browser.agentTerminal}
         {activeTab}
         width={agentWidth}
         onresize={resizeAgentPanel}
@@ -399,6 +406,11 @@
     box-shadow: var(--page-shadow);
     color: var(--text-muted);
     text-align: center;
+  }
+
+  :global([data-material='glass']) .agent-loading {
+    background: transparent;
+    box-shadow: none;
   }
 
   .shell.fullscreen,

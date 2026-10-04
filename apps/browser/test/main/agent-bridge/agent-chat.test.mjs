@@ -111,6 +111,35 @@ test('starts a persistent Claude conversation lazily with the installed CLI and 
   assert.equal((await client.input.next()).value.session_id, 'cli-id');
 });
 
+test('tells Claude which elements the user selected and keeps them on the message', async (t) => {
+  const { chat, calls } = fixture(t);
+  const elements = [
+    {
+      id: 'yk_a1b2c3',
+      tabId: 'tab-1',
+      url: 'http://localhost:3000/',
+      label: 'button.btn "Save"',
+      component: 'SaveButton',
+      source: 'src/SaveButton.tsx:12',
+    },
+  ];
+  assert.equal(await chat.send(null, 'Make this larger', null, elements), true);
+  const { content } = (await calls.queries[0].input.next()).value.message;
+  assert.match(content, /Make this larger/);
+  assert.match(content, /"selection_id":"yk_a1b2c3"/);
+  assert.match(content, /"component":"SaveButton"/);
+  assert.match(content, /get_selected_element/);
+  assert.deepEqual(chat.snapshot().messages[0].elements, elements);
+  assert.doesNotMatch(content, /"tabId"/);
+});
+
+test('a message without selections adds no element context', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.send(null, 'Hello');
+  assert.doesNotMatch((await calls.queries[0].input.next()).value.message.content, /selected elements/);
+  assert.deepEqual(chat.snapshot().messages[0].elements, []);
+});
+
 test('streams text once and updates tool cards with their actual results', async (t) => {
   const { chat, calls } = fixture(t);
   await chat.send(null, 'Read the file');

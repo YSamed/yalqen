@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import type { ComponentInfo } from './component-source.js';
+import { formatLocation, type ComponentInfo } from './component-source.js';
+import type { AgentElementRef } from '../../shared/types.js';
 import type { Truncated } from './redact.js';
 
 export const SELECTION_LIMIT = 10;
@@ -141,6 +142,18 @@ export function elementLabel(tag: string, attributes: Record<string, string>, te
     .join('');
   const visible = shortText(text) || attributes['aria-label'] || attributes.placeholder || attributes.alt || '';
   return `${tag}${id}${classes}${visible ? ` "${shortText(visible)}"` : ''}`;
+}
+
+export function selectionRef(selection: ElementSelection): AgentElementRef {
+  const { component } = selection;
+  return {
+    id: selection.id,
+    tabId: selection.tabId,
+    url: selection.url,
+    label: selection.label,
+    component: component.component,
+    source: component.source ? formatLocation(component.source) : null,
+  };
 }
 
 export function selectionSummary(selection: ElementSelection) {

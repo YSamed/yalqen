@@ -13,6 +13,7 @@
     plus: 'M8 3v10M3 8h10',
     folder: 'M2.5 4h4l1.5 2h5.5v7h-11z',
     stop: 'M4 4h8v8H4z',
+    play: 'M5 3.5v9l7.5-4.5z',
     search: 'M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm3.3 7.8 3.2 3.2',
     close: 'm4.5 4.5 7 7m0-7-7 7',
     sidebar: 'M2.5 3.5h11v9h-11zM10 3.5v9',

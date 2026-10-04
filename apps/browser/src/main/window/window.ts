@@ -17,6 +17,7 @@ import {
   IpcChannel,
   type AnchorRect,
   type BrowserState,
+  type AgentElementRef,
   type ChromeLayout,
   type DevCommandId,
   type DeviceId,
@@ -74,10 +75,13 @@ import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
 import { AgentSession, type AgentConnection } from '../agent-bridge/agent-session.js';
 import { AgentChat } from '../agent-bridge/agent-chat.js';
+import { ProjectRunner } from '../agent-bridge/project-runner.js';
+import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
 const REVEAL_FALLBACK_MS = 1000;
+const MAX_PICKED_ELEMENTS = 5;
 
 export interface AppContext {
   icon: string;
@@ -137,7 +141,9 @@ export class YalqenWindow {
   readonly isDeveloper: boolean;
   readonly agentSession: AgentSession;
   readonly agentChat: AgentChat;
+  readonly projectRunner: ProjectRunner;
   private agentPanelOpen = false;
+  private pickedElements: AgentElementRef[] = [];
   private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
   // view.webContents reads undefined once the contents are destroyed; this reference keeps answering isDestroyed().
@@ -208,6 +214,10 @@ export class YalqenWindow {
       onUpdate: (snapshot) => {
         if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
       },
+    });
+    this.projectRunner = new ProjectRunner({
+      onState: this.pushState,
+      onUrl: (url) => this.tabs.open(url),
     });
     if (glassAvailable) this.ui.setBackgroundColor('#00000000');
     this.uiContents.on('will-navigate', (event) => event.preventDefault());
@@ -400,6 +410,7 @@ export class YalqenWindow {
       this.preconnector.cancel();
       this.agentSession.dispose();
       this.agentChat.dispose();
+      this.projectRunner.dispose();
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -495,6 +506,9 @@ export class YalqenWindow {
       agentPanelOpen: this.agentPanelOpen,
       agentSession: this.agentSession.state(),
       agentChat: this.agentChat.state(),
+      projectRun: this.projectRunner.state(),
+      agentElements: this.pickedElements,
+      agentTerminal: this.app.settings.get().agentTerminal,
     };
   }
 
@@ -511,7 +525,8 @@ export class YalqenWindow {
       (this.isPrivate && !this.isDeveloper) ||
       this.selectingAgentDirectory ||
       this.agentSession.active ||
-      this.agentChat.active
+      this.agentChat.active ||
+      this.projectRunner.active
     ) {
       return this.agentSession.state();
     }
@@ -525,6 +540,7 @@ export class YalqenWindow {
       if (!this.window.isDestroyed() && !result.canceled && result.filePaths[0]) {
         this.agentSession.selectDirectory(result.filePaths[0]);
         this.agentChat.selectDirectory(result.filePaths[0]);
+        void this.projectRunner.selectDirectory(result.filePaths[0]);
       }
     } finally {
       this.selectingAgentDirectory = false;
@@ -537,12 +553,47 @@ export class YalqenWindow {
     return this.agentSession.start(size);
   }
 
-  sendAgentChat(id: unknown, text: unknown, tabId: unknown): Promise<boolean> {
-    if (this.isPrivate && !this.isDeveloper) return Promise.resolve(false);
+  private addPickedElement(selection: ElementSelection): void {
+    if (this.isPrivate && !this.isDeveloper) return;
+    this.pickedElements = [
+      ...this.pickedElements.filter((element) => element.id !== selection.id),
+      selectionRef(selection),
+    ].slice(-MAX_PICKED_ELEMENTS);
+    if (this.agentPanelOpen) this.pushState();
+    else this.toggleAgentPanel();
+  }
+
+  removeAgentElement(id: unknown): void {
+    this.pickedElements = this.pickedElements.filter((element) => element.id !== id);
+    this.pushState();
+  }
+
+  highlightAgentElement(id: unknown): Promise<boolean> {
+    return typeof id === 'string' ? this.tabs.highlightSelection(id) : Promise.resolve(false);
+  }
+
+  startProjectRun(): boolean {
+    if (this.isPrivate && !this.isDeveloper) return false;
+    return this.projectRunner.start();
+  }
+
+  async sendAgentChat(id: unknown, text: unknown, tabId: unknown): Promise<boolean> {
+    if (this.isPrivate && !this.isDeveloper) return false;
     const tab =
       typeof tabId === 'string' ? this.state().tabs.find((entry) => entry.id === tabId && entry.agentObserved) : null;
-    if (tabId !== null && !tab) return Promise.resolve(false);
-    return this.agentChat.send(id, text, tab ? { id: tab.id, title: tab.title, url: tab.url } : null);
+    if (tabId !== null && !tab) return false;
+    const elements = this.pickedElements;
+    const sent = await this.agentChat.send(
+      id,
+      text,
+      tab ? { id: tab.id, title: tab.title, url: tab.url } : null,
+      elements,
+    );
+    if (sent) {
+      this.pickedElements = this.pickedElements.filter((element) => !elements.includes(element));
+      this.pushState();
+    }
+    return sent;
   }
 
   setLayout(layout: ChromeLayout): void {
@@ -714,6 +765,7 @@ export class YalqenWindow {
       case 'picked': {
         const { id, label, component: react } = outcome.selection;
         clipboard.writeText(id);
+        this.addPickedElement(outcome.selection);
         const detail = react.source ? formatLocation(react.source) : react.component ? label : null;
         this.notice.show(
           [t('picker.selected', { label: react.component ?? label }), detail, t('picker.copied', { id })].filter(

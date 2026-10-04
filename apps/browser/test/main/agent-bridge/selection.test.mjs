@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import selection from '../../../dist/main/agent-bridge/selection.js';
 
-const { attributeMap, boxFromQuad, elementLabel, layoutStyles, newSelectionId, shortText } = selection;
+const { attributeMap, boxFromQuad, elementLabel, layoutStyles, newSelectionId, selectionRef, shortText } = selection;
 
 test('selection ids are yk_ and six hex digits', () => {
   assert.match(newSelectionId(), /^yk_[0-9a-f]{6}$/);
@@ -49,4 +49,20 @@ test('layoutStyles keeps layout properties and drops unremarkable defaults', () 
     { name: 'cursor', value: 'pointer' },
   ]);
   assert.deepEqual(styles, { display: 'flex', position: 'static', width: 'auto', 'padding-left': '20px' });
+});
+
+test('a selection reference keeps only what the chat shows', () => {
+  const base = { id: 'yk_a1b2c3', tabId: 'tab-1', url: 'http://localhost:3000/', label: 'div' };
+  const full = {
+    ...base,
+    html: { text: '<div>secret</div>', truncated: false },
+    screenshot: 'AAAA',
+    component: { component: 'Card', source: { file: 'src/Card.tsx', line: 8, column: 3 } },
+  };
+  assert.deepEqual(selectionRef(full), { ...base, component: 'Card', source: 'src/Card.tsx:8' });
+  assert.deepEqual(selectionRef({ ...base, component: { component: null, source: null } }), {
+    ...base,
+    component: null,
+    source: null,
+  });
 });

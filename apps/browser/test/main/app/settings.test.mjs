@@ -34,6 +34,7 @@ test('unknown or mistyped fields fall back', () => {
       agentOrigins: 'https://x.test',
       agentActions: 'always',
       agentTracing: 'yes',
+      agentTerminal: 'yes',
     }),
     {
       version: 1,
@@ -66,6 +67,7 @@ test('unknown or mistyped fields fall back', () => {
       agentOrigins: [],
       agentActions: 'ask',
       agentTracing: false,
+      agentTerminal: false,
     },
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');

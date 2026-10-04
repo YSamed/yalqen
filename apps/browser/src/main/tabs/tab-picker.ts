@@ -56,6 +56,9 @@ const DESCRIBE_NODE = `function () {
   return { text: short(this.innerText || this.textContent), selector: path.join(' > '), ancestors };
 }`;
 
+const HIGHLIGHT_MS = 1600;
+const highlightTimers = new WeakMap<WebContents, NodeJS.Timeout>();
+
 type Send = (method: string, params?: Record<string, unknown>) => Promise<unknown>;
 
 export interface PickSession {
@@ -105,6 +108,34 @@ export function startPicking(contents: WebContents): PickSession {
     finish(null);
   });
   return { result, cancel: () => finish(null) };
+}
+
+export async function highlightSelector(contents: WebContents, selector: string): Promise<boolean> {
+  if (!selector || contents.isDestroyed() || !contents.debugger.isAttached()) return false;
+  const send: Send = (method, params) => contents.debugger.sendCommand(method, params);
+  const hide = () => {
+    highlightTimers.delete(contents);
+    if (contents.isDestroyed() || !contents.debugger.isAttached()) return;
+    void (async () => {
+      for (const method of ['Overlay.hideHighlight', 'Overlay.disable', 'DOM.disable']) {
+        await send(method).catch(() => undefined);
+      }
+    })();
+  };
+  try {
+    await send('DOM.enable');
+    const { root } = (await send('DOM.getDocument', { depth: 0 })) as { root: { nodeId: number } };
+    const { nodeId } = (await send('DOM.querySelector', { nodeId: root.nodeId, selector })) as { nodeId: number };
+    if (!nodeId) return false;
+    await send('DOM.scrollIntoViewIfNeeded', { nodeId }).catch(() => undefined);
+    await send('Overlay.enable');
+    await send('Overlay.highlightNode', { nodeId, highlightConfig: HIGHLIGHT });
+    clearTimeout(highlightTimers.get(contents));
+    highlightTimers.set(contents, setTimeout(hide, HIGHLIGHT_MS));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function computedStyles(send: Send, backendNodeId: number): Promise<Record<string, string>> {

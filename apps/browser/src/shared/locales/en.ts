@@ -64,10 +64,14 @@ export const en = {
   'agentPanel.loadFailed': 'The AI panel could not be loaded.',
   'agentPanel.retry': 'Try again',
 
-  'agentChat.eyebrow': 'YALQEN WORKSPACE',
+  'agentRun.start': 'Run project ({command})',
+  'agentRun.stop': 'Stop project',
+  'agentRun.starting': 'Starting…',
+  'agentRun.running': 'Running',
+  'agentRun.open': 'Open {url}',
+  'agentRun.failed': 'The project stopped. Run again ({command})',
   'agentChat.welcome': 'What shall we build together?',
-  'agentChat.intro':
-    'Think through your project, write code, and see changes in your browser. Claude is right here with you.',
+  'agentChat.intro': 'Ask about your project, write code, and see the changes in your browser.',
   'agentChat.project': 'PROJECT',
   'agentChat.view': 'AI view',
   'agentChat.chat': 'Chat',
@@ -88,11 +92,9 @@ export const en = {
   'agentChat.you': 'You',
   'agentChat.message': 'Message Claude',
   'agentChat.placeholder': 'Ask Claude something…',
-  'agentChat.chooseFirst': 'Choose a project to get started…',
   'agentChat.send': 'Send message',
-  'agentChat.sendHint': 'send',
-  'agentChat.newlineHint': 'new line',
   'agentChat.interrupt': 'Stop response',
+  'agentChat.removeElement': 'Remove selected element',
   'agentChat.removeTab': 'Remove attached tab',
   'agentChat.localTabHint': 'Attach local development tabs while the agent connection is enabled.',
   'agentChat.thinking': 'Claude is working…',
@@ -164,6 +166,9 @@ export const en = {
   'passwordsPanel.removeFromList': 'Remove {host} from list',
 
   'agentBridge.title': 'Agent connection',
+  'agentBridge.terminal': 'Terminal view',
+  'agentBridge.terminalHint':
+    'Adds a Terminal tab to the AI panel for the full Claude Code experience, including slash commands. Chat is enough for most work.',
   'agentBridge.toggle': 'Agent connection (experimental)',
   'agentBridge.toggleHint':
     'Lets Claude Code or Codex see your localhost tabs. Private windows are never shared, and nothing leaves your Mac.',

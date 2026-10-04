@@ -13,6 +13,7 @@ import type {
 import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel.js';
 import type {
   AgentChatContext,
+  AgentElementRef,
   AgentChatMessage,
   AgentChatPart,
   AgentChatPermission,
@@ -156,7 +157,12 @@ export class AgentChat {
     this.setState({ ...EMPTY_AGENT_CHAT, directory });
   }
 
-  async send(id: unknown, text: unknown, context: AgentChatContext | null = null): Promise<boolean> {
+  async send(
+    id: unknown,
+    text: unknown,
+    context: AgentChatContext | null = null,
+    elements: AgentElementRef[] = [],
+  ): Promise<boolean> {
     if (this.disposed || id !== this.view.id || typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT)
       return false;
     if (['starting', 'thinking', 'approval'].includes(this.view.status)) return false;
@@ -241,6 +247,7 @@ export class AgentChat {
       role: 'user',
       parts: [{ type: 'text', text: text.trim() }],
       context,
+      elements,
     };
     this.messages.push(message);
     this.setState({ ...this.view, status: 'thinking', error: null });
@@ -255,6 +262,17 @@ export class AgentChat {
           text.trim() +
           (context
             ? `\n\nYalqen browser context:\n${JSON.stringify({ tab_id: context.id, url: context.url, title: context.title })}`
+            : '') +
+          (elements.length
+            ? `\n\nYalqen selected elements (call get_selected_element with a selection_id for HTML, styles and a screenshot):\n${JSON.stringify(
+                elements.map(({ id: selectionId, url, label, component, source }) => ({
+                  selection_id: selectionId,
+                  url,
+                  element: label,
+                  component,
+                  source,
+                })),
+              )}`
             : ''),
       },
     });
@@ -447,7 +465,7 @@ export class AgentChat {
   private assistant(id: string): AgentChatMessage {
     let entry = this.messages.find((message) => message.id === id && message.role === 'assistant');
     if (!entry) {
-      entry = { id, role: 'assistant', parts: [], context: null };
+      entry = { id, role: 'assistant', parts: [], context: null, elements: [] };
       this.messages.push(entry);
     }
     return entry;

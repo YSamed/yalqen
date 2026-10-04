@@ -120,6 +120,9 @@ ipcRenderer.on('bench:state', (_event, state) => {
     agentPanelOpen: false,
     agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
     agentChat: { id: null, directory: null, status: 'idle', model: null, error: null },
+    projectRun: { directory: null, command: null, status: 'idle', url: null, exitCode: null },
+    agentElements: [],
+    agentTerminal: false,
   };
   ipcMain.handle('bench:initial', () => initial);
   let window;

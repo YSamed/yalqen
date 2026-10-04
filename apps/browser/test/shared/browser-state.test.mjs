@@ -74,6 +74,9 @@ const fixture = () => ({
   agentPanelOpen: false,
   agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
   agentChat: { id: null, directory: null, status: 'idle', model: null, error: null },
+  projectRun: { directory: null, command: null, status: 'idle', url: null, exitCode: null },
+  agentElements: [],
+  agentTerminal: false,
 });
 const changed = (value) =>
   typeof value === 'boolean'
@@ -96,6 +99,24 @@ test('identical IPC snapshots reuse the root without mutating either input', () 
   const next = freeze(structuredClone(previous));
   assert.equal(reuseBrowserState(previous, next), previous);
   assert.equal(reuseBrowserState(previous, previous), previous);
+});
+
+test('picked elements keep their identity until one changes', () => {
+  const element = {
+    id: 'yk_a1b2c3',
+    tabId: 'tab-1',
+    url: 'http://localhost/',
+    label: 'div',
+    component: null,
+    source: null,
+  };
+  const previous = freeze({ ...fixture(), agentElements: [element] });
+  const same = freeze(structuredClone(previous));
+  assert.equal(reuseBrowserState(previous, same), previous);
+  const added = freeze({ ...structuredClone(previous), agentElements: [element, { ...element, id: 'yk_d4e5f6' }] });
+  const result = reuseBrowserState(previous, added);
+  assert.deepEqual(result.agentElements, added.agentElements);
+  assert.equal(result.agentElements[0], previous.agentElements[0]);
 });
 
 test('every tab field change reaches the renderer while other tabs remain stable', () => {

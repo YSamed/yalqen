@@ -2,18 +2,26 @@
   import { onMount, tick } from 'svelte';
   import { t } from '../../shared/i18n';
   import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel';
-  import type { AgentChatPermission, AgentChatSnapshot, TabSnapshot } from '../../shared/types';
+  import type { AgentChatPermission, AgentChatSnapshot, AgentElementRef, TabSnapshot } from '../../shared/types';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Icon from '../ui/Icon.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
+  import ElementChip from './ElementChip.svelte';
 
   let {
     open,
     directory,
     activeTab,
+    elements,
     onchoose,
-  }: { open: boolean; directory: string | null; activeTab: TabSnapshot | null; onchoose(): void } = $props();
+  }: {
+    open: boolean;
+    directory: string | null;
+    activeTab: TabSnapshot | null;
+    elements: AgentElementRef[];
+    onchoose(): void;
+  } = $props();
   let snapshot: AgentChatSnapshot = $state.raw({
     state: { ...EMPTY_AGENT_CHAT },
     revision: -1,
@@ -28,15 +36,15 @@
   let loading = $state(true);
   let answers: Record<string, Record<string, string>> = $state({});
   let scroller: HTMLDivElement;
-  let textarea: HTMLTextAreaElement;
+  let textarea: HTMLTextAreaElement | undefined = $state();
   let follow = $state(true);
   let destroyed = false;
   const busy = $derived(['starting', 'thinking', 'approval'].includes(snapshot.state.status));
   const canSend = $derived(Boolean(directory && draft.trim() && !busy && !sending && !loading));
   const prompts = [
-    { icon: 'code' as const, title: t('agentChat.suggestionProject'), prompt: t('agentChat.promptProject') },
-    { icon: 'warning' as const, title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors') },
-    { icon: 'appearance' as const, title: t('agentChat.suggestionDesign'), prompt: t('agentChat.promptDesign') },
+    { title: t('agentChat.suggestionProject'), prompt: t('agentChat.promptProject') },
+    { title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors') },
+    { title: t('agentChat.suggestionDesign'), prompt: t('agentChat.promptDesign') },
   ];
   const errors = {
     'claude-not-found': t('agentPanel.claudeNotFound'),
@@ -144,7 +152,7 @@
   $effect(() => {
     if (open && directory && !loading)
       void tick().then(() => {
-        if (!destroyed && open && !document.activeElement?.closest('.view-switch')) textarea?.focus();
+        if (!destroyed && open && !document.activeElement?.closest('.segmented')) textarea?.focus();
       });
   });
 
@@ -170,32 +178,32 @@
   >
     {#if snapshot.messages.length === 0}
       <div class="welcome">
-        <div class="welcome-mark" aria-hidden="true"><img src="./newtab-mark.png" alt="" /><span></span></div>
-        <p class="eyebrow">{t('agentChat.eyebrow')}</p>
         <h2>{t('agentChat.welcome')}</h2>
         <p class="intro">{t('agentChat.intro')}</p>
         {#if !directory}
-          <Button variant="primary" icon="folder" size="lg" onclick={onchoose}>{t('agentPanel.chooseProject')}</Button>
+          <Button variant="primary" icon="folder" onclick={onchoose}>{t('agentPanel.chooseProject')}</Button>
+        {:else}
+          <div class="suggestions">
+            {#each prompts as prompt (prompt.title)}
+              <button class="suggestion" onclick={() => suggest(prompt.prompt)}>{prompt.title}</button>
+            {/each}
+          </div>
         {/if}
-        <div class="suggestions">
-          {#each prompts as prompt (prompt.title)}
-            <button class="suggestion" onclick={() => suggest(prompt.prompt)}>
-              <Icon name={prompt.icon} size={15} /><span>{prompt.title}</span><Icon name="forward" size={12} />
-            </button>
-          {/each}
-        </div>
       </div>
     {:else}
       <div class="messages" role="log" aria-label={t('agentChat.conversation')} aria-live="off">
         {#each snapshot.messages as message (message.id)}
-          <article class="message" class:user={message.role === 'user'}>
-            <div class="message-label">
-              {#if message.role === 'assistant'}<img src="./newtab-mark.png" alt="" />{/if}
-              <span>{message.role === 'user' ? t('agentChat.you') : 'Claude'}</span>
-            </div>
+          <article
+            class="message"
+            class:user={message.role === 'user'}
+            aria-label={message.role === 'user' ? t('agentChat.you') : 'Claude'}
+          >
             <div class="message-content">
               {#if message.context}<div class="message-context" title={message.context.url}>
                   <Icon name="globe" size={11} /><span>{message.context.title}</span>
+                </div>{/if}
+              {#if message.elements.length}<div class="chips">
+                  {#each message.elements as element (element.id)}<ElementChip {element} />{/each}
                 </div>{/if}
               {#each message.parts as part, index (index)}
                 {#if part.type === 'text'}
@@ -205,12 +213,10 @@
                 {:else}
                   <details class="tool" class:error={part.status === 'error'}>
                     <summary>
-                      <span class="tool-icon"
-                        ><Icon
-                          name={part.status === 'done' ? 'check' : part.status === 'error' ? 'warning' : 'code'}
-                          size={12}
-                        /></span
-                      >
+                      <Icon
+                        name={part.status === 'done' ? 'check' : part.status === 'error' ? 'warning' : 'code'}
+                        size={12}
+                      />
                       <span class="tool-name">{part.name.replace(/^mcp__yalqen__/, 'Yalqen · ')}</span>
                       <span class="tool-status"
                         >{t(
@@ -298,7 +304,8 @@
     {/if}
   </div>
   {#if !follow && snapshot.messages.length}
-    <button class="latest" onclick={() => (follow = true)}><Icon name="down" size={12} />{t('agentChat.latest')}</button
+    <Button class="latest" variant="surface" size="sm" icon="down" onclick={() => (follow = true)}
+      >{t('agentChat.latest')}</Button
     >
   {/if}
   {#if snapshot.state.error || failed}
@@ -319,70 +326,70 @@
         />{/if}
     </div>
   {/if}
-  <form
-    class="composer"
-    class:disabled={!directory}
-    onsubmit={(event) => {
-      event.preventDefault();
-      void send();
-    }}
-  >
-    {#if attachment}
-      <div class="attachment" title={attachment.url}>
-        <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
-          size="sm"
-          icon="close"
-          label={t('agentChat.removeTab')}
-          onclick={() => (attachment = null)}
-        />
-      </div>
-    {/if}
-    <textarea
-      bind:this={textarea}
-      bind:value={draft}
-      rows="2"
-      maxlength="65536"
-      aria-label={t('agentChat.message')}
-      placeholder={t(directory ? 'agentChat.placeholder' : 'agentChat.chooseFirst')}
-      disabled={!directory || loading}
-      onkeydown={composeKey}></textarea>
-    <div class="composer-controls">
-      <button
-        type="button"
-        class="attach-tab"
-        disabled={!activeTab?.agentObserved || !directory}
-        aria-pressed={Boolean(attachment)}
-        title={activeTab?.agentObserved ? activeTab.url : t('agentChat.localTabHint')}
-        onclick={() => (attachment = attachment ? null : activeTab)}
-        ><Icon name="globe" size={12} />{t('agentPanel.addTab')}</button
-      >
-      {#if busy}<IconButton
-          class="send-button"
-          icon="stop"
-          size="md"
-          variant="tonal"
-          label={t('agentChat.interrupt')}
-          disabled={cancelling}
-          onclick={interrupt}
-        />
-      {:else}<IconButton
-          class="send-button"
-          type="submit"
-          icon="up"
-          size="md"
-          variant="accent"
-          label={t('agentChat.send')}
-          disabled={!canSend}
-        />{/if}
-    </div>
-  </form>
-  <div class="composer-note">
-    <span>Claude Code</span><span
-      ><kbd>↵</kbd>
-      {t('agentChat.sendHint')} <span class="separator">·</span> <kbd>⇧↵</kbd>
-      {t('agentChat.newlineHint')}</span
+  {#if directory}
+    <form
+      class="composer"
+      onsubmit={(event) => {
+        event.preventDefault();
+        void send();
+      }}
     >
-  </div>
+      {#if attachment || elements.length}
+        <div class="chips">
+          {#if attachment}
+            <div class="attachment" title={attachment.url}>
+              <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.removeTab')}
+                onclick={() => (attachment = null)}
+              />
+            </div>
+          {/if}
+          {#each elements as element (element.id)}
+            <ElementChip {element} onremove={() => void window.yalqen.removeAgentElement(element.id)} />
+          {/each}
+        </div>
+      {/if}
+      <textarea
+        bind:this={textarea}
+        bind:value={draft}
+        rows="1"
+        maxlength="65536"
+        aria-label={t('agentChat.message')}
+        placeholder={t('agentChat.placeholder')}
+        disabled={loading}
+        onkeydown={composeKey}></textarea>
+      <div class="composer-controls">
+        <Button
+          size="sm"
+          icon="globe"
+          disabled={!activeTab?.agentObserved || !directory}
+          aria-pressed={Boolean(attachment)}
+          title={activeTab?.agentObserved ? activeTab.url : t('agentChat.localTabHint')}
+          onclick={() => (attachment = attachment ? null : activeTab)}>{t('agentPanel.addTab')}</Button
+        >
+        {#if busy}<IconButton
+            class="send-button"
+            icon="stop"
+            size="md"
+            variant="tonal"
+            label={t('agentChat.interrupt')}
+            disabled={cancelling}
+            onclick={interrupt}
+          />
+        {:else}<IconButton
+            class="send-button"
+            type="submit"
+            icon="up"
+            size="md"
+            variant="accent"
+            label={t('agentChat.send')}
+            disabled={!canSend}
+          />{/if}
+      </div>
+    </form>
+  {/if}
 </div>
 
 <style>
@@ -402,118 +409,59 @@
     scrollbar-color: var(--border) transparent;
   }
   .welcome {
-    padding: 36px 2px 24px;
-  }
-  .welcome-mark {
-    position: relative;
-    width: 48px;
-    height: 48px;
-    margin: 0 0 26px 2px;
-  }
-  .welcome-mark img {
-    position: relative;
-    z-index: 1;
-    width: 44px;
-    height: 44px;
-  }
-  .welcome-mark span {
-    position: absolute;
-    inset: 8px 4px -4px;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--accent) 22%, transparent);
-    filter: blur(14px);
-  }
-  .eyebrow {
-    margin: 0 0 10px;
-    color: var(--agent-ink);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    padding: 32px 4px 16px;
   }
   h2 {
-    max-width: 280px;
     margin: 0;
-    font-size: 23px;
+    font-size: 18px;
     font-weight: 600;
-    line-height: 1.25;
-    letter-spacing: -0.7px;
+    line-height: 1.3;
+    letter-spacing: -0.4px;
     text-wrap: balance;
   }
   .intro {
     max-width: 280px;
-    margin: 12px 0 22px;
+    margin: 8px 0 20px;
     color: var(--text-muted);
     font-size: 12px;
-    line-height: 1.7;
+    line-height: 1.65;
   }
   .suggestions {
     display: grid;
-    gap: 7px;
-    margin-top: 28px;
+    gap: 2px;
+    margin: 0 -8px;
   }
   .suggestion {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 43px;
-    padding: 9px 12px;
-    border: 1px solid var(--page-divider);
-    border-radius: 10px;
-    background: var(--page);
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: none;
     color: var(--text-muted);
     font: inherit;
-    font-size: 11px;
+    font-size: 12px;
     text-align: left;
     cursor: pointer;
     transition:
-      background 120ms ease-out,
-      border-color 120ms ease-out,
-      transform 160ms ease-out;
-  }
-  .suggestion span {
-    flex: 1;
-    color: var(--text);
+      background var(--transition),
+      color var(--transition);
   }
   .suggestion:hover {
-    border-color: color-mix(in srgb, var(--accent) 35%, var(--page-divider));
-    background: var(--agent-tint);
-  }
-  .suggestion:active,
-  .attach-tab:active,
-  .latest:active {
-    transform: scale(0.98);
+    background: var(--surface-hover);
+    color: var(--text);
   }
   .messages {
     display: grid;
-    gap: 24px;
-    padding-top: 12px;
+    gap: 20px;
+    padding-top: 8px;
   }
   .message {
     min-width: 0;
   }
-  .message-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 9px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-muted);
-  }
-  .message-label img {
-    width: 14px;
-    height: 14px;
-  }
-  .message.user .message-label {
-    justify-content: flex-end;
-    padding-right: 3px;
-  }
   .message.user .message-content {
-    margin-left: 24px;
-    padding: 10px 12px;
-    border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--page-divider));
-    border-radius: 12px 12px 3px 12px;
-    background: var(--agent-tint);
+    margin-left: 32px;
+    padding: 9px 12px;
+    border-radius: 14px;
+    background: var(--surface-hover);
   }
   .user-text {
     margin: 0;
@@ -529,8 +477,8 @@
     align-items: center;
     gap: 5px;
     min-width: 0;
-    color: var(--agent-ink);
-    font-size: 10px;
+    color: var(--accent);
+    font-size: var(--font-size-small);
   }
   .message-context {
     margin-bottom: 6px;
@@ -544,9 +492,8 @@
   .tool {
     margin: 10px 0;
     overflow: hidden;
-    border: 1px solid var(--page-divider);
-    border-radius: 9px;
-    background: var(--page);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
   }
   .tool summary {
     display: flex;
@@ -555,7 +502,7 @@
     min-height: 34px;
     padding: 0 10px;
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-small);
     cursor: pointer;
     list-style: none;
   }
@@ -565,17 +512,10 @@
   .tool summary:hover {
     background: var(--surface-hover);
   }
-  .tool-icon {
-    display: grid;
+  .tool summary :global(svg:first-child) {
     flex: none;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 5px;
-    background: var(--surface-hover);
-    color: var(--agent-ink);
   }
-  .tool.error .tool-icon {
+  .tool.error summary :global(svg:first-child) {
     color: var(--warn);
   }
   .tool-name {
@@ -588,7 +528,7 @@
   }
   .tool-status {
     flex: none;
-    font-size: 9px;
+    font-size: var(--font-size-small);
   }
   pre {
     max-height: 180px;
@@ -612,15 +552,15 @@
   .approval {
     margin: 16px 0 4px;
     padding: 12px;
-    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-    border-radius: 12px;
-    background: var(--page);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
   }
   .approval-heading {
     display: flex;
     align-items: center;
     gap: 7px;
-    color: var(--agent-ink);
+    color: var(--accent);
     font-size: 11px;
   }
   .approval > p {
@@ -669,7 +609,7 @@
     display: block;
     margin-top: 3px;
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-small);
     line-height: 1.5;
   }
   .free-answer {
@@ -697,33 +637,20 @@
     height: 5px;
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 0 3px var(--agent-tint);
   }
-  .latest {
+  .chat :global(.latest) {
     position: absolute;
     right: 20px;
-    bottom: 150px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    background: var(--page);
-    color: var(--text);
-    box-shadow: var(--shadow);
-    font: inherit;
-    font-size: 10px;
-    cursor: pointer;
+    bottom: 120px;
   }
   .chat-error {
     display: flex;
     align-items: center;
     gap: 8px;
     margin: 0 14px 10px;
-    padding: 10px;
-    border-radius: 8px;
-    background: var(--agent-tint);
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface-hover);
     color: var(--warn);
   }
   .chat-error > :global(svg) {
@@ -732,7 +659,7 @@
   .chat-error p {
     flex: 1;
     margin: 0;
-    font-size: 10px;
+    font-size: var(--font-size-small);
     line-height: 1.5;
   }
   .composer {
@@ -740,25 +667,19 @@
     margin: 0 14px;
     padding: 10px 10px 8px;
     border: 1px solid var(--border);
-    border-radius: 13px;
-    background: var(--page);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 0.025);
-    transition:
-      border-color 120ms ease-out,
-      box-shadow 120ms ease-out;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    background: var(--surface);
+    transition: border-color var(--transition);
   }
   .composer:focus-within {
-    border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
-    box-shadow: 0 0 0 2px var(--agent-tint);
-  }
-  .composer.disabled {
-    box-shadow: none;
+    border-color: var(--accent);
   }
   textarea {
     box-sizing: border-box;
     display: block;
     width: 100%;
-    min-height: 45px;
+    min-height: 40px;
     max-height: 150px;
     padding: 2px;
     border: 0;
@@ -783,64 +704,24 @@
     gap: 8px;
     margin-top: 8px;
   }
-  .attach-tab {
+  .chips {
     display: flex;
-    align-items: center;
-    gap: 5px;
-    min-height: 25px;
-    padding: 3px 6px;
-    border: 0;
-    border-radius: 6px;
-    background: none;
-    color: var(--text-muted);
-    font: inherit;
-    font-size: 10px;
-    cursor: pointer;
-    transition:
-      background 120ms ease-out,
-      transform 160ms ease-out;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 7px;
   }
-  .attach-tab:hover:not(:disabled) {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-  .attach-tab[aria-pressed='true'] {
-    background: var(--agent-tint);
-    color: var(--agent-ink);
-  }
-  .attach-tab:disabled {
-    opacity: 0.45;
-    cursor: default;
+  .message-content > .chips {
+    margin: 0 0 8px;
   }
   .attachment {
     width: fit-content;
     max-width: 100%;
-    margin-bottom: 7px;
-    padding: 0 2px 0 7px;
-    border-radius: 6px;
-    background: var(--agent-tint);
+    padding: 0 2px 0 9px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-hover);
   }
   .attachment > :global(svg) {
     flex: none;
-  }
-  .composer :global(.send-button) {
-    border-radius: 8px;
-  }
-  .composer-note {
-    display: flex;
-    justify-content: space-between;
-    gap: 6px;
-    flex: none;
-    padding: 9px 17px 13px;
-    color: var(--text-muted);
-    font-size: 9px;
-  }
-  kbd {
-    font-family: inherit;
-    font-size: 10px;
-  }
-  .separator {
-    padding: 0 3px;
   }
   button:focus-visible,
   summary:focus-visible,
@@ -850,7 +731,6 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .suggestion,
-    .attach-tab,
     .composer {
       transition: none;
     }

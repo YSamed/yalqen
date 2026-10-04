@@ -48,7 +48,7 @@ import { captureHistory, createTab, liveContents, savedTab, type RecentPage, typ
 import { TabFreezer } from './tab-freezer.js';
 import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger, rulesFor } from './tab-overrides.js';
 import { observeTab, unobserveTab } from './tab-agent.js';
-import { captureSelection, startPicking, type PickSession } from './tab-picker.js';
+import { captureSelection, highlightSelector, startPicking, type PickSession } from './tab-picker.js';
 import type { ElementSelection } from '../agent-bridge/selection.js';
 import { episodePreview } from '../agent-bridge/timeline.js';
 import { playwrightTest } from '../agent-bridge/playwright.js';
@@ -658,6 +658,17 @@ export class TabManager {
       console.warn(`[picker] could not read the element: ${(error as Error).message}`);
       return { status: 'failed' };
     }
+  }
+
+  async highlightSelection(selectionId: string): Promise<boolean> {
+    for (const tab of this.observedTabs()) {
+      const selection = [...(tab.agent?.selections.values() ?? [])].find((item) => item.id === selectionId);
+      const contents = liveContents(tab);
+      if (!selection || !contents) continue;
+      this.activate(tab.id);
+      return highlightSelector(contents, selection.selector);
+    }
+    return false;
   }
 
   async setAgentRules(id: TabId, rules: RequestRule[]): Promise<void> {

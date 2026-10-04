@@ -125,6 +125,9 @@ export interface BrowserState {
   agentPanelOpen: boolean;
   agentSession: AgentSessionState;
   agentChat: AgentChatState;
+  projectRun: ProjectRunState;
+  agentElements: AgentElementRef[];
+  agentTerminal: boolean;
 }
 
 export interface AgentTerminalSize {
@@ -139,6 +142,14 @@ export interface AgentSessionState {
   exitCode: number | null;
   error:
     'claude-not-found' | 'invalid-directory' | 'terminal-unavailable' | 'connection-failed' | 'start-failed' | null;
+}
+
+export interface ProjectRunState {
+  directory: string | null;
+  command: string | null;
+  status: 'idle' | 'starting' | 'running' | 'exited' | 'error';
+  url: string | null;
+  exitCode: number | null;
 }
 
 export interface AgentTerminalOutput {
@@ -185,11 +196,21 @@ export interface AgentChatContext {
   url: string;
 }
 
+export interface AgentElementRef {
+  id: string;
+  tabId: TabId;
+  url: string;
+  label: string;
+  component: string | null;
+  source: string | null;
+}
+
 export interface AgentChatMessage {
   id: string;
   role: 'user' | 'assistant';
   parts: AgentChatPart[];
   context: AgentChatContext | null;
+  elements: AgentElementRef[];
 }
 
 export interface AgentChatQuestion {
@@ -315,6 +336,10 @@ export const IpcChannel = {
   agentChatReset: 'yalqen:agent-chat-reset',
   agentChatPermission: 'yalqen:agent-chat-permission',
   agentChatUpdate: 'yalqen:agent-chat-update',
+  agentElementRemove: 'yalqen:agent-element-remove',
+  agentElementHighlight: 'yalqen:agent-element-highlight',
+  projectRunStart: 'yalqen:project-run-start',
+  projectRunStop: 'yalqen:project-run-stop',
 } as const;
 
 export interface Wallpaper {
@@ -336,6 +361,10 @@ export interface YalqenApi {
   writeAgentTerminal(sessionId: string, data: string): void;
   resizeAgentTerminal(sessionId: string, size: AgentTerminalSize): void;
   onAgentOutput(listener: (output: AgentTerminalOutput) => void): () => void;
+  removeAgentElement(id: string): Promise<void>;
+  highlightAgentElement(id: string): Promise<boolean>;
+  startProjectRun(): Promise<boolean>;
+  stopProjectRun(): Promise<void>;
   getAgentChat(): Promise<AgentChatSnapshot | null>;
   sendAgentChat(sessionId: string | null, text: string, tabId: TabId | null): Promise<boolean>;
   interruptAgentChat(sessionId: string): Promise<void>;
@@ -503,6 +532,7 @@ export interface SettingsValues {
   agentOrigins: string[];
   agentActions: AgentActionPolicy;
   agentTracing: boolean;
+  agentTerminal: boolean;
 }
 
 export type AgentActionPolicy = 'off' | 'ask' | 'allow';

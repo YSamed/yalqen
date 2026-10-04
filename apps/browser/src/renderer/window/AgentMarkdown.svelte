@@ -90,7 +90,7 @@
     margin: 4px 0;
   }
   .markdown :global(a) {
-    color: var(--agent-ink);
+    color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 3px;
   }

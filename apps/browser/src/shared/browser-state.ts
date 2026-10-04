@@ -45,6 +45,11 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     downloads: reuseFields(previous.downloads, next.downloads)!,
     agentSession: reuseFields(previous.agentSession, next.agentSession)!,
     agentChat: reuseFields(previous.agentChat, next.agentChat)!,
+    projectRun: reuseFields(previous.projectRun, next.projectRun)!,
+    agentElements: reuseArray(
+      previous.agentElements,
+      next.agentElements.map((element, index) => reuseFields(previous.agentElements[index] ?? null, element)!),
+    ),
   };
   return sameFields(previous, candidate) ? previous : candidate;
 }

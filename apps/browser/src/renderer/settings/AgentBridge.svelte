@@ -83,6 +83,13 @@
 </script>
 
 <h2>{t('agentBridge.title')}</h2>
+<SettingRow title={t('agentBridge.terminal')} hint={t('agentBridge.terminalHint')}>
+  <Switch
+    label={t('agentBridge.terminal')}
+    checked={values.agentTerminal}
+    onchange={(checked) => update({ agentTerminal: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('agentBridge.toggle')} hint={t('agentBridge.toggleHint')}>
   <Switch
     label={t('agentBridge.toggle')}
