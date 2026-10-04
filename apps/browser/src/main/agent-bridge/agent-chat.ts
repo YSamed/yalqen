@@ -6,6 +6,7 @@ import type {
   CanUseTool,
   Options,
   PermissionResult,
+  PermissionUpdate,
   Query,
   SDKMessage,
   SDKUserMessage,
@@ -13,7 +14,12 @@ import type {
 import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel.js';
 import type {
   AgentChatContext,
+  AgentChatImage,
+  AgentChatSettings,
+  AgentEffort,
   AgentElementRef,
+  AgentEpisodePreview,
+  AgentPermissionMode,
   AgentChatMessage,
   AgentChatPart,
   AgentChatPermission,
@@ -21,11 +27,30 @@ import type {
   AgentChatState,
 } from '../../shared/types.js';
 import type { AgentConnection } from './agent-session.js';
+import { READ_ONLY_TOOLS } from './tools.js';
 
 const MAX_TEXT = 64 * 1024;
 const MAX_MESSAGES = 120;
 const MAX_HISTORY = 1024 * 1024;
-type ChatQuery = AsyncIterable<SDKMessage> & Pick<Query, 'interrupt' | 'close'>;
+const MAX_QUEUE = 5;
+const PERMISSION_MODES: AgentPermissionMode[] = ['default', 'acceptEdits', 'plan'];
+const EFFORTS: AgentEffort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+const IMAGE_TYPES: AgentChatImage['mediaType'][] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const MAX_IMAGES = 4;
+const MAX_IMAGE_DATA = 7 * 1024 * 1024;
+const MAX_THUMBNAIL = 96 * 1024;
+const VERIFYING_TOOL = 'mcp__yalqen__replay_episode';
+type ChatQuery = AsyncIterable<SDKMessage> &
+  Pick<
+    Query,
+    | 'interrupt'
+    | 'close'
+    | 'setPermissionMode'
+    | 'setModel'
+    | 'applyFlagSettings'
+    | 'supportedModels'
+    | 'getContextUsage'
+  >;
 type Client = {
   query(params: { prompt: AsyncIterable<SDKUserMessage>; options: Options }): ChatQuery;
   executable: string;
@@ -114,13 +139,81 @@ function jsonOf(input: unknown): string {
   return JSON.stringify(input, null, 2)?.slice(0, MAX_TEXT) ?? '';
 }
 
+function isPermissionMode(value: unknown): value is AgentPermissionMode {
+  return PERMISSION_MODES.includes(value as AgentPermissionMode);
+}
+
+function imagesOf(value: unknown): AgentChatImage[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_IMAGES) return null;
+  const images: AgentChatImage[] = [];
+  for (const image of value) {
+    if (!image || typeof image !== 'object') return null;
+    const { mediaType, data, thumbnail } = image as AgentChatImage;
+    if (
+      !IMAGE_TYPES.includes(mediaType) ||
+      typeof data !== 'string' ||
+      !data ||
+      data.length > MAX_IMAGE_DATA ||
+      !/^[A-Za-z0-9+/]+=*$/.test(data) ||
+      typeof thumbnail !== 'string' ||
+      thumbnail.length > MAX_THUMBNAIL ||
+      !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(thumbnail)
+    )
+      return null;
+    images.push({ mediaType, data, thumbnail });
+  }
+  return images;
+}
+
+function verificationOf(output: string): 'passed' | 'failed' | null {
+  const result = /"result":\s*"(passed|failed)"/.exec(output)?.[1];
+  return result === 'passed' || result === 'failed' ? result : null;
+}
+
+function promptOf(
+  text: string,
+  context: AgentChatContext | null,
+  elements: AgentElementRef[],
+  episode: AgentEpisodePreview | null,
+): string {
+  return (
+    text +
+    (episode
+      ? `\n\nYalqen recorded this error as ${episode.id}. Read it with get_error_episode first. After the fix, verify it in the browser: call replay_episode with episode_id ${episode.id} when the episode has recorded clicks or key presses; otherwise call reload_page and then get_console_errors and get_network_requests. Report whether the verification passed.`
+      : '') +
+    (context
+      ? `\n\nYalqen browser context:\n${JSON.stringify({ tab_id: context.id, url: context.url, title: context.title })}`
+      : '') +
+    (elements.length
+      ? `\n\nYalqen selected elements (call get_selected_element with a selection_id for HTML, styles and a screenshot):\n${JSON.stringify(
+          elements.map(({ id: selectionId, url, label, component, source }) => ({
+            selection_id: selectionId,
+            url,
+            element: label,
+            component,
+            source,
+          })),
+        )}`
+      : '')
+  );
+}
+
 export class AgentChat {
   private view: AgentChatState = { ...EMPTY_AGENT_CHAT };
   private messages: AgentChatMessage[] = [];
   private permissions = new Map<
     string,
-    { view: AgentChatPermission; input: Record<string, unknown>; settle(result: PermissionResult): void }
+    {
+      view: AgentChatPermission;
+      input: Record<string, unknown>;
+      suggestions: PermissionUpdate[];
+      settle(result: PermissionResult): void;
+    }
   >();
+  private queue: { message: AgentChatMessage; images: AgentChatImage[] }[] = [];
+  private costBase = 0;
+  private turnCost = 0;
   private client: ChatQuery | null = null;
   private input: InputStream | null = null;
   private generation = 0;
@@ -143,6 +236,7 @@ export class AgentChat {
       state: this.state(),
       revision: this.revision,
       messages: this.messages,
+      queue: this.queue.map((entry) => entry.message),
       permissions: [...this.permissions.values()].map((permission) => permission.view),
     });
   }
@@ -154,7 +248,44 @@ export class AgentChat {
   selectDirectory(directory: string): void {
     if (this.disposed || this.active) return;
     this.reset(this.view.id);
-    this.setState({ ...EMPTY_AGENT_CHAT, directory });
+    this.setState({ ...this.preferences(), directory });
+  }
+
+  configure(id: unknown, settings: unknown): void {
+    if (this.disposed || id !== this.view.id || !settings || typeof settings !== 'object') return;
+    const { permissionMode, model, effort } = settings as AgentChatSettings;
+    const next = { ...this.view };
+    if (permissionMode !== undefined) {
+      if (!isPermissionMode(permissionMode)) return;
+      next.permissionMode = permissionMode;
+    }
+    if (model !== undefined) {
+      if (model !== null && !this.view.models.some((entry) => entry.value === model)) return;
+      next.modelChoice = model;
+      const efforts = this.view.models.find((entry) => entry.value === model)?.efforts;
+      if (next.effort && efforts && !efforts.includes(next.effort)) next.effort = null;
+    }
+    if (effort !== undefined) {
+      if (effort !== null && !EFFORTS.includes(effort)) return;
+      next.effort = effort;
+    }
+    const client = this.client;
+    const effortChanged = next.effort !== this.view.effort;
+    this.setState(next);
+    if (!client) return;
+    const apply = async () => {
+      if (permissionMode !== undefined) await client.setPermissionMode(next.permissionMode);
+      if (model !== undefined) await client.setModel(next.modelChoice ?? undefined);
+      if (effortChanged) await client.applyFlagSettings({ effortLevel: next.effort });
+    };
+    apply().catch(() => undefined);
+  }
+
+  cancelQueued(id: unknown, messageId: unknown): void {
+    if (id !== this.view.id || typeof messageId !== 'string') return;
+    const length = this.queue.length;
+    this.queue = this.queue.filter((entry) => entry.message.id !== messageId);
+    if (this.queue.length !== length) this.publish();
   }
 
   async send(
@@ -162,10 +293,28 @@ export class AgentChat {
     text: unknown,
     context: AgentChatContext | null = null,
     elements: AgentElementRef[] = [],
+    attachments: { episode?: AgentEpisodePreview | null; images?: unknown } = {},
   ): Promise<boolean> {
     if (this.disposed || id !== this.view.id || typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT)
       return false;
-    if (['starting', 'thinking', 'approval'].includes(this.view.status)) return false;
+    const images = imagesOf(attachments.images);
+    if (!images) return false;
+    const message: AgentChatMessage = {
+      id: randomUUID(),
+      role: 'user',
+      parts: [{ type: 'text', text: text.trim() }],
+      context,
+      elements,
+      episode: attachments.episode ?? null,
+      images: images.map((image) => image.thumbnail),
+    };
+    if (this.view.status === 'starting') return false;
+    if (this.client && ['thinking', 'approval'].includes(this.view.status)) {
+      if (this.queue.length >= MAX_QUEUE) return false;
+      this.queue.push({ message, images });
+      this.publish();
+      return true;
+    }
     const directory = this.view.directory;
     if (!directory) {
       this.fail('invalid-directory');
@@ -216,9 +365,12 @@ export class AgentChat {
             pathToClaudeCodeExecutable: provider.executable,
             env,
             resume: this.resumeId,
+            model: this.view.modelChoice ?? undefined,
+            effort: this.view.effort ?? undefined,
+            allowedTools: READ_ONLY_TOOLS.map((tool) => `mcp__yalqen__${tool}`),
             systemPrompt: { type: 'preset', preset: 'claude_code' },
             settingSources: ['user', 'project', 'local'],
-            permissionMode: 'default',
+            permissionMode: this.view.permissionMode,
             includePartialMessages: true,
             canUseTool: (...args) =>
               current()
@@ -242,13 +394,13 @@ export class AgentChat {
         return false;
       }
     }
-    const message: AgentChatMessage = {
-      id: randomUUID(),
-      role: 'user',
-      parts: [{ type: 'text', text: text.trim() }],
-      context,
-      elements,
-    };
+    this.deliver(message, images);
+    return true;
+  }
+
+  private deliver(message: AgentChatMessage, images: AgentChatImage[]): void {
+    const text = message.parts[0]?.type === 'text' ? message.parts[0].text : '';
+    const prompt = promptOf(text, message.context, message.elements, message.episode);
     this.messages.push(message);
     this.setState({ ...this.view, status: 'thinking', error: null });
     this.input!.push({
@@ -258,30 +410,23 @@ export class AgentChat {
       parent_tool_use_id: null,
       message: {
         role: 'user',
-        content:
-          text.trim() +
-          (context
-            ? `\n\nYalqen browser context:\n${JSON.stringify({ tab_id: context.id, url: context.url, title: context.title })}`
-            : '') +
-          (elements.length
-            ? `\n\nYalqen selected elements (call get_selected_element with a selection_id for HTML, styles and a screenshot):\n${JSON.stringify(
-                elements.map(({ id: selectionId, url, label, component, source }) => ({
-                  selection_id: selectionId,
-                  url,
-                  element: label,
-                  component,
-                  source,
-                })),
-              )}`
-            : ''),
+        content: images.length
+          ? [
+              { type: 'text', text: prompt },
+              ...images.map((image) => ({
+                type: 'image' as const,
+                source: { type: 'base64' as const, media_type: image.mediaType, data: image.data },
+              })),
+            ]
+          : prompt,
       },
     });
     this.publish();
-    return true;
   }
 
   async interrupt(id: unknown): Promise<void> {
     if (id !== this.view.id || !['starting', 'thinking', 'approval'].includes(this.view.status)) return;
+    this.queue = [];
     this.denyPermissions();
     if (!this.client) {
       this.stop();
@@ -295,7 +440,7 @@ export class AgentChat {
     }
   }
 
-  respond(id: unknown, requestId: unknown, allow: unknown, answers: unknown): void {
+  respond(id: unknown, requestId: unknown, allow: unknown, answers: unknown, always: unknown = false): void {
     if (id !== this.view.id || typeof requestId !== 'string' || typeof allow !== 'boolean') return;
     const request = this.permissions.get(requestId);
     if (!request) return;
@@ -310,11 +455,20 @@ export class AgentChat {
       }
       updatedInput = { ...request.input, answers: selected };
     }
-    request.settle(
-      allow
-        ? { behavior: 'allow', updatedInput }
-        : { behavior: 'deny', message: 'The user declined this request in Yalqen.' },
-    );
+    if (!allow) {
+      request.settle({ behavior: 'deny', message: 'The user declined this request in Yalqen.' });
+      return;
+    }
+    if (always !== true || !request.view.canAlwaysAllow) {
+      request.settle({ behavior: 'allow', updatedInput });
+      return;
+    }
+    // "Always" lasts for this conversation only; Yalqen never writes the user's Claude settings files.
+    const updatedPermissions = request.suggestions.map((update) => ({ ...update, destination: 'session' as const }));
+    const mode = updatedPermissions.findLast((update) => update.type === 'setMode');
+    if (mode?.type === 'setMode' && isPermissionMode(mode.mode))
+      this.setState({ ...this.view, permissionMode: mode.mode });
+    request.settle({ behavior: 'allow', updatedInput, updatedPermissions });
   }
 
   reset(id: unknown): void {
@@ -322,10 +476,17 @@ export class AgentChat {
     this.stop();
     this.messages = [];
     this.resumeId = undefined;
+    this.costBase = 0;
+    this.turnCost = 0;
     this.streamId = null;
     this.streamParts.clear();
     this.toolInput.clear();
-    this.setState({ ...EMPTY_AGENT_CHAT, directory: this.view.directory });
+    this.setState({ ...this.preferences(), directory: this.view.directory });
+  }
+
+  private preferences(): AgentChatState {
+    const { modelChoice, effort, permissionMode, models } = this.view;
+    return { ...EMPTY_AGENT_CHAT, modelChoice, effort, permissionMode, models };
   }
 
   dispose(): void {
@@ -334,10 +495,14 @@ export class AgentChat {
     if (this.updateTimer) clearTimeout(this.updateTimer);
     this.updateTimer = null;
     this.messages = [];
+    this.queue = [];
   }
 
   private stop(): void {
     ++this.generation;
+    this.queue = [];
+    this.costBase += this.turnCost;
+    this.turnCost = 0;
     this.denyPermissions();
     const client = this.client;
     this.client = null;
@@ -349,7 +514,7 @@ export class AgentChat {
     this.setState({ ...this.view, status: 'stopped' });
   }
 
-  private askPermission: CanUseTool = (tool, input, { signal, title, decisionReason }) => {
+  private askPermission: CanUseTool = (tool, input, { signal, title, decisionReason, suggestions = [] }) => {
     if (this.disposed || signal.aborted) return Promise.resolve({ behavior: 'deny', message: 'Session ended.' });
     const id = randomUUID();
     const questions: AgentChatPermission['questions'] = [];
@@ -379,8 +544,17 @@ export class AgentChat {
       const abort = () => settle({ behavior: 'deny', message: 'Request cancelled.' });
       this.permissions.set(id, {
         input,
+        suggestions,
         settle,
-        view: { id, tool, title: (title ?? decisionReason ?? tool).slice(0, 4096), input: jsonOf(input), questions },
+        view: {
+          id,
+          tool,
+          title: (title ?? decisionReason ?? tool).slice(0, 4096),
+          input: jsonOf(input),
+          plan: tool === 'ExitPlanMode' && typeof input.plan === 'string' ? input.plan.slice(0, MAX_TEXT) : null,
+          questions,
+          canAlwaysAllow: !questions.length && suggestions.length > 0,
+        },
       });
       signal.addEventListener('abort', abort, { once: true });
       this.setState({ ...this.view, status: 'approval' });
@@ -399,7 +573,17 @@ export class AgentChat {
         if ('parent_tool_use_id' in message && message.parent_tool_use_id) continue;
         if (message.type === 'system' && message.subtype === 'init') {
           this.resumeId = message.session_id;
-          this.setState({ ...this.view, model: message.model });
+          this.setState({
+            ...this.view,
+            model: message.model,
+            permissionMode: isPermissionMode(message.permissionMode)
+              ? message.permissionMode
+              : this.view.permissionMode,
+          });
+          if (!this.view.models.length) void this.loadModels(client, generation);
+        } else if (message.type === 'system' && message.subtype === 'status') {
+          if (isPermissionMode(message.permissionMode) && message.permissionMode !== this.view.permissionMode)
+            this.setState({ ...this.view, permissionMode: message.permissionMode });
         } else if (message.type === 'stream_event') this.stream(message);
         else if (message.type === 'assistant') {
           const entry = this.assistant(message.message.id);
@@ -419,6 +603,7 @@ export class AgentChat {
                   input: jsonOf(block.input),
                   output: '',
                   status: 'running',
+                  verification: null,
                 });
             }
           }
@@ -433,6 +618,7 @@ export class AgentChat {
                 if (part.type === 'tool' && part.id === block.tool_use_id) {
                   part.output = textOf(block.content);
                   part.status = block.is_error ? 'error' : 'done';
+                  if (part.name === VERIFYING_TOOL && !block.is_error) part.verification = verificationOf(part.output);
                 }
               }
           }
@@ -449,8 +635,17 @@ export class AgentChat {
             this.assistant(randomUUID()).parts.push({ type: 'text', text: message.result.slice(0, MAX_TEXT) });
           }
           this.denyPermissions();
-          if (message.is_error) this.fail(this.view.error ?? 'request-failed');
-          else this.setState({ ...this.view, status: 'ready', error: null });
+          this.turnCost = message.total_cost_usd;
+          this.view = { ...this.view, usage: { ...this.usage(), cost: this.costBase + this.turnCost } };
+          void this.loadContextUsage(client, generation);
+          if (message.is_error) {
+            this.queue = [];
+            this.fail(this.view.error ?? 'request-failed');
+          } else {
+            const next = this.queue.shift();
+            if (next) this.deliver(next.message, next.images);
+            else this.setState({ ...this.view, status: 'ready', error: null });
+          }
         }
       }
       if (!this.disposed && generation === this.generation) this.stop();
@@ -462,10 +657,33 @@ export class AgentChat {
     }
   }
 
+  private usage(): NonNullable<AgentChatState['usage']> {
+    return this.view.usage ?? { cost: this.costBase, contextTokens: null, contextLimit: null };
+  }
+
+  private async loadModels(client: ChatQuery, generation: number): Promise<void> {
+    try {
+      const models = (await client.supportedModels()).slice(0, 20).map((model) => ({
+        value: model.value.slice(0, 200),
+        label: (model.displayName || model.value).slice(0, 200),
+        efforts: (model.supportedEffortLevels ?? []).filter((effort) => EFFORTS.includes(effort)),
+      }));
+      if (!this.disposed && generation === this.generation) this.setState({ ...this.view, models });
+    } catch {}
+  }
+
+  private async loadContextUsage(client: ChatQuery, generation: number): Promise<void> {
+    try {
+      const { totalTokens, maxTokens } = await client.getContextUsage({ detail: 'summary' });
+      if (this.disposed || generation !== this.generation) return;
+      this.setState({ ...this.view, usage: { ...this.usage(), contextTokens: totalTokens, contextLimit: maxTokens } });
+    } catch {}
+  }
+
   private assistant(id: string): AgentChatMessage {
     let entry = this.messages.find((message) => message.id === id && message.role === 'assistant');
     if (!entry) {
-      entry = { id, role: 'assistant', parts: [], context: null, elements: [] };
+      entry = { id, role: 'assistant', parts: [], context: null, elements: [], episode: null, images: [] };
       this.messages.push(entry);
     }
     return entry;
@@ -489,6 +707,7 @@ export class AgentChat {
           input: jsonOf(block.input),
           output: '',
           status: 'running',
+          verification: null,
         };
       if (part) {
         this.assistant(this.streamId).parts.push(part);

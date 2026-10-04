@@ -7,5 +7,6 @@
   --text-muted: light-dark(#6b6e75, #9a9ea6);
   --accent: #f28c28;
   --warn: light-dark(#a34a06, #f0a35c);
+  --success: light-dark(#1d7542, #63c98f);
   --page: light-dark(#ffffff, #1f2124);
 }

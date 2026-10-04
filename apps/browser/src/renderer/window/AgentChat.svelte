@@ -2,10 +2,20 @@
   import { onMount, tick } from 'svelte';
   import { t } from '../../shared/i18n';
   import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel';
-  import type { AgentChatPermission, AgentChatSnapshot, AgentElementRef, TabSnapshot } from '../../shared/types';
+  import type {
+    AgentChatImage,
+    AgentChatPermission,
+    AgentChatSettings,
+    AgentChatSnapshot,
+    AgentEffort,
+    AgentElementRef,
+    AgentPermissionMode,
+    TabSnapshot,
+  } from '../../shared/types';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Icon from '../ui/Icon.svelte';
+  import Select from '../ui/Select.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
   import ElementChip from './ElementChip.svelte';
 
@@ -26,10 +36,15 @@
     state: { ...EMPTY_AGENT_CHAT },
     revision: -1,
     messages: [],
+    queue: [],
     permissions: [],
   });
   let draft = $state('');
   let attachment: TabSnapshot | null = $state.raw(null);
+  let images: AgentChatImage[] = $state.raw([]);
+  let imageRejected = $state(false);
+  let dismissed: string[] = $state([]);
+  let fileInput: HTMLInputElement | undefined = $state();
   let failed = $state(false);
   let sending = $state(false);
   let cancelling = $state(false);
@@ -40,12 +55,54 @@
   let follow = $state(true);
   let destroyed = false;
   const busy = $derived(['starting', 'thinking', 'approval'].includes(snapshot.state.status));
-  const canSend = $derived(Boolean(directory && draft.trim() && !busy && !sending && !loading));
+  const canSend = $derived(
+    Boolean(
+      directory &&
+      draft.trim() &&
+      snapshot.state.status !== 'starting' &&
+      snapshot.queue.length < 5 &&
+      !sending &&
+      !loading,
+    ),
+  );
+  const modes: { value: AgentPermissionMode; label: string }[] = [
+    { value: 'default', label: t('agentChat.modeDefault') },
+    { value: 'acceptEdits', label: t('agentChat.modeAcceptEdits') },
+    { value: 'plan', label: t('agentChat.modePlan') },
+  ];
+  const effortLabels: Record<AgentEffort, string> = {
+    low: t('agentChat.effortLow'),
+    medium: t('agentChat.effortMedium'),
+    high: t('agentChat.effortHigh'),
+    xhigh: t('agentChat.effortXhigh'),
+    max: t('agentChat.effortMax'),
+  };
+  const models = $derived([
+    { value: '', label: t('agentChat.modelDefault') },
+    ...snapshot.state.models.filter((model) => model.value !== 'default'),
+  ]);
+  const efforts = $derived(
+    snapshot.state.models.find((model) =>
+      [snapshot.state.modelChoice ?? 'default', snapshot.state.model].includes(model.value),
+    )?.efforts ?? [],
+  );
+  const usage = $derived(snapshot.state.usage);
+  const episode = $derived.by(() => {
+    const candidate = activeTab?.agentObserved ? activeTab.agentEpisode : null;
+    if (!candidate || dismissed.includes(candidate.id)) return null;
+    const handled = [...snapshot.messages, ...snapshot.queue].some((message) => message.episode?.id === candidate.id);
+    return handled ? null : candidate;
+  });
+  const numbers = new Intl.NumberFormat(undefined, { notation: 'compact' });
+  const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
   const prompts = [
     { title: t('agentChat.suggestionProject'), prompt: t('agentChat.promptProject') },
     { title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors') },
     { title: t('agentChat.suggestionDesign'), prompt: t('agentChat.promptDesign') },
   ];
+  const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+  const MAX_IMAGES = 4;
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const errors = {
     'claude-not-found': t('agentPanel.claudeNotFound'),
     'invalid-directory': t('agentPanel.invalidDirectory'),
@@ -81,12 +138,14 @@
     sending = true;
     const text = draft;
     try {
-      if (!(await window.yalqen.sendAgentChat(snapshot.state.id, text, attachment?.id ?? null)))
+      const sent = images;
+      if (!(await window.yalqen.sendAgentChat(snapshot.state.id, text, attachment?.id ?? null, sent)))
         throw new Error('Unavailable');
       if (draft === text) {
         draft = '';
         attachment = null;
       }
+      if (images === sent) images = [];
       failed = false;
       follow = true;
     } catch {
@@ -94,6 +153,85 @@
     } finally {
       sending = false;
       textarea?.focus();
+    }
+  }
+
+  async function fixEpisode(): Promise<void> {
+    if (!activeTab || !episode) return;
+    try {
+      if (!(await window.yalqen.fixAgentEpisode(activeTab.id))) throw new Error('Unavailable');
+      follow = true;
+    } catch {
+      failed = true;
+    }
+  }
+
+  function base64Of(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).slice(String(reader.result).indexOf(',') + 1));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function thumbnailOf(bitmap: ImageBitmap): string {
+    const scale = Math.min(1, 160 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.7);
+  }
+
+  async function addImages(files: Iterable<File>): Promise<void> {
+    imageRejected = false;
+    for (const file of files) {
+      if (!IMAGE_TYPES.includes(file.type) || file.size > MAX_IMAGE_BYTES || images.length >= MAX_IMAGES) {
+        imageRejected = true;
+        continue;
+      }
+      try {
+        const bitmap = await createImageBitmap(file);
+        const thumbnail = thumbnailOf(bitmap);
+        bitmap.close();
+        const data = await base64Of(file);
+        if (images.length >= MAX_IMAGES) continue;
+        images = [...images, { mediaType: file.type as AgentChatImage['mediaType'], data, thumbnail }];
+      } catch {
+        imageRejected = true;
+      }
+    }
+  }
+
+  function pasteImages(event: ClipboardEvent): void {
+    const files = [...(event.clipboardData?.files ?? [])].filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    void addImages(files);
+  }
+
+  function dropImages(event: DragEvent): void {
+    const files = [...(event.dataTransfer?.files ?? [])].filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    void addImages(files);
+  }
+
+  async function configure(settings: AgentChatSettings): Promise<void> {
+    try {
+      await window.yalqen.configureAgentChat(snapshot.state.id, settings);
+    } catch {
+      failed = true;
+    }
+  }
+
+  async function cancelQueued(messageId: string): Promise<void> {
+    if (!snapshot.state.id) return;
+    try {
+      await window.yalqen.cancelQueuedAgentChat(snapshot.state.id, messageId);
+    } catch {
+      failed = true;
     }
   }
 
@@ -109,11 +247,11 @@
     }
   }
 
-  async function respond(request: AgentChatPermission, allow: boolean): Promise<void> {
+  async function respond(request: AgentChatPermission, allow: boolean, always = false): Promise<void> {
     if (!snapshot.state.id) return;
     try {
       const selected = answers[request.id] ? { ...answers[request.id] } : undefined;
-      await window.yalqen.respondAgentChat(snapshot.state.id, request.id, allow, selected);
+      await window.yalqen.respondAgentChat(snapshot.state.id, request.id, allow, selected, always);
     } catch {
       failed = true;
     }
@@ -202,8 +340,14 @@
               {#if message.context}<div class="message-context" title={message.context.url}>
                   <Icon name="globe" size={11} /><span>{message.context.title}</span>
                 </div>{/if}
+              {#if message.episode}<div class="message-context episode-ref">
+                  <Icon name="warning" size={11} /><span>{message.episode.id}</span>
+                </div>{/if}
               {#if message.elements.length}<div class="chips">
                   {#each message.elements as element (element.id)}<ElementChip {element} />{/each}
+                </div>{/if}
+              {#if message.images.length}<div class="thumbnails">
+                  {#each message.images as image, index (index)}<img src={image} alt="" />{/each}
                 </div>{/if}
               {#each message.parts as part, index (index)}
                 {#if part.type === 'text'}
@@ -211,22 +355,35 @@
                       text={part.text}
                     />{/if}
                 {:else}
-                  <details class="tool" class:error={part.status === 'error'}>
+                  <details
+                    class="tool"
+                    class:error={part.status === 'error'}
+                    class:verified={part.verification === 'passed'}
+                    class:unverified={part.verification === 'failed'}
+                  >
                     <summary>
                       <Icon
-                        name={part.status === 'done' ? 'check' : part.status === 'error' ? 'warning' : 'code'}
+                        name={part.status === 'error' || part.verification === 'failed'
+                          ? 'warning'
+                          : part.status === 'done'
+                            ? 'check'
+                            : 'code'}
                         size={12}
                       />
                       <span class="tool-name">{part.name.replace(/^mcp__yalqen__/, 'Yalqen · ')}</span>
                       <span class="tool-status"
                         >{t(
-                          part.status === 'done'
-                            ? 'agentChat.toolDone'
-                            : part.status === 'error'
-                              ? 'agentChat.toolError'
-                              : part.status === 'stopped'
-                                ? 'agentChat.toolStopped'
-                                : 'agentChat.toolRunning',
+                          part.verification === 'passed'
+                            ? 'agentChat.verified'
+                            : part.verification === 'failed'
+                              ? 'agentChat.notVerified'
+                              : part.status === 'done'
+                                ? 'agentChat.toolDone'
+                                : part.status === 'error'
+                                  ? 'agentChat.toolError'
+                                  : part.status === 'stopped'
+                                    ? 'agentChat.toolStopped'
+                                    : 'agentChat.toolRunning',
                         )}</span
                       >
                       <Icon name="down" size={10} />
@@ -245,7 +402,13 @@
       <div class="approval">
         <div class="approval-heading">
           <Icon name={request.questions.length ? 'info' : 'lock'} size={14} /><strong
-            >{t(request.questions.length ? 'agentChat.question' : 'agentChat.approval')}</strong
+            >{t(
+              request.questions.length
+                ? 'agentChat.question'
+                : request.plan !== null
+                  ? 'agentChat.planReady'
+                  : 'agentChat.approval',
+            )}</strong
           >
         </div>
         {#if request.questions.length}
@@ -279,18 +442,29 @@
               />
             </fieldset>
           {/each}
+        {:else if request.plan !== null}
+          <div class="plan"><AgentMarkdown text={request.plan} /></div>
         {:else}
           <p>{request.title}</p>
           <pre>{request.input}</pre>
         {/if}
         <div class="approval-actions">
           <Button size="sm" onclick={() => respond(request, false)}>{t('agentChat.deny')}</Button>
+          {#if request.canAlwaysAllow}<Button size="sm" onclick={() => respond(request, true, true)}
+              >{t('agentChat.alwaysAllow')}</Button
+            >{/if}
           <Button
             size="sm"
             variant="primary"
             disabled={request.questions.some((question) => !answers[request.id]?.[question.question]?.trim())}
             onclick={() => respond(request, true)}
-            >{t(request.questions.length ? 'agentChat.answer' : 'agentChat.allow')}</Button
+            >{t(
+              request.questions.length
+                ? 'agentChat.answer'
+                : request.plan !== null
+                  ? 'agentChat.approvePlan'
+                  : 'agentChat.allow',
+            )}</Button
           >
         </div>
       </div>
@@ -326,6 +500,22 @@
         />{/if}
     </div>
   {/if}
+  {#if directory && episode && activeTab}
+    <div class="episode" role="status">
+      <Icon name="warning" size={13} />
+      <div class="episode-text">
+        <strong>{t('agentChat.fixTitle')}</strong>
+        <span title={episode.lines.join('\n')}>{episode.lines.at(-1) ?? episode.id}</span>
+      </div>
+      <Button size="sm" variant="primary" onclick={fixEpisode}>{t('agentChat.fixWithClaude')}</Button>
+      <IconButton
+        size="sm"
+        icon="close"
+        label={t('agentChat.dismissError')}
+        onclick={() => (dismissed = [...dismissed, episode.id])}
+      />
+    </div>
+  {/if}
   {#if directory}
     <form
       class="composer"
@@ -333,7 +523,43 @@
         event.preventDefault();
         void send();
       }}
+      ondragover={(event) => {
+        if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
+      }}
+      ondrop={dropImages}
     >
+      {#if snapshot.queue.length}
+        <ol class="queue" aria-label={t('agentChat.queued')}>
+          {#each snapshot.queue as message (message.id)}
+            <li>
+              <span class="queue-label">{t('agentChat.queued')}</span>
+              <span class="queue-text">{message.parts[0]?.type === 'text' ? message.parts[0].text : ''}</span>
+              <IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.cancelQueued')}
+                onclick={() => cancelQueued(message.id)}
+              />
+            </li>
+          {/each}
+        </ol>
+      {/if}
+      {#if images.length}
+        <div class="thumbnails">
+          {#each images as image, index (index)}
+            <div class="thumbnail">
+              <img src={image.thumbnail} alt="" />
+              <IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.removeImage')}
+                onclick={() => (images = images.filter((entry) => entry !== image))}
+              />
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
       {#if attachment || elements.length}
         <div class="chips">
           {#if attachment}
@@ -359,7 +585,19 @@
         aria-label={t('agentChat.message')}
         placeholder={t('agentChat.placeholder')}
         disabled={loading}
+        onpaste={pasteImages}
         onkeydown={composeKey}></textarea>
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        multiple
+        hidden
+        onchange={(event) => {
+          void addImages([...(event.currentTarget.files ?? [])]);
+          event.currentTarget.value = '';
+        }}
+      />
       <div class="composer-controls">
         <Button
           size="sm"
@@ -369,7 +607,23 @@
           title={activeTab?.agentObserved ? activeTab.url : t('agentChat.localTabHint')}
           onclick={() => (attachment = attachment ? null : activeTab)}>{t('agentPanel.addTab')}</Button
         >
-        {#if busy}<IconButton
+        <IconButton
+          size="sm"
+          icon="image"
+          label={t('agentChat.addImage')}
+          disabled={images.length >= MAX_IMAGES}
+          onclick={() => fileInput?.click()}
+        />
+        <Select
+          variant="ghost"
+          aria-label={t('agentChat.modeLabel')}
+          title={t('agentChat.modeLabel')}
+          value={snapshot.state.permissionMode}
+          options={modes}
+          onchange={(permissionMode) => configure({ permissionMode })}
+        />
+        <span class="spacer"></span>
+        {#if busy && !draft.trim()}<IconButton
             class="send-button"
             icon="stop"
             size="md"
@@ -388,6 +642,44 @@
             disabled={!canSend}
           />{/if}
       </div>
+      {#if models.length > 1 || usage}
+        <div class="composer-meta">
+          {#if models.length > 1}
+            <Select
+              variant="ghost"
+              aria-label={t('agentChat.modelLabel')}
+              title={snapshot.state.model ?? t('agentChat.modelLabel')}
+              value={snapshot.state.modelChoice ?? ''}
+              options={models}
+              onchange={(model) => configure({ model: model || null })}
+            />
+          {/if}
+          {#if efforts.length}
+            <Select
+              variant="ghost"
+              aria-label={t('agentChat.effortLabel')}
+              title={t('agentChat.effortLabel')}
+              value={snapshot.state.effort ?? ''}
+              options={[
+                { value: '', label: t('agentChat.effortDefault') },
+                ...efforts.map((effort) => ({ value: effort, label: effortLabels[effort] })),
+              ]}
+              onchange={(effort) => configure({ effort: (effort || null) as AgentEffort | null })}
+            />
+          {/if}
+          {#if usage}
+            <span class="usage">
+              {#if usage.contextTokens !== null && usage.contextLimit}<span
+                  title={t('agentChat.context', {
+                    used: numbers.format(usage.contextTokens),
+                    limit: numbers.format(usage.contextLimit),
+                  })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
+                >{/if}
+              <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
+            </span>
+          {/if}
+        </div>
+      {/if}
     </form>
   {/if}
 </div>
@@ -703,6 +995,128 @@
     justify-content: space-between;
     gap: 8px;
     margin-top: 8px;
+  }
+  .spacer {
+    flex: 1;
+  }
+  .episode {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 14px 8px;
+    padding: 8px 6px 8px 12px;
+    border-radius: 12px;
+    background: var(--surface-hover);
+    color: var(--warn);
+  }
+  .episode > :global(svg) {
+    flex: none;
+  }
+  .episode-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .episode-text strong {
+    font-weight: 600;
+  }
+  .episode-text span {
+    overflow: hidden;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .episode-ref {
+    color: var(--warn);
+  }
+  .thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .thumbnails img {
+    display: block;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .thumbnail {
+    position: relative;
+  }
+  .thumbnail :global(button) {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--surface-strong);
+  }
+  .image-hint {
+    margin: 0 0 7px;
+    color: var(--warn);
+    font-size: 11px;
+  }
+  .tool.verified summary {
+    color: var(--success);
+  }
+  .tool.unverified summary {
+    color: var(--warn);
+  }
+  .composer-controls :global(.send-button) {
+    flex: none;
+  }
+  .composer-meta {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 6px -4px 0;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .usage {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    padding-right: 4px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .queue {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    margin: 0 0 7px;
+    padding: 0;
+    list-style: none;
+  }
+  .queue li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 2px 2px 8px;
+    border-radius: 8px;
+    background: var(--surface-hover);
+    font-size: 11px;
+  }
+  .queue-label {
+    flex: none;
+    color: var(--text-muted);
+  }
+  .queue-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .plan {
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 4px 0 8px;
   }
   .chips {
     display: flex;

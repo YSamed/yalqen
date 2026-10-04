@@ -92,6 +92,25 @@ function schema(properties: Record<string, unknown> = {}, required?: string[]): 
   return { type: 'object', properties, ...(required && { required }), additionalProperties: false };
 }
 
+export const READ_ONLY_TOOLS = [
+  'list_tabs',
+  'get_page_info',
+  'get_console_errors',
+  'get_network_requests',
+  'get_request_details',
+  'get_backend_trace',
+  'take_screenshot',
+  'get_selected_element',
+  'get_component_tree',
+  'list_selections',
+  'get_error_episode',
+  'export_playwright_test',
+  'list_error_episodes',
+  'get_timeline',
+  'list_request_rules',
+  'list_page_tools',
+];
+
 export const TOOLS: ToolDefinition[] = [
   {
     name: 'list_tabs',

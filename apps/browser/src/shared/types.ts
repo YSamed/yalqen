@@ -164,11 +164,37 @@ export interface AgentTerminalSnapshot {
   data: string;
 }
 
+export type AgentPermissionMode = 'default' | 'acceptEdits' | 'plan';
+export type AgentEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+export interface AgentChatModel {
+  value: string;
+  label: string;
+  efforts: AgentEffort[];
+}
+
+export interface AgentChatUsage {
+  cost: number;
+  contextTokens: number | null;
+  contextLimit: number | null;
+}
+
+export interface AgentChatSettings {
+  permissionMode?: AgentPermissionMode;
+  model?: string | null;
+  effort?: AgentEffort | null;
+}
+
 export interface AgentChatState {
   id: string | null;
   directory: string | null;
   status: 'idle' | 'starting' | 'thinking' | 'approval' | 'ready' | 'stopped' | 'error';
   model: string | null;
+  modelChoice: string | null;
+  effort: AgentEffort | null;
+  permissionMode: AgentPermissionMode;
+  models: AgentChatModel[];
+  usage: AgentChatUsage | null;
   error:
     | 'claude-not-found'
     | 'invalid-directory'
@@ -188,6 +214,7 @@ export type AgentChatPart =
       input: string;
       output: string;
       status: 'running' | 'done' | 'error' | 'stopped';
+      verification: 'passed' | 'failed' | null;
     };
 
 export interface AgentChatContext {
@@ -211,6 +238,14 @@ export interface AgentChatMessage {
   parts: AgentChatPart[];
   context: AgentChatContext | null;
   elements: AgentElementRef[];
+  episode: AgentEpisodePreview | null;
+  images: string[];
+}
+
+export interface AgentChatImage {
+  mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
+  data: string;
+  thumbnail: string;
 }
 
 interface AgentChatQuestion {
@@ -224,13 +259,16 @@ export interface AgentChatPermission {
   tool: string;
   title: string;
   input: string;
+  plan: string | null;
   questions: AgentChatQuestion[];
+  canAlwaysAllow: boolean;
 }
 
 export interface AgentChatSnapshot {
   state: AgentChatState;
   revision: number;
   messages: AgentChatMessage[];
+  queue: AgentChatMessage[];
   permissions: AgentChatPermission[];
 }
 
@@ -332,9 +370,12 @@ export const IpcChannel = {
   agentOutput: 'yalqen:agent-output',
   agentChatSnapshot: 'yalqen:agent-chat-snapshot',
   agentChatSend: 'yalqen:agent-chat-send',
+  agentChatFix: 'yalqen:agent-chat-fix',
   agentChatInterrupt: 'yalqen:agent-chat-interrupt',
   agentChatReset: 'yalqen:agent-chat-reset',
   agentChatPermission: 'yalqen:agent-chat-permission',
+  agentChatConfigure: 'yalqen:agent-chat-configure',
+  agentChatCancelQueued: 'yalqen:agent-chat-cancel-queued',
   agentChatUpdate: 'yalqen:agent-chat-update',
   agentElementRemove: 'yalqen:agent-element-remove',
   agentElementHighlight: 'yalqen:agent-element-highlight',
@@ -366,7 +407,13 @@ export interface YalqenApi {
   startProjectRun(): Promise<boolean>;
   stopProjectRun(): Promise<void>;
   getAgentChat(): Promise<AgentChatSnapshot | null>;
-  sendAgentChat(sessionId: string | null, text: string, tabId: TabId | null): Promise<boolean>;
+  sendAgentChat(
+    sessionId: string | null,
+    text: string,
+    tabId: TabId | null,
+    images?: AgentChatImage[],
+  ): Promise<boolean>;
+  fixAgentEpisode(tabId: TabId): Promise<boolean>;
   interruptAgentChat(sessionId: string): Promise<void>;
   resetAgentChat(sessionId: string | null): Promise<void>;
   respondAgentChat(
@@ -374,7 +421,10 @@ export interface YalqenApi {
     requestId: string,
     allow: boolean,
     answers?: Record<string, string>,
+    always?: boolean,
   ): Promise<void>;
+  configureAgentChat(sessionId: string | null, settings: AgentChatSettings): Promise<void>;
+  cancelQueuedAgentChat(sessionId: string, messageId: string): Promise<void>;
   onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
 }
 

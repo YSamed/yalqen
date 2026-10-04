@@ -6,12 +6,16 @@
     options,
     onchange,
     id,
+    variant = 'default',
+    title,
     'aria-label': ariaLabel,
   }: {
     value: T;
     options: readonly { value: T; label: string }[];
     onchange?: (value: T) => void;
     id?: string;
+    variant?: 'default' | 'ghost';
+    title?: string;
     'aria-label'?: string;
   } = $props();
 
@@ -62,6 +66,8 @@
   type="button"
   role="combobox"
   class="select-trigger"
+  class:ghost={variant === 'ghost'}
+  {title}
   aria-label={ariaLabel}
   aria-haspopup="listbox"
   aria-expanded={open}
