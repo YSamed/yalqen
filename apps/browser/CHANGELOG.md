@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.16](https://github.com/YSamed/yalqen/compare/v0.3.15...v0.3.16) (2026-10-04)
+
+
+### Features
+
+* add screen sharing and site permission settings ([c710c2d](https://github.com/YSamed/yalqen/commit/c710c2df368dd61fc9ae94d8b954b0c58a5f0713))
+
 ## [0.3.15](https://github.com/YSamed/yalqen/compare/v0.3.14...v0.3.15) (2026-10-04)
 
 
