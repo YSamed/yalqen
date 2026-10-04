@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -50,11 +50,27 @@ function brandedMacApp() {
   return path.join(destination, 'Contents', 'MacOS', 'Electron');
 }
 
+function terminalPath(fd) {
+  const result = spawnSync('tty', { stdio: [fd, 'pipe', 'ignore'], encoding: 'utf8' });
+  return result.status === 0 ? result.stdout.trim() : null;
+}
+
+// Started as a child of the terminal, macOS credits camera and microphone requests to the terminal app
+// and Yalqen never shows up under Privacy & Security. Launching through LaunchServices makes it its own app.
+function launchCommand(executable) {
+  if (process.platform !== 'darwin') return [executable, [project]];
+  const output = terminalPath(process.stdout) ?? '/dev/null';
+  const errors = terminalPath(process.stderr) ?? '/dev/null';
+  const env = ['PATH', 'SHELL'].flatMap((name) => (process.env[name] ? ['--env', `${name}=${process.env[name]}`] : []));
+  const app = path.resolve(executable, '../../..');
+  return ['open', ['-n', '-W', '--stdout', output, '--stderr', errors, ...env, app, '--args', project]];
+}
+
 const executable = process.platform === 'darwin' ? brandedMacApp() : electronBinary;
 if (process.argv.includes('--prepare-only')) {
   console.log(path.resolve(executable, '../../..'));
 } else {
-  const child = spawn(executable, [project], { cwd: project, stdio: 'inherit' });
+  const child = spawn(...launchCommand(executable), { cwd: project, stdio: 'inherit' });
   child.on('error', (error) => {
     console.error(error);
     process.exitCode = 1;
@@ -62,4 +78,12 @@ if (process.argv.includes('--prepare-only')) {
   child.on('exit', (code, signal) => {
     process.exitCode = code ?? (signal ? 1 : 0);
   });
+  if (process.platform === 'darwin') {
+    for (const signal of ['SIGINT', 'SIGTERM']) {
+      process.on(signal, () => {
+        spawnSync('pkill', ['-f', `^${executable} `]);
+        child.kill(signal);
+      });
+    }
+  }
 }
