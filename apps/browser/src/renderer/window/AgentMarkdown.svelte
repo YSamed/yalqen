@@ -57,8 +57,8 @@
 <style>
   .markdown {
     overflow-wrap: anywhere;
-    font-size: 12px;
-    line-height: 1.75;
+    font-size: var(--ai-text);
+    line-height: 1.6;
     user-select: text;
   }
   .markdown :global(p) {
@@ -71,17 +71,19 @@
   .markdown :global(h2),
   .markdown :global(h3),
   .markdown :global(h4) {
-    margin: 14px 0 6px;
-    font-size: 13px;
-    font-weight: 650;
+    margin: 16px 0 6px;
+    font-size: var(--ai-text);
+    font-weight: 600;
+    line-height: 1.4;
   }
-  .markdown :global(h1) {
-    font-size: 16px;
+  .markdown :global(h1),
+  .markdown :global(h2) {
+    font-size: 15px;
   }
   .markdown :global(ul),
   .markdown :global(ol) {
     margin: 6px 0 12px;
-    padding-left: 19px;
+    padding-left: 20px;
   }
   .markdown :global(li) {
     padding-left: 2px;
@@ -95,28 +97,25 @@
     text-underline-offset: 3px;
   }
   .markdown :global(code) {
-    padding: 2px 4px;
-    border-radius: 4px;
+    padding: 1px 5px;
+    border-radius: 5px;
     background: var(--surface-hover);
-    font:
-      10.5px 'SF Mono',
-      Menlo,
-      monospace;
+    font: var(--ai-mono) var(--ai-mono-font);
   }
   .markdown :global(pre) {
     max-width: 100%;
     margin: 12px 0;
-    padding: 12px;
+    padding: 10px 12px;
     overflow-x: auto;
     border: 1px solid var(--page-divider);
-    border-radius: 9px;
+    border-radius: 10px;
     background: var(--surface-strong);
   }
   .markdown :global(pre code) {
     padding: 0;
     background: none;
-    font-size: 11px;
-    line-height: 1.7;
+    font-size: var(--ai-mono);
+    line-height: 1.6;
   }
   .markdown :global(blockquote) {
     margin: 10px 0;
@@ -134,7 +133,7 @@
     max-width: 100%;
     overflow-x: auto;
     border-collapse: collapse;
-    font-size: 11px;
+    font-size: var(--ai-small);
   }
   .markdown :global(th),
   .markdown :global(td) {

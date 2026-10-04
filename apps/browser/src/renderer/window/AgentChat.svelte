@@ -173,9 +173,9 @@
   const numbers = new Intl.NumberFormat(undefined, { notation: 'compact' });
   const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
   const prompts = [
-    { title: t('agentChat.suggestionProject'), prompt: t('agentChat.promptProject') },
-    { title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors') },
-    { title: t('agentChat.suggestionDesign'), prompt: t('agentChat.promptDesign') },
+    { title: t('agentChat.suggestionProject'), prompt: t('agentChat.promptProject'), icon: 'folder' as const },
+    { title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors'), icon: 'warning' as const },
+    { title: t('agentChat.suggestionDesign'), prompt: t('agentChat.promptDesign'), icon: 'sparkle' as const },
   ];
   const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
   const MAX_IMAGES = 4;
@@ -454,7 +454,12 @@
         {:else}
           <div class="suggestions">
             {#each prompts as prompt (prompt.title)}
-              <button class="suggestion" onclick={() => suggest(prompt.prompt)}>{prompt.title}</button>
+              <button class="suggestion" onclick={() => suggest(prompt.prompt)}
+                ><Icon name={prompt.icon} size={14} /><span>{prompt.title}</span><Icon
+                  name="forward"
+                  size={12}
+                /></button
+              >
             {/each}
           </div>
         {/if}
@@ -469,13 +474,13 @@
           >
             <div class="message-content">
               {#if message.context}<div class="message-context" title={message.context.url}>
-                  <Icon name="globe" size={11} /><span>{message.context.title}</span>
+                  <Icon name="globe" size={12} /><span>{message.context.title}</span>
                 </div>{/if}
               {#if message.workMode !== 'normal'}<div class="message-context work-mode">
-                  <Icon name="sparkle" size={11} /><span>{workModeLabels[message.workMode]}</span>
+                  <Icon name="sparkle" size={12} /><span>{workModeLabels[message.workMode]}</span>
                 </div>{/if}
               {#if message.episode}<div class="message-context episode-ref">
-                  <Icon name="warning" size={11} /><span>{message.episode.id}</span>
+                  <Icon name="warning" size={12} /><span>{message.episode.id}</span>
                 </div>{/if}
               {#if message.elements.length}<div class="chips">
                   {#each message.elements as element (element.id)}<ElementChip {element} />{/each}
@@ -556,12 +561,11 @@
           <pre>{request.input}</pre>
         {/if}
         <div class="approval-actions">
-          <Button size="sm" onclick={() => respond(request, false)}>{t('agentChat.deny')}</Button>
-          {#if request.canAlwaysAllow}<Button size="sm" onclick={() => respond(request, true, true)}
+          <Button onclick={() => respond(request, false)}>{t('agentChat.deny')}</Button>
+          {#if request.canAlwaysAllow}<Button onclick={() => respond(request, true, true)}
               >{t('agentChat.alwaysAllow')}</Button
             >{/if}
           <Button
-            size="sm"
             variant="primary"
             disabled={request.questions.some((question) => !answers[request.id]?.[question.question]?.trim())}
             onclick={() => respond(request, true)}
@@ -583,15 +587,15 @@
         )}
       </div>
     {/if}
+    {#if !follow && snapshot.messages.length}
+      <Button class="latest" variant="surface" icon="down" onclick={() => (follow = true)}
+        >{t('agentChat.latest')}</Button
+      >
+    {/if}
   </div>
-  {#if !follow && snapshot.messages.length}
-    <Button class="latest" variant="surface" size="sm" icon="down" onclick={() => (follow = true)}
-      >{t('agentChat.latest')}</Button
-    >
-  {/if}
   {#if snapshot.state.error || failed}
     <div class="chat-error" role="status">
-      <Icon name="warning" size={13} />
+      <Icon name="warning" size={14} />
       <p>
         {snapshot.state.error === 'claude-not-found'
           ? snapshot.state.provider === 'claude'
@@ -602,9 +606,7 @@
             : t('agentChat.sendFailed')}
       </p>
       {#if snapshot.state.error === 'claude-not-found' || snapshot.state.error === 'authentication-required'}
-        <Button
-          size="sm"
-          onclick={() => window.yalqen.send({ type: 'new-tab', url: SETUP_GUIDES[snapshot.state.provider] })}
+        <Button onclick={() => window.yalqen.send({ type: 'new-tab', url: SETUP_GUIDES[snapshot.state.provider] })}
           >{t('agentPanel.installGuide')}</Button
         >
       {:else if failed && !snapshot.state.error}<IconButton
@@ -617,12 +619,12 @@
   {/if}
   {#if directory && episode && activeTab}
     <div class="episode" role="status">
-      <Icon name="warning" size={13} />
+      <Icon name="warning" size={14} />
       <div class="episode-text">
         <strong>{t('agentChat.fixTitle')}</strong>
         <span title={episode.lines.join('\n')}>{episode.lines.at(-1) ?? episode.id}</span>
       </div>
-      <Button size="sm" variant="primary" onclick={fixEpisode}>{t('agentChat.fixWithClaude')}</Button>
+      <Button variant="primary" onclick={fixEpisode}>{t('agentChat.fixWithClaude')}</Button>
       <IconButton
         size="sm"
         icon="close"
@@ -642,147 +644,147 @@
     }}
     ondrop={dropImages}
   >
-    {#if snapshot.queue.length}
-      <ol class="queue" aria-label={t('agentChat.queued')}>
-        {#each snapshot.queue as message (message.id)}
-          <li>
-            <span class="queue-label">{t('agentChat.queued')}</span>
-            <span class="queue-text">{message.parts[0]?.type === 'text' ? message.parts[0].text : ''}</span>
-            <IconButton
-              size="sm"
-              icon="close"
-              label={t('agentChat.cancelQueued')}
-              onclick={() => cancelQueued(message.id)}
-            />
-          </li>
-        {/each}
-      </ol>
-    {/if}
-    {#if images.length}
-      <div class="thumbnails">
-        {#each images as image, index (index)}
-          <div class="thumbnail">
-            <img src={image.thumbnail} alt="" />
-            <IconButton
-              size="sm"
-              icon="close"
-              label={t('agentChat.removeImage')}
-              onclick={() => (images = images.filter((entry) => entry !== image))}
-            />
-          </div>
-        {/each}
-      </div>
-    {/if}
-    {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
-    {#if attachment || elements.length}
-      <div class="chips">
-        {#if attachment}
-          <div class="attachment" title={attachment.url}>
-            <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
-              size="sm"
-              icon="close"
-              label={t('agentChat.removeTab')}
-              onclick={() => (attachment = null)}
-            />
-          </div>
-        {/if}
-        {#each elements as element (element.id)}
-          <ElementChip {element} onremove={() => void window.yalqen.removeAgentElement(element.id)} />
-        {/each}
-      </div>
-    {/if}
-    {#if suggestions.length}
-      <ComposerSuggestions
-        id={suggestionsId}
-        label={t(trigger?.kind === 'command' ? 'agentChat.commands' : 'agentChat.mentions')}
-        items={suggestions}
-        active={suggestionIndex}
-        onpick={(index) => void pickSuggestion(index)}
-      />
-    {/if}
-    <textarea
-      bind:this={textarea}
-      bind:value={draft}
-      role="combobox"
-      aria-autocomplete="list"
-      aria-expanded={suggestions.length > 0}
-      aria-controls={suggestions.length ? suggestionsId : undefined}
-      aria-activedescendant={suggestions.length ? `${suggestionsId}-${suggestionIndex}` : undefined}
-      oninput={trackCaret}
-      onclick={trackCaret}
-      onkeyup={(event) => {
-        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) trackCaret();
-      }}
-      rows="1"
-      maxlength="65536"
-      aria-label={t('agentChat.messageAgent', { agent: agentName })}
-      placeholder={t('agentChat.placeholderAgent', { agent: agentName })}
-      disabled={loading}
-      onpaste={pasteImages}
-      onkeydown={composeKey}></textarea>
-    <input
-      bind:this={fileInput}
-      type="file"
-      accept="image/png,image/jpeg,image/gif,image/webp"
-      multiple
-      hidden
-      onchange={(event) => {
-        void addImages([...(event.currentTarget.files ?? [])]);
-        event.currentTarget.value = '';
-      }}
-    />
-    <div class="composer-controls">
-      <IconButton
-        size="sm"
-        icon="globe"
-        label={t('agentPanel.addTab')}
-        variant={attachment ? 'tonal' : 'ghost'}
-        disabled={!attachable}
-        aria-pressed={Boolean(attachment)}
-        title={!attachable
-          ? t('agentChat.attachHint')
-          : attachable.agentObserved
-            ? `${t('agentPanel.addTab')}: ${attachable.url}`
-            : t('agentChat.pageSendHint', { url: attachable.url })}
-        onclick={() => (attachment = attachment ? null : attachable)}
-      />
-      <IconButton
-        size="sm"
-        icon="image"
-        label={t('agentChat.addImage')}
-        disabled={images.length >= MAX_IMAGES}
-        onclick={() => fileInput?.click()}
-      />
-      {#if snapshot.state.provider === 'claude'}
-        <Select
-          variant="ghost"
-          placement="up"
-          aria-label={t('agentChat.modeLabel')}
-          title={t('agentChat.modeLabel')}
-          value={snapshot.state.permissionMode}
-          options={modes}
-          onchange={(permissionMode) => configure({ permissionMode })}
+    <div class="composer-box">
+      {#if snapshot.queue.length}
+        <ol class="queue" aria-label={t('agentChat.queued')}>
+          {#each snapshot.queue as message (message.id)}
+            <li>
+              <span class="queue-label">{t('agentChat.queued')}</span>
+              <span class="queue-text">{message.parts[0]?.type === 'text' ? message.parts[0].text : ''}</span>
+              <IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.cancelQueued')}
+                onclick={() => cancelQueued(message.id)}
+              />
+            </li>
+          {/each}
+        </ol>
+      {/if}
+      {#if images.length}
+        <div class="thumbnails">
+          {#each images as image, index (index)}
+            <div class="thumbnail">
+              <img src={image.thumbnail} alt="" />
+              <IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.removeImage')}
+                onclick={() => (images = images.filter((entry) => entry !== image))}
+              />
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
+      {#if attachment || elements.length}
+        <div class="chips">
+          {#if attachment}
+            <div class="attachment" title={attachment.url}>
+              <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.removeTab')}
+                onclick={() => (attachment = null)}
+              />
+            </div>
+          {/if}
+          {#each elements as element (element.id)}
+            <ElementChip {element} onremove={() => void window.yalqen.removeAgentElement(element.id)} />
+          {/each}
+        </div>
+      {/if}
+      {#if suggestions.length}
+        <ComposerSuggestions
+          id={suggestionsId}
+          label={t(trigger?.kind === 'command' ? 'agentChat.commands' : 'agentChat.mentions')}
+          items={suggestions}
+          active={suggestionIndex}
+          onpick={(index) => void pickSuggestion(index)}
         />
       {/if}
-      <span class="spacer"></span>
-      {#if busy && !draft.trim()}<IconButton
-          class="send-button"
-          icon="stop"
-          size="md"
-          variant="tonal"
-          label={t('agentChat.interrupt')}
-          disabled={cancelling}
-          onclick={interrupt}
+      <textarea
+        bind:this={textarea}
+        bind:value={draft}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={suggestions.length > 0}
+        aria-controls={suggestions.length ? suggestionsId : undefined}
+        aria-activedescendant={suggestions.length ? `${suggestionsId}-${suggestionIndex}` : undefined}
+        oninput={trackCaret}
+        onclick={trackCaret}
+        onkeyup={(event) => {
+          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) trackCaret();
+        }}
+        rows="1"
+        maxlength="65536"
+        aria-label={t('agentChat.messageAgent', { agent: agentName })}
+        placeholder={t('agentChat.placeholderAgent', { agent: agentName })}
+        disabled={loading}
+        onpaste={pasteImages}
+        onkeydown={composeKey}></textarea>
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        multiple
+        hidden
+        onchange={(event) => {
+          void addImages([...(event.currentTarget.files ?? [])]);
+          event.currentTarget.value = '';
+        }}
+      />
+      <div class="composer-controls">
+        <IconButton
+          icon="globe"
+          label={t('agentPanel.addTab')}
+          variant={attachment ? 'tonal' : 'ghost'}
+          disabled={!attachable}
+          aria-pressed={Boolean(attachment)}
+          title={!attachable
+            ? t('agentChat.attachHint')
+            : attachable.agentObserved
+              ? `${t('agentPanel.addTab')}: ${attachable.url}`
+              : t('agentChat.pageSendHint', { url: attachable.url })}
+          onclick={() => (attachment = attachment ? null : attachable)}
         />
-      {:else}<IconButton
-          class="send-button"
-          type="submit"
-          icon="up"
-          size="md"
-          variant="accent"
-          label={t('agentChat.send')}
-          disabled={!canSend}
-        />{/if}
+        <IconButton
+          icon="image"
+          label={t('agentChat.addImage')}
+          disabled={images.length >= MAX_IMAGES}
+          onclick={() => fileInput?.click()}
+        />
+        {#if snapshot.state.provider === 'claude'}
+          <Select
+            variant="ghost"
+            placement="up"
+            aria-label={t('agentChat.modeLabel')}
+            title={t('agentChat.modeLabel')}
+            value={snapshot.state.permissionMode}
+            options={modes}
+            onchange={(permissionMode) => configure({ permissionMode })}
+          />
+        {/if}
+        <span class="spacer"></span>
+        {#if busy && !draft.trim()}<IconButton
+            class="send-button"
+            icon="stop"
+            size="md"
+            variant="tonal"
+            label={t('agentChat.interrupt')}
+            disabled={cancelling}
+            onclick={interrupt}
+          />
+        {:else}<IconButton
+            class="send-button"
+            type="submit"
+            icon="up"
+            size="md"
+            variant="accent"
+            label={t('agentChat.send')}
+            disabled={!canSend}
+          />{/if}
+      </div>
     </div>
     <div class="composer-meta">
       <Select
@@ -858,50 +860,64 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 8px 18px 16px;
+    padding: 4px var(--ai-gutter) 16px;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
   .welcome {
-    padding: 32px 4px 16px;
+    padding: 28px 0 16px;
   }
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
-    line-height: 1.3;
+    line-height: 1.25;
     letter-spacing: -0.4px;
     text-wrap: balance;
   }
   .intro {
-    max-width: 280px;
+    max-width: 320px;
     margin: 8px 0 20px;
     color: var(--text-muted);
-    font-size: 12px;
-    line-height: 1.65;
+    font-size: var(--ai-text);
+    line-height: 1.55;
   }
   .suggestions {
     display: grid;
-    gap: 2px;
-    margin: 0 -8px;
+    gap: 6px;
   }
   .suggestion {
-    padding: 8px 10px;
-    border: 0;
-    border-radius: var(--radius-control);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--ai-radius);
     background: none;
-    color: var(--text-muted);
+    color: var(--text);
     font: inherit;
-    font-size: 12px;
+    font-size: var(--ai-text);
     text-align: left;
     cursor: pointer;
     transition:
       background var(--transition),
-      color var(--transition);
+      border-color var(--transition);
+  }
+  .suggestion > :global(svg) {
+    flex: none;
+    color: var(--text-muted);
+  }
+  .suggestion > :global(svg:first-child) {
+    color: var(--accent);
+  }
+  .suggestion span {
+    flex: 1;
+    min-width: 0;
   }
   .suggestion:hover {
+    border-color: transparent;
     background: var(--surface-hover);
-    color: var(--text);
   }
   .messages {
     display: grid;
@@ -911,16 +927,20 @@
   .message {
     min-width: 0;
   }
+  .message.user {
+    display: flex;
+    justify-content: flex-end;
+  }
   .message.user .message-content {
-    margin-left: 32px;
-    padding: 9px 12px;
-    border-radius: 14px;
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 16px;
     background: var(--surface-hover);
   }
   .user-text {
     margin: 0;
-    font-size: 12px;
-    line-height: 1.65;
+    font-size: var(--ai-text);
+    line-height: 1.55;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
     user-select: text;
@@ -929,13 +949,13 @@
   .attachment {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     min-width: 0;
     color: var(--accent);
-    font-size: var(--font-size-small);
+    font-size: var(--ai-meta);
   }
   .message-context {
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
   .message-context span,
   .attachment > span {
@@ -946,46 +966,47 @@
   pre {
     max-height: 180px;
     margin: 0;
-    padding: 10px;
+    padding: 10px 12px;
     overflow: auto;
     border-top: 1px solid var(--page-divider);
     background: var(--surface-strong);
     color: var(--text-muted);
-    font:
-      10px/1.7 'SF Mono',
-      Menlo,
-      monospace;
+    font: var(--ai-mono) / 1.6 var(--ai-mono-font);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     user-select: text;
   }
   .approval {
     margin: 16px 0 4px;
-    padding: 12px;
-    border-radius: 14px;
+    padding: 14px;
+    border-radius: var(--ai-radius);
     background: var(--surface);
     box-shadow: var(--shadow);
   }
   .approval-heading {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     color: var(--accent);
-    font-size: 11px;
+    font-size: var(--ai-small);
+  }
+  .approval-heading strong {
+    font-weight: 600;
   }
   .approval > p {
-    margin: 10px 0;
-    font-size: 11px;
-    line-height: 1.6;
+    margin: 10px 0 8px;
+    font-size: var(--ai-text);
+    line-height: 1.5;
     overflow-wrap: anywhere;
   }
   .approval pre {
     max-height: 150px;
     border: 1px solid var(--page-divider);
-    border-radius: 7px;
+    border-radius: 8px;
   }
   .approval-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 6px;
     margin-top: 12px;
@@ -997,15 +1018,16 @@
     border: 0;
   }
   legend {
-    margin-bottom: 8px;
-    font-size: 11px;
-    line-height: 1.6;
+    margin-bottom: 6px;
+    font-size: var(--ai-text);
+    line-height: 1.5;
   }
   .answer-option {
     display: flex;
     gap: 8px;
-    padding: 8px 0;
-    font-size: 11px;
+    padding: 6px 0;
+    font-size: var(--ai-small);
+    line-height: 1.45;
   }
   .answer-option input {
     flex: none;
@@ -1017,88 +1039,124 @@
   }
   .answer-option small {
     display: block;
-    margin-top: 3px;
+    margin-top: 2px;
     color: var(--text-muted);
-    font-size: var(--font-size-small);
-    line-height: 1.5;
+    font-size: var(--ai-meta);
+    line-height: 1.45;
   }
   .free-answer {
     box-sizing: border-box;
     width: 100%;
-    margin-top: 5px;
-    padding: 7px 9px;
+    height: var(--control-md);
+    margin-top: 6px;
+    padding: 0 10px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-control);
     background: var(--surface-strong);
     color: var(--text);
     font: inherit;
-    font-size: 11px;
+    font-size: var(--ai-small);
   }
   .working {
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 18px 0 4px;
+    gap: 8px;
+    padding: 16px 0 4px;
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--ai-small);
   }
   .working-dot {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--accent);
+    animation: pulse 1.2s ease-in-out infinite;
   }
-  .chat :global(.latest) {
-    position: absolute;
-    right: 20px;
-    bottom: 120px;
+  @keyframes pulse {
+    50% {
+      opacity: 0.35;
+    }
   }
-  .chat-error {
+  .conversation :global(.latest) {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    width: fit-content;
+    margin: 12px 0 0 auto;
+  }
+  .chat-error,
+  .episode {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin: 0 14px 10px;
-    padding: 10px 12px;
-    border-radius: 12px;
+    gap: 10px;
+    margin: 0 12px 8px;
+    padding: 8px 8px 8px 12px;
+    border-radius: var(--ai-radius);
     background: var(--surface-hover);
     color: var(--warn);
   }
-  .chat-error > :global(svg) {
+  .chat-error > :global(svg),
+  .episode > :global(svg) {
     flex: none;
   }
   .chat-error p {
     flex: 1;
     margin: 0;
-    font-size: var(--font-size-small);
-    line-height: 1.5;
+    font-size: var(--ai-small);
+    line-height: 1.45;
+  }
+  .episode-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    font-size: var(--ai-small);
+    line-height: 1.4;
+  }
+  .episode-text strong {
+    font-weight: 600;
+  }
+  .episode-text span {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: var(--ai-meta);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .episode-ref {
+    color: var(--warn);
+  }
+  .work-mode {
+    color: var(--accent);
   }
   .composer {
     flex: none;
-    margin: 0 14px;
-    padding: 10px 10px 8px;
+    padding: 0 12px 10px;
+  }
+  .composer-box {
+    padding: 10px 8px 8px 12px;
     border: 1px solid var(--border);
-    margin-bottom: 14px;
     border-radius: 16px;
     background: var(--surface);
     transition: border-color var(--transition);
   }
-  .composer:focus-within {
+  .composer-box:focus-within {
     border-color: var(--accent);
   }
   textarea {
     box-sizing: border-box;
     display: block;
     width: 100%;
-    min-height: 40px;
-    max-height: 150px;
-    padding: 2px;
+    min-height: 44px;
+    max-height: 180px;
+    padding: 0 4px 0 0;
     border: 0;
     outline: 0;
     resize: none;
     field-sizing: content;
     background: none;
     color: var(--text);
-    font: 12px/1.65 var(--font);
+    font: var(--ai-text) / 1.55 var(--font);
   }
   textarea::placeholder {
     color: var(--text-muted);
@@ -1110,53 +1168,44 @@
   .composer-controls {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     min-width: 0;
-    margin-top: 8px;
+    margin: 6px 0 0 -6px;
+  }
+  .composer-controls :global(.icon-btn:not(.send-button)) {
+    color: var(--text-muted);
+  }
+  .composer-controls :global(.icon-btn:not(.send-button):hover:not(:disabled)) {
+    color: var(--text);
+  }
+  .composer-controls :global(.send-button) {
+    flex: none;
   }
   .spacer {
     flex: 1;
   }
-  .episode {
+  .composer-meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    margin: 0 14px 8px;
-    padding: 8px 6px 8px 12px;
-    border-radius: 12px;
-    background: var(--surface-hover);
-    color: var(--warn);
+    gap: 0 2px;
+    min-height: var(--control-md);
+    margin: 4px -2px 0;
   }
-  .episode > :global(svg) {
-    flex: none;
-  }
-  .episode-text {
-    display: grid;
-    flex: 1;
-    min-width: 0;
-    color: var(--text);
-    font-size: 11px;
-    line-height: 1.45;
-  }
-  .episode-text strong {
-    font-weight: 600;
-  }
-  .episode-text span {
-    overflow: hidden;
+  .usage {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+    padding: 0 6px;
     color: var(--text-muted);
-    text-overflow: ellipsis;
+    font-size: var(--ai-meta);
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
-  }
-  .episode-ref {
-    color: var(--warn);
-  }
-  .work-mode {
-    color: var(--accent);
   }
   .thumbnails {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 8px;
   }
   .thumbnails img {
@@ -1177,36 +1226,15 @@
     background: var(--surface-strong);
   }
   .image-hint {
-    margin: 0 0 7px;
+    margin: 0 0 8px;
     color: var(--warn);
-    font-size: 11px;
-  }
-  .composer-controls :global(.send-button) {
-    flex: none;
-  }
-  .composer-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 2px;
-    margin: 6px -4px 0;
-    padding-top: 6px;
-    border-top: 1px solid var(--border);
-  }
-  .usage {
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-    padding-right: 4px;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
+    font-size: var(--ai-meta);
   }
   .queue {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
-    margin: 0 0 7px;
+    margin: 0 0 8px;
     padding: 0;
     list-style: none;
   }
@@ -1214,10 +1242,10 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 2px 2px 2px 8px;
-    border-radius: 8px;
+    padding: 2px 2px 2px 10px;
+    border-radius: var(--radius-control);
     background: var(--surface-hover);
-    font-size: 11px;
+    font-size: var(--ai-small);
   }
   .queue-label {
     flex: none;
@@ -1232,21 +1260,21 @@
   .plan {
     max-height: 320px;
     overflow-y: auto;
-    margin: 4px 0 8px;
+    margin: 6px 0 8px;
   }
   .chips {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    margin-bottom: 7px;
+    margin-bottom: 8px;
   }
   .message-content > .chips {
-    margin: 0 0 8px;
+    margin: 0 0 6px;
   }
   .attachment {
     width: fit-content;
     max-width: 100%;
-    padding: 0 2px 0 9px;
+    padding: 0 2px 0 10px;
     border-radius: var(--radius-pill);
     background: var(--surface-hover);
   }
@@ -1256,12 +1284,15 @@
   button:focus-visible,
   .free-answer:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: 3px;
+    outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
     .suggestion,
-    .composer {
+    .composer-box {
       transition: none;
+    }
+    .working-dot {
+      animation: none;
     }
   }
 </style>
