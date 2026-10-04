@@ -60,10 +60,7 @@ function isRequest(value: unknown): value is JsonRpcRequest {
   );
 }
 
-async function handleMessage(
-  message: JsonRpcRequest,
-  options: BridgeServerOptions,
-): Promise<JsonRpcResponse | null> {
+async function handleMessage(message: JsonRpcRequest, options: BridgeServerOptions): Promise<JsonRpcResponse | null> {
   const { id, method, params = {} } = message;
   if (id === undefined) return null;
   switch (method) {
