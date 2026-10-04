@@ -522,6 +522,18 @@ function startBrowser(): void {
     IpcChannel.visualComparisonReview,
     (event) => agentSenderWindow(event)?.getVisualComparisonReview() ?? null,
   );
+  ipcMain.handle(IpcChannel.responsiveScanGet, (event) => agentSenderWindow(event)?.getResponsiveScan() ?? null);
+  ipcMain.handle(IpcChannel.responsiveScanRun, (event, tabId: unknown) => {
+    const window = agentSenderWindow(event);
+    if (!window) throw new Error('responsive-scan:unavailable');
+    return window.runResponsiveScan(tabId);
+  });
+  ipcMain.handle(IpcChannel.responsiveScanCancel, (event) => agentSenderWindow(event)?.cancelResponsiveScan());
+  ipcMain.handle(IpcChannel.responsiveScanClear, (event) => agentSenderWindow(event)?.clearResponsiveScan());
+  ipcMain.handle(
+    IpcChannel.responsiveScanReview,
+    (event) => agentSenderWindow(event)?.getResponsiveScanReview() ?? null,
+  );
   ipcMain.handle(
     IpcChannel.agentChatSend,
     (event, id: unknown, text: unknown, tabIds: unknown, images: unknown) =>

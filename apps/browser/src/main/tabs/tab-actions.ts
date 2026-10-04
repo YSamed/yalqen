@@ -53,7 +53,8 @@ async function findTarget(send: Send, selector: string): Promise<Target | null> 
   let nodeId: number;
   try {
     ({ nodeId } = (await send('DOM.querySelector', { nodeId: root.nodeId, selector })) as { nodeId: number });
-  } catch {
+  } catch (error) {
+    if (error instanceof ActionFailed || error instanceof ActionStopped) throw error;
     throw new ActionFailed(`"${selector}" is not a valid CSS selector.`);
   }
   if (!nodeId) return null;

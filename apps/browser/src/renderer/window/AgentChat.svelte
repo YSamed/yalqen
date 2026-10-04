@@ -30,6 +30,7 @@
   import ProviderMark from './ProviderMark.svelte';
   import TabAttachments from './TabAttachments.svelte';
   import VisualComparison from './VisualComparison.svelte';
+  import BrowserChecks from './BrowserChecks.svelte';
   import type { VisualComparisonReview } from '../../shared/visual-comparison';
 
   let {
@@ -67,6 +68,7 @@
   let attachmentChanged = $state(false);
   let images: AgentChatImage[] = $state.raw([]);
   let comparisonOpen = $state(false);
+  let checksOpen = $state(false);
   let imageRejected = $state(false);
   let dismissed: string[] = $state([]);
   let fileInput: HTMLInputElement | undefined = $state();
@@ -746,6 +748,16 @@
         onclose={() => (comparisonOpen = false)}
       />{/key}
   {/if}
+  {#if checksOpen}
+    {#key directory}<BrowserChecks
+        {activeTab}
+        {developer}
+        disabled={loading || sending || busy || snapshot.queue.length >= 5}
+        flowDisabled={snapshot.state.workMode === 'review'}
+        onrequest={reviewComparison}
+        onclose={() => (checksOpen = false)}
+      />{/key}
+  {/if}
   <form
     class="composer"
     onsubmit={(event) => {
@@ -861,7 +873,20 @@
           label={t('visualComparison.open')}
           variant={comparisonOpen ? 'tonal' : 'ghost'}
           aria-expanded={comparisonOpen}
-          onclick={() => (comparisonOpen = !comparisonOpen)}
+          onclick={() => {
+            comparisonOpen = !comparisonOpen;
+            if (comparisonOpen) checksOpen = false;
+          }}
+        />
+        <IconButton
+          icon="check"
+          label={t('browserChecks.open')}
+          variant={checksOpen ? 'tonal' : 'ghost'}
+          aria-expanded={checksOpen}
+          onclick={() => {
+            checksOpen = !checksOpen;
+            if (checksOpen) comparisonOpen = false;
+          }}
         />
         {@render settings()}
         <span class="spacer"></span>

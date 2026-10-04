@@ -130,6 +130,14 @@ The chat composer attaches up to five tabs through its tab picker or `@` suggest
 
 The composer's screenshot button opens a before/after comparison for an observed local development page. Captures must use the same tab, URL and viewport; navigation, resizing during capture and project changes reject or clear the comparison. A project keeps one comparison in memory, with each image reduced to at most 1,600 pixels on its longest edge and 2 MiB. Images stay outside `BrowserState` and are cleared when the project closes or its directory changes. The user can compare them side by side or with a slider, then send both images to chat for an AI review. The review describes visible evidence; it does not claim a pixel diff or a complete accessibility or functional test.
 
+### Responsive scan
+
+The browser checks panel scans an observed local tab at 390 × 844, 768 × 1024 and 1440 × 900 CSS pixels through a single debugger session and restores the original size afterward. Each frame carries a screenshot and geometry measurements: horizontal overflow, clipped text and controls outside the viewport, capped at a fixed number of elements per frame. The scan is cancellable, rejects navigation or project changes mid-scan, and keeps one result per project in memory outside `BrowserState`. Findings are geometric hints, not proof: intentional clipping can appear. The user can send all three screenshots and the measurements to chat for review.
+
+### Flow verification
+
+`get_page_structure` lists visible controls, forms and headings with unique selectors, never field values, hidden fields or scripts. `run_flow` runs a bounded plan (click, fill, press Enter, navigate; at most 20 steps and 20 assertions) in a local tab under one approval and one Stop control, then polls DOM assertions for visibility, text, value, count and URL. The result is `passed` or `failed` and feeds the same verification badge as `replay_episode`. Ambiguous selectors, scope changes and external navigation abort the flow. Verify work mode requires a flow when an expected user-facing outcome is specified, since clean console and network logs alone do not prove it.
+
 ## Naming
 
 `yalqen` everywhere: the MCP server name, tool descriptions, the setup command and the docs.

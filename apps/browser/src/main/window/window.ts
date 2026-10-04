@@ -90,6 +90,8 @@ import { selectionRef, type ElementSelection } from '../agent-bridge/selection.j
 import { MAX_REFERENCES, referenceRef, type ReferenceCapture } from '../agent-bridge/reference.js';
 import { VisualComparisonManager, VisualComparisonError, type VisualComparisonTab } from './visual-comparison.js';
 import { captureVisualPage } from './visual-capture.js';
+import { ResponsiveScanManager, ResponsiveScanError, createResponsiveScanSession } from './responsive-scan.js';
+import { acquirePageWork, pageWorkBusy } from '../tabs/page-work.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -163,6 +165,7 @@ export class YalqenWindow {
   private pickedElements: AgentElementRef[] = [];
   private readonly references = new Map<string, ReferenceCapture>();
   private readonly visualComparisons = new Map<string, VisualComparisonManager>();
+  private readonly responsiveScans = new Map<string, ResponsiveScanManager>();
   private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
   // view.webContents reads undefined once the contents are destroyed; this reference keeps answering isDestroyed().
@@ -416,6 +419,8 @@ export class YalqenWindow {
       }
       for (const comparison of this.visualComparisons.values()) comparison.clear();
       this.visualComparisons.clear();
+      for (const scan of this.responsiveScans.values()) void scan.clear();
+      this.responsiveScans.clear();
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -554,7 +559,10 @@ export class YalqenWindow {
         this.agentProject === project &&
         !project.busy
       ) {
-        if (project.directory !== result.filePaths[0]) this.visualComparisons.get(project.id)?.clear();
+        if (project.directory !== result.filePaths[0]) {
+          this.visualComparisons.get(project.id)?.clear();
+          void this.responsiveScans.get(project.id)?.clear();
+        }
         project.selectDirectory(result.filePaths[0]);
       }
     } finally {
@@ -658,6 +666,7 @@ export class YalqenWindow {
 
   selectAgentProject(id: unknown): boolean {
     if (!this.agentProjects.some((project) => project.id === id)) return false;
+    if (id !== this.activeProjectId) void this.responsiveScans.get(this.activeProjectId)?.cancel();
     this.activeProjectId = id as string;
     if (!this.uiContents.isDestroyed())
       this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
@@ -672,6 +681,8 @@ export class YalqenWindow {
     this.agentProjects.splice(index, 1);
     this.visualComparisons.get(project.id)?.clear();
     this.visualComparisons.delete(project.id);
+    void this.responsiveScans.get(project.id)?.clear();
+    this.responsiveScans.delete(project.id);
     project.dispose();
     this.app.releaseAgentConnection(project);
     if (this.activeProjectId === project.id)
@@ -760,6 +771,7 @@ export class YalqenWindow {
           if (!tab || this.tabs.activeTabId !== tabId || !contents || contents.isDestroyed())
             throw new VisualComparisonError('unavailable');
           if (contents.isLoadingMainFrame()) throw new VisualComparisonError('busy');
+          if (pageWorkBusy(contents)) throw new VisualComparisonError('busy');
           const capture = await captureVisualPage(contents);
           if (this.tabs.activeTabId !== tabId || this.agentProject !== project || project.directory !== directory)
             throw new VisualComparisonError('stale');
@@ -791,6 +803,111 @@ export class YalqenWindow {
   getVisualComparisonReview(): ReturnType<VisualComparisonManager['review']> {
     if (this.isPrivate && !this.isDeveloper) return null;
     return this.visualComparisons.get(this.agentProject.id)?.review() ?? null;
+  }
+
+  private responsiveScan(): ResponsiveScanManager {
+    const project = this.agentProject;
+    let scan = this.responsiveScans.get(project.id);
+    if (!scan) {
+      scan = new ResponsiveScanManager({
+        readTab: (tabId) => this.visualComparisonTab(tabId),
+        createSession: async (tabId, checkTab) => {
+          const found = this.tabs.observedTab(tabId);
+          if (!found || this.tabs.activeTabId !== tabId) throw new ResponsiveScanError('unavailable');
+          const { contents, tab } = found;
+          const release = acquirePageWork(contents);
+          if (!release) throw new ResponsiveScanError('busy');
+          const directory = project.directory;
+          const emulation = tab.emulation;
+          const zoom = contents.getZoomFactor();
+          const url = contents.getURL();
+          const area = { ...this.pageArea };
+          let navigated = false;
+          const onNavigation = (event: Electron.Event<Electron.WebContentsDidStartNavigationEventParams>): void => {
+            if (event.isMainFrame) navigated = true;
+          };
+          contents.on('did-start-navigation', onNavigation);
+          const guard = (): void => {
+            checkTab();
+            if (contents.isDestroyed() || navigated || contents.isLoadingMainFrame())
+              throw new ResponsiveScanError('navigation');
+            if (
+              this.tabs.activeTabId !== tabId ||
+              this.tabs.activeContents() !== contents ||
+              this.agentProject !== project ||
+              project.directory !== directory
+            )
+              throw new ResponsiveScanError('stale');
+            if (
+              tab.emulation !== emulation ||
+              contents.getZoomFactor() !== zoom ||
+              this.pageArea.width !== area.width ||
+              this.pageArea.height !== area.height
+            )
+              throw new ResponsiveScanError('viewport');
+            if (['starting', 'thinking', 'approval'].includes(project.chat.state().status))
+              throw new ResponsiveScanError('busy');
+          };
+          const cleanup = (): void => {
+            contents.off('did-start-navigation', onNavigation);
+            release();
+          };
+          try {
+            const session = await createResponsiveScanSession(contents, {
+              guard,
+              restoreMetrics: () => this.tabs.restoreViewport(tabId, contents),
+              canRestoreScroll: () =>
+                !contents.isDestroyed() &&
+                !navigated &&
+                !contents.isLoadingMainFrame() &&
+                this.tabs.observedTab(tabId)?.contents === contents &&
+                contents.getURL() === url,
+            });
+            return {
+              scan: (viewport, signal) => session.scan(viewport, signal),
+              restore: async () => {
+                try {
+                  await session.restore();
+                } finally {
+                  cleanup();
+                }
+              },
+            };
+          } catch (error) {
+            cleanup();
+            throw error;
+          }
+        },
+      });
+      this.responsiveScans.set(project.id, scan);
+    }
+    return scan;
+  }
+
+  getResponsiveScan(): ReturnType<ResponsiveScanManager['preview']> {
+    if (this.isPrivate && !this.isDeveloper) return null;
+    return this.responsiveScans.get(this.agentProject.id)?.preview() ?? null;
+  }
+
+  runResponsiveScan(tabId: unknown): ReturnType<ResponsiveScanManager['run']> {
+    if (typeof tabId !== 'string' || (this.isPrivate && !this.isDeveloper))
+      return Promise.reject(new ResponsiveScanError('unavailable'));
+    if ([...this.responsiveScans.values()].some((scan) => scan.running))
+      return Promise.reject(new ResponsiveScanError('busy'));
+    return this.responsiveScan().run(tabId);
+  }
+
+  async cancelResponsiveScan(): Promise<void> {
+    await Promise.all([...this.responsiveScans.values()].filter((scan) => scan.running).map((scan) => scan.cancel()));
+  }
+
+  async clearResponsiveScan(): Promise<void> {
+    await this.responsiveScans.get(this.agentProject.id)?.clear();
+  }
+
+  getResponsiveScanReview(): ReturnType<ResponsiveScanManager['review']> {
+    if (this.isPrivate && !this.isDeveloper) return null;
+    return this.responsiveScans.get(this.agentProject.id)?.review() ?? null;
   }
 
   async sendAgentChat(id: unknown, text: unknown, tabIds: unknown, images?: unknown): Promise<boolean> {
@@ -1345,7 +1462,9 @@ export class YalqenWindow {
   }
 }
 
-function verificationLines({ result, requests, errors }: Verification): string[] {
+function verificationLines({ result, requests, errors, lines }: Verification): string[] {
+  if (requests.length === 0 && lines.length > 0)
+    return [t(result === 'passed' ? 'agentActions.passed' : 'agentActions.failed'), ...lines].slice(0, 3);
   const failed = (status: number | null) => status !== null && (status === 0 || status >= 400);
   const status = (value: number | null) =>
     value === null ? t('agentActions.notSent') : value === 0 ? t('agentActions.requestFailed') : String(value);

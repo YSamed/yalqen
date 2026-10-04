@@ -2,18 +2,31 @@
   import { t, type MessageKey } from '../../shared/i18n';
   import { fileChange, relativePath } from '../../shared/file-change';
   import type { AgentChatPart } from '../../shared/types';
+  import { flowVerificationView } from '../../shared/verification-result';
   import Icon from '../ui/Icon.svelte';
 
   let { part, directory }: { part: Extract<AgentChatPart, { type: 'tool' }>; directory: string | null } = $props();
 
   const change = $derived(part.status === 'error' ? null : fileChange(part.name, part.input));
+  const flow = $derived(
+    part.status === 'done' && /(?:^|__)run_flow$/.test(part.name) ? flowVerificationView(part.output) : null,
+  );
   const file = $derived(change ? relativePath(change.path, directory) : null);
   const running = $derived(part.task ? part.task.status === 'running' : part.status === 'running');
-  const failed = $derived(part.status === 'error' || part.verification === 'failed' || part.task?.status === 'failed');
-  const label = $derived(file ?? (part.task?.description || part.name.replace(/^mcp__yalqen__/, 'Yalqen · ')));
+  const failed = $derived(
+    part.status === 'error' ||
+      part.verification === 'failed' ||
+      flow?.result === 'failed' ||
+      part.task?.status === 'failed',
+  );
+  const label = $derived(
+    flow
+      ? t('browserChecks.flowTool')
+      : (file ?? (part.task?.description || part.name.replace(/^mcp__yalqen__/, 'Yalqen · '))),
+  );
   const status: MessageKey = $derived.by(() => {
-    if (part.verification === 'passed') return 'agentChat.verified';
-    if (part.verification === 'failed') return 'agentChat.notVerified';
+    if (part.verification === 'passed' || flow?.result === 'passed') return 'agentChat.verified';
+    if (part.verification === 'failed' || flow?.result === 'failed') return 'agentChat.notVerified';
     const state = part.task?.status ?? part.status;
     if (state === 'done' || state === 'completed') return 'agentChat.toolDone';
     if (state === 'error' || state === 'failed') return 'agentChat.toolError';
@@ -29,7 +42,7 @@
 <details
   class="tool"
   class:failed
-  class:verified={part.verification === 'passed'}
+  class:verified={part.verification === 'passed' || flow?.result === 'passed'}
   class:subagent={part.task !== null || part.steps.length > 0}
 >
   <summary>
@@ -60,6 +73,31 @@
       {/each}
       {#if change.truncated}<div class="line more">{t('agentChat.diffTruncated')}</div>{/if}
     </div>
+  {:else if flow}
+    <div class="flow-results">
+      <p>{flow.name}</p>
+      <ul aria-label={t('browserChecks.assertions')}>
+        {#each flow.assertions as assertion, index (index)}
+          <li class:assertion-failed={!assertion.passed}>
+            <Icon name={assertion.passed ? 'check' : 'warning'} size={14} />
+            <div>
+              <strong>{assertion.summary}</strong>
+              {#if assertion.expected !== undefined}<span
+                  >{t('browserChecks.expectedValue', { value: String(assertion.expected) })}</span
+                >{/if}
+              <span
+                >{t('browserChecks.actual', {
+                  value: assertion.actual === null ? '—' : String(assertion.actual),
+                })}</span
+              >
+              {#if assertion.error}<span>{assertion.error}</span>{/if}
+            </div>
+          </li>
+        {/each}
+      </ul>
+      {#each flow.errors as error, index (index)}<p class="assertion-failed">{error}</p>{/each}
+    </div>
+    <pre>{part.input}</pre>
   {:else}
     {#if part.task?.summary}<p class="summary-text">{part.task.summary}</p>{/if}
     {#if part.steps.length}
@@ -78,6 +116,38 @@
     overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 10px;
+  }
+  .flow-results {
+    padding: 0 12px 8px;
+    font-size: var(--ai-meta);
+    overflow-wrap: anywhere;
+  }
+  .flow-results ul {
+    display: grid;
+    gap: 10px;
+    padding: 0;
+    list-style: none;
+  }
+  .flow-results li {
+    display: flex;
+    gap: 8px;
+    color: var(--success);
+  }
+  .flow-results li > :global(svg) {
+    flex: none;
+    margin-top: 2px;
+  }
+  .flow-results li > div {
+    display: grid;
+    gap: 3px;
+    color: var(--text-muted);
+  }
+  .flow-results strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .flow-results .assertion-failed {
+    color: var(--warn);
   }
   summary {
     display: flex;

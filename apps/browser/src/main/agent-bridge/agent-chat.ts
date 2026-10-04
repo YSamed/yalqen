@@ -35,6 +35,7 @@ import { parsePageText, type PageText } from './page-text.js';
 import { MAX_REFERENCES, referencePrompt, type ReferenceCapture } from './reference.js';
 import { findCommand } from './shell-command.js';
 import { READ_ONLY_TOOLS } from './tools.js';
+import { verificationResult } from '../../shared/verification-result.js';
 import { FILE_EDIT_TOOLS } from '../../shared/file-change.js';
 
 const MAX_TEXT = 64 * 1024;
@@ -54,7 +55,7 @@ const REVIEW_DENIAL = 'Yalqen is in review-only mode: do not change files. Repor
 const WORK_MODE_PROMPTS: Record<AgentWorkMode, string> = {
   normal: '',
   verify:
-    '\n\nYalqen work mode: Verify. After every code change, check the result in the browser before you finish: reload the affected local tab with reload_page (or call replay_episode when you fixed a recorded error), check get_console_errors and get_network_requests for failures, and take a screenshot with take_screenshot. End your reply with one line: "Verification: passed" or "Verification: failed – <reason>".',
+    '\n\nYalqen work mode: Verify. After every code change, check the result in the browser before you finish: reload the affected local tab with reload_page (or call replay_episode when you fixed a recorded error), check get_console_errors and get_network_requests for failures, and take a screenshot with take_screenshot. When an expected user-facing outcome is specified, inspect real selectors with get_page_structure and verify it with run_flow assertions; clean console/network logs alone do not prove that outcome. End your reply with one line: "Verification: passed" or "Verification: failed – <reason>" based on actual tool results.',
   review:
     '\n\nYalqen work mode: Review only. Do not change files and do not run commands that change the project. Investigate with the Yalqen browser tools and by reading code, then report your findings ordered by severity, each with the file and line and a suggested fix.',
   design:
@@ -64,7 +65,7 @@ const IMAGE_TYPES: AgentChatImage['mediaType'][] = ['image/png', 'image/jpeg', '
 const MAX_IMAGES = 4;
 const MAX_IMAGE_DATA = 7 * 1024 * 1024;
 const MAX_THUMBNAIL = 96 * 1024;
-const VERIFYING_TOOL = 'mcp__yalqen__replay_episode';
+const VERIFYING_TOOLS = new Set(['mcp__yalqen__replay_episode', 'mcp__yalqen__run_flow', 'run_flow', 'replay_episode']);
 const MAX_STEPS = 30;
 const STEP_FIELDS = ['file_path', 'notebook_path', 'path', 'pattern', 'command', 'url', 'query', 'description'];
 export type ChatQuery = AsyncIterable<SDKMessage> &
@@ -197,11 +198,6 @@ function stepOf(name: string, input: unknown): string {
   const detail = STEP_FIELDS.map((field) => values[field]).find((value) => typeof value === 'string');
   const line = `${name.replace(/^mcp__yalqen__/, 'Yalqen · ')}${detail ? ` ${String(detail).split('\n')[0]}` : ''}`;
   return line.length > 160 ? `${line.slice(0, 159)}…` : line;
-}
-
-function verificationOf(output: string): 'passed' | 'failed' | null {
-  const result = /"result":\s*"(passed|failed)"/.exec(output)?.[1];
-  return result === 'passed' || result === 'failed' ? result : null;
 }
 
 function escapePageData(text: string): string {
@@ -937,7 +933,8 @@ export class AgentChat {
                 if (part.type === 'tool' && part.id === block.tool_use_id) {
                   part.output = textOf(block.content);
                   part.status = block.is_error ? 'error' : 'done';
-                  if (part.name === VERIFYING_TOOL && !block.is_error) part.verification = verificationOf(part.output);
+                  if (VERIFYING_TOOLS.has(part.name) && !block.is_error)
+                    part.verification = verificationResult(part.output);
                 }
               }
           }

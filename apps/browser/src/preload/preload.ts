@@ -13,6 +13,7 @@ import {
   type YalqenApi,
 } from '../shared/types.js';
 import type { VisualComparisonPreview, VisualComparisonReview } from '../shared/visual-comparison.js';
+import type { ResponsiveScanPreview, ResponsiveScanReview } from '../shared/responsive-scan.js';
 
 function subscribe<T>(name: string, listener: (value: T) => void): () => void {
   const handler = (_event: IpcRendererEvent, value: T) => listener(value);
@@ -46,6 +47,12 @@ const api: YalqenApi = {
   clearVisualComparison: () => ipcRenderer.invoke(channel.visualComparisonClear) as Promise<void>,
   getVisualComparisonReview: () =>
     ipcRenderer.invoke(channel.visualComparisonReview) as Promise<VisualComparisonReview | null>,
+  getResponsiveScan: () => ipcRenderer.invoke(channel.responsiveScanGet) as Promise<ResponsiveScanPreview | null>,
+  runResponsiveScan: (tabId) => ipcRenderer.invoke(channel.responsiveScanRun, tabId) as Promise<ResponsiveScanPreview>,
+  cancelResponsiveScan: () => ipcRenderer.invoke(channel.responsiveScanCancel) as Promise<void>,
+  clearResponsiveScan: () => ipcRenderer.invoke(channel.responsiveScanClear) as Promise<void>,
+  getResponsiveScanReview: () =>
+    ipcRenderer.invoke(channel.responsiveScanReview) as Promise<ResponsiveScanReview | null>,
   fixAgentEpisode: (tabId) => ipcRenderer.invoke(channel.agentChatFix, tabId) as Promise<boolean>,
   interruptAgentChat: (id) => ipcRenderer.invoke(channel.agentChatInterrupt, id) as Promise<void>,
   resetAgentChat: (id) => ipcRenderer.invoke(channel.agentChatReset, id) as Promise<void>,

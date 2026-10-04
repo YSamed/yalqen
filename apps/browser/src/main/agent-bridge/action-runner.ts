@@ -16,6 +16,17 @@ import {
 import type { TabRuntime } from './runtime-buffer.js';
 import type { ErrorEpisode, TimelineEvent } from './timeline.js';
 import { compareRuns, replayPlan, type ReplayStep, type Verification } from './verification.js';
+import { acquirePageWork } from '../tabs/page-work.js';
+import {
+  abortable,
+  assertionExpression,
+  executeFlow,
+  PAGE_STRUCTURE_EXPRESSION,
+  readFlowDom,
+  validateFlowPlan,
+  type FlowObservation,
+  type FlowPlan,
+} from './flow-verification.js';
 
 const SETTLE_MS = 3000;
 const REPLAY_SETTLE_MS = 5000;
@@ -25,6 +36,7 @@ const STEP_GAP_MS = 300;
 const MAX_WAIT_MS = 30_000;
 const MAX_AGENT_RULES = 20;
 const RESEND_BODY_LIMIT = 64 * 1024;
+const PAGE_WORK_BUSY = 'A browser check is already using this tab. Try again when it finishes.';
 // The session supplies these itself, or they describe the old connection.
 const RESEND_DROPPED_HEADERS = new Set(['host', 'content-length', 'cookie', 'connection', 'accept-encoding']);
 
@@ -111,12 +123,149 @@ export class ActionRunner {
     { selector, networkIdle, timeoutMs }: { selector?: string; networkIdle: boolean; timeoutMs: number },
   ): Promise<{ matched: boolean; waited_ms: number }> {
     const { contents, runtime } = this.locate(tabId);
+    const release = acquirePageWork(contents);
+    if (!release) throw new ActionFailed(PAGE_WORK_BUSY);
     const signal = new AbortController().signal;
     const start = Date.now();
     const timeout = Math.min(timeoutMs, MAX_WAIT_MS);
-    let matched = selector ? await waitForSelector(contents, selector, timeout, signal) : true;
-    if (matched && networkIdle) matched = await waitForNetworkIdle(runtime, timeout - (Date.now() - start), signal);
-    return { matched, waited_ms: Date.now() - start };
+    try {
+      let matched = selector ? await waitForSelector(contents, selector, timeout, signal) : true;
+      if (matched && networkIdle) matched = await waitForNetworkIdle(runtime, timeout - (Date.now() - start), signal);
+      return { matched, waited_ms: Date.now() - start };
+    } finally {
+      release();
+    }
+  }
+
+  async pageStructure(tabId: string, canUseTab?: () => boolean): Promise<unknown> {
+    const context = this.locate(tabId);
+    const release = acquirePageWork(context.contents);
+    if (!release) throw new ActionFailed(PAGE_WORK_BUSY);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new ActionFailed('Reading the page structure timed out.')), 3000);
+    try {
+      return await readFlowDom(context.contents, PAGE_STRUCTURE_EXPRESSION, controller.signal, () => {
+        this.ensureFlowScope(context, canUseTab);
+      });
+    } finally {
+      clearTimeout(timer);
+      release();
+    }
+  }
+
+  runFlow(tabId: string, input: FlowPlan, canUseTab?: () => boolean) {
+    const plan = validateFlowPlan(input);
+    for (const step of plan.steps)
+      if (step.action === 'navigate' && !this.options.inScope(step.url))
+        return Promise.reject(new ActionFailed(`${step.url} is not a local development address the agent may open.`));
+    const detail = [
+      ...plan.steps.map(
+        (step, index) =>
+          `${index + 1}. ${step.action} ${step.action === 'navigate' ? step.url : step.selector}${step.action === 'fill' ? ` (${step.value.length} characters)` : ''}`,
+      ),
+      'Expected UI outcomes:',
+      ...plan.assertions.map(
+        (assertion) => `${assertion.kind} ${'selector' in assertion ? assertion.selector : assertion.expected}`,
+      ),
+    ].join('\n');
+    return this.act(
+      tabId,
+      `Verify flow: ${plan.name}`,
+      async (context, window) => {
+        const started = Date.now();
+        const controller = new AbortController();
+        const stop = () => controller.abort(new ActionFailed('Stopped by the user in Yalqen.'));
+        context.signal.addEventListener('abort', stop, { once: true });
+        if (context.signal.aborted) stop();
+        const navigation = (event: { url: string; isMainFrame: boolean; preventDefault?: () => void }) => {
+          if (event.isMainFrame && !this.options.inScope(event.url)) {
+            event.preventDefault?.();
+            controller.abort(new ActionFailed('The flow attempted to leave local development scope.'));
+          }
+        };
+        context.contents.on('will-navigate', navigation);
+        context.contents.on('will-redirect', navigation);
+        context.contents.on('did-start-navigation', navigation);
+        const ensure = () => this.ensureFlowScope(context, canUseTab);
+        try {
+          const result = await executeFlow(
+            plan,
+            {
+              ensure,
+              url: () => context.contents.getURL(),
+              perform: async (step, signal) => {
+                const sendCommand = async (method: string, params?: Record<string, unknown>): Promise<unknown> => {
+                  ensure();
+                  signal.throwIfAborted();
+                  if (method === 'DOM.querySelector') {
+                    const matched = (await abortable(
+                      context.contents.debugger.sendCommand('DOM.querySelectorAll', params),
+                      signal,
+                    )) as { nodeIds: number[] };
+                    ensure();
+                    signal.throwIfAborted();
+                    if (matched.nodeIds.length > 1)
+                      throw new ActionFailed('The action selector matches multiple elements. Use a unique selector.');
+                  }
+                  const output = await abortable(context.contents.debugger.sendCommand(method, params), signal);
+                  ensure();
+                  signal.throwIfAborted();
+                  return output;
+                };
+                const guarded = { debugger: { sendCommand } } as unknown as WebContents;
+                if (step.action === 'navigate') {
+                  ensure();
+                  if (!this.options.inScope(step.url))
+                    throw new ActionFailed('The navigation is outside local development scope.');
+                  await abortable(context.contents.loadURL(step.url), signal);
+                  ensure();
+                } else if (step.action === 'click') await click(guarded, step.selector, signal);
+                else if (step.action === 'fill') await fill(guarded, step.selector, step.value, signal);
+                else await pressEnter(guarded, step.selector, signal);
+              },
+              observe: async (assertion, signal) =>
+                (await readFlowDom(
+                  context.contents,
+                  assertionExpression(assertion),
+                  signal,
+                  ensure,
+                )) as FlowObservation,
+              runtimeErrors: () =>
+                eventsSince(context.runtime, started)
+                  .filter(
+                    (event) =>
+                      event.kind === 'exception' ||
+                      event.kind === 'console' ||
+                      (event.kind === 'response' && (event.status === 0 || (event.status ?? 0) >= 400)),
+                  )
+                  .map((event) => event.summary),
+            },
+            controller.signal,
+          );
+          window.showVerification({
+            result: result.result,
+            requests: [],
+            errors: result.errors,
+            lines: [result.name, ...result.assertions.slice(0, 3).map((assertion) => assertion.summary)],
+          });
+          return result;
+        } finally {
+          context.signal.removeEventListener('abort', stop);
+          context.contents.removeListener('will-navigate', navigation);
+          context.contents.removeListener('will-redirect', navigation);
+          context.contents.removeListener('did-start-navigation', navigation);
+        }
+      },
+      detail,
+    );
+  }
+
+  private ensureFlowScope(context: ActionContext, canUseTab?: () => boolean): void {
+    if (context.contents.isDestroyed() || !this.options.inScope(context.contents.getURL()) || canUseTab?.() === false)
+      throw new ActionFailed('The tab left the development scope allowed for this agent.');
+    const current = this.locate(context.tab.id);
+    if (current.contents !== context.contents || current.runtime !== context.runtime)
+      throw new ActionFailed('The observed page changed during the flow.');
   }
 
   replay(tabId: string, episode: ErrorEpisode) {
@@ -302,17 +451,26 @@ export class ActionRunner {
         throw new ActionDenied(`The user did not allow: ${description}.`);
       this.stopped.delete(tabId);
     }
-    runtime.timeline.closeEpisode();
+    const current = this.locate(tabId);
+    if (current.contents !== contents || current.runtime !== runtime || !this.options.inScope(contents.getURL()))
+      throw new ActionFailed('The observed page changed while waiting for permission.');
+    const release = acquirePageWork(contents);
+    if (!release) throw new ActionFailed(PAGE_WORK_BUSY);
     const controller = new AbortController();
-    window.tabs.activate(tabId);
-    window.showControl(() => {
-      controller.abort();
-      this.stopped.add(tabId);
-    });
     try {
+      runtime.timeline.closeEpisode();
+      window.tabs.activate(tabId);
+      window.showControl(() => {
+        controller.abort();
+        this.stopped.add(tabId);
+      });
       return await task({ tab, contents, runtime, signal: controller.signal }, window);
     } finally {
-      window.hideControl();
+      try {
+        window.hideControl();
+      } finally {
+        release();
+      }
     }
   }
 }

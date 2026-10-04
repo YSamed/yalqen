@@ -26,7 +26,13 @@ import {
 } from '../../shared/types.js';
 import { withoutHash } from '../address-bar/url.js';
 import { REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
-import { resizeEmulation, rotateEmulation, scaleEmulation, type Emulation } from '../devtools/devices.js';
+import {
+  applyDeviceMetrics,
+  resizeEmulation,
+  rotateEmulation,
+  scaleEmulation,
+  type Emulation,
+} from '../devtools/devices.js';
 import { attachDebugger, captureFullPage } from '../devtools/page-debugger.js';
 import { canViewSource } from '../devtools/page-export.js';
 import { NO_OVERRIDES, hasOverrides } from '../devtools/page-overrides.js';
@@ -479,6 +485,17 @@ export class TabManager {
 
   activeContents(): WebContents | null {
     return liveContents(this.active());
+  }
+
+  async restoreViewport(tabId: TabId, contents: WebContents): Promise<void> {
+    if (contents.isDestroyed() || !contents.debugger.isAttached()) return;
+    const tab = this.tabs.find((entry) => entry.id === tabId);
+    if (tab && liveContents(tab) === contents && tab.emulation) {
+      const frame = this.placement.deviceFrame(tab)!;
+      await applyDeviceMetrics(contents, tab.emulation, frame.scale);
+    } else {
+      await contents.debugger.sendCommand('Emulation.clearDeviceMetricsOverride');
+    }
   }
 
   viewSource(): void {

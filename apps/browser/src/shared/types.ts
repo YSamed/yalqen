@@ -1,4 +1,5 @@
 import type { VisualComparisonApi } from './visual-comparison.js';
+import type { ResponsiveScanApi } from './responsive-scan.js';
 
 export type TabId = string;
 
@@ -431,6 +432,11 @@ export const IpcChannel = {
   visualComparisonCapture: 'yalqen:visual-comparison-capture',
   visualComparisonClear: 'yalqen:visual-comparison-clear',
   visualComparisonReview: 'yalqen:visual-comparison-review',
+  responsiveScanGet: 'yalqen:responsive-scan-get',
+  responsiveScanRun: 'yalqen:responsive-scan-run',
+  responsiveScanCancel: 'yalqen:responsive-scan-cancel',
+  responsiveScanClear: 'yalqen:responsive-scan-clear',
+  responsiveScanReview: 'yalqen:responsive-scan-review',
   agentChatFix: 'yalqen:agent-chat-fix',
   agentChatInterrupt: 'yalqen:agent-chat-interrupt',
   agentChatReset: 'yalqen:agent-chat-reset',
@@ -459,7 +465,7 @@ export interface Wallpaper {
   split: boolean;
 }
 
-export interface YalqenApi extends VisualComparisonApi {
+export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   getState(): Promise<BrowserState>;
   // State arrives as JSON: the context bridge deep-copies objects, but a string crosses it cheaply.
   onState(listener: (serializedState: string) => void): () => void;
