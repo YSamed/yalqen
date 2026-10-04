@@ -51,6 +51,7 @@ import { observeTab, unobserveTab } from './tab-agent.js';
 import { captureSelection, highlightSelector, startPicking, type PickSession } from './tab-picker.js';
 import type { ElementSelection } from '../agent-bridge/selection.js';
 import { episodePreview } from '../agent-bridge/timeline.js';
+import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } from '../agent-bridge/page-text.js';
 import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { TabTranslation } from './tab-translation.js';
@@ -550,6 +551,16 @@ export class TabManager {
         this.changed();
         this.applyOverrides(tab, contents).catch(() => undefined);
       });
+  }
+
+  async pageText(id: TabId, timeoutMs = 2000): Promise<PageText | null> {
+    const contents = this.find(id)?.view?.webContents;
+    if (!contents || contents.isDestroyed()) return null;
+    const read = contents
+      .executeJavaScriptInIsolatedWorld(PAGE_TEXT_WORLD_ID, [{ code: PAGE_TEXT_SCRIPT }])
+      .then(parsePageText, () => null);
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    return Promise.race([read, timeout]);
   }
 
   async measureActiveStorage(timeoutMs = 500): Promise<StorageUsage | null> {

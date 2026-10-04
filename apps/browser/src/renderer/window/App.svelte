@@ -56,6 +56,7 @@
     agentPanelOpen: false,
     agentSession: { ...EMPTY_AGENT_SESSION },
     agentChat: { ...EMPTY_AGENT_CHAT },
+    agentProviders: ['claude'],
     projectRun: { ...EMPTY_PROJECT_RUN },
     agentElements: [],
     agentTerminal: false,
@@ -333,6 +334,7 @@
         open={agentVisible}
         session={agentSession}
         chat={agentChat}
+        providers={browser.agentProviders}
         run={browser.projectRun}
         elements={browser.agentElements}
         terminal={browser.agentTerminal}

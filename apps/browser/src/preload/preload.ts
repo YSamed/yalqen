@@ -4,7 +4,9 @@ import {
   type BrowserState,
   type AgentSessionState,
   type AgentTerminalSnapshot,
+  type AgentChatSession,
   type AgentChatSnapshot,
+  type AgentRewindPreview,
   type ChromeLayout,
   type UiAction,
   type Wallpaper,
@@ -43,6 +45,13 @@ const api: YalqenApi = {
   respondAgentChat: (id, requestId, allow, answers, always) =>
     ipcRenderer.invoke(channel.agentChatPermission, id, requestId, allow, answers, always) as Promise<void>,
   configureAgentChat: (id, settings) => ipcRenderer.invoke(channel.agentChatConfigure, id, settings) as Promise<void>,
+  rewindAgentChat: (id, messageId, dryRun) =>
+    ipcRenderer.invoke(channel.agentChatRewind, id, messageId, dryRun) as Promise<AgentRewindPreview | null>,
+  openAgentFile: (path) => ipcRenderer.invoke(channel.agentChatOpenFile, path) as Promise<boolean>,
+  listAgentChats: () => ipcRenderer.invoke(channel.agentChatHistory) as Promise<AgentChatSession[]>,
+  openAgentChat: (sessionId, fork) => ipcRenderer.invoke(channel.agentChatOpen, sessionId, fork) as Promise<boolean>,
+  searchAgentFiles: (query) => ipcRenderer.invoke(channel.agentChatFiles, query) as Promise<string[]>,
+  selectAgentProvider: (provider) => ipcRenderer.invoke(channel.agentChatProvider, provider) as Promise<boolean>,
   cancelQueuedAgentChat: (id, messageId) =>
     ipcRenderer.invoke(channel.agentChatCancelQueued, id, messageId) as Promise<void>,
   onAgentChat: (listener) => subscribe<string>(channel.agentChatUpdate, listener),
