@@ -81,11 +81,15 @@ import type { AgentSession, AgentConnection } from '../agent-bridge/agent-sessio
 import type { AgentChat } from '../agent-bridge/agent-chat.js';
 import { ProjectFiles } from '../agent-bridge/project-files.js';
 import { availableProviders, isAgentProvider } from '../agent-bridge/agent-providers.js';
+import { resolveAgentContexts } from '../../shared/agent-panel.js';
+import type { PageText } from '../agent-bridge/page-text.js';
 import type { ProjectRunner } from '../agent-bridge/project-runner.js';
 import { projectIncludes } from '../agent-bridge/tab-scope.js';
 import { AgentProject } from './agent-project.js';
 import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
 import { MAX_REFERENCES, referenceRef, type ReferenceCapture } from '../agent-bridge/reference.js';
+import { VisualComparisonManager, VisualComparisonError, type VisualComparisonTab } from './visual-comparison.js';
+import { captureVisualPage } from './visual-capture.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -158,6 +162,7 @@ export class YalqenWindow {
   private agentPanelOpen = false;
   private pickedElements: AgentElementRef[] = [];
   private readonly references = new Map<string, ReferenceCapture>();
+  private readonly visualComparisons = new Map<string, VisualComparisonManager>();
   private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
   // view.webContents reads undefined once the contents are destroyed; this reference keeps answering isDestroyed().
@@ -409,6 +414,8 @@ export class YalqenWindow {
         project.dispose();
         app.releaseAgentConnection(project);
       }
+      for (const comparison of this.visualComparisons.values()) comparison.clear();
+      this.visualComparisons.clear();
       const hadPrivate = this.tabs.hasPrivateTabs;
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -533,14 +540,23 @@ export class YalqenWindow {
       return this.agentSession.state();
     }
     this.selectingAgentDirectory = true;
+    const project = this.agentProject;
     try {
       const result = await dialog.showOpenDialog(this.window, {
         title: t('agentPanel.chooseProject'),
         defaultPath: this.agentSession.state().directory ?? app.getPath('documents'),
         properties: ['openDirectory'],
       });
-      if (!this.window.isDestroyed() && !result.canceled && result.filePaths[0])
-        this.agentProject.selectDirectory(result.filePaths[0]);
+      if (
+        !this.window.isDestroyed() &&
+        !result.canceled &&
+        result.filePaths[0] &&
+        this.agentProject === project &&
+        !project.busy
+      ) {
+        if (project.directory !== result.filePaths[0]) this.visualComparisons.get(project.id)?.clear();
+        project.selectDirectory(result.filePaths[0]);
+      }
     } finally {
       this.selectingAgentDirectory = false;
     }
@@ -654,6 +670,8 @@ export class YalqenWindow {
     if (!project || project.busy || this.agentProjects.length === 1) return false;
     const index = this.agentProjects.indexOf(project);
     this.agentProjects.splice(index, 1);
+    this.visualComparisons.get(project.id)?.clear();
+    this.visualComparisons.delete(project.id);
     project.dispose();
     this.app.releaseAgentConnection(project);
     if (this.activeProjectId === project.id)
@@ -716,28 +734,105 @@ export class YalqenWindow {
     );
   }
 
-  async sendAgentChat(id: unknown, text: unknown, tabId: unknown, images?: unknown): Promise<boolean> {
+  private visualComparisonTab(tabId: string): VisualComparisonTab | null {
+    if (this.isPrivate && !this.isDeveloper) return null;
+    const tab = this.tabs.snapshotFor(tabId);
+    if (!tab) return null;
+    return {
+      tabId,
+      url: tab.url,
+      title: tab.title,
+      isPrivate: tab.isPrivate && !this.isDeveloper,
+      observed: tab.agentObserved,
+    };
+  }
+
+  private visualComparison(): VisualComparisonManager {
+    const project = this.agentProject;
+    const projectId = project.id;
+    let comparison = this.visualComparisons.get(projectId);
+    if (!comparison) {
+      comparison = new VisualComparisonManager(
+        async (tabId) => {
+          const directory = project.directory;
+          const tab = this.visualComparisonTab(tabId);
+          const contents = this.tabs.activeContents();
+          if (!tab || this.tabs.activeTabId !== tabId || !contents || contents.isDestroyed())
+            throw new VisualComparisonError('unavailable');
+          if (contents.isLoadingMainFrame()) throw new VisualComparisonError('busy');
+          const capture = await captureVisualPage(contents);
+          if (this.tabs.activeTabId !== tabId || this.agentProject !== project || project.directory !== directory)
+            throw new VisualComparisonError('stale');
+          if (contents.isDestroyed() || contents.isLoadingMainFrame()) throw new VisualComparisonError('navigation');
+          return { ...tab, ...capture };
+        },
+        (tabId) => this.visualComparisonTab(tabId),
+      );
+      this.visualComparisons.set(projectId, comparison);
+    }
+    return comparison;
+  }
+
+  getVisualComparison(): ReturnType<VisualComparisonManager['preview']> {
+    if (this.isPrivate && !this.isDeveloper) return null;
+    return this.visualComparisons.get(this.agentProject.id)?.preview() ?? null;
+  }
+
+  captureVisualComparison(stage: unknown, tabId: unknown): ReturnType<VisualComparisonManager['capture']> {
+    if ((stage !== 'before' && stage !== 'after') || typeof tabId !== 'string')
+      return Promise.reject(new VisualComparisonError('unavailable'));
+    return this.visualComparison().capture(stage, tabId);
+  }
+
+  clearVisualComparison(): void {
+    this.visualComparisons.get(this.agentProject.id)?.clear();
+  }
+
+  getVisualComparisonReview(): ReturnType<VisualComparisonManager['review']> {
+    if (this.isPrivate && !this.isDeveloper) return null;
+    return this.visualComparisons.get(this.agentProject.id)?.review() ?? null;
+  }
+
+  async sendAgentChat(id: unknown, text: unknown, tabIds: unknown, images?: unknown): Promise<boolean> {
     if (this.isPrivate && !this.isDeveloper) return false;
-    const tab =
-      typeof tabId === 'string'
-        ? this.state().tabs.find((entry) => entry.id === tabId && !entry.isPrivate && /^https?:/.test(entry.url))
-        : null;
-    if (tabId !== null && !tab) return false;
-    // Pages outside local development are read only when the user attaches them to this message.
-    const page = tab && !tab.agentObserved ? await this.tabs.pageText(tab.id) : null;
-    if (tab && !tab.agentObserved && !page) return false;
-    if (tab?.agentObserved) this.agentProject.claim(tab.url);
+    const project = this.agentProject;
+    const chat = project.chat;
+    const directory = project.directory;
+    const sessionId = chat.state().id;
     const elements = this.pickedElements;
     const references = elements
       .map((element) => this.references.get(element.id))
       .filter((reference) => reference !== undefined);
-    const sent = await this.agentChat.send(
-      id,
-      text,
-      tab ? { id: tab.id, title: tab.title, url: tab.url, local: tab.agentObserved } : null,
-      elements,
-      { images, page, references },
+    const contexts = resolveAgentContexts(tabIds, this.state().tabs, this.isDeveloper);
+    if (!contexts) return false;
+    // Pages outside local development are read only when the user attaches them to this message.
+    const pages: Record<string, PageText> = Object.create(null);
+    const external = contexts.filter((context) => !context.local);
+    const capturedPages = await Promise.all(external.map((context) => this.tabs.pageText(context.id)));
+    if (capturedPages.some((page) => !page)) return false;
+    external.forEach((context, index) => {
+      pages[context.id] = capturedPages[index]!;
+    });
+    // A closed, navigated or newly private tab must not send content under its old attachment.
+    const current = resolveAgentContexts(
+      contexts.map((context) => context.id),
+      this.state().tabs,
+      this.isDeveloper,
     );
+    if (
+      this.agentProject !== project ||
+      this.agentChat !== chat ||
+      project.directory !== directory ||
+      chat.state().id !== sessionId
+    )
+      return false;
+    if (
+      !current ||
+      contexts.some((context, index) => context.url !== current[index].url || context.local !== current[index].local)
+    )
+      return false;
+    for (const context of contexts) if (context.local) project.claim(context.url);
+    const sent = await chat.send(id, text, contexts, elements, { images, pages, references });
     if (sent) {
       this.setPickedElements(this.pickedElements.filter((element) => !elements.includes(element)));
       this.pushState();

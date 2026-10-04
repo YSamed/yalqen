@@ -511,10 +511,21 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.projectRunStart, (event) => agentSenderWindow(event)?.startProjectRun() ?? false);
   ipcMain.handle(IpcChannel.projectRunStop, (event) => agentSenderWindow(event)?.projectRunner.stop());
   ipcMain.handle(IpcChannel.agentChatSnapshot, (event) => agentSenderWindow(event)?.agentChat.snapshot() ?? null);
+  ipcMain.handle(IpcChannel.visualComparisonGet, (event) => agentSenderWindow(event)?.getVisualComparison() ?? null);
+  ipcMain.handle(IpcChannel.visualComparisonCapture, (event, stage: unknown, tabId: unknown) => {
+    const window = agentSenderWindow(event);
+    if (!window) throw new Error('visual-comparison:unavailable');
+    return window.captureVisualComparison(stage, tabId);
+  });
+  ipcMain.handle(IpcChannel.visualComparisonClear, (event) => agentSenderWindow(event)?.clearVisualComparison());
+  ipcMain.handle(
+    IpcChannel.visualComparisonReview,
+    (event) => agentSenderWindow(event)?.getVisualComparisonReview() ?? null,
+  );
   ipcMain.handle(
     IpcChannel.agentChatSend,
-    (event, id: unknown, text: unknown, tabId: unknown, images: unknown) =>
-      agentSenderWindow(event)?.sendAgentChat(id, text, tabId, images) ?? false,
+    (event, id: unknown, text: unknown, tabIds: unknown, images: unknown) =>
+      agentSenderWindow(event)?.sendAgentChat(id, text, tabIds, images) ?? false,
   );
   ipcMain.handle(
     IpcChannel.agentChatFix,

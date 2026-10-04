@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { t } from '../../shared/i18n';
-  import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel';
+  import { EMPTY_AGENT_CHAT, MAX_CHAT_TABS } from '../../shared/agent-panel';
   import type {
     AgentChatImage,
+    AgentChatMessage,
     AgentChatPermission,
     AgentChatSettings,
     AgentChatSnapshot,
@@ -27,17 +28,24 @@
   import { modelName } from './format';
   import ComposerSettings from './ComposerSettings.svelte';
   import ProviderMark from './ProviderMark.svelte';
+  import TabAttachments from './TabAttachments.svelte';
+  import VisualComparison from './VisualComparison.svelte';
+  import type { VisualComparisonReview } from '../../shared/visual-comparison';
 
   let {
     open,
     directory,
     activeTab,
+    tabs,
+    developer,
     elements,
     onchoose,
   }: {
     open: boolean;
     directory: string | null;
     activeTab: TabSnapshot | null;
+    tabs: TabSnapshot[];
+    developer: boolean;
     elements: AgentElementRef[];
     onchoose(): void;
   } = $props();
@@ -55,8 +63,10 @@
     gemini: 'https://github.com/google-gemini/gemini-cli',
   } as const;
   let draft = $state('');
-  let attachment: TabSnapshot | null = $state.raw(null);
+  let attachments: TabSnapshot[] = $state.raw([]);
+  let attachmentChanged = $state(false);
   let images: AgentChatImage[] = $state.raw([]);
+  let comparisonOpen = $state(false);
   let imageRejected = $state(false);
   let dismissed: string[] = $state([]);
   let fileInput: HTMLInputElement | undefined = $state();
@@ -141,10 +151,16 @@
     const option = options.find((item) => item.value === value);
     return option ? (option.short ?? option.label) : '';
   }
+
+  function contextsOf(message: AgentChatMessage) {
+    return message.contexts ?? (message.context ? [message.context] : []);
+  }
   const trigger = $derived(findTrigger(draft, caret));
   const agentName = $derived(AGENT_NAMES[snapshot.state.provider]);
-  const attachable = $derived(activeTab && !activeTab.isPrivate && /^https?:/.test(activeTab.url) ? activeTab : null);
-  const mentionTab = $derived(attachable);
+  const attachable = $derived(
+    activeTab && (!activeTab.isPrivate || developer) && /^https?:/.test(activeTab.url) ? activeTab : null,
+  );
+  const attachableTabs = $derived(tabs.filter((tab) => (!tab.isPrivate || developer) && /^https?:/.test(tab.url)));
   const suggestions: (ComposerSuggestion & { insert: string | null })[] = $derived.by(() => {
     if (!trigger || dismissedTrigger === `${trigger.kind}:${trigger.start}`) return [];
     const query = trigger.query.toLowerCase();
@@ -160,16 +176,17 @@
           insert: `/${command.name}`,
         }));
     const tab =
-      mentionTab && (mentionTab.title.toLowerCase().includes(query) || mentionTab.url.toLowerCase().includes(query))
-        ? [
-            {
-              key: `tab:${mentionTab.id}`,
-              label: mentionTab.title,
-              detail: mentionTab.url,
+      attachments.length < MAX_CHAT_TABS
+        ? attachableTabs
+            .filter((item) => !attachments.some((attached) => attached.id === item.id))
+            .filter((item) => item.title.toLowerCase().includes(query) || item.url.toLowerCase().includes(query))
+            .map((item) => ({
+              key: `tab:${item.id}`,
+              label: item.title || item.url,
+              detail: item.url,
               icon: 'globe' as const,
               insert: null,
-            },
-          ]
+            }))
         : [];
     return [
       ...tab,
@@ -250,13 +267,22 @@
     const text = draft;
     try {
       const sent = images;
-      if (!(await window.yalqen.sendAgentChat(snapshot.state.id, text, attachment?.id ?? null, sent)))
+      const attached = attachments;
+      if (
+        !(await window.yalqen.sendAgentChat(
+          snapshot.state.id,
+          text,
+          attached.map((tab) => tab.id),
+          sent,
+        ))
+      )
         throw new Error('Unavailable');
       if (draft === text) {
         draft = '';
-        attachment = null;
+        if (attachments === attached) attachments = [];
       }
       if (images === sent) images = [];
+      attachmentChanged = false;
       failed = false;
       follow = true;
     } catch {
@@ -274,6 +300,23 @@
       follow = true;
     } catch {
       failed = true;
+    }
+  }
+
+  async function reviewComparison(review: VisualComparisonReview): Promise<boolean> {
+    if (loading || sending || snapshot.state.status === 'starting' || snapshot.queue.length >= 5) return false;
+    sending = true;
+    try {
+      const accepted = await window.yalqen.sendAgentChat(snapshot.state.id, review.text, [review.tabId], review.images);
+      if (accepted) {
+        failed = false;
+        follow = true;
+      }
+      return accepted;
+    } catch {
+      return false;
+    } finally {
+      sending = false;
     }
   }
 
@@ -380,7 +423,10 @@
   async function pickSuggestion(index: number): Promise<void> {
     const item = suggestions[index];
     if (!item || !trigger) return;
-    if (item.insert === null && mentionTab) attachment = mentionTab;
+    if (item.insert === null) {
+      const tab = attachableTabs.find((tab) => item.key === `tab:${tab.id}`);
+      if (tab) addTab(tab);
+    }
     const next = complete(draft, trigger, item.insert ?? '');
     draft = next.text;
     caret = next.caret;
@@ -420,9 +466,30 @@
 
   function suggest(prompt: string): void {
     draft = prompt;
-    if (attachable?.agentObserved) attachment = attachable;
+    if (attachable?.agentObserved) addTab(attachable);
     textarea?.focus();
   }
+
+  function addTab(tab: TabSnapshot): void {
+    if (attachments.length >= MAX_CHAT_TABS || attachments.some((item) => item.id === tab.id)) return;
+    attachments = [...attachments, tab];
+    attachmentChanged = false;
+  }
+
+  function toggleTab(tab: TabSnapshot): void {
+    if (attachments.some((item) => item.id === tab.id)) attachments = attachments.filter((item) => item.id !== tab.id);
+    else addTab(tab);
+  }
+
+  $effect(() => {
+    const valid = attachments.filter((attached) =>
+      attachableTabs.some((tab) => tab.id === attached.id && tab.url === attached.url),
+    );
+    if (valid.length !== attachments.length) {
+      attachments = valid;
+      attachmentChanged = true;
+    }
+  });
 
   $effect(() => {
     void suggestions.length;
@@ -508,9 +575,11 @@
             aria-label={message.role === 'user' ? t('agentChat.you') : agentName}
           >
             <div class="message-content">
-              {#if message.context}<div class="message-context" title={message.context.url}>
-                  <Icon name="globe" size={12} /><span>{message.context.title}</span>
-                </div>{/if}
+              {#each contextsOf(message) as context (context.id)}
+                <div class="message-context" title={context.url}>
+                  <Icon name="globe" size={12} /><span>{context.title}</span>
+                </div>
+              {/each}
               {#if message.workMode !== 'normal'}<div class="message-context work-mode">
                   <Icon name="sparkle" size={12} /><span>{workModeLabels[message.workMode]}</span>
                 </div>{/if}
@@ -668,6 +737,15 @@
       />
     </div>
   {/if}
+  {#if comparisonOpen}
+    {#key directory}<VisualComparison
+        {activeTab}
+        {developer}
+        disabled={loading || sending || snapshot.state.status === 'starting' || snapshot.queue.length >= 5}
+        onreview={reviewComparison}
+        onclose={() => (comparisonOpen = false)}
+      />{/key}
+  {/if}
   <form
     class="composer"
     onsubmit={(event) => {
@@ -712,18 +790,19 @@
         </div>
       {/if}
       {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
-      {#if attachment || elements.length}
+      {#if attachmentChanged}<p class="image-hint" role="status">{t('agentChat.tabChanged')}</p>{/if}
+      {#if attachments.length || elements.length}
         <div class="chips">
-          {#if attachment}
+          {#each attachments as attachment (attachment.id)}
             <div class="attachment" title={attachment.url}>
               <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
                 size="sm"
                 icon="close"
                 label={t('agentChat.removeTab')}
-                onclick={() => (attachment = null)}
+                onclick={() => (attachments = attachments.filter((tab) => tab.id !== attachment.id))}
               />
             </div>
-          {/if}
+          {/each}
           {#each elements as element (element.id)}
             <ElementChip {element} onremove={() => void window.yalqen.removeAgentElement(element.id)} />
           {/each}
@@ -770,24 +849,19 @@
         }}
       />
       <div class="composer-controls">
-        <IconButton
-          icon="globe"
-          label={t('agentPanel.addTab')}
-          variant={attachment ? 'tonal' : 'ghost'}
-          disabled={!attachable}
-          aria-pressed={Boolean(attachment)}
-          title={!attachable
-            ? t('agentChat.attachHint')
-            : attachable.agentObserved
-              ? `${t('agentPanel.addTab')}: ${attachable.url}`
-              : t('agentChat.pageSendHint', { url: attachable.url })}
-          onclick={() => (attachment = attachment ? null : attachable)}
-        />
+        <TabAttachments tabs={attachableTabs} selected={attachments} ontoggle={toggleTab} />
         <IconButton
           icon="image"
           label={t('agentChat.addImage')}
           disabled={images.length >= MAX_IMAGES}
           onclick={() => fileInput?.click()}
+        />
+        <IconButton
+          icon="screenshot"
+          label={t('visualComparison.open')}
+          variant={comparisonOpen ? 'tonal' : 'ghost'}
+          aria-expanded={comparisonOpen}
+          onclick={() => (comparisonOpen = !comparisonOpen)}
         />
         {@render settings()}
         <span class="spacer"></span>

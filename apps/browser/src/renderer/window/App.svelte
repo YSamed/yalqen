@@ -403,6 +403,8 @@
         terminal={browser.agentTerminal}
         projects={browser.agentProjects}
         projectId={browser.agentProjectId}
+        tabs={browser.tabs}
+        developer={browser.developer}
         {activeTab}
         width={agentWidth}
         collapsed={agentContentCollapsed}

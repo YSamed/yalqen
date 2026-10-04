@@ -1,4 +1,61 @@
-import type { AgentChatState, AgentSessionState, AgentTerminalSize, ProjectRunState } from './types.js';
+import type {
+  AgentChatContext,
+  AgentChatState,
+  AgentSessionState,
+  AgentTerminalSize,
+  ProjectRunState,
+  TabSnapshot,
+} from './types.js';
+
+export const MAX_CHAT_TABS = 5;
+
+export function normalizeAgentContexts(value: unknown): AgentChatContext[] | null {
+  const entries = value === null ? [] : Array.isArray(value) ? value : [value];
+  const contexts: AgentChatContext[] = [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (
+      !entry ||
+      typeof entry !== 'object' ||
+      typeof entry.id !== 'string' ||
+      !entry.id ||
+      typeof entry.title !== 'string' ||
+      typeof entry.url !== 'string' ||
+      !/^https?:/.test(entry.url) ||
+      (entry.local !== undefined && typeof entry.local !== 'boolean')
+    )
+      return null;
+    if (seen.has(entry.id)) continue;
+    seen.add(entry.id);
+    contexts.push({
+      id: entry.id,
+      title: entry.title,
+      url: entry.url,
+      ...(entry.local !== undefined && { local: entry.local }),
+    } as AgentChatContext);
+    if (contexts.length > MAX_CHAT_TABS) return null;
+  }
+  return contexts;
+}
+
+export function resolveAgentContexts(
+  tabIds: unknown,
+  tabs: readonly Pick<TabSnapshot, 'id' | 'title' | 'url' | 'isPrivate' | 'agentObserved'>[],
+  developerWindow = false,
+): AgentChatContext[] | null {
+  if (tabIds === null) return [];
+  const ids = typeof tabIds === 'string' ? [tabIds] : tabIds;
+  if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string' || !id)) return null;
+  const unique = [...new Set<string>(ids)];
+  if (unique.length > MAX_CHAT_TABS) return null;
+  const contexts: AgentChatContext[] = [];
+  for (const id of unique) {
+    const tab = tabs.find((entry) => entry.id === id);
+    if (!tab || (tab.isPrivate && !developerWindow) || !/^https?:/.test(tab.url)) return null;
+    contexts.push({ id: tab.id, title: tab.title, url: tab.url, local: tab.agentObserved });
+  }
+  return contexts;
+}
 
 export const EMPTY_AGENT_CHAT: AgentChatState = {
   id: null,

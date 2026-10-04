@@ -122,6 +122,14 @@ Not yet measured: Pages Router, webpack with React 18 outside Next.js, and large
 
 The window's agent panel runs Claude through the native chat interface (`agent-chat.ts`) or an optional PTY terminal (`agent-session.ts`). Both receive the local MCP connection. The terminal can receive the current tab reference, while chat messages can include tabs and picked elements. `project-runner.ts` starts the selected project's development server and opens its local URL in a tab.
 
+### Multiple chat tabs
+
+The chat composer attaches up to five tabs through its tab picker or `@` suggestions. Local tabs contribute MCP references; explicitly attached external pages contribute text and the current text selection, sharing a 50,000-character budget. Page data is escaped and marked as untrusted. Queued messages keep the captured content and tab metadata in selection order. Closed, navigated or newly private tabs are removed from the composer; changes during capture reject the send. Private browsing tabs stay excluded, while the developer window follows the same effective privacy policy as its agent connection.
+
+### Visual comparison
+
+The composer's screenshot button opens a before/after comparison for an observed local development page. Captures must use the same tab, URL and viewport; navigation, resizing during capture and project changes reject or clear the comparison. A project keeps one comparison in memory, with each image reduced to at most 1,600 pixels on its longest edge and 2 MiB. Images stay outside `BrowserState` and are cleared when the project closes or its directory changes. The user can compare them side by side or with a slider, then send both images to chat for an AI review. The review describes visible evidence; it does not claim a pixel diff or a complete accessibility or functional test.
+
 ## Naming
 
 `yalqen` everywhere: the MCP server name, tool descriptions, the setup command and the docs.

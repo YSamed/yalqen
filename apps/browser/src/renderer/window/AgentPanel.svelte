@@ -26,6 +26,8 @@
     chat,
     providers,
     activeTab,
+    tabs,
+    developer,
     run,
     elements,
     terminal,
@@ -42,6 +44,8 @@
     chat: AgentChatState;
     providers: AgentProviderId[];
     activeTab: TabSnapshot | null;
+    tabs: TabSnapshot[];
+    developer: boolean;
     run: ProjectRunState;
     elements: AgentElementRef[];
     terminal: boolean;
@@ -369,6 +373,8 @@
         open={open && !collapsed && view === 'chat' && !historyOpen}
         directory={session.directory}
         {activeTab}
+        {tabs}
+        {developer}
         {elements}
         onchoose={() => void chooseProject()}
       />

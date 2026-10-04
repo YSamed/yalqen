@@ -1,3 +1,5 @@
+import type { VisualComparisonApi } from './visual-comparison.js';
+
 export type TabId = string;
 
 export const INTERNAL_SCHEME = 'yalqen';
@@ -289,6 +291,7 @@ export interface AgentChatMessage {
   role: 'user' | 'assistant';
   parts: AgentChatPart[];
   context: AgentChatContext | null;
+  contexts?: AgentChatContext[];
   elements: AgentElementRef[];
   episode: AgentEpisodePreview | null;
   images: string[];
@@ -424,6 +427,10 @@ export const IpcChannel = {
   agentOutput: 'yalqen:agent-output',
   agentChatSnapshot: 'yalqen:agent-chat-snapshot',
   agentChatSend: 'yalqen:agent-chat-send',
+  visualComparisonGet: 'yalqen:visual-comparison-get',
+  visualComparisonCapture: 'yalqen:visual-comparison-capture',
+  visualComparisonClear: 'yalqen:visual-comparison-clear',
+  visualComparisonReview: 'yalqen:visual-comparison-review',
   agentChatFix: 'yalqen:agent-chat-fix',
   agentChatInterrupt: 'yalqen:agent-chat-interrupt',
   agentChatReset: 'yalqen:agent-chat-reset',
@@ -452,7 +459,7 @@ export interface Wallpaper {
   split: boolean;
 }
 
-export interface YalqenApi {
+export interface YalqenApi extends VisualComparisonApi {
   getState(): Promise<BrowserState>;
   // State arrives as JSON: the context bridge deep-copies objects, but a string crosses it cheaply.
   onState(listener: (serializedState: string) => void): () => void;
@@ -474,7 +481,7 @@ export interface YalqenApi {
   sendAgentChat(
     sessionId: string | null,
     text: string,
-    tabId: TabId | null,
+    tabIds: TabId | TabId[] | null,
     images?: AgentChatImage[],
   ): Promise<boolean>;
   fixAgentEpisode(tabId: TabId): Promise<boolean>;

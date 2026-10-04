@@ -1,4 +1,5 @@
 import type { AgentChatMessage, AgentChatPart, AgentChatSession } from '../../shared/types.js';
+import { normalizeAgentContexts } from '../../shared/agent-panel.js';
 
 const MAX_TEXT = 64 * 1024;
 const MAX_TITLE = 200;
@@ -45,12 +46,23 @@ function userText(text: string): string {
   return text.replace(/^\[The user reverted[^\]]*\]\n\n/, '').split('\n\nYalqen ')[0];
 }
 
+function userContexts(text: string) {
+  const stored = text.split('\n\nYalqen attached tabs:\n')[1]?.split('\n')[0];
+  if (!stored) return [];
+  try {
+    return normalizeAgentContexts(JSON.parse(stored)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 function message(id: string, role: AgentChatMessage['role'], parts: AgentChatPart[]): AgentChatMessage {
   return {
     id,
     role,
     parts,
     context: null,
+    contexts: [],
     elements: [],
     episode: null,
     images: [],
@@ -85,8 +97,14 @@ export function historyMessages(stored: readonly StoredMessage[], limit: number)
           part.output = textOf(block.content).slice(0, MAX_TEXT);
           part.status = block.is_error ? 'error' : 'done';
         }
-      const text = userText(textOf(body.content)).trim();
-      if (text) messages.push(message(entry.uuid, 'user', [{ type: 'text', text: text.slice(0, MAX_TEXT) }]));
+      const prompt = textOf(body.content);
+      const text = userText(prompt).trim();
+      if (text) {
+        const entryMessage = message(entry.uuid, 'user', [{ type: 'text', text: text.slice(0, MAX_TEXT) }]);
+        entryMessage.contexts = userContexts(prompt);
+        entryMessage.context = entryMessage.contexts[0] ?? null;
+        messages.push(entryMessage);
+      }
     } else if (entry.type === 'assistant' && Array.isArray(body.content)) {
       const id = body.id ?? entry.uuid;
       const previous = messages.at(-1);
