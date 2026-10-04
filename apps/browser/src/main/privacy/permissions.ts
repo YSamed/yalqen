@@ -6,13 +6,7 @@ import { JsonFile } from '../storage/json-file.js';
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
 export type Decision = 'allow' | 'deny';
 
-const SITE_PERMISSIONS: readonly SitePermission[] = [
-  'camera',
-  'microphone',
-  'geolocation',
-  'notifications',
-  'popups',
-];
+const SITE_PERMISSIONS: readonly SitePermission[] = ['camera', 'microphone', 'geolocation', 'notifications', 'popups'];
 
 export function permissionLabel(kind: SitePermission): string {
   return t(`permissions.${kind}` satisfies MessageKey);

@@ -395,11 +395,7 @@ function untrusted(value: unknown): ToolResult {
   return { content: [{ type: 'text', text: `${UNTRUSTED_NOTE}\n\n${JSON.stringify(value, null, 2)}` }] };
 }
 
-function filterConsole(
-  entries: readonly ConsoleEntry[],
-  since?: number,
-  includeWarnings = false,
-): ConsoleEntry[] {
+function filterConsole(entries: readonly ConsoleEntry[], since?: number, includeWarnings = false): ConsoleEntry[] {
   return entries.filter(
     (entry) =>
       (entry.level === 'error' || (includeWarnings && entry.level === 'warning')) &&
