@@ -737,6 +737,11 @@ export const en = {
   'permissionHandlers.allow': 'Allow',
   'permissionHandlers.allowOnce': 'Allow This Time',
   'permissionHandlers.block': 'Block',
+  'permissionHandlers.systemCameraOff': 'macOS is blocking Yalqen from using the camera',
+  'permissionHandlers.systemMicrophoneOff': 'macOS is blocking Yalqen from using the microphone',
+  'permissionHandlers.systemDetail': 'Turn on Yalqen in System Settings › Privacy & Security, then reload the page.',
+  'permissionHandlers.openSystemSettings': 'Open System Settings',
+  'permissionHandlers.notNow': 'Not Now',
 
   'window.titleDeveloper': 'Yalqen (developer)',
   'window.titlePrivate': 'Yalqen (private)',

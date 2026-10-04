@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const electronBinary = require('electron');
-const { productName } = require('../package.json');
+const { productName, build } = require('../package.json');
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function brandedMacApp() {
@@ -34,6 +34,7 @@ function brandedMacApp() {
     CFBundleDisplayName: productName,
     CFBundleIdentifier: 'com.yalqen.browser.prototype',
     CFBundleIconFile: 'yalqen-fitted.icns',
+    ...build.mac.extendInfo,
   })) {
     execFileSync('plutil', ['-replace', key, '-string', value, plist]);
   }

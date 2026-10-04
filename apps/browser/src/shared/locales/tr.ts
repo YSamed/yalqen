@@ -738,6 +738,12 @@ export const tr: Record<MessageKey, string> = {
   'permissionHandlers.allow': 'İzin ver',
   'permissionHandlers.allowOnce': 'Bu seferlik izin ver',
   'permissionHandlers.block': 'Engelle',
+  'permissionHandlers.systemCameraOff': 'macOS, Yalqen’in kamerayı kullanmasını engelliyor',
+  'permissionHandlers.systemMicrophoneOff': 'macOS, Yalqen’in mikrofonu kullanmasını engelliyor',
+  'permissionHandlers.systemDetail':
+    'Sistem Ayarları › Gizlilik ve Güvenlik bölümünden Yalqen’i açın, ardından sayfayı yenileyin.',
+  'permissionHandlers.openSystemSettings': 'Sistem Ayarları’nı aç',
+  'permissionHandlers.notNow': 'Şimdi değil',
 
   'window.titleDeveloper': 'Yalqen (geliştirici)',
   'window.titlePrivate': 'Yalqen (gizli)',

@@ -1,4 +1,12 @@
-import { dialog, type BaseWindow, type MessageBoxOptions, type Session, type WebContents } from 'electron';
+import {
+  dialog,
+  shell,
+  systemPreferences,
+  type BaseWindow,
+  type MessageBoxOptions,
+  type Session,
+  type WebContents,
+} from 'electron';
 import {
   permissionOrigin,
   permissionQuestion,
@@ -9,6 +17,23 @@ import {
 import { t } from '../../shared/i18n.js';
 
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
+
+type MediaDevice = 'camera' | 'microphone';
+
+const PRIVACY_PANES: Record<MediaDevice, string> = {
+  camera: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Camera',
+  microphone: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
+};
+
+const mediaDevices = (kinds: readonly SitePermission[]): MediaDevice[] =>
+  kinds.filter((kind): kind is MediaDevice => kind === 'camera' || kind === 'microphone');
+
+async function macMediaAccess(device: MediaDevice): Promise<boolean> {
+  const status = systemPreferences.getMediaAccessStatus(device);
+  if (status === 'granted') return true;
+  if (status === 'not-determined') return systemPreferences.askForMediaAccess(device);
+  return false;
+}
 
 interface PermissionHandlerOptions {
   sessions: readonly (readonly [Session, boolean])[];
@@ -50,6 +75,30 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
     return answer;
   };
 
+  // A site allowed in Yalqen still gets a silent, empty stream until macOS lets Yalqen itself use the device.
+  const systemAccess = async (contents: WebContents, kinds: readonly SitePermission[]): Promise<boolean> => {
+    if (process.platform !== 'darwin') return true;
+    for (const device of mediaDevices(kinds)) {
+      if (await macMediaAccess(device)) continue;
+      const parent = parentOf(contents);
+      const options: MessageBoxOptions = {
+        type: 'warning',
+        message: t(
+          device === 'camera' ? 'permissionHandlers.systemCameraOff' : 'permissionHandlers.systemMicrophoneOff',
+        ),
+        detail: t('permissionHandlers.systemDetail'),
+        buttons: [t('permissionHandlers.openSystemSettings'), t('permissionHandlers.notNow')],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      };
+      const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
+      if (response === 0) void shell.openExternal(PRIVACY_PANES[device]);
+      return false;
+    }
+    return true;
+  };
+
   for (const [browsing, isPrivate] of sessions) {
     browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) {
@@ -63,11 +112,9 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
         return;
       }
       const decided = storeFor(isPrivate).decide(origin, kinds);
-      if (decided !== 'ask') {
-        callback(decided === 'allow');
-        return;
-      }
-      ask(contents, isPrivate, origin, kinds).then(callback, () => callback(false));
+      const siteAllowed =
+        decided === 'ask' ? ask(contents, isPrivate, origin, kinds) : Promise.resolve(decided === 'allow');
+      siteAllowed.then((allowed) => allowed && systemAccess(contents, kinds)).then(callback, () => callback(false));
     });
     browsing.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) return true;
