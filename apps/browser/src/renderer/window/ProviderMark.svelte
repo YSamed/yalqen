@@ -92,12 +92,8 @@
     opacity: 1;
     animation: spin 1s linear infinite;
   }
-  .working.claude .glyph {
-    animation: spin 2.4s linear infinite;
-  }
-  .working.claude-code .glyph {
-    animation: hop 0.6s steps(2, jump-none) infinite alternate;
-  }
+  .working.claude .glyph,
+  .working.claude-code .glyph,
   .working.codex .glyph,
   .working.gemini .glyph {
     animation: breathe 1.4s ease-in-out infinite;
@@ -126,11 +122,6 @@
   @keyframes spin {
     to {
       transform: rotate(360deg);
-    }
-  }
-  @keyframes hop {
-    to {
-      transform: translateY(-2px);
     }
   }
   @keyframes breathe {
