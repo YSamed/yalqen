@@ -1,12 +1,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { t, type MessageKey } from '../../shared/i18n.js';
+import type { PermissionDecision as Decision, SitePermission } from '../../shared/types.js';
 import { JsonFile } from '../storage/json-file.js';
 
-export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
-export type Decision = 'allow' | 'deny';
+export type { Decision, SitePermission };
 
-const SITE_PERMISSIONS: readonly SitePermission[] = ['camera', 'microphone', 'geolocation', 'notifications', 'popups'];
+export const SITE_PERMISSIONS: readonly SitePermission[] = [
+  'camera',
+  'microphone',
+  'geolocation',
+  'notifications',
+  'popups',
+];
+
+export function isSitePermission(value: unknown): value is SitePermission {
+  return SITE_PERMISSIONS.includes(value as SitePermission);
+}
 
 export function permissionLabel(kind: SitePermission): string {
   return t(`permissions.${kind}` satisfies MessageKey);
@@ -99,6 +109,15 @@ export class PermissionStore {
     }
     if (site?.size === 0) this.sites.delete(origin);
     this.save();
+  }
+
+  origins(): string[] {
+    return [...this.sites.keys()].sort();
+  }
+
+  forget(origin: string): void {
+    for (const key of this.once) if (key.startsWith(`${origin} `)) this.once.delete(key);
+    if (this.sites.delete(origin)) this.save();
   }
 
   allowOnce(origin: string, kinds: readonly SitePermission[]): void {

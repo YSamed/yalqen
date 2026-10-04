@@ -158,6 +158,10 @@ const { contextBridge } = require('electron');
 const view = ${JSON.stringify(settingsView)};
 const agent = ${JSON.stringify(agentView)};
 const none = () => () => {};
+const permissions = {
+  sites: [{ origin: 'https://meet.example.com', permissions: [{ kind: 'camera', decision: 'allow' }, { kind: 'microphone', decision: 'allow' }] }],
+  system: { camera: 'granted', microphone: 'denied', screen: 'not-determined' },
+};
 contextBridge.exposeInMainWorld('yalqenSettings', {
   get: async () => view, update: async () => view, onChange: none, clearData: async () => {}, makeDefault: async () => view,
   processUsage: async () => ({ totalMB: 512, groups: [], pages: [] }), checkForUpdates: async () => {}, installUpdate: async () => {},
@@ -169,6 +173,8 @@ contextBridge.exposeInMainWorld('yalqenSettings', {
   agentBridge: async () => agent, copyAgentSetup: async () => true, regenerateAgentToken: async () => agent,
   addAgentToClaude: async () => ({ ok: true }),
   onAgentBridgeChange: none,
+  sitePermissions: async () => permissions, setSitePermission: async () => permissions,
+  forgetSitePermissions: async () => permissions, openSystemSettings: async () => {},
 });`,
     window: (material) => `
 const { contextBridge } = require('electron');

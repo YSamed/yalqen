@@ -1,5 +1,14 @@
-import { RequestRulesChannel, SettingsChannel, type ClearDataRequest, type SettingsView } from '../../shared/types.js';
+import {
+  RequestRulesChannel,
+  SettingsChannel,
+  SitePermissionsChannel,
+  type ClearDataRequest,
+  type SettingsView,
+  type SitePermissionsView,
+} from '../../shared/types.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
+import { isSitePermission, permissionOrigin, type PermissionStore } from '../privacy/permissions.js';
+import { isSystemDevice, openSystemSettings, systemAccessStatus } from '../privacy/system-access.js';
 import { sanitizeClearRequest } from '../library/clear-data.js';
 import { makeDefaultBrowser } from './default-browser.js';
 import { processUsage } from './process-metrics.js';
@@ -12,7 +21,15 @@ export interface SettingsIpcHost {
   clearData(request: ClearDataRequest): Promise<void>;
   updater: Updater;
   requestRules: RequestRuleStore;
+  permissions: PermissionStore;
   onRequestRulesSaved(): void;
+}
+
+function sitePermissionsView(store: PermissionStore): SitePermissionsView {
+  return {
+    sites: store.origins().map((origin) => ({ origin, permissions: store.list(origin) })),
+    system: systemAccessStatus(),
+  };
 }
 
 export function registerSettingsIpc(host: SettingsIpcHost): void {
@@ -32,6 +49,25 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
   handleSettingsCall(SettingsChannel.processUsage, () => processUsage());
   handleSettingsCall(SettingsChannel.checkForUpdates, () => host.updater.check());
   handleSettingsCall(SettingsChannel.installUpdate, () => host.updater.install());
+  handleSettingsCall(SitePermissionsChannel.list, () => sitePermissionsView(host.permissions));
+  handleSettingsCall(SitePermissionsChannel.set, (_event, origin, kind, decision) => {
+    if (
+      typeof origin === 'string' &&
+      permissionOrigin(origin) === origin &&
+      isSitePermission(kind) &&
+      (decision === 'allow' || decision === 'deny' || decision === null)
+    ) {
+      host.permissions.set(origin, [kind], decision);
+    }
+    return sitePermissionsView(host.permissions);
+  });
+  handleSettingsCall(SitePermissionsChannel.forget, (_event, origin) => {
+    if (typeof origin === 'string') host.permissions.forget(origin);
+    return sitePermissionsView(host.permissions);
+  });
+  handleSettingsCall(SitePermissionsChannel.openSystemSettings, (_event, device) => {
+    if (isSystemDevice(device)) openSystemSettings(device);
+  });
   handleSettingsCall(RequestRulesChannel.list, () => host.requestRules.list());
   handleSettingsCall(RequestRulesChannel.save, (_event, rules) => {
     const saved = host.requestRules.save(rules);

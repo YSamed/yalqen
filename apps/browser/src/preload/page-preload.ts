@@ -8,6 +8,7 @@ import {
   RequestRulesChannel,
   SETTINGS_URL,
   SettingsChannel as settingsChannel,
+  SitePermissionsChannel,
   type AgentBridgeView,
   type AgentSetupKind,
   type ClaudeSetupResult,
@@ -20,6 +21,7 @@ import {
   type SettingsApi,
   type SettingsValues,
   type SettingsView,
+  type SitePermissionsView,
   type SubmittedCredential,
 } from '../shared/types.js';
 import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
@@ -141,6 +143,13 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     requestRules: () => ipcRenderer.invoke(RequestRulesChannel.list) as Promise<RequestRule[]>,
     saveRequestRules: (rules: RequestRule[]) =>
       ipcRenderer.invoke(RequestRulesChannel.save, rules) as Promise<RequestRule[]>,
+    sitePermissions: () => ipcRenderer.invoke(SitePermissionsChannel.list) as Promise<SitePermissionsView>,
+    setSitePermission: (origin, kind, decision) =>
+      ipcRenderer.invoke(SitePermissionsChannel.set, origin, kind, decision) as Promise<SitePermissionsView>,
+    forgetSitePermissions: (origin: string) =>
+      ipcRenderer.invoke(SitePermissionsChannel.forget, origin) as Promise<SitePermissionsView>,
+    openSystemSettings: (device) =>
+      ipcRenderer.invoke(SitePermissionsChannel.openSystemSettings, device) as Promise<void>,
     extensions: () => ipcRenderer.invoke(ExtensionsChannel.list) as Promise<ExtensionInfo[]>,
     installExtension: () => ipcRenderer.invoke(ExtensionsChannel.install) as Promise<string | null>,
     installExtensionFromStore: (input: string) =>

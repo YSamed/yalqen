@@ -57,6 +57,7 @@ import { installAppMenu } from './app/app-menu.js';
 import { getLocale, pickLocale, setLocale, t } from '../shared/i18n.js';
 import { installPasswordHandlers, safeStorageCipher } from './privacy/password-handlers.js';
 import { PasswordStore } from './privacy/passwords.js';
+import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
 import { RequestRuleStore } from './devtools/request-rules.js';
@@ -167,6 +168,10 @@ function startBrowser(): void {
       [developer, true],
     ],
     storeFor: permissionsFor,
+    parentOf: (contents) => windowOf(contents)?.window,
+  });
+  installDisplayMediaHandler({
+    sessions: [daily, privateBrowsing, developer],
     parentOf: (contents) => windowOf(contents)?.window,
   });
   installPasswordHandlers({
@@ -598,6 +603,7 @@ function startBrowser(): void {
     clearData,
     updater,
     requestRules,
+    permissions,
     onRequestRulesSaved: () => eachWindow((window) => window.tabs.refreshRequestRules()),
   });
 

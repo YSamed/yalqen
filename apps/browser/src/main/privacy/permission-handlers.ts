@@ -1,12 +1,4 @@
-import {
-  dialog,
-  shell,
-  systemPreferences,
-  type BaseWindow,
-  type MessageBoxOptions,
-  type Session,
-  type WebContents,
-} from 'electron';
+import { dialog, type BaseWindow, type MessageBoxOptions, type Session, type WebContents } from 'electron';
 import {
   permissionOrigin,
   permissionQuestion,
@@ -15,25 +7,14 @@ import {
   type SitePermission,
 } from './permissions.js';
 import { t } from '../../shared/i18n.js';
+import { openSystemSettings, requestSystemAccess } from './system-access.js';
 
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 
 type MediaDevice = 'camera' | 'microphone';
 
-const PRIVACY_PANES: Record<MediaDevice, string> = {
-  camera: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Camera',
-  microphone: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
-};
-
 const mediaDevices = (kinds: readonly SitePermission[]): MediaDevice[] =>
   kinds.filter((kind): kind is MediaDevice => kind === 'camera' || kind === 'microphone');
-
-async function macMediaAccess(device: MediaDevice): Promise<boolean> {
-  const status = systemPreferences.getMediaAccessStatus(device);
-  if (status === 'granted') return true;
-  if (status === 'not-determined') return systemPreferences.askForMediaAccess(device);
-  return false;
-}
 
 interface PermissionHandlerOptions {
   sessions: readonly (readonly [Session, boolean])[];
@@ -77,9 +58,8 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
 
   // A site allowed in Yalqen still gets a silent, empty stream until macOS lets Yalqen itself use the device.
   const systemAccess = async (contents: WebContents, kinds: readonly SitePermission[]): Promise<boolean> => {
-    if (process.platform !== 'darwin') return true;
     for (const device of mediaDevices(kinds)) {
-      if (await macMediaAccess(device)) continue;
+      if (await requestSystemAccess(device)) continue;
       const parent = parentOf(contents);
       const options: MessageBoxOptions = {
         type: 'warning',
@@ -93,7 +73,7 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
         noLink: true,
       };
       const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
-      if (response === 0) void shell.openExternal(PRIVACY_PANES[device]);
+      if (response === 0) openSystemSettings(device);
       return false;
     }
     return true;

@@ -720,6 +720,24 @@ export interface ProcessUsage {
   pages: PageProcess[];
 }
 
+export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
+export type PermissionDecision = 'allow' | 'deny';
+export type SystemDevice = 'camera' | 'microphone' | 'screen';
+export type SystemAccess = 'granted' | 'denied' | 'restricted' | 'not-determined' | 'unknown';
+
+export interface SitePermissionsView {
+  sites: { origin: string; permissions: { kind: SitePermission; decision: PermissionDecision }[] }[];
+  // Null where the OS has no per-app device switches (not macOS).
+  system: Record<SystemDevice, SystemAccess> | null;
+}
+
+export const SitePermissionsChannel = {
+  list: 'yalqen-permissions:list',
+  set: 'yalqen-permissions:set',
+  forget: 'yalqen-permissions:forget',
+  openSystemSettings: 'yalqen-permissions:open-system-settings',
+} as const;
+
 export const RequestRulesChannel = {
   list: 'yalqen-rules:list',
   save: 'yalqen-rules:save',
@@ -809,6 +827,14 @@ export interface SettingsApi {
   installUpdate(): Promise<void>;
   requestRules(): Promise<RequestRule[]>;
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
+  sitePermissions(): Promise<SitePermissionsView>;
+  setSitePermission(
+    origin: string,
+    kind: SitePermission,
+    decision: PermissionDecision | null,
+  ): Promise<SitePermissionsView>;
+  forgetSitePermissions(origin: string): Promise<SitePermissionsView>;
+  openSystemSettings(device: SystemDevice): Promise<void>;
   extensions(): Promise<ExtensionInfo[]>;
   installExtension(): Promise<string | null>;
   installExtensionFromStore(input: string): Promise<string | null>;

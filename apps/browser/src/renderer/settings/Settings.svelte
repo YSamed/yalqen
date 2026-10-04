@@ -12,6 +12,7 @@
   import PerformancePane from './PerformancePane.svelte';
   import PrivacyPane from './PrivacyPane.svelte';
   import RequestRules from './RequestRules.svelte';
+  import SitePermissions from './SitePermissions.svelte';
 
   const api = window.yalqenSettings;
 
@@ -86,6 +87,7 @@
           <AppearancePane values={view.values} {update} />
         {:else if pane === 'privacy'}
           <PrivacyPane values={view.values} {update} />
+          <SitePermissions />
         {:else if pane === 'passwords'}
           <Passwords />
         {:else if pane === 'extensions'}

@@ -110,3 +110,18 @@ test('a store without a directory saves nothing', () => {
   assert.equal(store.decide(SITE, ['camera']), 'allow');
   assert.equal(store.file, null);
 });
+
+test('settings can list every remembered site and forget one entirely', () => {
+  const other = 'https://maps.example.com';
+  const store = new PermissionStore(null);
+  store.set(other, ['geolocation'], 'deny');
+  store.set(SITE, ['camera', 'microphone'], 'allow');
+  store.allowOnce(SITE, ['notifications']);
+  assert.deepEqual(store.origins(), [SITE, other].sort());
+
+  store.forget(SITE);
+  assert.deepEqual(store.origins(), [other]);
+  assert.equal(store.decide(SITE, ['notifications']), 'ask');
+  assert.equal(permissions.isSitePermission('camera'), true);
+  assert.equal(permissions.isSitePermission('screen'), false);
+});
