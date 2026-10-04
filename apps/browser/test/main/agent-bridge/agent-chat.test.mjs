@@ -492,3 +492,71 @@ test('shows a plan from ExitPlanMode for approval', async (t) => {
   );
   assert.equal(chat.snapshot().permissions[0].plan, '1. Change the button');
 });
+
+test('asks Claude to read and verify a recorded error episode', async (t) => {
+  const { chat, calls } = fixture(t);
+  const episode = { id: 'yk_ep_abc12', lines: ['12:00:01  POST /api/login → 500'] };
+  const context = { id: 'tab-1', title: 'Local page', url: 'http://localhost:3000/' };
+  assert.equal(await chat.send(null, 'Fix it', context, [], { episode }), true);
+  const { content } = (await calls.queries[0].input.next()).value.message;
+  assert.match(content, /yk_ep_abc12/);
+  assert.match(content, /get_error_episode/);
+  assert.match(content, /replay_episode/);
+  assert.deepEqual(chat.snapshot().messages[0].episode, episode);
+});
+
+test('sends pasted images to Claude and keeps only thumbnails in the conversation', async (t) => {
+  const { chat, calls } = fixture(t);
+  const thumbnail = 'data:image/jpeg;base64,/9j/AAAA';
+  const image = { mediaType: 'image/png', data: 'iVBORw0KGgo=', thumbnail };
+  for (const images of [
+    [{ ...image, mediaType: 'image/svg+xml' }],
+    [{ ...image, data: 'not base64!' }],
+    [{ ...image, thumbnail: 'https://example.com/x.jpg' }],
+    Array(5).fill(image),
+    'image',
+  ])
+    assert.equal(await chat.send(null, 'Look', null, [], { images }), false);
+  assert.equal(calls.queries.length, 0);
+  assert.equal(await chat.send(null, 'Look at this', null, [], { images: [image] }), true);
+  const { content } = (await calls.queries[0].input.next()).value.message;
+  assert.equal(content[0].type, 'text');
+  assert.match(content[0].text, /Look at this/);
+  assert.deepEqual(content[1], {
+    type: 'image',
+    source: { type: 'base64', media_type: 'image/png', data: 'iVBORw0KGgo=' },
+  });
+  const [message] = chat.snapshot().messages;
+  assert.deepEqual(message.images, [thumbnail]);
+  assert.doesNotMatch(JSON.stringify(chat.snapshot()), /iVBORw0KGgo/);
+});
+
+test('marks replay_episode results as verified or still failing', async (t) => {
+  const { chat, calls } = fixture(t);
+  await chat.send(null, 'Verify');
+  const client = calls.queries[0];
+  client.emit(
+    assistant('reply', [
+      { type: 'tool_use', id: 'replay-1', name: 'mcp__yalqen__replay_episode', input: {} },
+      { type: 'tool_use', id: 'replay-2', name: 'mcp__yalqen__replay_episode', input: {} },
+      { type: 'tool_use', id: 'read-1', name: 'Read', input: {} },
+    ]),
+  );
+  client.emit({
+    type: 'user',
+    message: {
+      content: [
+        { type: 'tool_result', tool_use_id: 'replay-1', content: '{\n  "result": "passed"\n}', is_error: false },
+        { type: 'tool_result', tool_use_id: 'replay-2', content: '{\n  "result": "failed"\n}', is_error: false },
+        { type: 'tool_result', tool_use_id: 'read-1', content: '"result": "passed"', is_error: false },
+      ],
+    },
+  });
+  client.emit(result());
+  await tick();
+  const parts = chat.snapshot().messages.find((message) => message.id === 'reply').parts;
+  assert.deepEqual(
+    parts.map((part) => part.verification),
+    ['passed', 'failed', null],
+  );
+});

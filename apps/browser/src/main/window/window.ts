@@ -577,7 +577,22 @@ export class YalqenWindow {
     return this.projectRunner.start();
   }
 
-  async sendAgentChat(id: unknown, text: unknown, tabId: unknown): Promise<boolean> {
+  async fixAgentEpisode(tabId: unknown): Promise<boolean> {
+    if (this.isPrivate && !this.isDeveloper) return false;
+    const tab =
+      typeof tabId === 'string' ? this.state().tabs.find((entry) => entry.id === tabId && entry.agentObserved) : null;
+    if (!tab?.agentEpisode) return false;
+    if (!this.agentPanelOpen) this.toggleAgentPanel();
+    return this.agentChat.send(
+      this.agentChat.state().id,
+      t('agentChat.fixPrompt', { id: tab.agentEpisode.id }),
+      { id: tab.id, title: tab.title, url: tab.url },
+      [],
+      { episode: tab.agentEpisode },
+    );
+  }
+
+  async sendAgentChat(id: unknown, text: unknown, tabId: unknown, images?: unknown): Promise<boolean> {
     if (this.isPrivate && !this.isDeveloper) return false;
     const tab =
       typeof tabId === 'string' ? this.state().tabs.find((entry) => entry.id === tabId && entry.agentObserved) : null;
@@ -588,6 +603,7 @@ export class YalqenWindow {
       text,
       tab ? { id: tab.id, title: tab.title, url: tab.url } : null,
       elements,
+      { images },
     );
     if (sent) {
       this.pickedElements = this.pickedElements.filter((element) => !elements.includes(element));
@@ -851,6 +867,7 @@ export class YalqenWindow {
             run: (id) => this.runDevCommand(id),
             openDevTools: () => tabs.openDevTools(),
             copyEpisode: (id) => clipboard.writeText(t('devMenu.episodePrompt', { id })),
+            fixEpisode: () => void this.fixAgentEpisode(tab.id),
             copyPlaywrightTest: (id) => {
               const source = tabs.agentPlaywrightTest(id);
               if (source) clipboard.writeText(source);

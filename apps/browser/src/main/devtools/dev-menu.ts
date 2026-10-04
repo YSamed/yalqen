@@ -19,6 +19,7 @@ interface DevMenuState {
 
 interface DevMenuActions {
   run(id: DevCommandId): void;
+  fixEpisode?(): void;
   copyEpisode?(id: string): void;
   copyPlaywrightTest?(id: string): void;
   openDevTools(): void;
@@ -37,6 +38,7 @@ export function devMenuTemplate(state: DevMenuState, actions: DevMenuActions): M
       ? [
           { label: t('devMenu.latestEpisode', { id: episode.id }), enabled: false },
           ...episode.lines.map((line) => ({ label: line, enabled: false })),
+          ...(actions.fixEpisode ? [{ label: t('devMenu.fixWithClaude'), click: actions.fixEpisode }] : []),
           { label: t('devMenu.copyEpisode', { id: episode.id }), click: () => actions.copyEpisode?.(episode.id) },
           { label: t('devMenu.copyPlaywrightTest'), click: () => actions.copyPlaywrightTest?.(episode.id) },
           { type: 'separator' as const },

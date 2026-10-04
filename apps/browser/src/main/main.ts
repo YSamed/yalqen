@@ -486,8 +486,12 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.agentChatSnapshot, (event) => agentSenderWindow(event)?.agentChat.snapshot() ?? null);
   ipcMain.handle(
     IpcChannel.agentChatSend,
-    (event, id: unknown, text: unknown, tabId: unknown) =>
-      agentSenderWindow(event)?.sendAgentChat(id, text, tabId) ?? false,
+    (event, id: unknown, text: unknown, tabId: unknown, images: unknown) =>
+      agentSenderWindow(event)?.sendAgentChat(id, text, tabId, images) ?? false,
+  );
+  ipcMain.handle(
+    IpcChannel.agentChatFix,
+    (event, tabId: unknown) => agentSenderWindow(event)?.fixAgentEpisode(tabId) ?? false,
   );
   ipcMain.handle(IpcChannel.agentChatInterrupt, (event, id: unknown) =>
     agentSenderWindow(event)?.agentChat.interrupt(id),

@@ -35,7 +35,9 @@ const api: YalqenApi = {
   startProjectRun: () => ipcRenderer.invoke(channel.projectRunStart) as Promise<boolean>,
   stopProjectRun: () => ipcRenderer.invoke(channel.projectRunStop) as Promise<void>,
   getAgentChat: () => ipcRenderer.invoke(channel.agentChatSnapshot) as Promise<AgentChatSnapshot | null>,
-  sendAgentChat: (id, text, tabId) => ipcRenderer.invoke(channel.agentChatSend, id, text, tabId) as Promise<boolean>,
+  sendAgentChat: (id, text, tabId, images) =>
+    ipcRenderer.invoke(channel.agentChatSend, id, text, tabId, images) as Promise<boolean>,
+  fixAgentEpisode: (tabId) => ipcRenderer.invoke(channel.agentChatFix, tabId) as Promise<boolean>,
   interruptAgentChat: (id) => ipcRenderer.invoke(channel.agentChatInterrupt, id) as Promise<void>,
   resetAgentChat: (id) => ipcRenderer.invoke(channel.agentChatReset, id) as Promise<void>,
   respondAgentChat: (id, requestId, allow, answers, always) =>

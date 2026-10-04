@@ -3,6 +3,7 @@
   import { t } from '../../shared/i18n';
   import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel';
   import type {
+    AgentChatImage,
     AgentChatPermission,
     AgentChatSettings,
     AgentChatSnapshot,
@@ -40,6 +41,10 @@
   });
   let draft = $state('');
   let attachment: TabSnapshot | null = $state.raw(null);
+  let images: AgentChatImage[] = $state.raw([]);
+  let imageRejected = $state(false);
+  let dismissed: string[] = $state([]);
+  let fileInput: HTMLInputElement | undefined = $state();
   let failed = $state(false);
   let sending = $state(false);
   let cancelling = $state(false);
@@ -82,6 +87,12 @@
     )?.efforts ?? [],
   );
   const usage = $derived(snapshot.state.usage);
+  const episode = $derived.by(() => {
+    const candidate = activeTab?.agentObserved ? activeTab.agentEpisode : null;
+    if (!candidate || dismissed.includes(candidate.id)) return null;
+    const handled = [...snapshot.messages, ...snapshot.queue].some((message) => message.episode?.id === candidate.id);
+    return handled ? null : candidate;
+  });
   const numbers = new Intl.NumberFormat(undefined, { notation: 'compact' });
   const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
   const prompts = [
@@ -89,6 +100,9 @@
     { title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors') },
     { title: t('agentChat.suggestionDesign'), prompt: t('agentChat.promptDesign') },
   ];
+  const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+  const MAX_IMAGES = 4;
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const errors = {
     'claude-not-found': t('agentPanel.claudeNotFound'),
     'invalid-directory': t('agentPanel.invalidDirectory'),
@@ -124,12 +138,14 @@
     sending = true;
     const text = draft;
     try {
-      if (!(await window.yalqen.sendAgentChat(snapshot.state.id, text, attachment?.id ?? null)))
+      const sent = images;
+      if (!(await window.yalqen.sendAgentChat(snapshot.state.id, text, attachment?.id ?? null, sent)))
         throw new Error('Unavailable');
       if (draft === text) {
         draft = '';
         attachment = null;
       }
+      if (images === sent) images = [];
       failed = false;
       follow = true;
     } catch {
@@ -138,6 +154,68 @@
       sending = false;
       textarea?.focus();
     }
+  }
+
+  async function fixEpisode(): Promise<void> {
+    if (!activeTab || !episode) return;
+    try {
+      if (!(await window.yalqen.fixAgentEpisode(activeTab.id))) throw new Error('Unavailable');
+      follow = true;
+    } catch {
+      failed = true;
+    }
+  }
+
+  function base64Of(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).slice(String(reader.result).indexOf(',') + 1));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function thumbnailOf(bitmap: ImageBitmap): string {
+    const scale = Math.min(1, 160 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.7);
+  }
+
+  async function addImages(files: Iterable<File>): Promise<void> {
+    imageRejected = false;
+    for (const file of files) {
+      if (!IMAGE_TYPES.includes(file.type) || file.size > MAX_IMAGE_BYTES || images.length >= MAX_IMAGES) {
+        imageRejected = true;
+        continue;
+      }
+      try {
+        const bitmap = await createImageBitmap(file);
+        const thumbnail = thumbnailOf(bitmap);
+        bitmap.close();
+        const data = await base64Of(file);
+        if (images.length >= MAX_IMAGES) continue;
+        images = [...images, { mediaType: file.type as AgentChatImage['mediaType'], data, thumbnail }];
+      } catch {
+        imageRejected = true;
+      }
+    }
+  }
+
+  function pasteImages(event: ClipboardEvent): void {
+    const files = [...(event.clipboardData?.files ?? [])].filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    void addImages(files);
+  }
+
+  function dropImages(event: DragEvent): void {
+    const files = [...(event.dataTransfer?.files ?? [])].filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+    event.preventDefault();
+    void addImages(files);
   }
 
   async function configure(settings: AgentChatSettings): Promise<void> {
@@ -262,8 +340,14 @@
               {#if message.context}<div class="message-context" title={message.context.url}>
                   <Icon name="globe" size={11} /><span>{message.context.title}</span>
                 </div>{/if}
+              {#if message.episode}<div class="message-context episode-ref">
+                  <Icon name="warning" size={11} /><span>{message.episode.id}</span>
+                </div>{/if}
               {#if message.elements.length}<div class="chips">
                   {#each message.elements as element (element.id)}<ElementChip {element} />{/each}
+                </div>{/if}
+              {#if message.images.length}<div class="thumbnails">
+                  {#each message.images as image, index (index)}<img src={image} alt="" />{/each}
                 </div>{/if}
               {#each message.parts as part, index (index)}
                 {#if part.type === 'text'}
@@ -271,22 +355,35 @@
                       text={part.text}
                     />{/if}
                 {:else}
-                  <details class="tool" class:error={part.status === 'error'}>
+                  <details
+                    class="tool"
+                    class:error={part.status === 'error'}
+                    class:verified={part.verification === 'passed'}
+                    class:unverified={part.verification === 'failed'}
+                  >
                     <summary>
                       <Icon
-                        name={part.status === 'done' ? 'check' : part.status === 'error' ? 'warning' : 'code'}
+                        name={part.status === 'error' || part.verification === 'failed'
+                          ? 'warning'
+                          : part.status === 'done'
+                            ? 'check'
+                            : 'code'}
                         size={12}
                       />
                       <span class="tool-name">{part.name.replace(/^mcp__yalqen__/, 'Yalqen · ')}</span>
                       <span class="tool-status"
                         >{t(
-                          part.status === 'done'
-                            ? 'agentChat.toolDone'
-                            : part.status === 'error'
-                              ? 'agentChat.toolError'
-                              : part.status === 'stopped'
-                                ? 'agentChat.toolStopped'
-                                : 'agentChat.toolRunning',
+                          part.verification === 'passed'
+                            ? 'agentChat.verified'
+                            : part.verification === 'failed'
+                              ? 'agentChat.notVerified'
+                              : part.status === 'done'
+                                ? 'agentChat.toolDone'
+                                : part.status === 'error'
+                                  ? 'agentChat.toolError'
+                                  : part.status === 'stopped'
+                                    ? 'agentChat.toolStopped'
+                                    : 'agentChat.toolRunning',
                         )}</span
                       >
                       <Icon name="down" size={10} />
@@ -403,6 +500,22 @@
         />{/if}
     </div>
   {/if}
+  {#if directory && episode && activeTab}
+    <div class="episode" role="status">
+      <Icon name="warning" size={13} />
+      <div class="episode-text">
+        <strong>{t('agentChat.fixTitle')}</strong>
+        <span title={episode.lines.join('\n')}>{episode.lines.at(-1) ?? episode.id}</span>
+      </div>
+      <Button size="sm" variant="primary" onclick={fixEpisode}>{t('agentChat.fixWithClaude')}</Button>
+      <IconButton
+        size="sm"
+        icon="close"
+        label={t('agentChat.dismissError')}
+        onclick={() => (dismissed = [...dismissed, episode.id])}
+      />
+    </div>
+  {/if}
   {#if directory}
     <form
       class="composer"
@@ -410,6 +523,10 @@
         event.preventDefault();
         void send();
       }}
+      ondragover={(event) => {
+        if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
+      }}
+      ondrop={dropImages}
     >
       {#if snapshot.queue.length}
         <ol class="queue" aria-label={t('agentChat.queued')}>
@@ -427,6 +544,22 @@
           {/each}
         </ol>
       {/if}
+      {#if images.length}
+        <div class="thumbnails">
+          {#each images as image, index (index)}
+            <div class="thumbnail">
+              <img src={image.thumbnail} alt="" />
+              <IconButton
+                size="sm"
+                icon="close"
+                label={t('agentChat.removeImage')}
+                onclick={() => (images = images.filter((entry) => entry !== image))}
+              />
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
       {#if attachment || elements.length}
         <div class="chips">
           {#if attachment}
@@ -452,7 +585,19 @@
         aria-label={t('agentChat.message')}
         placeholder={t('agentChat.placeholder')}
         disabled={loading}
+        onpaste={pasteImages}
         onkeydown={composeKey}></textarea>
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        multiple
+        hidden
+        onchange={(event) => {
+          void addImages([...(event.currentTarget.files ?? [])]);
+          event.currentTarget.value = '';
+        }}
+      />
       <div class="composer-controls">
         <Button
           size="sm"
@@ -462,6 +607,13 @@
           title={activeTab?.agentObserved ? activeTab.url : t('agentChat.localTabHint')}
           onclick={() => (attachment = attachment ? null : activeTab)}>{t('agentPanel.addTab')}</Button
         >
+        <IconButton
+          size="sm"
+          icon="image"
+          label={t('agentChat.addImage')}
+          disabled={images.length >= MAX_IMAGES}
+          onclick={() => fileInput?.click()}
+        />
         <Select
           variant="ghost"
           aria-label={t('agentChat.modeLabel')}
@@ -846,6 +998,73 @@
   }
   .spacer {
     flex: 1;
+  }
+  .episode {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 14px 8px;
+    padding: 8px 6px 8px 12px;
+    border-radius: 12px;
+    background: var(--surface-hover);
+    color: var(--warn);
+  }
+  .episode > :global(svg) {
+    flex: none;
+  }
+  .episode-text {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .episode-text strong {
+    font-weight: 600;
+  }
+  .episode-text span {
+    overflow: hidden;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .episode-ref {
+    color: var(--warn);
+  }
+  .thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .thumbnails img {
+    display: block;
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .thumbnail {
+    position: relative;
+  }
+  .thumbnail :global(button) {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--surface-strong);
+  }
+  .image-hint {
+    margin: 0 0 7px;
+    color: var(--warn);
+    font-size: 11px;
+  }
+  .tool.verified summary {
+    color: var(--success);
+  }
+  .tool.unverified summary {
+    color: var(--warn);
   }
   .composer-controls :global(.send-button) {
     flex: none;

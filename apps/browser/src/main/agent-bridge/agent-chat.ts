@@ -14,9 +14,11 @@ import type {
 import { EMPTY_AGENT_CHAT } from '../../shared/agent-panel.js';
 import type {
   AgentChatContext,
+  AgentChatImage,
   AgentChatSettings,
   AgentEffort,
   AgentElementRef,
+  AgentEpisodePreview,
   AgentPermissionMode,
   AgentChatMessage,
   AgentChatPart,
@@ -33,6 +35,11 @@ const MAX_HISTORY = 1024 * 1024;
 const MAX_QUEUE = 5;
 const PERMISSION_MODES: AgentPermissionMode[] = ['default', 'acceptEdits', 'plan'];
 const EFFORTS: AgentEffort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+const IMAGE_TYPES: AgentChatImage['mediaType'][] = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const MAX_IMAGES = 4;
+const MAX_IMAGE_DATA = 7 * 1024 * 1024;
+const MAX_THUMBNAIL = 96 * 1024;
+const VERIFYING_TOOL = 'mcp__yalqen__replay_episode';
 type ChatQuery = AsyncIterable<SDKMessage> &
   Pick<
     Query,
@@ -136,9 +143,45 @@ function isPermissionMode(value: unknown): value is AgentPermissionMode {
   return PERMISSION_MODES.includes(value as AgentPermissionMode);
 }
 
-function promptOf(text: string, context: AgentChatContext | null, elements: AgentElementRef[]): string {
+function imagesOf(value: unknown): AgentChatImage[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_IMAGES) return null;
+  const images: AgentChatImage[] = [];
+  for (const image of value) {
+    if (!image || typeof image !== 'object') return null;
+    const { mediaType, data, thumbnail } = image as AgentChatImage;
+    if (
+      !IMAGE_TYPES.includes(mediaType) ||
+      typeof data !== 'string' ||
+      !data ||
+      data.length > MAX_IMAGE_DATA ||
+      !/^[A-Za-z0-9+/]+=*$/.test(data) ||
+      typeof thumbnail !== 'string' ||
+      thumbnail.length > MAX_THUMBNAIL ||
+      !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(thumbnail)
+    )
+      return null;
+    images.push({ mediaType, data, thumbnail });
+  }
+  return images;
+}
+
+function verificationOf(output: string): 'passed' | 'failed' | null {
+  const result = /"result":\s*"(passed|failed)"/.exec(output)?.[1];
+  return result === 'passed' || result === 'failed' ? result : null;
+}
+
+function promptOf(
+  text: string,
+  context: AgentChatContext | null,
+  elements: AgentElementRef[],
+  episode: AgentEpisodePreview | null,
+): string {
   return (
     text +
+    (episode
+      ? `\n\nYalqen recorded this error as ${episode.id}. Read it with get_error_episode first. After the fix, verify it in the browser: call replay_episode with episode_id ${episode.id} when the episode has recorded clicks or key presses; otherwise call reload_page and then get_console_errors and get_network_requests. Report whether the verification passed.`
+      : '') +
     (context
       ? `\n\nYalqen browser context:\n${JSON.stringify({ tab_id: context.id, url: context.url, title: context.title })}`
       : '') +
@@ -168,7 +211,7 @@ export class AgentChat {
       settle(result: PermissionResult): void;
     }
   >();
-  private queue: AgentChatMessage[] = [];
+  private queue: { message: AgentChatMessage; images: AgentChatImage[] }[] = [];
   private costBase = 0;
   private turnCost = 0;
   private client: ChatQuery | null = null;
@@ -193,7 +236,7 @@ export class AgentChat {
       state: this.state(),
       revision: this.revision,
       messages: this.messages,
-      queue: this.queue,
+      queue: this.queue.map((entry) => entry.message),
       permissions: [...this.permissions.values()].map((permission) => permission.view),
     });
   }
@@ -241,7 +284,7 @@ export class AgentChat {
   cancelQueued(id: unknown, messageId: unknown): void {
     if (id !== this.view.id || typeof messageId !== 'string') return;
     const length = this.queue.length;
-    this.queue = this.queue.filter((message) => message.id !== messageId);
+    this.queue = this.queue.filter((entry) => entry.message.id !== messageId);
     if (this.queue.length !== length) this.publish();
   }
 
@@ -250,19 +293,25 @@ export class AgentChat {
     text: unknown,
     context: AgentChatContext | null = null,
     elements: AgentElementRef[] = [],
+    attachments: { episode?: AgentEpisodePreview | null; images?: unknown } = {},
   ): Promise<boolean> {
     if (this.disposed || id !== this.view.id || typeof text !== 'string' || !text.trim() || text.length > MAX_TEXT)
       return false;
+    const images = imagesOf(attachments.images);
+    if (!images) return false;
+    const message: AgentChatMessage = {
+      id: randomUUID(),
+      role: 'user',
+      parts: [{ type: 'text', text: text.trim() }],
+      context,
+      elements,
+      episode: attachments.episode ?? null,
+      images: images.map((image) => image.thumbnail),
+    };
     if (this.view.status === 'starting') return false;
     if (this.client && ['thinking', 'approval'].includes(this.view.status)) {
       if (this.queue.length >= MAX_QUEUE) return false;
-      this.queue.push({
-        id: randomUUID(),
-        role: 'user',
-        parts: [{ type: 'text', text: text.trim() }],
-        context,
-        elements,
-      });
+      this.queue.push({ message, images });
       this.publish();
       return true;
     }
@@ -345,12 +394,13 @@ export class AgentChat {
         return false;
       }
     }
-    this.deliver({ id: randomUUID(), role: 'user', parts: [{ type: 'text', text: text.trim() }], context, elements });
+    this.deliver(message, images);
     return true;
   }
 
-  private deliver(message: AgentChatMessage): void {
+  private deliver(message: AgentChatMessage, images: AgentChatImage[]): void {
     const text = message.parts[0]?.type === 'text' ? message.parts[0].text : '';
+    const prompt = promptOf(text, message.context, message.elements, message.episode);
     this.messages.push(message);
     this.setState({ ...this.view, status: 'thinking', error: null });
     this.input!.push({
@@ -358,7 +408,18 @@ export class AgentChat {
       uuid: message.id as `${string}-${string}-${string}-${string}-${string}`,
       session_id: this.resumeId ?? '',
       parent_tool_use_id: null,
-      message: { role: 'user', content: promptOf(text, message.context, message.elements) },
+      message: {
+        role: 'user',
+        content: images.length
+          ? [
+              { type: 'text', text: prompt },
+              ...images.map((image) => ({
+                type: 'image' as const,
+                source: { type: 'base64' as const, media_type: image.mediaType, data: image.data },
+              })),
+            ]
+          : prompt,
+      },
     });
     this.publish();
   }
@@ -542,6 +603,7 @@ export class AgentChat {
                   input: jsonOf(block.input),
                   output: '',
                   status: 'running',
+                  verification: null,
                 });
             }
           }
@@ -556,6 +618,7 @@ export class AgentChat {
                 if (part.type === 'tool' && part.id === block.tool_use_id) {
                   part.output = textOf(block.content);
                   part.status = block.is_error ? 'error' : 'done';
+                  if (part.name === VERIFYING_TOOL && !block.is_error) part.verification = verificationOf(part.output);
                 }
               }
           }
@@ -580,7 +643,7 @@ export class AgentChat {
             this.fail(this.view.error ?? 'request-failed');
           } else {
             const next = this.queue.shift();
-            if (next) this.deliver(next);
+            if (next) this.deliver(next.message, next.images);
             else this.setState({ ...this.view, status: 'ready', error: null });
           }
         }
@@ -620,7 +683,7 @@ export class AgentChat {
   private assistant(id: string): AgentChatMessage {
     let entry = this.messages.find((message) => message.id === id && message.role === 'assistant');
     if (!entry) {
-      entry = { id, role: 'assistant', parts: [], context: null, elements: [] };
+      entry = { id, role: 'assistant', parts: [], context: null, elements: [], episode: null, images: [] };
       this.messages.push(entry);
     }
     return entry;
@@ -644,6 +707,7 @@ export class AgentChat {
           input: jsonOf(block.input),
           output: '',
           status: 'running',
+          verification: null,
         };
       if (part) {
         this.assistant(this.streamId).parts.push(part);

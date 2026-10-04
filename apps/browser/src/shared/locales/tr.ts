@@ -132,6 +132,15 @@ export const tr: Record<MessageKey, string> = {
   'agentChat.cancelQueued': 'Sıradaki mesajı kaldır',
   'agentChat.cost': 'Bu sohbetin tahmini maliyeti',
   'agentChat.context': 'Bağlam: {used} / {limit} token',
+  'agentChat.fixPrompt': '{id} hatasının nedenini bul ve düzelt, ardından düzeltmeyi tarayıcıda doğrula.',
+  'agentChat.fixTitle': 'Hata yakalandı',
+  'agentChat.fixWithClaude': 'Claude ile düzelt',
+  'agentChat.dismissError': 'Hatayı gizle',
+  'agentChat.verified': 'Doğrulandı',
+  'agentChat.notVerified': 'Hâlâ hatalı',
+  'agentChat.addImage': 'Görsel ekle',
+  'agentChat.removeImage': 'Görseli kaldır',
+  'agentChat.imageRejected': 'Mesaj başına en fazla dört görsel; PNG, JPEG, GIF veya WebP, en çok 5 MB.',
 
   'processUsage.groupPages': 'Web sayfaları',
   'processUsage.groupInterface': 'Tarayıcı arayüzü',
@@ -630,6 +639,7 @@ export const tr: Record<MessageKey, string> = {
   'devMenu.resetOverrides': 'Taklitleri sıfırla',
   'devMenu.pickElement': 'Ajan için Öğe Seç',
   'devMenu.latestEpisode': 'Son hata · {id}',
+  'devMenu.fixWithClaude': 'Claude ile düzelt',
   'devMenu.copyEpisode': 'Ajan için Düzeltme İstemini Kopyala',
   'devMenu.episodePrompt':
     "Yalqen'in {id} olarak kaydettiği hatayı düzelt. get_error_episode ile oku, sonra düzeltmeyi replay_episode ile doğrula.",

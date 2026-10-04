@@ -214,6 +214,7 @@ export type AgentChatPart =
       input: string;
       output: string;
       status: 'running' | 'done' | 'error' | 'stopped';
+      verification: 'passed' | 'failed' | null;
     };
 
 export interface AgentChatContext {
@@ -237,6 +238,14 @@ export interface AgentChatMessage {
   parts: AgentChatPart[];
   context: AgentChatContext | null;
   elements: AgentElementRef[];
+  episode: AgentEpisodePreview | null;
+  images: string[];
+}
+
+export interface AgentChatImage {
+  mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
+  data: string;
+  thumbnail: string;
 }
 
 interface AgentChatQuestion {
@@ -361,6 +370,7 @@ export const IpcChannel = {
   agentOutput: 'yalqen:agent-output',
   agentChatSnapshot: 'yalqen:agent-chat-snapshot',
   agentChatSend: 'yalqen:agent-chat-send',
+  agentChatFix: 'yalqen:agent-chat-fix',
   agentChatInterrupt: 'yalqen:agent-chat-interrupt',
   agentChatReset: 'yalqen:agent-chat-reset',
   agentChatPermission: 'yalqen:agent-chat-permission',
@@ -397,7 +407,13 @@ export interface YalqenApi {
   startProjectRun(): Promise<boolean>;
   stopProjectRun(): Promise<void>;
   getAgentChat(): Promise<AgentChatSnapshot | null>;
-  sendAgentChat(sessionId: string | null, text: string, tabId: TabId | null): Promise<boolean>;
+  sendAgentChat(
+    sessionId: string | null,
+    text: string,
+    tabId: TabId | null,
+    images?: AgentChatImage[],
+  ): Promise<boolean>;
+  fixAgentEpisode(tabId: TabId): Promise<boolean>;
   interruptAgentChat(sessionId: string): Promise<void>;
   resetAgentChat(sessionId: string | null): Promise<void>;
   respondAgentChat(

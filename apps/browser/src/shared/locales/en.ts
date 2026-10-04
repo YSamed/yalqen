@@ -131,6 +131,15 @@ export const en = {
   'agentChat.cancelQueued': 'Remove queued message',
   'agentChat.cost': 'Estimated cost of this conversation',
   'agentChat.context': 'Context: {used} of {limit} tokens',
+  'agentChat.fixPrompt': 'Find and fix the cause of error {id}, then verify the fix in the browser.',
+  'agentChat.fixTitle': 'Error caught',
+  'agentChat.fixWithClaude': 'Fix with Claude',
+  'agentChat.dismissError': 'Dismiss error',
+  'agentChat.verified': 'Verified',
+  'agentChat.notVerified': 'Still failing',
+  'agentChat.addImage': 'Add image',
+  'agentChat.removeImage': 'Remove image',
+  'agentChat.imageRejected': 'Only PNG, JPEG, GIF or WebP images up to 5 MB, four per message.',
 
   'processUsage.groupPages': 'Web pages',
   'processUsage.groupInterface': 'Browser interface',
@@ -629,6 +638,7 @@ export const en = {
   'devMenu.resetOverrides': 'Reset Emulations',
   'devMenu.pickElement': 'Select Element for Agent',
   'devMenu.latestEpisode': 'Latest error · {id}',
+  'devMenu.fixWithClaude': 'Fix with Claude',
   'devMenu.copyEpisode': 'Copy Fix Prompt for Agent',
   'devMenu.episodePrompt':
     'Fix the error Yalqen recorded as {id}. Read it with get_error_episode, then confirm the fix with replay_episode.',
