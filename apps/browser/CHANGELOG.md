@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.27](https://github.com/YSamed/yalqen/compare/v0.3.26...v0.3.27) (2026-10-05)
+
+
+### Bug Fixes
+
+* use block bodies in listener callbacks to prevent contextBridge cloning error ([88e23ab](https://github.com/YSamed/yalqen/commit/88e23ab72fa34a2ebcdc79705c9f7726bef276c4))
+
 ## [0.3.26](https://github.com/YSamed/yalqen/compare/v0.3.25...v0.3.26) (2026-10-05)
 
 
