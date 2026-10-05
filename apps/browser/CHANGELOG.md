@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.24](https://github.com/YSamed/yalqen/compare/v0.3.23...v0.3.24) (2026-10-05)
+
+
+### Bug Fixes
+
+* unblock google sign-in by presenting firefox on accounts.google.com ([bccf019](https://github.com/YSamed/yalqen/commit/bccf0195bb5258abb4e15e8ab351cc60a1c8a3e4))
+
 ## [0.3.23](https://github.com/YSamed/yalqen/compare/v0.3.22...v0.3.23) (2026-10-05)
 
 
