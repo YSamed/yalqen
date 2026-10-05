@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.23](https://github.com/YSamed/yalqen/compare/v0.3.22...v0.3.23) (2026-10-05)
+
+
+### Features
+
+* sync AI project chats with browser tabs ([ab6da5f](https://github.com/YSamed/yalqen/commit/ab6da5fea41fe657669c79bdc408f663a947bfbb))
+
 ## [0.3.22](https://github.com/YSamed/yalqen/compare/v0.3.21...v0.3.22) (2026-10-05)
 
 
