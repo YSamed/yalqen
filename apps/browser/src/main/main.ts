@@ -18,7 +18,12 @@ import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
 import type { BridgeHost } from './agent-bridge/tools.js';
 import type { AgentProject } from './window/agent-project.js';
-import { addToClaudeCode } from './agent-bridge/claude-setup.js';
+import {
+  DEFAULT_TARGETS,
+  connectionStates,
+  repairConnections,
+  type McpEndpoint,
+} from './agent-bridge/agent-connections.js';
 import { ActionRunner } from './agent-bridge/action-runner.js';
 import { generateToken, tokenMatches } from './agent-bridge/auth.js';
 import { createElectronHost } from './agent-bridge/electron-host.js';
@@ -230,6 +235,7 @@ function startBrowser(): void {
     onChange: () => {
       eachWindow((window) => window.tabs.syncAgent());
       broadcastAgentBridge(agentView());
+      repairAgentConnections();
     },
     onTraces: (body) => {
       if (!settings.get().agentTracing) return;
@@ -239,6 +245,26 @@ function startBrowser(): void {
       });
     },
   });
+  const mcpEndpoint = (): McpEndpoint | null => {
+    const port = agentBridge.port;
+    return port ? { url: mcpUrl(port), token: agentTokens.get() } : null;
+  };
+  let connectionsRevision = 0;
+  const connectionsChanged = () => {
+    connectionsRevision++;
+    broadcastAgentBridge(agentView());
+  };
+  let repairedFor = '';
+  const repairAgentConnections = () => {
+    const endpoint = mcpEndpoint();
+    const key = endpoint ? `${endpoint.url} ${endpoint.token}` : '';
+    if (!endpoint || key === repairedFor) return;
+    repairedFor = key;
+    void repairConnections(endpoint).then(
+      (repaired) => repaired.length > 0 && connectionsChanged(),
+      () => undefined,
+    );
+  };
   const agentView = (): AgentBridgeView => {
     const status = agentBridge.status();
     const port = status.port;
@@ -249,6 +275,7 @@ function startBrowser(): void {
       codexConfig: port ? setupSnippet('codex', port, '<token>') : null,
       otelConfig: port ? setupSnippet('otel', port, '<token>') : null,
       observedTabs: windows.reduce((count, window) => count + window.tabs.observedTabs().length, 0),
+      connectionsRevision,
     };
   };
   registerAgentBridgeIpc({
@@ -257,11 +284,23 @@ function startBrowser(): void {
     regenerateToken: () => {
       agentTokens.regenerate();
       broadcastAgentBridge(agentView());
+      repairAgentConnections();
     },
-    addToClaude: async () => {
-      const port = agentBridge.port;
-      if (!port) return { ok: false, reason: 'failed', detail: 'The agent connection is not running.' };
-      return addToClaudeCode(mcpUrl(port), agentTokens.get());
+    connections: async () => {
+      const endpoint = mcpEndpoint();
+      return endpoint ? connectionStates(endpoint) : null;
+    },
+    connect: async (id) => {
+      const endpoint = mcpEndpoint();
+      if (!endpoint) return { ok: false, reason: 'failed', detail: 'The agent connection is not running.' };
+      const result = await DEFAULT_TARGETS[id].connect(endpoint);
+      connectionsChanged();
+      return result;
+    },
+    disconnect: async (id) => {
+      const result = await DEFAULT_TARGETS[id].disconnect();
+      connectionsChanged();
+      return result;
     },
   });
 
@@ -549,6 +588,25 @@ function startBrowser(): void {
   );
   ipcMain.handle(IpcChannel.agentChatInterrupt, (event, id: unknown) =>
     agentSenderWindow(event)?.agentChat.interrupt(id),
+  );
+  ipcMain.handle(IpcChannel.agentChatSignIn, (event) => agentSenderWindow(event)?.signInAgent() ?? false);
+  ipcMain.handle(IpcChannel.agentChatSignOut, (event) => agentSenderWindow(event)?.signOutAgent() ?? false);
+  ipcMain.handle(IpcChannel.agentChatNew, (event) => agentSenderWindow(event)?.newAgentChat());
+  ipcMain.handle(
+    IpcChannel.agentChatShowBackground,
+    (event, id: unknown) => agentSenderWindow(event)?.showBackgroundAgentChat(id) ?? false,
+  );
+  ipcMain.handle(
+    IpcChannel.agentChatDismissBackground,
+    (event, id: unknown) => agentSenderWindow(event)?.dismissBackgroundAgentChat(id) ?? false,
+  );
+  ipcMain.handle(
+    IpcChannel.agentChatOpenBackground,
+    (event, id: unknown) => agentSenderWindow(event)?.openBackgroundAgentChatInTab(id) ?? false,
+  );
+  ipcMain.handle(
+    IpcChannel.agentChatContinueBackground,
+    (event, id: unknown) => agentSenderWindow(event)?.continueAgentChatInProject(id) ?? false,
   );
   ipcMain.handle(IpcChannel.agentChatReset, (event, id: unknown) => agentSenderWindow(event)?.agentChat.reset(id));
   ipcMain.handle(

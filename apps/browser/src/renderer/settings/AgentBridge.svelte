@@ -4,8 +4,11 @@
   import type {
     AgentActionPolicy,
     AgentBridgeView,
+    AgentClientId,
+    AgentConnectionState,
+    AgentConnections,
     AgentSetupKind,
-    ClaudeSetupResult,
+    AgentSetupResult,
     SettingsValues,
   } from '../../shared/types';
   import Button from '../ui/Button.svelte';
@@ -46,23 +49,41 @@
     if (await api.copyAgentSetup(kind)) copied = kind;
   }
 
-  let adding = $state(false);
-  let addResult = $state<ClaudeSetupResult | null>(null);
+  const clients: { id: AgentClientId; label: string; reconnectHint: string }[] = [
+    { id: 'claude', label: 'Claude Code', reconnectHint: t('agentBridge.claudeReconnect') },
+    { id: 'codex', label: 'Codex', reconnectHint: t('agentBridge.codexReconnect') },
+  ];
+  let connections = $state<AgentConnections | null>(null);
+  let changing = $state<AgentClientId | null>(null);
+  let results = $state<Partial<Record<AgentClientId, AgentSetupResult>>>({});
+  let loadedRevision = -1;
 
-  async function addToClaude(): Promise<void> {
-    adding = true;
-    addResult = null;
+  $effect(() => {
+    if (!view?.url || view.connectionsRevision === loadedRevision) return;
+    loadedRevision = view.connectionsRevision;
+    void api.agentConnections().then(
+      (next) => (connections = next),
+      () => (connections = null),
+    );
+  });
+
+  async function change(id: AgentClientId, connect: boolean): Promise<void> {
+    changing = id;
+    results = { ...results, [id]: undefined };
     try {
-      addResult = await api.addAgentToClaude();
+      const result = connect ? await api.connectAgent(id) : await api.disconnectAgent(id);
+      results = { ...results, [id]: result };
     } finally {
-      adding = false;
+      changing = null;
     }
   }
 
-  function addResultText(result: ClaudeSetupResult): string {
-    if (result.ok) return t('agentBridge.added');
-    if (result.reason === 'not-found') return t('agentBridge.claudeNotFound');
-    return t('agentBridge.addFailed', { error: result.detail });
+  function stateText(state: AgentConnectionState | undefined): string {
+    if (state === 'connected') return t('agentBridge.stateConnected');
+    if (state === 'stale') return t('agentBridge.stateStale');
+    if (state === 'missing') return t('agentBridge.stateMissing');
+    if (state === 'unavailable') return t('agentBridge.stateUnavailable');
+    return t('agentBridge.stateChecking');
   }
 
   const time = (at: number) => new Date(at).toLocaleTimeString();
@@ -117,32 +138,35 @@
       <p class="hint error" role="alert">{t('agentBridge.staleToken', { time: time(view.staleTokenAt) })}</p>
     {/if}
 
-    <div class="setup">
-      <div class="setup-head">
-        <SegmentedControl
-          label={t('agentBridge.title')}
-          options={agentOptions}
-          value={agent}
-          onchange={(next) => (agent = next)}
-        />
-        <Button size="sm" onclick={() => copy(agent)}>
-          {copied === agent ? t('agentBridge.copied') : t('agentBridge.copy')}
-        </Button>
-      </div>
-      {#if agent === 'claude'}
-        <div class="actions add">
-          <Button size="sm" variant="primary" disabled={adding} onclick={addToClaude}>
-            {adding ? t('agentBridge.adding') : t('agentBridge.addToClaude')}
-          </Button>
+    <div class="connections">
+      {#each clients as client (client.id)}
+        {@const state = connections?.[client.id]}
+        {@const result = results[client.id]}
+        <div class="connection">
+          <div class="connection-text">
+            <strong>{client.label}</strong>
+            <span class={['hint', state === 'stale' && 'warn']}>{stateText(state)}</span>
+            {#if result && !result.ok}
+              <span class="hint warn" role="alert">{t('agentBridge.changeFailed', { error: result.detail })}</span>
+            {:else if result?.ok && state === 'connected'}
+              <span class="hint" role="status">{client.reconnectHint}</span>
+            {/if}
+          </div>
+          {#if state === 'connected'}
+            <Button size="sm" disabled={changing !== null} onclick={() => change(client.id, false)}>
+              {changing === client.id ? t('agentBridge.working') : t('agentBridge.disconnect')}
+            </Button>
+          {:else if state === 'missing' || state === 'stale'}
+            <Button size="sm" variant="primary" disabled={changing !== null} onclick={() => change(client.id, true)}>
+              {changing === client.id
+                ? t('agentBridge.working')
+                : state === 'stale'
+                  ? t('agentBridge.update')
+                  : t('agentBridge.connect')}
+            </Button>
+          {/if}
         </div>
-        {#if addResult}
-          <p class={['hint', !addResult.ok && 'error']} role="status">{addResultText(addResult)}</p>
-        {/if}
-        <p class="hint">{t('agentBridge.setupHintOr')}</p>
-      {:else}
-        <p class="hint">{t('agentBridge.setupHint')}</p>
-      {/if}
-      <pre>{agent === 'claude' ? view.claudeCommand : view.codexConfig}</pre>
+      {/each}
     </div>
   {/if}
 
@@ -159,6 +183,21 @@
     <summary>{t('agentBridge.advanced')}</summary>
 
     {#if view.url}
+      <div class="setup">
+        <div class="setup-head">
+          <SegmentedControl
+            label={t('agentBridge.manualSetup')}
+            options={agentOptions}
+            value={agent}
+            onchange={(next) => (agent = next)}
+          />
+          <Button size="sm" onclick={() => copy(agent)}>
+            {copied === agent ? t('agentBridge.copied') : t('agentBridge.copy')}
+          </Button>
+        </div>
+        <p class="hint">{t('agentBridge.setupHint')}</p>
+        <pre>{agent === 'claude' ? view.claudeCommand : view.codexConfig}</pre>
+      </div>
       <p class="hint status">
         {t('agentBridge.listening', { url: view.url })}
       </p>
@@ -224,8 +263,34 @@
     margin: 4px 0;
   }
 
-  .actions.add {
-    margin: 8px 0 4px;
+  .connections {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+
+  .connection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .connection-text {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .connection-text .hint {
+    margin: 0;
+  }
+
+  .warn {
+    color: var(--warn);
   }
 
   .advanced {

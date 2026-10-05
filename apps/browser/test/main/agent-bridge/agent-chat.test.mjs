@@ -1061,3 +1061,16 @@ test('asks for short replies by default and stops when detailed replies are chos
   chat.reset(chat.state().id);
   assert.equal(chat.state().replyLength, 'detailed');
 });
+
+test('signing out stops the conversation and asks for a sign-in until it succeeds', async (t) => {
+  const { chat, calls } = fixture(t);
+  assert.equal(await chat.send(null, 'Hello'), true);
+  const client = calls.queries[0];
+  chat.signedOut();
+  assert.equal(client.closed, 1);
+  assert.equal(chat.state().status, 'error');
+  assert.equal(chat.state().error, 'authentication-required');
+  chat.signedIn();
+  assert.equal(chat.state().status, 'stopped');
+  assert.equal(chat.state().error, null);
+});

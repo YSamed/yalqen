@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { t } from '../../shared/i18n';
-  import { EMPTY_AGENT_CHAT, MAX_CHAT_TABS } from '../../shared/agent-panel';
+  import { EMPTY_AGENT_CHAT, MAX_CHAT_TABS, SIGN_IN_PROVIDERS } from '../../shared/agent-panel';
   import type { AgentChatComposer } from '../../shared/agent-panel';
   import type {
     AgentChatImage,
@@ -80,6 +80,8 @@
   let failed = $state(false);
   let sending = $state(false);
   let cancelling = $state(false);
+  let signingIn = $state(false);
+  let signInFailed = $state(false);
   let loading = $state(true);
   let answers: Record<string, Record<string, string>> = $state({});
   let scroller: HTMLDivElement;
@@ -239,7 +241,7 @@
     'claude-not-found': '',
     'invalid-directory': t('agentPanel.invalidDirectory'),
     'connection-failed': t('agentPanel.connectionFailed'),
-    'authentication-required': t('agentChat.authenticationRequired'),
+    'authentication-required': '',
     'start-failed': t('agentPanel.startFailed'),
     'request-failed': t('agentChat.requestFailed'),
   };
@@ -277,7 +279,8 @@
           snapshot.state.id,
           text,
           attached.map((tab) => tab.id),
-          sent,
+          // The composer is reactive state, and IPC cannot clone its proxies.
+          $state.snapshot(sent),
         ))
       )
         throw new Error('Unavailable');
@@ -295,6 +298,29 @@
       sending = false;
       textarea?.focus();
     }
+  }
+
+  // The failed prompt goes back into an empty composer, so after signing in it is one Enter away.
+  async function signIn(): Promise<void> {
+    signingIn = true;
+    signInFailed = false;
+    try {
+      const signedIn = await window.yalqen.signInAgent();
+      signInFailed = !signedIn;
+      if (signedIn && !composer.text.trim()) composer.text = lastPrompt();
+    } catch {
+      signInFailed = true;
+    } finally {
+      signingIn = false;
+    }
+  }
+
+  function lastPrompt(): string {
+    const message = snapshot.messages.findLast((entry) => entry.role === 'user');
+    return (message?.parts ?? [])
+      .map((part) => (part.type === 'text' ? part.text : ''))
+      .filter(Boolean)
+      .join('\n');
   }
 
   async function fixEpisode(): Promise<void> {
@@ -713,11 +739,19 @@
           ? snapshot.state.provider === 'claude'
             ? t('agentPanel.claudeNotFound')
             : t('agentChat.agentNotFound', { agent: agentName })
-          : snapshot.state.error
-            ? errors[snapshot.state.error]
-            : t('agentChat.sendFailed')}
+          : snapshot.state.error === 'authentication-required'
+            ? signingIn
+              ? t('agentChat.signingIn')
+              : signInFailed
+                ? t('agentChat.signInFailed')
+                : t('agentChat.authenticationRequired', { agent: agentName })
+            : snapshot.state.error
+              ? errors[snapshot.state.error]
+              : t('agentChat.sendFailed')}
       </p>
-      {#if snapshot.state.error === 'claude-not-found' || snapshot.state.error === 'authentication-required'}
+      {#if snapshot.state.error === 'authentication-required' && SIGN_IN_PROVIDERS.includes(snapshot.state.provider)}
+        <Button variant="primary" disabled={signingIn} onclick={signIn}>{t('agentChat.signIn')}</Button>
+      {:else if snapshot.state.error === 'claude-not-found' || snapshot.state.error === 'authentication-required'}
         <Button onclick={() => window.yalqen.send({ type: 'new-tab', url: SETUP_GUIDES[snapshot.state.provider] })}
           >{t('agentPanel.installGuide')}</Button
         >

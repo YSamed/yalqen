@@ -583,14 +583,20 @@ export class TabManager {
       });
   }
 
+  // A frozen background tab never runs the script, so it is woken for the read.
   async pageText(id: TabId, timeoutMs = 2000): Promise<PageText | null> {
-    const contents = this.find(id)?.view?.webContents;
-    if (!contents || contents.isDestroyed()) return null;
+    const tab = this.find(id);
+    const contents = tab?.view?.webContents;
+    if (!tab || !contents || contents.isDestroyed()) return null;
+    const wasFrozen = tab.frozen;
+    this.freezer.unfreeze(tab);
     const read = contents
       .executeJavaScriptInIsolatedWorld(PAGE_TEXT_WORLD_ID, [{ code: PAGE_TEXT_SCRIPT }])
       .then(parsePageText, () => null);
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
-    return Promise.race([read, timeout]);
+    const text = await Promise.race([read, timeout]);
+    if (wasFrozen) this.freezer.maybeFreeze(tab);
+    return text;
   }
 
   async measureActiveStorage(timeoutMs = 500): Promise<StorageUsage | null> {

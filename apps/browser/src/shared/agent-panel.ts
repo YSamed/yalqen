@@ -2,6 +2,7 @@ import type {
   AgentChatContext,
   AgentChatImage,
   AgentChatState,
+  AgentProviderId,
   AgentSessionState,
   AgentTerminalSize,
   ProjectRunState,
@@ -9,6 +10,8 @@ import type {
 } from './types.js';
 
 export const MAX_CHAT_TABS = 5;
+export const SIGN_IN_PROVIDERS: readonly AgentProviderId[] = ['claude', 'codex'];
+export const AGENT_LABELS: Record<AgentProviderId, string> = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' };
 
 export interface AgentChatComposer {
   text: string;

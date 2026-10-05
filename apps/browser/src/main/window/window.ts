@@ -81,10 +81,12 @@ import type { AgentSession, AgentConnection } from '../agent-bridge/agent-sessio
 import type { AgentChat } from '../agent-bridge/agent-chat.js';
 import { ProjectFiles } from '../agent-bridge/project-files.js';
 import { availableProviders, isAgentProvider } from '../agent-bridge/agent-providers.js';
-import { resolveAgentContexts } from '../../shared/agent-panel.js';
+import { AGENT_LABELS, resolveAgentContexts } from '../../shared/agent-panel.js';
 import type { PageText } from '../agent-bridge/page-text.js';
 import type { ProjectRunner } from '../agent-bridge/project-runner.js';
 import { projectIncludes } from '../agent-bridge/tab-scope.js';
+import { signIn, signOut } from '../agent-bridge/agent-login.js';
+import { chatDigest } from '../agent-bridge/chat-digest.js';
 import { AgentProject } from './agent-project.js';
 import { AgentProjectTabs } from './agent-project-tabs.js';
 import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
@@ -167,6 +169,7 @@ export class YalqenWindow {
   private agentProviders: AgentProviderId[] = ['claude'];
   private readonly projectFiles = new ProjectFiles();
   private agentPanelOpen = false;
+  private signingIn = false;
   private pickedElements: AgentElementRef[] = [];
   private readonly references = new Map<string, ReferenceCapture>();
   private readonly visualComparisons = new Map<string, VisualComparisonManager>();
@@ -507,7 +510,8 @@ export class YalqenWindow {
 
   state(): BrowserState {
     const tabState = this.tabs.state();
-    this.projectTabs.prune(new Set(tabState.tabs.map((tab) => tab.id)));
+    const tabIds = new Set(tabState.tabs.map((tab) => tab.id));
+    for (const project of this.agentProjects) project.retainTabs(tabIds);
     return {
       ...tabState,
       developer: this.isDeveloper,
@@ -535,6 +539,8 @@ export class YalqenWindow {
       agentTerminal: this.app.settings.get().agentTerminal,
       agentProjects: this.agentProjects.map((project) => project.summary()),
       agentProjectId: this.activeProjectId,
+      agentConversationId: this.agentProject.conversationId,
+      agentBackgroundChats: this.agentProject.backgroundChats(),
     };
   }
 
@@ -546,7 +552,8 @@ export class YalqenWindow {
     if (this.isPrivate && !this.isDeveloper) return;
     this.agentPanelOpen = !this.agentPanelOpen;
     if (this.agentPanelOpen) {
-      this.projectTabs.bind(this.tabs.snapshotFor(), this.activeProjectId, this.isDeveloper);
+      if (this.agentProject.directory)
+        this.projectTabs.bind(this.tabs.snapshotFor(), this.activeProjectId, this.isDeveloper);
       this.uiContents.focus();
       void this.agentProject.chat.refreshModels();
       void availableProviders().then((providers) => {
@@ -558,10 +565,10 @@ export class YalqenWindow {
     this.pushState();
   }
 
+  // Projects are shared by their tabs and tabs without a folder share the folderless project, so choosing a
+  // folder moves this tab to that folder's project instead of pulling the other tabs along.
   async selectAgentDirectory(): Promise<ReturnType<AgentSession['state']>> {
-    if ((this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory || this.agentProject.busy) {
-      return this.agentSession.state();
-    }
+    if ((this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory) return this.agentSession.state();
     this.selectingAgentDirectory = true;
     const project = this.agentProject;
     const tabId = this.tabs.activeTabId;
@@ -571,24 +578,31 @@ export class YalqenWindow {
         defaultPath: this.agentSession.state().directory ?? app.getPath('documents'),
         properties: ['openDirectory'],
       });
-      if (
-        !this.window.isDestroyed() &&
-        !result.canceled &&
-        result.filePaths[0] &&
-        this.agentProject === project &&
-        !project.busy
-      ) {
-        if (project.directory !== result.filePaths[0]) {
-          this.visualComparisons.get(project.id)?.clear();
-          void this.responsiveScans.get(project.id)?.clear();
-        }
-        project.selectDirectory(result.filePaths[0]);
-        this.projectTabs.bind(this.tabs.snapshotFor(tabId), project.id, this.isDeveloper);
+      const directory = result.filePaths[0];
+      if (this.window.isDestroyed() || result.canceled || !directory || this.agentProject !== project) {
+        return this.agentSession.state();
       }
+      const target = this.projectForDirectory(project, directory);
+      if (!target) return this.agentSession.state();
+      if (target.directory !== directory) {
+        this.visualComparisons.get(target.id)?.clear();
+        void this.responsiveScans.get(target.id)?.clear();
+        target.selectDirectory(directory);
+      }
+      this.projectTabs.bind(this.tabs.snapshotFor(tabId), target.id, this.isDeveloper);
+      if (target !== project) this.activateAgentProject(target.id);
     } finally {
       this.selectingAgentDirectory = false;
     }
     return this.agentSession.state();
+  }
+
+  private projectForDirectory(current: AgentProject, directory: string): AgentProject | null {
+    if (current.directory === directory) return current;
+    const existing = this.agentProjects.find((candidate) => candidate.directory === directory);
+    if (existing) return existing;
+    if (this.agentProjects.length >= MAX_AGENT_PROJECTS) return null;
+    return this.addProject();
   }
 
   startAgentSession(size: unknown): Promise<ReturnType<AgentSession['state']>> {
@@ -682,6 +696,7 @@ export class YalqenWindow {
       onUrl: (target, url) => {
         const id = this.tabs.open(url, { activate: false });
         this.projectTabs.bind(this.tabs.snapshotFor(id), target.id, this.isDeveloper);
+        target.shareConversation(id);
         this.tabs.activate(id);
       },
     });
@@ -702,24 +717,123 @@ export class YalqenWindow {
   }
 
   private syncAgentProjectWithTab(): void {
-    const id = this.projectTabs.projectFor(this.tabs.snapshotFor(), this.agentProjects, this.isDeveloper);
-    if (id && id !== this.activeProjectId) this.activateAgentProject(id);
+    this.closeAbandonedProjects();
+    const tab = this.tabs.snapshotFor();
+    const id = this.projectTabs.projectFor(tab, this.agentProjects, this.isDeveloper) ?? this.folderlessProject().id;
+    if (id !== this.activeProjectId) this.activateAgentProject(id);
+    else if (this.agentProject.focusTab(tab?.id ?? '')) this.showAgentChat();
+  }
+
+  // A chat that is still working moves to the background and keeps going; an idle one is just cleared.
+  newAgentChat(): void {
+    if (this.isPrivate && !this.isDeveloper) return;
+    const chat = this.agentChat;
+    if (this.agentProject.setAsideChat()) this.showAgentChat();
+    else if (!['starting', 'thinking', 'approval'].includes(chat.state().status)) chat.reset(chat.state().id);
+  }
+
+  // A Claude session belongs to the folder it started in, so another project continues from a digest of
+  // the chat in a new tab rather than from the session itself.
+  async continueAgentChatInProject(id: unknown): Promise<boolean> {
+    if (typeof id !== 'string' || (this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory) return false;
+    const source = this.agentProject;
+    const chat = source.backgroundChat(id);
+    if (!chat) return false;
+    this.selectingAgentDirectory = true;
+    try {
+      const result = await dialog.showOpenDialog(this.window, {
+        title: t('backgroundChats.continueIn'),
+        defaultPath: source.directory ?? app.getPath('documents'),
+        properties: ['openDirectory'],
+      });
+      const directory = result.filePaths[0];
+      if (this.window.isDestroyed() || result.canceled || !directory) return false;
+      const target = this.projectForDirectory(source, directory);
+      if (!target) return false;
+      if (target.directory !== directory) target.selectDirectory(directory);
+      const digest = chatDigest(chat.snapshot().messages, {
+        user: t('backgroundChats.digestUser'),
+        assistant: t('backgroundChats.digestAssistant'),
+        omitted: t('backgroundChats.digestOmitted'),
+      });
+      const text = t('backgroundChats.continuePrompt', {
+        from: source.directory ?? t('backgroundChats.noProject'),
+        digest,
+      });
+      const tabId = this.tabs.open(NEW_TAB_URL, { activate: false });
+      this.projectTabs.bind(this.tabs.snapshotFor(tabId), target.id, this.isDeveloper);
+      const sent = await target.startChat(tabId, text);
+      this.tabs.activate(tabId);
+      return sent;
+    } finally {
+      this.selectingAgentDirectory = false;
+    }
+  }
+
+  showBackgroundAgentChat(id: unknown): boolean {
+    if (typeof id !== 'string' || !this.agentProject.showBackgroundChat(id)) return false;
+    this.showAgentChat();
+    return true;
+  }
+
+  openBackgroundAgentChatInTab(id: unknown): boolean {
+    if (typeof id !== 'string' || (this.isPrivate && !this.isDeveloper)) return false;
+    const project = this.agentProject;
+    const tabId = this.tabs.open(NEW_TAB_URL, { activate: false });
+    if (!project.moveBackgroundChat(id, tabId)) {
+      this.tabs.close(tabId);
+      return false;
+    }
+    if (project.directory) this.projectTabs.bind(this.tabs.snapshotFor(tabId), project.id, this.isDeveloper);
+    this.tabs.activate(tabId);
+    return true;
+  }
+
+  dismissBackgroundAgentChat(id: unknown): boolean {
+    if (typeof id !== 'string' || !this.agentProject.dismissBackgroundChat(id)) return false;
+    this.pushState();
+    return true;
+  }
+
+  private folderlessProject(): AgentProject {
+    return this.agentProjects.find((project) => !project.directory) ?? this.addProject();
+  }
+
+  // A project lives as long as one of its tabs: closing the last one ends its chats and dev server.
+  private closeAbandonedProjects(): void {
+    for (const id of this.projectTabs.release((tabId) => this.tabs.snapshotFor(tabId) !== null)) {
+      const project = this.agentProjects.find((candidate) => candidate.id === id);
+      if (project?.directory) this.disposeProject(project);
+    }
+  }
+
+  private showAgentChat(): void {
+    if (!this.uiContents.isDestroyed())
+      this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
+    this.pushState();
   }
 
   private activateAgentProject(id: string): void {
     if (id !== this.activeProjectId) void this.responsiveScans.get(this.activeProjectId)?.cancel();
     this.activeProjectId = id;
+    this.agentProject.focusTab(this.tabs.activeTabId ?? '');
     this.pickedElements = this.projectElements.get(id) ?? [];
-    if (!this.uiContents.isDestroyed())
-      this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
-    this.pushState();
+    this.showAgentChat();
   }
 
   closeAgentProject(id: unknown): boolean {
     const project = this.agentProjects.find((candidate) => candidate.id === id);
     if (!project || project.busy || this.agentProjects.length === 1) return false;
     const index = this.agentProjects.indexOf(project);
-    this.agentProjects.splice(index, 1);
+    this.disposeProject(project);
+    if (this.activeProjectId === project.id)
+      return this.selectAgentProject(this.agentProjects[Math.min(index, this.agentProjects.length - 1)].id);
+    this.pushState();
+    return true;
+  }
+
+  private disposeProject(project: AgentProject): void {
+    this.agentProjects.splice(this.agentProjects.indexOf(project), 1);
     this.projectTabs.removeProject(project.id);
     this.projectElements.delete(project.id);
     this.pruneAgentReferences();
@@ -729,10 +843,6 @@ export class YalqenWindow {
     this.responsiveScans.delete(project.id);
     project.dispose();
     this.app.releaseAgentConnection(project);
-    if (this.activeProjectId === project.id)
-      return this.selectAgentProject(this.agentProjects[Math.min(index, this.agentProjects.length - 1)].id);
-    this.pushState();
-    return true;
   }
 
   selectAgentProvider(provider: unknown): boolean {
@@ -770,6 +880,46 @@ export class YalqenWindow {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async signInAgent(): Promise<boolean> {
+    if ((this.isPrivate && !this.isDeveloper) || this.signingIn) return false;
+    const chat = this.agentChat;
+    this.signingIn = true;
+    try {
+      const signedIn = await signIn(chat.state().provider, (url) => this.tabs.open(url));
+      if (signedIn) chat.signedIn();
+      return signedIn;
+    } finally {
+      this.signingIn = false;
+    }
+  }
+
+  // Signing out ends the provider's login on this computer, terminal sessions included, so it is confirmed first.
+  async signOutAgent(): Promise<boolean> {
+    if ((this.isPrivate && !this.isDeveloper) || this.signingIn) return false;
+    const chat = this.agentChat;
+    const { provider, status } = chat.state();
+    if (['starting', 'thinking', 'approval'].includes(status)) return false;
+    const agent = AGENT_LABELS[provider];
+    const { response } = await dialog.showMessageBox(this.window, {
+      type: 'question',
+      message: t('agentChat.signOutConfirm', { agent }),
+      detail: t('agentChat.signOutDetail', { agent }),
+      buttons: [t('agentChat.signOut'), t('agentChat.cancel')],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (response !== 0) return false;
+    this.signingIn = true;
+    try {
+      const signedOut = await signOut(provider);
+      if (signedOut) chat.signedOut();
+      return signedOut;
+    } finally {
+      this.signingIn = false;
     }
   }
 

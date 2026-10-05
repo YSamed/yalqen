@@ -56,7 +56,15 @@ test('closed tabs and projects release their assignments without affecting other
   const projects = [project('shop'), project('admin')];
   links.bind(tab('a'), 'shop');
   links.bind(tab('b'), 'admin');
-  links.prune(new Set(['b']));
+  links.bind(tab('c'), 'admin');
+  assert.deepEqual(
+    links.release((id) => id !== 'a' && id !== 'c'),
+    ['shop'],
+  );
+  assert.deepEqual(
+    links.release(() => true),
+    [],
+  );
   assert.equal(links.projectFor(tab('a'), projects), null);
   assert.equal(links.projectFor(tab('b'), projects), 'admin');
   links.removeProject('admin');

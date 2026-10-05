@@ -2,10 +2,13 @@ import { clipboard } from 'electron';
 import {
   AgentBridgeChannel,
   type AgentBridgeView,
+  type AgentClientId,
+  type AgentConnections,
   type AgentSetupKind,
-  type ClaudeSetupResult,
+  type AgentSetupResult,
 } from '../../shared/types.js';
 import { handleSettingsCall } from '../app/settings-page.js';
+import { isAgentClient } from './agent-connections.js';
 
 const SETUP_KINDS = new Set<unknown>(['claude', 'codex', 'token', 'otel'] satisfies AgentSetupKind[]);
 
@@ -13,7 +16,9 @@ interface AgentIpcHost {
   view(): AgentBridgeView;
   snippet(kind: AgentSetupKind): string | null;
   regenerateToken(): void;
-  addToClaude(): Promise<ClaudeSetupResult>;
+  connections(): Promise<AgentConnections | null>;
+  connect(id: AgentClientId): Promise<AgentSetupResult>;
+  disconnect(id: AgentClientId): Promise<AgentSetupResult>;
 }
 
 export function registerAgentBridgeIpc(host: AgentIpcHost): void {
@@ -29,5 +34,11 @@ export function registerAgentBridgeIpc(host: AgentIpcHost): void {
     host.regenerateToken();
     return host.view();
   });
-  handleSettingsCall(AgentBridgeChannel.addToClaude, () => host.addToClaude());
+  handleSettingsCall(AgentBridgeChannel.connections, () => host.connections());
+  handleSettingsCall(AgentBridgeChannel.connect, (_event, id) =>
+    isAgentClient(id) ? host.connect(id) : { ok: false, reason: 'failed', detail: '' },
+  );
+  handleSettingsCall(AgentBridgeChannel.disconnect, (_event, id) =>
+    isAgentClient(id) ? host.disconnect(id) : { ok: false, reason: 'failed', detail: '' },
+  );
 }

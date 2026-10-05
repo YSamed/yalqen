@@ -62,6 +62,8 @@
     agentTerminal: false,
     agentProjects: [],
     agentProjectId: '',
+    agentConversationId: '',
+    agentBackgroundChats: [],
   });
   let stateReceived = $state(false);
   let windowWidth = $state(window.innerWidth);
@@ -401,8 +403,9 @@
         run={browser.projectRun}
         elements={browser.agentElements}
         terminal={browser.agentTerminal}
-        projects={browser.agentProjects}
         projectId={browser.agentProjectId}
+        conversationId={browser.agentConversationId}
+        backgroundChats={browser.agentBackgroundChats}
         tabs={browser.tabs}
         developer={browser.developer}
         {activeTab}

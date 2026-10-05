@@ -719,6 +719,15 @@ export class AgentChat {
     return true;
   }
 
+  signedOut(): void {
+    if (this.client) this.stop();
+    this.fail('authentication-required');
+  }
+
+  signedIn(): void {
+    if (this.view.error === 'authentication-required') this.setState({ ...this.view, status: 'stopped', error: null });
+  }
+
   reset(id: unknown): void {
     if (id !== this.view.id) return;
     this.stop();

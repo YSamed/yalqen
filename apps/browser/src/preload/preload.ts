@@ -55,6 +55,13 @@ const api: YalqenApi = {
     ipcRenderer.invoke(channel.responsiveScanReview) as Promise<ResponsiveScanReview | null>,
   fixAgentEpisode: (tabId) => ipcRenderer.invoke(channel.agentChatFix, tabId) as Promise<boolean>,
   interruptAgentChat: (id) => ipcRenderer.invoke(channel.agentChatInterrupt, id) as Promise<void>,
+  signInAgent: () => ipcRenderer.invoke(channel.agentChatSignIn) as Promise<boolean>,
+  newAgentChat: () => ipcRenderer.invoke(channel.agentChatNew) as Promise<void>,
+  showBackgroundAgentChat: (id) => ipcRenderer.invoke(channel.agentChatShowBackground, id) as Promise<boolean>,
+  dismissBackgroundAgentChat: (id) => ipcRenderer.invoke(channel.agentChatDismissBackground, id) as Promise<boolean>,
+  openBackgroundAgentChatInTab: (id) => ipcRenderer.invoke(channel.agentChatOpenBackground, id) as Promise<boolean>,
+  continueAgentChatInProject: (id) => ipcRenderer.invoke(channel.agentChatContinueBackground, id) as Promise<boolean>,
+  signOutAgent: () => ipcRenderer.invoke(channel.agentChatSignOut) as Promise<boolean>,
   resetAgentChat: (id) => ipcRenderer.invoke(channel.agentChatReset, id) as Promise<void>,
   respondAgentChat: (id, requestId, allow, answers, always) =>
     ipcRenderer.invoke(channel.agentChatPermission, id, requestId, allow, answers, always) as Promise<void>,

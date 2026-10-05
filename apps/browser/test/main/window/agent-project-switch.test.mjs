@@ -25,13 +25,15 @@ function fixture() {
     responsiveScans: new Map([
       ['shop', { cancel: () => cancelled.push('shop'), clear: () => {} }],
       ['admin', { cancel: () => cancelled.push('admin'), clear: () => {} }],
+      ['loose', { cancel: () => cancelled.push('loose'), clear: () => {} }],
     ]),
     app: { agentConnection: async () => null, releaseAgentConnection: () => {} },
     uiContents: { isDestroyed: () => false, send: (channel, data) => sent.push({ channel, data }) },
     pushState: () => {},
   });
-  host.agentProjects = ['shop', 'admin'].map((id) => ({
+  host.agentProjects = ['shop', 'admin', 'loose'].map((id) => ({
     id,
+    directory: id === 'loose' ? null : `/code/${id}`,
     origins: new Set(),
     busy: false,
     chat: {
@@ -39,6 +41,9 @@ function fixture() {
       snapshot: () => ({ state: { id }, messages: [{ text: `${id} conversation` }] }),
     },
     dispose: () => disposed.push(id),
+    focusTab: () => false,
+    shareConversation: () => {},
+    retainTabs: () => {},
   }));
   host.tabs = {
     get activeTabId() {
@@ -84,23 +89,24 @@ test('browser tab switches restore the selected chat and picked elements without
   assert.deepEqual(host.pickedElements, [{ id: 'admin-element' }]);
   assert.equal(JSON.parse(sent.at(-1).data).messages[0].text, 'admin conversation');
   assert.deepEqual(disposed, []);
-  assert.deepEqual(cancelled, ['shop', 'admin', 'shop']);
+  // New tabs start on the folderless project until they are given one.
+  assert.deepEqual(cancelled, ['shop', 'loose', 'shop', 'loose', 'admin', 'shop']);
 });
 
-test('unassigned and private tabs do not overwrite other tab assignments', () => {
+test('tabs without a project show the folderless project and leave other tab assignments alone', () => {
   const { host, open } = fixture();
   open('shop-tab');
   host.selectAgentProject('shop');
   open('admin-tab');
   host.selectAgentProject('admin');
   open('unrelated-tab');
-  assert.equal(host.agentProject.id, 'admin');
+  assert.equal(host.agentProject.id, 'loose');
   open('private-tab', true);
   host.selectAgentProject('shop');
   host.tabs.activate('admin-tab');
   assert.equal(host.agentProject.id, 'admin');
   host.tabs.activate('private-tab');
-  assert.equal(host.agentProject.id, 'admin');
+  assert.equal(host.agentProject.id, 'loose');
   host.tabs.activate('shop-tab');
   assert.equal(host.agentProject.id, 'shop');
   assert.equal(host.selectAgentProject('missing'), false);
@@ -159,4 +165,48 @@ test('finishing a send after a tab switch clears only the sending project attach
   assert.deepEqual(host.pickedElements, [{ id: 'admin-element' }]);
   host.tabs.activate('shop-tab');
   assert.deepEqual(host.pickedElements, []);
+});
+
+test('choosing another folder moves the tab to that folder project instead of changing a shared one', () => {
+  const host = Object.create(YalqenWindow.prototype);
+  const created = [];
+  const project = (id, directory, busy = false) => ({ id, directory, busy });
+  const shop = project('shop', '/code/shop', true);
+  const admin = project('admin', '/code/admin');
+  const fresh = project('fresh', null);
+  host.agentProjects = [shop, admin, fresh];
+  host.addProject = () => {
+    const next = project(`new-${created.length}`, null);
+    created.push(next);
+    host.agentProjects.push(next);
+    return next;
+  };
+  assert.equal(host.projectForDirectory(shop, '/code/shop'), shop);
+  assert.equal(host.projectForDirectory(shop, '/code/admin'), admin);
+  assert.equal(host.projectForDirectory(fresh, '/code/admin'), admin);
+  const blog = host.projectForDirectory(fresh, '/code/blog');
+  assert.notEqual(blog, fresh);
+  assert.deepEqual(created, [blog]);
+  while (host.agentProjects.length < 6) host.addProject();
+  assert.equal(host.projectForDirectory(shop, '/code/other'), null);
+});
+
+test('a project with a folder closes with its last tab, and the folderless one stays', () => {
+  const { host, tabs, open, disposed } = fixture();
+  open('shop-tab');
+  host.selectAgentProject('shop');
+  open('shop-docs');
+  host.selectAgentProject('shop');
+  open('other-tab');
+  tabs.delete('shop-tab');
+  host.syncAgentProjectWithTab();
+  assert.deepEqual(disposed, []);
+  tabs.delete('shop-docs');
+  host.syncAgentProjectWithTab();
+  assert.deepEqual(disposed, ['shop']);
+  assert.deepEqual(
+    host.agentProjects.map((project) => project.id),
+    ['admin', 'loose'],
+  );
+  assert.equal(host.agentProject.id, 'loose');
 });

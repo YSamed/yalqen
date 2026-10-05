@@ -12,6 +12,7 @@
     screenshot: 'M2 5h3l1-2h4l1 2h3v8H2zM10.5 9a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z',
     image: 'M2.5 3.5h11v9h-11zM2.5 10.5l3-3 3 3 2-2 3 3M10.5 6.2v.01',
     plus: 'M8 3v10M3 8h10',
+    'new-tab': 'M2.5 3.5h11v9h-11zM8 6v4M6 8h4',
     folder: 'M2.5 4h4l1.5 2h5.5v7h-11z',
     stop: 'M4 4h8v8H4z',
     play: 'M5 3.5v9l7.5-4.5z',

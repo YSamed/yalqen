@@ -8,6 +8,7 @@ import { findCommand } from './shell-command.js';
 
 const MAX_TEXT = 64 * 1024;
 const KILL_DELAY_MS = 1500;
+const ACP_AUTH_REQUIRED = -32000;
 
 export interface AcpAgent {
   label: string;
@@ -183,8 +184,8 @@ export class AcpQuery implements ChatQuery {
         if (this.closed) return;
         await this.prompt(connection, sessionId, message);
       }
-    } catch {
-      this.outbox.push({ type: 'result', subtype: 'error_during_execution', is_error: true, total_cost_usd: 0 });
+    } catch (error) {
+      this.failed(error);
     }
     this.close();
   }
@@ -200,8 +201,8 @@ export class AcpQuery implements ChatQuery {
       });
       const failed = stopReason === 'refusal';
       this.outbox.push({ type: 'result', subtype: 'success', is_error: failed, result: '', total_cost_usd: 0 });
-    } catch {
-      this.outbox.push({ type: 'result', subtype: 'error_during_execution', is_error: true, total_cost_usd: 0 });
+    } catch (error) {
+      this.failed(error);
     } finally {
       this.turn = null;
     }
@@ -253,6 +254,17 @@ export class AcpQuery implements ChatQuery {
         },
       });
     }
+  }
+
+  private failed(error: unknown): void {
+    if ((error as { code?: unknown } | null)?.code === ACP_AUTH_REQUIRED)
+      this.outbox.push({
+        type: 'assistant',
+        parent_tool_use_id: null,
+        message: { id: this.messageId, content: [] },
+        error: 'authentication_failed',
+      });
+    this.outbox.push({ type: 'result', subtype: 'error_during_execution', is_error: true, total_cost_usd: 0 });
   }
 
   private assistant(content: object[]): void {

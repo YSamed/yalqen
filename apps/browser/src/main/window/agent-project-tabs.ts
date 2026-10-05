@@ -31,8 +31,12 @@ export class AgentProjectTabs {
     return owners[0].id;
   }
 
-  prune(tabIds: ReadonlySet<string>): void {
-    for (const id of this.assignments.keys()) if (!tabIds.has(id)) this.assignments.delete(id);
+  // Drops the assignments of closed tabs and returns the projects that just lost their last tab.
+  release(isOpen: (tabId: string) => boolean): string[] {
+    const before = new Set(this.assignments.values());
+    for (const id of [...this.assignments.keys()]) if (!isOpen(id)) this.assignments.delete(id);
+    const after = new Set(this.assignments.values());
+    return [...before].filter((projectId) => !after.has(projectId));
   }
 
   removeProject(projectId: string): void {

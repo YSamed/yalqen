@@ -11,7 +11,9 @@ import {
   SitePermissionsChannel,
   type AgentBridgeView,
   type AgentSetupKind,
-  type ClaudeSetupResult,
+  type AgentClientId,
+  type AgentConnections,
+  type AgentSetupResult,
   type ClearDataRequest,
   type ExtensionInfo,
   type NewTabCenter,
@@ -172,7 +174,11 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     agentBridge: () => ipcRenderer.invoke(AgentBridgeChannel.status) as Promise<AgentBridgeView>,
     copyAgentSetup: (kind: AgentSetupKind) => ipcRenderer.invoke(AgentBridgeChannel.copy, kind) as Promise<boolean>,
     regenerateAgentToken: () => ipcRenderer.invoke(AgentBridgeChannel.regenerate) as Promise<AgentBridgeView>,
-    addAgentToClaude: () => ipcRenderer.invoke(AgentBridgeChannel.addToClaude) as Promise<ClaudeSetupResult>,
+    agentConnections: () => ipcRenderer.invoke(AgentBridgeChannel.connections) as Promise<AgentConnections | null>,
+    connectAgent: (id: AgentClientId) =>
+      ipcRenderer.invoke(AgentBridgeChannel.connect, id) as Promise<AgentSetupResult>,
+    disconnectAgent: (id: AgentClientId) =>
+      ipcRenderer.invoke(AgentBridgeChannel.disconnect, id) as Promise<AgentSetupResult>,
     onAgentBridgeChange: (listener) => subscribe<AgentBridgeView>(AgentBridgeChannel.changed, listener),
   };
   contextBridge.exposeInMainWorld('yalqenSettings', api);

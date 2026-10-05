@@ -2,15 +2,15 @@
   import { onMount, untrack } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
   import type {
+    AgentBackgroundChat,
     AgentChatState,
     AgentElementRef,
-    AgentProjectSummary,
     AgentProviderId,
     AgentSessionState,
     ProjectRunState,
     TabSnapshot,
   } from '../../shared/types';
-  import { DEFAULT_AGENT_PANEL_WIDTH } from '../../shared/agent-panel';
+  import { AGENT_LABELS, DEFAULT_AGENT_PANEL_WIDTH, SIGN_IN_PROVIDERS } from '../../shared/agent-panel';
   import type { AgentChatComposer } from '../../shared/agent-panel';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
@@ -18,8 +18,8 @@
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
   import AgentChat from './AgentChat.svelte';
+  import BackgroundChats from './BackgroundChats.svelte';
   import AgentHistory from './AgentHistory.svelte';
-  import AgentProjects from './AgentProjects.svelte';
   import ProviderMark, { type ProviderActivity } from './ProviderMark.svelte';
 
   let {
@@ -33,8 +33,9 @@
     run,
     elements,
     terminal,
-    projects,
     projectId,
+    conversationId,
+    backgroundChats,
     width,
     collapsed,
     fading,
@@ -51,8 +52,9 @@
     run: ProjectRunState;
     elements: AgentElementRef[];
     terminal: boolean;
-    projects: AgentProjectSummary[];
     projectId: string;
+    conversationId: string;
+    backgroundChats: AgentBackgroundChat[];
     width: number;
     collapsed: boolean;
     fading: boolean;
@@ -76,14 +78,17 @@
     });
   }
 
+  // Closed tabs are not reported here, so only the shown conversation and unsent drafts are kept.
   $effect(() => {
-    const ids = new Set(projects.map((project) => project.id));
+    const current = conversationId;
     untrack(() => {
-      for (const id of composers.keys()) if (!ids.has(id)) composers.delete(id);
+      for (const [id, composer] of composers)
+        if (id !== current && !composer.text.trim() && !composer.attachments.length && !composer.images.length)
+          composers.delete(id);
     });
   });
   const chatBusy = $derived(['starting', 'thinking', 'approval'].includes(chat.status));
-  const PROVIDER_LABELS: Record<AgentProviderId, string> = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' };
+  const PROVIDER_LABELS = AGENT_LABELS;
   const providerOptions = $derived(providers.map((value) => ({ value, label: PROVIDER_LABELS[value] })));
   const providerLocked = $derived(chatBusy || chat.status === 'ready');
   let preferredView = $state<'chat' | 'terminal'>('chat');
@@ -184,7 +189,7 @@
   }
 
   function newChat(): void {
-    void window.yalqen.resetAgentChat(chat.id).catch(() => undefined);
+    void window.yalqen.newAgentChat().catch(() => undefined);
   }
 
   function startNewChat(): void {
@@ -215,7 +220,7 @@
   });
 
   $effect(() => {
-    void projectId;
+    void conversationId;
     historyOpen = false;
   });
 
@@ -318,6 +323,14 @@
           onclick={() => (historyOpen = !historyOpen)}
         />
       {/if}
+      {#if view === 'chat' && SIGN_IN_PROVIDERS.includes(chat.provider) && chat.error !== 'authentication-required'}
+        <IconButton
+          icon="profile"
+          label={t('agentChat.signOutOf', { agent: PROVIDER_LABELS[chat.provider] })}
+          disabled={chatBusy}
+          onclick={() => void window.yalqen.signOutAgent().catch(() => false)}
+        />
+      {/if}
       <IconButton
         icon="panel-close-right"
         label={t('agentPanel.collapse')}
@@ -331,7 +344,7 @@
       />
     </div>
   </header>
-  {#if !collapsed && (projects.length > 1 || session.directory)}<AgentProjects {projects} activeId={projectId} />{/if}
+  {#if !collapsed && view === 'chat' && backgroundChats.length}<BackgroundChats chats={backgroundChats} />{/if}
   {#if !collapsed && (session.directory || terminal)}
     <div class="bar">
       {#if session.directory}<Button
@@ -389,10 +402,10 @@
   {#if historyOpen && view === 'chat' && !collapsed}
     <div class="panel-view"><AgentHistory onclose={() => (historyOpen = false)} /></div>
   {/if}
-  {#key projectId}
+  {#key conversationId}
     <div class="panel-view chat-view" id="agent-chat" hidden={collapsed || view !== 'chat' || historyOpen}>
       <AgentChat
-        composer={composerFor(projectId)}
+        composer={composerFor(conversationId)}
         open={open && !collapsed && view === 'chat' && !historyOpen}
         directory={session.directory}
         {activeTab}
@@ -402,6 +415,8 @@
         onchoose={() => void chooseProject()}
       />
     </div>
+  {/key}
+  {#key projectId}
     {#if terminal}
       <div class="panel-view" id="agent-terminal" hidden={collapsed || view !== 'terminal'}>
         {#if TerminalView}

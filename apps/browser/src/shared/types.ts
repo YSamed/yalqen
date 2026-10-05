@@ -134,6 +134,9 @@ export interface BrowserState {
   agentTerminal: boolean;
   agentProjects: AgentProjectSummary[];
   agentProjectId: string;
+  // The active tab's conversation within the project; the chat view starts over when it changes.
+  agentConversationId: string;
+  agentBackgroundChats: AgentBackgroundChat[];
 }
 
 export interface AgentProjectSummary {
@@ -439,7 +442,14 @@ export const IpcChannel = {
   responsiveScanReview: 'yalqen:responsive-scan-review',
   agentChatFix: 'yalqen:agent-chat-fix',
   agentChatInterrupt: 'yalqen:agent-chat-interrupt',
+  agentChatSignIn: 'yalqen:agent-chat-sign-in',
+  agentChatSignOut: 'yalqen:agent-chat-sign-out',
   agentChatReset: 'yalqen:agent-chat-reset',
+  agentChatNew: 'yalqen:agent-chat-new',
+  agentChatShowBackground: 'yalqen:agent-chat-show-background',
+  agentChatDismissBackground: 'yalqen:agent-chat-dismiss-background',
+  agentChatOpenBackground: 'yalqen:agent-chat-open-background',
+  agentChatContinueBackground: 'yalqen:agent-chat-continue-background',
   agentChatPermission: 'yalqen:agent-chat-permission',
   agentChatConfigure: 'yalqen:agent-chat-configure',
   agentChatRewind: 'yalqen:agent-chat-rewind',
@@ -492,6 +502,13 @@ export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   ): Promise<boolean>;
   fixAgentEpisode(tabId: TabId): Promise<boolean>;
   interruptAgentChat(sessionId: string): Promise<void>;
+  signInAgent(): Promise<boolean>;
+  newAgentChat(): Promise<void>;
+  showBackgroundAgentChat(id: string): Promise<boolean>;
+  dismissBackgroundAgentChat(id: string): Promise<boolean>;
+  openBackgroundAgentChatInTab(id: string): Promise<boolean>;
+  continueAgentChatInProject(id: string): Promise<boolean>;
+  signOutAgent(): Promise<boolean>;
   resetAgentChat(sessionId: string | null): Promise<void>;
   respondAgentChat(
     sessionId: string,
@@ -796,7 +813,20 @@ export interface PasswordsView {
 
 export type AgentSetupKind = 'claude' | 'codex' | 'token' | 'otel';
 
-export type ClaudeSetupResult = { ok: true } | { ok: false; reason: 'not-found' | 'failed'; detail: string };
+export interface AgentBackgroundChat {
+  id: string;
+  title: string;
+  status: AgentChatState['status'];
+}
+
+export type AgentSetupResult = { ok: true } | { ok: false; reason: 'not-found' | 'failed'; detail: string };
+
+export type AgentClientId = 'claude' | 'codex';
+
+// unavailable: the client's CLI is not installed; stale: registered with an old address or token.
+export type AgentConnectionState = 'connected' | 'stale' | 'missing' | 'unavailable';
+
+export type AgentConnections = Record<AgentClientId, AgentConnectionState>;
 
 export interface AgentBridgeView {
   enabled: boolean;
@@ -812,13 +842,17 @@ export interface AgentBridgeView {
   codexConfig: string | null;
   otelConfig: string | null;
   observedTabs: number;
+  // Bumped whenever a client registration changes, so the settings page reloads the states it shows.
+  connectionsRevision: number;
 }
 
 export const AgentBridgeChannel = {
   status: 'yalqen-agent:status',
   copy: 'yalqen-agent:copy',
   regenerate: 'yalqen-agent:regenerate',
-  addToClaude: 'yalqen-agent:add-to-claude',
+  connections: 'yalqen-agent:connections',
+  connect: 'yalqen-agent:connect',
+  disconnect: 'yalqen-agent:disconnect',
   changed: 'yalqen-agent:changed',
 } as const;
 
@@ -867,6 +901,8 @@ export interface SettingsApi {
   agentBridge(): Promise<AgentBridgeView>;
   copyAgentSetup(kind: AgentSetupKind): Promise<boolean>;
   regenerateAgentToken(): Promise<AgentBridgeView>;
-  addAgentToClaude(): Promise<ClaudeSetupResult>;
+  agentConnections(): Promise<AgentConnections | null>;
+  connectAgent(id: AgentClientId): Promise<AgentSetupResult>;
+  disconnectAgent(id: AgentClientId): Promise<AgentSetupResult>;
   onAgentBridgeChange(listener: (view: AgentBridgeView) => void): () => void;
 }

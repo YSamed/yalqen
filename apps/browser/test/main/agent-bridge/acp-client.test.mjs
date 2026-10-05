@@ -30,7 +30,7 @@ function prompts() {
   };
 }
 
-function fixture(t, { http = true, canUseTool } = {}) {
+function fixture(t, { http = true, canUseTool, sessionError } = {}) {
   const child = Object.assign(new EventEmitter(), {
     exitCode: null,
     signalCode: null,
@@ -53,6 +53,7 @@ function fixture(t, { http = true, canUseTool } = {}) {
     },
     newSession: async (params) => {
       calls.newSession.push(params);
+      if (sessionError) throw sessionError;
       return { sessionId: 'acp-session' };
     },
     prompt: (params) => {
@@ -118,6 +119,27 @@ test('starts an ACP session in the project with the Yalqen MCP server and report
     model: 'Gemini CLI',
     permissionMode: 'default',
   });
+});
+
+test('an agent that needs a sign-in reports an authentication failure', async (t) => {
+  const { output } = fixture(t, {
+    sessionError: Object.assign(new Error('Authentication required'), { code: -32000 }),
+  });
+  await tick();
+  await tick();
+  assert.equal(output[0].type, 'assistant');
+  assert.equal(output[0].error, 'authentication_failed');
+  assert.equal(output[1].subtype, 'error_during_execution');
+});
+
+test('other session failures stay generic', async (t) => {
+  const { output } = fixture(t, { sessionError: Object.assign(new Error('boom'), { code: -32603 }) });
+  await tick();
+  await tick();
+  assert.deepEqual(
+    output.map((message) => message.type),
+    ['result'],
+  );
 });
 
 test('skips the MCP server when the agent cannot use HTTP servers', async (t) => {
