@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.22](https://github.com/YSamed/yalqen/compare/v0.3.21...v0.3.22) (2026-10-05)
+
+
+### Bug Fixes
+
+* prevent google sign-in blocking in electron browser ([56b9916](https://github.com/YSamed/yalqen/commit/56b9916af98aef059283c78c2a80e9a44c41dcb2))
+
 ## [0.3.21](https://github.com/YSamed/yalqen/compare/v0.3.20...v0.3.21) (2026-10-05)
 
 
