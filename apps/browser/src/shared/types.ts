@@ -17,6 +17,7 @@ export type ThemeSource = 'system' | 'light' | 'dark';
 export type SecureDnsSetting = 'off' | 'automatic' | 'cloudflare' | 'google' | 'quad9';
 export type FontSizeSetting = 'small' | 'medium' | 'large' | 'xlarge';
 export type PageLanguage = 'tr' | 'en';
+export type InterfaceLanguage = 'system' | 'tr' | 'en';
 export type SecurityState = 'secure' | 'insecure' | 'dangerous' | 'local';
 export type TranslationStatus = 'idle' | 'translating' | 'translated' | 'failed';
 
@@ -677,6 +678,7 @@ export interface SettingsValues {
   fontSize: FontSizeSetting;
   defaultZoom: number;
   pageLanguage: PageLanguage;
+  interfaceLanguage: InterfaceLanguage;
   pageTranslation: boolean;
   autoUpdate: boolean;
   usageCounting: boolean;
@@ -727,6 +729,7 @@ export const SettingsChannel = {
   changed: 'yalqen-settings:changed',
   clearData: 'yalqen-settings:clear-data',
   makeDefault: 'yalqen-settings:make-default',
+  relaunch: 'yalqen-settings:relaunch',
   processUsage: 'yalqen-settings:process-usage',
   checkForUpdates: 'yalqen-settings:check-for-updates',
   installUpdate: 'yalqen-settings:install-update',
@@ -871,6 +874,7 @@ export interface SettingsApi {
   onChange(listener: (view: SettingsView) => void): () => void;
   clearData(request: ClearDataRequest): Promise<void>;
   makeDefault(): Promise<SettingsView>;
+  relaunch(): Promise<void>;
   processUsage(): Promise<ProcessUsage>;
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;

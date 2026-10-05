@@ -591,6 +591,10 @@ export const en = {
   'settings.whenBrowserOpens': 'When the browser opens',
   'settings.startupHint': "If you choose Start with a new tab, open tabs aren't saved when the browser closes.",
   'settings.language': 'Language',
+  'settings.interfaceLanguage': 'Interface language',
+  'settings.interfaceLanguageHint': 'Language of the browser and the AI panel. Takes effect after a restart.',
+  'settings.interfaceLanguageSystem': 'System default',
+  'settings.restartNow': 'Restart now',
   'settings.pageLanguage': 'Page language',
   'settings.pageLanguageHint':
     'Sites are asked for content in this language first; spell checking follows the same order.',

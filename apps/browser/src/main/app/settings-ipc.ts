@@ -20,6 +20,7 @@ export interface SettingsIpcHost {
   update(patch: unknown): void;
   clearData(request: ClearDataRequest): Promise<void>;
   updater: Updater;
+  relaunch(): void;
   requestRules: RequestRuleStore;
   permissions: PermissionStore;
   onRequestRulesSaved(): void;
@@ -46,6 +47,7 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
     makeDefaultBrowser();
     return host.view();
   });
+  handleSettingsCall(SettingsChannel.relaunch, () => host.relaunch());
   handleSettingsCall(SettingsChannel.processUsage, () => processUsage());
   handleSettingsCall(SettingsChannel.checkForUpdates, () => host.updater.check());
   handleSettingsCall(SettingsChannel.installUpdate, () => host.updater.install());

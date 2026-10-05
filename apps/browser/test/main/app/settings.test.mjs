@@ -58,6 +58,7 @@ test('unknown or mistyped fields fall back', () => {
       fontSize: 'medium',
       defaultZoom: 1,
       pageLanguage: 'tr',
+      interfaceLanguage: 'system',
       pageTranslation: true,
       autoUpdate: true,
       usageCounting: false,
@@ -110,6 +111,7 @@ test('updates keep valid fields and persist', () => {
       fontSize: 'large',
       defaultZoom: 1.25,
       pageLanguage: 'en',
+      interfaceLanguage: 'tr',
       askBeforeDownload: false,
     });
     store.update({ searchEngine: 'nope', theme: 7 });
@@ -135,6 +137,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.fontSize, 'large');
     assert.equal(reloaded.defaultZoom, 1.25);
     assert.equal(reloaded.pageLanguage, 'en');
+    assert.equal(reloaded.interfaceLanguage, 'tr');
     assert.equal(reloaded.askBeforeDownload, false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

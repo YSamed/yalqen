@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { SettingsValues, SettingsView, UpdateStatus } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
@@ -28,10 +29,18 @@
     { value: 'en', label: 'English' },
   ] as const;
 
+  const interfaceLanguageOptions = $derived([
+    { value: 'system' as const, label: t('settings.interfaceLanguageSystem') },
+    { value: 'tr' as const, label: 'Türkçe' },
+    { value: 'en' as const, label: 'English' },
+  ]);
+  const startupInterfaceLanguage = untrack(() => view.values.interfaceLanguage);
+
   let templateDraft = $state('');
   let editingTemplate = $state(false);
 
   const values = $derived(view.values);
+  const languageChanged = $derived(values.interfaceLanguage !== startupInterfaceLanguage);
   const isCustom = $derived(values.searchEngine === 'custom');
   const engineOptions = $derived([
     ...view.engines.map((engine) => ({ value: engine.id, label: engine.label })),
@@ -118,6 +127,21 @@
 </SettingRow>
 
 <h2>{t('settings.language')}</h2>
+<SettingRow
+  title={t('settings.interfaceLanguage')}
+  hint={t('settings.interfaceLanguageHint')}
+  labelFor="interface-language"
+>
+  <Select
+    id="interface-language"
+    options={interfaceLanguageOptions}
+    value={values.interfaceLanguage}
+    onchange={(value) => update({ interfaceLanguage: value })}
+  />
+  {#if languageChanged}
+    <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
+  {/if}
+</SettingRow>
 <SettingRow title={t('settings.pageLanguage')} hint={t('settings.pageLanguageHint')}>
   <SegmentedControl
     label={t('settings.pageLanguage')}

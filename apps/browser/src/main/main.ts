@@ -115,6 +115,8 @@ function startBrowser(): void {
   const sessions = openBrowsingSessions();
   const { daily, privateBrowsing, developer } = sessions;
   const settings = new SettingsStore(userData, getLocale());
+  const { interfaceLanguage } = settings.get();
+  if (interfaceLanguage !== 'system') setLocale(interfaceLanguage);
   const history = new HistoryStore(userData);
   const repoPrompt = new RepoPrompt(userData);
   const chatPreferences = new ChatPreferenceStore(userData);
@@ -687,6 +689,10 @@ function startBrowser(): void {
     update: updateSettings,
     clearData,
     updater,
+    relaunch: () => {
+      app.relaunch();
+      app.quit();
+    },
     requestRules,
     permissions,
     onRequestRulesSaved: () => eachWindow((window) => window.tabs.refreshRequestRules()),

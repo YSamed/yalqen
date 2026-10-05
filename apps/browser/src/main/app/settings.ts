@@ -3,6 +3,7 @@ import path from 'node:path';
 import type {
   AgentActionPolicy,
   FontSizeSetting,
+  InterfaceLanguage,
   PageLanguage,
   PanelSide,
   PinnedDisplay,
@@ -44,6 +45,7 @@ const DEFAULTS: Settings = {
   fontSize: 'medium',
   defaultZoom: 1,
   pageLanguage: 'tr',
+  interfaceLanguage: 'system',
   pageTranslation: true,
   autoUpdate: true,
   usageCounting: false,
@@ -97,6 +99,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     fontSize,
     defaultZoom,
     pageLanguage,
+    interfaceLanguage,
     pageTranslation,
     autoUpdate,
     usageCounting,
@@ -149,6 +152,10 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? defaultZoom
         : base.defaultZoom,
     pageLanguage: pageLanguage === 'tr' || pageLanguage === 'en' ? (pageLanguage as PageLanguage) : base.pageLanguage,
+    interfaceLanguage:
+      interfaceLanguage === 'system' || interfaceLanguage === 'tr' || interfaceLanguage === 'en'
+        ? (interfaceLanguage as InterfaceLanguage)
+        : base.interfaceLanguage,
     pageTranslation: typeof pageTranslation === 'boolean' ? pageTranslation : base.pageTranslation,
     autoUpdate: typeof autoUpdate === 'boolean' ? autoUpdate : base.autoUpdate,
     usageCounting: typeof usageCounting === 'boolean' ? usageCounting : base.usageCounting,
