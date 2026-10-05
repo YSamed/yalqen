@@ -25,6 +25,7 @@ import {
   type SubmittedCredential,
 } from '../shared/types.js';
 import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
+import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
 
 const THRESHOLD = 90;
@@ -123,6 +124,7 @@ window.addEventListener(
 );
 
 if (location.origin === WEB_STORE_ORIGIN && window === window.top) setupWebStorePage();
+if (location.hostname === 'accounts.google.com') setupGoogleSignInPage();
 
 function subscribe<T>(name: string, listener: (value: T) => void): () => void {
   const handler = (_event: IpcRendererEvent, value: T) => listener(value);
