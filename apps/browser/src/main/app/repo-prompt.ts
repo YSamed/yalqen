@@ -6,6 +6,7 @@ import { JsonFile } from '../storage/json-file.js';
 export const REPO_URL: string = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../../../package.json'), 'utf8'),
 ).repository;
+export const FEEDBACK_URL = `${REPO_URL}/discussions`;
 export type RepoPromptAction = 'star' | 'later' | 'close';
 
 const DAY_MS = 24 * 60 * 60 * 1000;

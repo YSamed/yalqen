@@ -340,6 +340,8 @@ function startBrowser(): void {
     findBar,
     history,
     repoPrompt,
+    dismissAnnouncement: () => settings.update({ dismissedAnnouncement: app.getVersion() }),
+    dismissFeedback: () => settings.update({ dismissedFeedback: app.getVersion() }),
     chatPreferences,
     downloads,
     bookmarks,
@@ -457,6 +459,8 @@ function startBrowser(): void {
         if (showWelcome) settings.update({ welcomeCompleted: true });
         return showWelcome;
       },
+      showAnnouncement: () => !isPrivate && settings.get().dismissedAnnouncement !== app.getVersion(),
+      showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
       suggestions: (query) =>
         suggest(query, {

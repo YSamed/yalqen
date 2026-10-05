@@ -665,6 +665,8 @@ export interface SettingsValues {
   usageCounting: boolean;
   askBeforeDownload: boolean;
   welcomeCompleted: boolean;
+  dismissedAnnouncement: string;
+  dismissedFeedback: string;
   agentBridge: boolean;
   agentOrigins: string[];
   agentActions: AgentActionPolicy;

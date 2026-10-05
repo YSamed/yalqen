@@ -39,6 +39,8 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
     downloads: { list: () => [], changes: new changeFeed.ChangeFeed() },
     bookmarks: () => ({ folders: [], bookmarks: [] }),
     showWelcome: () => false,
+    showAnnouncement: () => false,
+    showFeedback: () => false,
     showRepoPrompt: () => false,
     suggestions: () => [],
     ...sources,
@@ -80,6 +82,26 @@ test('the repo prompt is only rendered when it is due and never beside the welco
   assert.doesNotMatch(await body({}), /class="repo-prompt"/);
   assert.match(await body({ showRepoPrompt: () => true }), /yalqen:\/\/newtab\/repo\?action=star/);
   assert.doesNotMatch(await body({ showWelcome: () => true, showRepoPrompt: () => true }), /class="repo-prompt"/);
+});
+
+test('the announcement shows beside the welcome and replaces the repo prompt', async () => {
+  const body = async (sources) => (await serve(sources)(new Request('yalqen://newtab/'))).text();
+  assert.doesNotMatch(await body({}), /class="repo-prompt announcement"/);
+  assert.match(await body({ showAnnouncement: () => true }), /yalqen:\/\/newtab\/announcement\?action=try/);
+  assert.match(await body({ showWelcome: () => true, showAnnouncement: () => true }), /announcement\?action=close/);
+  const both = await body({ showAnnouncement: () => true, showRepoPrompt: () => true });
+  assert.doesNotMatch(both, /repo\?action=star/);
+});
+
+test('the feedback card is its own card and never shows on the welcome', async () => {
+  const body = async (sources) => (await serve(sources)(new Request('yalqen://newtab/'))).text();
+  assert.doesNotMatch(await body({}), /feedback\?action=open/);
+  assert.match(await body({ showFeedback: () => true }), /yalqen:\/\/newtab\/feedback\?action=open/);
+  assert.doesNotMatch(await body({ showWelcome: () => true, showFeedback: () => true }), /feedback\?action/);
+  const both = await body({ showAnnouncement: () => true, showFeedback: () => true, showRepoPrompt: () => true });
+  assert.match(both, /announcement\?action=try/);
+  assert.match(both, /feedback\?action=open/);
+  assert.doesNotMatch(both, /repo\?action=star/);
 });
 
 test('the downloads page updates itself when the list changes', async () => {

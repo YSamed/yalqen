@@ -923,6 +923,13 @@ export const tr: Record<MessageKey, string> = {
   'internalPages.tipAdsTitle': 'Daha az reklam',
   'internalPages.tipAdsText': 'Reklam engelleme varsayılan olarak açık.',
   'internalPages.close': 'Kapat',
+  'internalPages.announcementTitle': 'AI panelini keşfet',
+  'internalPages.announcementText': 'Test ettiğin sayfanın yanında, kendi kodlama ajanınla projeler üzerinde çalış.',
+  'internalPages.announcementTry': 'Dene',
+  'internalPages.feedbackTitle': 'Yalqen seni memnun ediyor mu?',
+  'internalPages.feedbackText':
+    'Neyin iyi gittiğini ve neyin gitmediğini yaz. Geri bildirimin sıradaki işleri belirliyor.',
+  'internalPages.feedbackOpen': 'Geri bildirim ver',
   'internalPages.repoTitle': "Yalqen'i beğendin mi?",
   'internalPages.repoText': "GitHub'da yıldız vermen projenin görünür olmasına yardım eder.",
   'internalPages.repoStar': 'Yıldızla',

@@ -25,7 +25,7 @@ import {
   type TabSnapshot,
 } from '../../shared/types.js';
 import { withoutHash } from '../address-bar/url.js';
-import { REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
+import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
   resizeEmulation,
@@ -40,7 +40,13 @@ import type { HeaderValue, PausedRequest } from '../devtools/request-rules.js';
 import { newTraceparent } from '../agent-bridge/tracing.js';
 import { isSameVisit } from '../library/history.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from '../pages/error-page.js';
-import { internalNavigation, isAllowedFrom, type InternalNavigation } from '../pages/internal-navigation.js';
+import {
+  internalNavigation,
+  isAllowedFrom,
+  type AnnouncementAction,
+  type FeedbackAction,
+  type InternalNavigation,
+} from '../pages/internal-navigation.js';
 import { PROCEED_URL } from '../privacy/certificates.js';
 import { PROCEED_HTTP_URL } from '../privacy/https-only.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from '../privacy/site-data.js';
@@ -87,6 +93,8 @@ interface TabManagerOptions {
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
   onRepoPrompt: (action: RepoPromptAction) => void;
+  onAnnouncement: (action: AnnouncementAction) => void;
+  onFeedback: (action: FeedbackAction) => void;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
   onVisit: (url: string, title: string) => string | null;
   onVisitTitle: (id: string | null, title: string) => void;
@@ -1322,6 +1330,15 @@ export class TabManager {
       case 'new-tab-repo':
         this.options.onRepoPrompt(navigation.action);
         if (navigation.action === 'star') void contents.loadURL(REPO_URL);
+        else contents.reload();
+        return;
+      case 'new-tab-announcement':
+        this.options.onAnnouncement(navigation.action);
+        contents.reload();
+        return;
+      case 'new-tab-feedback':
+        this.options.onFeedback(navigation.action);
+        if (navigation.action === 'open') void contents.loadURL(FEEDBACK_URL);
         else contents.reload();
         return;
     }

@@ -49,6 +49,8 @@ const DEFAULTS: Settings = {
   usageCounting: false,
   askBeforeDownload: true,
   welcomeCompleted: false,
+  dismissedAnnouncement: '',
+  dismissedFeedback: '',
   agentBridge: false,
   agentOrigins: [],
   agentActions: 'ask',
@@ -100,6 +102,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     usageCounting,
     askBeforeDownload,
     welcomeCompleted,
+    dismissedAnnouncement,
+    dismissedFeedback,
     agentBridge,
     agentOrigins,
     agentActions,
@@ -150,6 +154,9 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     usageCounting: typeof usageCounting === 'boolean' ? usageCounting : base.usageCounting,
     askBeforeDownload: typeof askBeforeDownload === 'boolean' ? askBeforeDownload : base.askBeforeDownload,
     welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
+    dismissedAnnouncement:
+      typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,
+    dismissedFeedback: typeof dismissedFeedback === 'string' ? dismissedFeedback.slice(0, 64) : base.dismissedFeedback,
     agentBridge: typeof agentBridge === 'boolean' ? agentBridge : base.agentBridge,
     agentOrigins: Array.isArray(agentOrigins) ? sanitizeAgentOrigins(agentOrigins) : base.agentOrigins,
     agentActions:

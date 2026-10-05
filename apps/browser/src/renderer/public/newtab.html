@@ -345,12 +345,19 @@
         line-height: 1.4;
       }
 
-      .repo-prompt {
+      .cards {
         position: fixed;
         z-index: 2;
         right: 16px;
         bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
         width: 240px;
+      }
+
+      .repo-prompt {
+        position: relative;
         padding: 14px 16px 12px;
         border-radius: 16px;
         background: var(--surface);
@@ -397,7 +404,7 @@
       }
 
       @media (max-width: 560px) {
-        .repo-prompt {
+        .cards {
           left: 16px;
           width: auto;
         }
@@ -465,7 +472,7 @@
       </div>
       __YALQEN_PINNED_SLOT__ __YALQEN_TIPS_SLOT__
     </main>
-    __YALQEN_REPO_PROMPT_SLOT__
+    <div class="cards">__YALQEN_ANNOUNCEMENT_SLOT__ __YALQEN_FEEDBACK_SLOT__ __YALQEN_REPO_PROMPT_SLOT__</div>
     <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>
 </html>

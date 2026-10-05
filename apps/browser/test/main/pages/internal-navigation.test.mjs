@@ -21,6 +21,16 @@ test('command addresses are recognised with their arguments', () => {
   assert.equal(internalNavigation('yalqen://newtab/forget?url=https%3A%2F%2Fa.com%2F'), null);
   assert.deepEqual(internalNavigation('yalqen://newtab/repo?action=star'), { type: 'new-tab-repo', action: 'star' });
   assert.equal(internalNavigation('yalqen://newtab/repo?action=bogus'), null);
+  assert.deepEqual(internalNavigation('yalqen://newtab/announcement?action=try'), {
+    type: 'new-tab-announcement',
+    action: 'try',
+  });
+  assert.deepEqual(internalNavigation('yalqen://newtab/feedback?action=open'), {
+    type: 'new-tab-feedback',
+    action: 'open',
+  });
+  assert.equal(internalNavigation('yalqen://newtab/feedback?action=bogus'), null);
+  assert.equal(internalNavigation('yalqen://newtab/announcement?action=bogus'), null);
   const command = internalNavigation('yalqen://bookmarks/rename?id=1&title=A');
   assert.equal(command.type, 'page-command');
   assert.equal(command.page, 'bookmarks');

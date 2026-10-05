@@ -920,6 +920,13 @@ export const en = {
   'internalPages.tipAdsTitle': 'Fewer ads',
   'internalPages.tipAdsText': 'Ad blocking is on by default.',
   'internalPages.close': 'Close',
+  'internalPages.announcementTitle': 'Meet the AI panel',
+  'internalPages.announcementText':
+    'Work on your projects with your own coding agent, right beside the page you are testing.',
+  'internalPages.announcementTry': 'Try it',
+  'internalPages.feedbackTitle': 'How is Yalqen working for you?',
+  'internalPages.feedbackText': 'Tell us what works and what does not. Your feedback shapes what we build next.',
+  'internalPages.feedbackOpen': 'Give feedback',
   'internalPages.repoTitle': 'Enjoying Yalqen?',
   'internalPages.repoText': 'A star on GitHub helps more people find the project.',
   'internalPages.repoStar': 'Star',

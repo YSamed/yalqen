@@ -110,6 +110,8 @@ export interface AppContext {
   findBar: FindBar;
   history: HistoryStore;
   repoPrompt: RepoPrompt;
+  dismissAnnouncement: () => void;
+  dismissFeedback: () => void;
   chatPreferences: ChatPreferenceStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
@@ -312,6 +314,11 @@ export class YalqenWindow {
         else this.tabs.navigate(resolveInput(query, app.searchEngine()));
       },
       onRepoPrompt: (action) => app.repoPrompt.respond(action),
+      onFeedback: () => app.dismissFeedback(),
+      onAnnouncement: (action) => {
+        app.dismissAnnouncement();
+        if (action === 'try') this.openAgentPanel();
+      },
       onHtmlFullScreenChange: (tabId, fullScreen) => {
         if (fullScreen) {
           if (tabId !== this.tabs.activeTabId || this.htmlFullScreenTabId === tabId) return;
@@ -523,6 +530,10 @@ export class YalqenWindow {
       agentProjects: this.agentProjects.map((project) => project.summary()),
       agentProjectId: this.activeProjectId,
     };
+  }
+
+  openAgentPanel(): void {
+    if (!this.agentPanelOpen) this.toggleAgentPanel();
   }
 
   toggleAgentPanel(): void {
