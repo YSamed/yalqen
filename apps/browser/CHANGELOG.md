@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.26](https://github.com/YSamed/yalqen/compare/v0.3.25...v0.3.26) (2026-10-05)
+
+
+### Features
+
+* add interface language setting with restart capability ([f158f40](https://github.com/YSamed/yalqen/commit/f158f40d9ad11d1afb7381d8d608fa4eb6322265))
+
 ## [0.3.25](https://github.com/YSamed/yalqen/compare/v0.3.24...v0.3.25) (2026-10-05)
 
 
