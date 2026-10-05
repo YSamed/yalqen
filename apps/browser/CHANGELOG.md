@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.21](https://github.com/YSamed/yalqen/compare/v0.3.20...v0.3.21) (2026-10-05)
+
+
+### Features
+
+* add dismissible announcement and feedback cards to new-tab page ([ac1b24f](https://github.com/YSamed/yalqen/commit/ac1b24f1f3b509efb84519947fa585e2f0db2606))
+
 ## [0.3.20](https://github.com/YSamed/yalqen/compare/v0.3.19...v0.3.20) (2026-10-04)
 
 
