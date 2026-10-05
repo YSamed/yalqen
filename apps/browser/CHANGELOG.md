@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.25](https://github.com/YSamed/yalqen/compare/v0.3.24...v0.3.25) (2026-10-05)
+
+
+### Features
+
+* add per-tab ai chats, agent sign-in and one-click mcp connections ([9843cd9](https://github.com/YSamed/yalqen/commit/9843cd905f852583cc19b3d18c007be76c58843c))
+
 ## [0.3.24](https://github.com/YSamed/yalqen/compare/v0.3.23...v0.3.24) (2026-10-05)
 
 
