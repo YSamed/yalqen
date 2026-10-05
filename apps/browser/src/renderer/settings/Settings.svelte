@@ -53,8 +53,12 @@
   }
 
   onMount(() => {
-    void api.get().then((next) => (view = next));
-    return api.onChange((next) => (view = next));
+    void api.get().then((next) => {
+      view = next;
+    });
+    return api.onChange((next) => {
+      view = next;
+    });
   });
 </script>
 

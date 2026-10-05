@@ -34,8 +34,12 @@
   }
 
   onMount(() => {
-    void api.extensions().then((next) => (extensions = next));
-    return api.onExtensionsChange((next) => (extensions = next));
+    void api.extensions().then((next) => {
+      extensions = next;
+    });
+    return api.onExtensionsChange((next) => {
+      extensions = next;
+    });
   });
 </script>
 

@@ -43,7 +43,9 @@
       input?.select();
       if (value !== '') search();
     });
-    const offResult = window.yalqenFind.onResult((next) => (result = next));
+    const offResult = window.yalqenFind.onResult((next) => {
+      result = next;
+    });
     return () => {
       offOpen();
       offResult();

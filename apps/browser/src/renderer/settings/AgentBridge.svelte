@@ -98,8 +98,12 @@
   }
 
   onMount(() => {
-    void api.agentBridge().then((next) => (view = next));
-    return api.onAgentBridgeChange((next) => (view = next));
+    void api.agentBridge().then((next) => {
+      view = next;
+    });
+    return api.onAgentBridgeChange((next) => {
+      view = next;
+    });
   });
 </script>
 
