@@ -25,6 +25,7 @@ import {
   type TabSnapshot,
 } from '../../shared/types.js';
 import { withoutHash } from '../address-bar/url.js';
+import { signInUserAgent } from '../app/page-preferences.js';
 import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
@@ -1196,6 +1197,8 @@ export class TabManager {
     listen('devtools-closed', () => this.freezer.maybeFreeze(tab));
     listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
       if (!isMainFrame || isSameDocument) return;
+      const userAgent = signInUserAgent(url, process.platform) ?? contents.session.getUserAgent();
+      if (contents.getUserAgent() !== userAgent) contents.setUserAgent(userAgent);
       this.syncAgentFor(tab, url);
       const hadTranslationState = tab.translation !== 'idle' || tab.pageLanguage !== null;
       this.translation.reset(tab);

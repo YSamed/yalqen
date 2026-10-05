@@ -40,12 +40,12 @@ test('cookie names are read from request and response headers', () => {
   assert.deepEqual(headerValues(undefined, 'set-cookie'), []);
 });
 
-test('request listeners are attached only while blocking is on', () => {
+test('cookie listeners are attached only while blocking is on', () => {
   const calls = [];
   const webRequest = Object.fromEntries(
     ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [
       name,
-      (listener) => calls.push([name, listener !== null]),
+      (...args) => calls.push([name, args.at(-1) !== null]),
     ]),
   );
   const session = { webRequest, cookies: { remove: async () => {} } };
@@ -61,7 +61,7 @@ test('request listeners are attached only while blocking is on', () => {
   calls.length = 0;
   cookies.setThirdPartyCookieBlocking(session, false);
   assert.deepEqual(calls, [
-    ['onBeforeSendHeaders', false],
+    ['onBeforeSendHeaders', true],
     ['onCompleted', false],
     ['onErrorOccurred', false],
   ]);
@@ -74,8 +74,8 @@ function fixture() {
     webRequest: Object.fromEntries(
       ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [
         name,
-        (listener) => {
-          listeners[name] = listener;
+        (...args) => {
+          listeners[name] = args.at(-1);
         },
       ]),
     ),
@@ -192,7 +192,7 @@ test('domain eviction and independently enabled sessions preserve classification
   assert.deepEqual(a.request('https://tracker.net/p'), { requestHeaders: { Accept: '*/*' } });
   assert.deepEqual(b.request('https://tracker.net/p'), {});
   cookies.setThirdPartyCookieBlocking(a.session, false);
-  assert.equal(a.listeners.onBeforeSendHeaders, null);
+  assert.equal(a.listeners.onCompleted, null);
   a.navigate('https://tracker.net/');
   cookies.setThirdPartyCookieBlocking(a.session, true);
   assert.deepEqual(a.request('https://tracker.net/p'), {});

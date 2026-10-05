@@ -1,5 +1,6 @@
 import { session, type Session } from 'electron';
 import type { PageLanguage } from '../../shared/types.js';
+import { rewriteSignInHeaders } from '../privacy/sign-in-headers.js';
 import { setThirdPartyCookieBlocking } from '../privacy/third-party-cookies.js';
 import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
 
@@ -10,11 +11,13 @@ interface BrowsingSessions {
 }
 
 export function openBrowsingSessions(): BrowsingSessions {
-  return {
+  const sessions = {
     daily: session.fromPartition('persist:daily'),
     privateBrowsing: session.fromPartition('private'),
     developer: session.fromPartition('developer'),
   };
+  for (const browsing of eachSession(sessions)) rewriteSignInHeaders(browsing);
+  return sessions;
 }
 
 export function eachSession({ daily, privateBrowsing, developer }: BrowsingSessions): Session[] {

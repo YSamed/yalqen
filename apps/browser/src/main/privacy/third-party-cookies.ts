@@ -1,5 +1,6 @@
 import type { Session } from 'electron';
 import { getDomain } from 'tldts';
+import { rewriteSignInHeaders, signInRequestHeaders } from './sign-in-headers.js';
 
 export function siteOf(url: string, domains?: Map<string, string>): string | null {
   try {
@@ -49,7 +50,7 @@ export function setThirdPartyCookieBlocking(session: Session, enabled: boolean):
   const { webRequest } = session;
   if (!enabled) {
     blocking.delete(session);
-    webRequest.onBeforeSendHeaders(null);
+    rewriteSignInHeaders(session);
     webRequest.onCompleted(null);
     webRequest.onErrorOccurred(null);
     return;
@@ -76,11 +77,12 @@ export function setThirdPartyCookieBlocking(session: Session, enabled: boolean):
     existing.delete(details.id);
     const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
     const request = page ? siteOf(details.url, domains) : null;
+    const signIn = signInRequestHeaders(details.url, details.requestHeaders, process.platform);
     if (!page || request === null || request === page.site) {
-      callback({});
+      callback(signIn ? { requestHeaders: signIn } : {});
       return;
     }
-    const requestHeaders = { ...details.requestHeaders };
+    const requestHeaders = { ...(signIn ?? details.requestHeaders) };
     const sent = new Set<string>();
     for (const key of Object.keys(requestHeaders)) {
       if (key.toLowerCase() !== 'cookie') continue;
