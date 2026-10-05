@@ -1,5 +1,6 @@
 import type {
   AgentChatContext,
+  AgentChatImage,
   AgentChatState,
   AgentSessionState,
   AgentTerminalSize,
@@ -8,6 +9,12 @@ import type {
 } from './types.js';
 
 export const MAX_CHAT_TABS = 5;
+
+export interface AgentChatComposer {
+  text: string;
+  attachments: TabSnapshot[];
+  images: AgentChatImage[];
+}
 
 export function normalizeAgentContexts(value: unknown): AgentChatContext[] | null {
   const entries = value === null ? [] : Array.isArray(value) ? value : [value];

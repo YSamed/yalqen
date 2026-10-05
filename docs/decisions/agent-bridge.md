@@ -122,6 +122,10 @@ Not yet measured: Pages Router, webpack with React 18 outside Next.js, and large
 
 The window's agent panel runs Claude through the native chat interface (`agent-chat.ts`) or an optional PTY terminal (`agent-session.ts`). Both receive the local MCP connection. The terminal can receive the current tab reference, while chat messages can include tabs and picked elements. `project-runner.ts` starts the selected project's development server and opens its local URL in a tab.
 
+### Projects and browser tabs
+
+Choosing a project in the AI panel associates it with the active browser tab. Switching back to that tab restores its project's chat and terminal without stopping other projects. A project's dev server opens a tab already associated with that project. Unassigned tabs on an origin claimed by exactly one project also select that project; explicit tab assignments take priority when projects share an origin. Unrelated tabs keep the current project, and private tabs do not acquire assignments outside a developer window. Assignments last for the window's lifetime and are removed when the tab or project closes. Message drafts, attached tabs, images and picked elements stay with their project while switching.
+
 ### Multiple chat tabs
 
 The chat composer attaches up to five tabs through its tab picker or `@` suggestions. Local tabs contribute MCP references; explicitly attached external pages contribute text and the current text selection, sharing a 50,000-character budget. Page data is escaped and marked as untrusted. Queued messages keep the captured content and tab metadata in selection order. Closed, navigated or newly private tabs are removed from the composer; changes during capture reject the send. Private browsing tabs stay excluded, while the developer window follows the same effective privacy policy as its agent connection.

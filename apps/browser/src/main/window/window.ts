@@ -86,6 +86,7 @@ import type { PageText } from '../agent-bridge/page-text.js';
 import type { ProjectRunner } from '../agent-bridge/project-runner.js';
 import { projectIncludes } from '../agent-bridge/tab-scope.js';
 import { AgentProject } from './agent-project.js';
+import { AgentProjectTabs } from './agent-project-tabs.js';
 import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
 import { MAX_REFERENCES, referenceRef, type ReferenceCapture } from '../agent-bridge/reference.js';
 import { VisualComparisonManager, VisualComparisonError, type VisualComparisonTab } from './visual-comparison.js';
@@ -161,6 +162,8 @@ export class YalqenWindow {
   readonly isDeveloper: boolean;
   private agentProjects: AgentProject[] = [];
   private activeProjectId = '';
+  private readonly projectTabs = new AgentProjectTabs();
+  private readonly projectElements = new Map<string, AgentElementRef[]>();
   private agentProviders: AgentProviderId[] = ['claude'];
   private readonly projectFiles = new ProjectFiles();
   private agentPanelOpen = false;
@@ -295,6 +298,7 @@ export class YalqenWindow {
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       freezeBackground: () => app.settings.get().freezeBackgroundTabs,
       onChange: (persist) => {
+        this.syncAgentProjectWithTab();
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
           this.htmlFullScreenTabId = null;
           this.syncPageFullScreen();
@@ -502,8 +506,10 @@ export class YalqenWindow {
   };
 
   state(): BrowserState {
+    const tabState = this.tabs.state();
+    this.projectTabs.prune(new Set(tabState.tabs.map((tab) => tab.id)));
     return {
-      ...this.tabs.state(),
+      ...tabState,
       developer: this.isDeveloper,
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
@@ -540,6 +546,7 @@ export class YalqenWindow {
     if (this.isPrivate && !this.isDeveloper) return;
     this.agentPanelOpen = !this.agentPanelOpen;
     if (this.agentPanelOpen) {
+      this.projectTabs.bind(this.tabs.snapshotFor(), this.activeProjectId, this.isDeveloper);
       this.uiContents.focus();
       void this.agentProject.chat.refreshModels();
       void availableProviders().then((providers) => {
@@ -557,6 +564,7 @@ export class YalqenWindow {
     }
     this.selectingAgentDirectory = true;
     const project = this.agentProject;
+    const tabId = this.tabs.activeTabId;
     try {
       const result = await dialog.showOpenDialog(this.window, {
         title: t('agentPanel.chooseProject'),
@@ -575,6 +583,7 @@ export class YalqenWindow {
           void this.responsiveScans.get(project.id)?.clear();
         }
         project.selectDirectory(result.filePaths[0]);
+        this.projectTabs.bind(this.tabs.snapshotFor(tabId), project.id, this.isDeveloper);
       }
     } finally {
       this.selectingAgentDirectory = false;
@@ -610,9 +619,15 @@ export class YalqenWindow {
     else this.toggleAgentPanel();
   }
 
-  private setPickedElements(elements: AgentElementRef[]): void {
-    this.pickedElements = elements.slice(-MAX_PICKED_ELEMENTS);
-    const kept = new Set(this.pickedElements.map(({ id }) => id));
+  private setPickedElements(elements: AgentElementRef[], projectId = this.activeProjectId): void {
+    const picked = elements.slice(-MAX_PICKED_ELEMENTS);
+    this.projectElements.set(projectId, picked);
+    if (projectId === this.activeProjectId) this.pickedElements = picked;
+    this.pruneAgentReferences();
+  }
+
+  private pruneAgentReferences(): void {
+    const kept = new Set([...this.projectElements.values()].flat().map(({ id }) => id));
     for (const id of this.references.keys()) if (!kept.has(id)) this.references.delete(id);
   }
 
@@ -664,7 +679,11 @@ export class YalqenWindow {
         if (isActive(target) && !this.uiContents.isDestroyed())
           this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
       },
-      onUrl: (_target, url) => this.tabs.open(url),
+      onUrl: (target, url) => {
+        const id = this.tabs.open(url, { activate: false });
+        this.projectTabs.bind(this.tabs.snapshotFor(id), target.id, this.isDeveloper);
+        this.tabs.activate(id);
+      },
     });
     this.agentProjects.push(project);
     return project;
@@ -677,12 +696,23 @@ export class YalqenWindow {
 
   selectAgentProject(id: unknown): boolean {
     if (!this.agentProjects.some((project) => project.id === id)) return false;
+    this.projectTabs.bind(this.tabs.snapshotFor(), id as string, this.isDeveloper);
+    this.activateAgentProject(id as string);
+    return true;
+  }
+
+  private syncAgentProjectWithTab(): void {
+    const id = this.projectTabs.projectFor(this.tabs.snapshotFor(), this.agentProjects, this.isDeveloper);
+    if (id && id !== this.activeProjectId) this.activateAgentProject(id);
+  }
+
+  private activateAgentProject(id: string): void {
     if (id !== this.activeProjectId) void this.responsiveScans.get(this.activeProjectId)?.cancel();
-    this.activeProjectId = id as string;
+    this.activeProjectId = id;
+    this.pickedElements = this.projectElements.get(id) ?? [];
     if (!this.uiContents.isDestroyed())
       this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
     this.pushState();
-    return true;
   }
 
   closeAgentProject(id: unknown): boolean {
@@ -690,6 +720,9 @@ export class YalqenWindow {
     if (!project || project.busy || this.agentProjects.length === 1) return false;
     const index = this.agentProjects.indexOf(project);
     this.agentProjects.splice(index, 1);
+    this.projectTabs.removeProject(project.id);
+    this.projectElements.delete(project.id);
+    this.pruneAgentReferences();
     this.visualComparisons.get(project.id)?.clear();
     this.visualComparisons.delete(project.id);
     void this.responsiveScans.get(project.id)?.clear();
@@ -962,7 +995,10 @@ export class YalqenWindow {
     for (const context of contexts) if (context.local) project.claim(context.url);
     const sent = await chat.send(id, text, contexts, elements, { images, pages, references });
     if (sent) {
-      this.setPickedElements(this.pickedElements.filter((element) => !elements.includes(element)));
+      this.setPickedElements(
+        (this.projectElements.get(project.id) ?? []).filter((element) => !elements.includes(element)),
+        project.id,
+      );
       this.pushState();
     }
     return sent;

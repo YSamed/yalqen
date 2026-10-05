@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
   import type {
     AgentChatState,
     AgentElementRef,
@@ -10,6 +11,7 @@
     TabSnapshot,
   } from '../../shared/types';
   import { DEFAULT_AGENT_PANEL_WIDTH } from '../../shared/agent-panel';
+  import type { AgentChatComposer } from '../../shared/agent-panel';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
@@ -60,6 +62,26 @@
 
   let requesting = $state(false);
   let historyOpen = $state(false);
+  const composers = new SvelteMap<string, AgentChatComposer>();
+
+  function composerFor(id: string): AgentChatComposer {
+    return untrack(() => {
+      let composer = composers.get(id);
+      if (!composer) {
+        const created = $state<AgentChatComposer>({ text: '', attachments: [], images: [] });
+        composer = created;
+        composers.set(id, composer);
+      }
+      return composer;
+    });
+  }
+
+  $effect(() => {
+    const ids = new Set(projects.map((project) => project.id));
+    untrack(() => {
+      for (const id of composers.keys()) if (!ids.has(id)) composers.delete(id);
+    });
+  });
   const chatBusy = $derived(['starting', 'thinking', 'approval'].includes(chat.status));
   const PROVIDER_LABELS: Record<AgentProviderId, string> = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' };
   const providerOptions = $derived(providers.map((value) => ({ value, label: PROVIDER_LABELS[value] })));
@@ -370,6 +392,7 @@
   {#key projectId}
     <div class="panel-view chat-view" id="agent-chat" hidden={collapsed || view !== 'chat' || historyOpen}>
       <AgentChat
+        composer={composerFor(projectId)}
         open={open && !collapsed && view === 'chat' && !historyOpen}
         directory={session.directory}
         {activeTab}
