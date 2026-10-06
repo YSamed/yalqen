@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.29](https://github.com/YSamed/yalqen/compare/v0.3.28...v0.3.29) (2026-10-06)
+
+
+### Bug Fixes
+
+* release single-instance lock before relaunch ([b644622](https://github.com/YSamed/yalqen/commit/b644622e76352cb13d7d1f0d9bf00b481ab6e648))
+
 ## [0.3.28](https://github.com/YSamed/yalqen/compare/v0.3.27...v0.3.28) (2026-10-06)
 
 
