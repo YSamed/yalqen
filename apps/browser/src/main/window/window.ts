@@ -115,6 +115,8 @@ export interface AppContext {
   repoPrompt: RepoPrompt;
   dismissAnnouncement: () => void;
   dismissFeedback: () => void;
+  dismissUpdate: () => void;
+  installUpdate: () => void;
   chatPreferences: ChatPreferenceStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
@@ -322,6 +324,10 @@ export class YalqenWindow {
       },
       onRepoPrompt: (action) => app.repoPrompt.respond(action),
       onFeedback: () => app.dismissFeedback(),
+      onUpdateCard: (action) => {
+        if (action === 'install') app.installUpdate();
+        else app.dismissUpdate();
+      },
       onAnnouncement: (action) => {
         app.dismissAnnouncement();
         if (action === 'try') this.openAgentPanel();

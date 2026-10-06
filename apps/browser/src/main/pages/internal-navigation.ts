@@ -7,6 +7,8 @@ const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
 const NEW_TAB_REPO_URL = `${NEW_TAB_URL}repo`;
 const NEW_TAB_FEEDBACK_URL = `${NEW_TAB_URL}feedback`;
 const FEEDBACK_ACTIONS = new Set<string>(['open', 'close'] satisfies FeedbackAction[]);
+const NEW_TAB_UPDATE_URL = `${NEW_TAB_URL}update`;
+const UPDATE_ACTIONS = new Set<string>(['install', 'close'] satisfies UpdateCardAction[]);
 const NEW_TAB_ANNOUNCEMENT_URL = `${NEW_TAB_URL}announcement`;
 const ANNOUNCEMENT_ACTIONS = new Set<string>(['try', 'close'] satisfies AnnouncementAction[]);
 const REPO_ACTIONS = new Set<string>(['star', 'later', 'close'] satisfies RepoPromptAction[]);
@@ -14,6 +16,7 @@ const COMMAND_PAGES = new Set<string>(['downloads', 'bookmarks'] satisfies Comma
 
 export type AnnouncementAction = 'try' | 'close';
 export type FeedbackAction = 'open' | 'close';
+export type UpdateCardAction = 'install' | 'close';
 
 export type InternalNavigation =
   | { type: 'proceed-http'; token: string }
@@ -24,7 +27,8 @@ export type InternalNavigation =
   | { type: 'new-tab-search'; query: string }
   | { type: 'new-tab-repo'; action: RepoPromptAction }
   | { type: 'new-tab-announcement'; action: AnnouncementAction }
-  | { type: 'new-tab-feedback'; action: FeedbackAction };
+  | { type: 'new-tab-feedback'; action: FeedbackAction }
+  | { type: 'new-tab-update'; action: UpdateCardAction };
 
 function pageCommand(url: string): InternalNavigation | null {
   try {
@@ -64,6 +68,10 @@ export function internalNavigation(url: string): InternalNavigation | null {
       ? { type: 'new-tab-announcement', action: action as AnnouncementAction }
       : null;
   }
+  if (url.startsWith(`${NEW_TAB_UPDATE_URL}?`)) {
+    const action = param(url, 'action');
+    return UPDATE_ACTIONS.has(action) ? { type: 'new-tab-update', action: action as UpdateCardAction } : null;
+  }
   if (url.startsWith(`${NEW_TAB_FEEDBACK_URL}?`)) {
     const action = param(url, 'action');
     return FEEDBACK_ACTIONS.has(action) ? { type: 'new-tab-feedback', action: action as FeedbackAction } : null;
@@ -87,6 +95,7 @@ export function isAllowedFrom(navigation: InternalNavigation, currentUrl: string
     case 'new-tab-repo':
     case 'new-tab-announcement':
     case 'new-tab-feedback':
+    case 'new-tab-update':
       return currentUrl === NEW_TAB_URL;
   }
 }

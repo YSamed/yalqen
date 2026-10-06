@@ -53,6 +53,7 @@ const DEFAULTS: Settings = {
   welcomeCompleted: false,
   dismissedAnnouncement: '',
   dismissedFeedback: '',
+  dismissedUpdate: '',
   agentBridge: false,
   agentOrigins: [],
   agentActions: 'ask',
@@ -107,6 +108,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     welcomeCompleted,
     dismissedAnnouncement,
     dismissedFeedback,
+    dismissedUpdate,
     agentBridge,
     agentOrigins,
     agentActions,
@@ -164,6 +166,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     dismissedAnnouncement:
       typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,
     dismissedFeedback: typeof dismissedFeedback === 'string' ? dismissedFeedback.slice(0, 64) : base.dismissedFeedback,
+    dismissedUpdate: typeof dismissedUpdate === 'string' ? dismissedUpdate.slice(0, 64) : base.dismissedUpdate,
     agentBridge: typeof agentBridge === 'boolean' ? agentBridge : base.agentBridge,
     agentOrigins: Array.isArray(agentOrigins) ? sanitizeAgentOrigins(agentOrigins) : base.agentOrigins,
     agentActions:

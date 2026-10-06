@@ -956,6 +956,9 @@ export const tr: Record<MessageKey, string> = {
   'internalPages.announcementTitle': 'AI panelini keşfet',
   'internalPages.announcementText': 'Test ettiğin sayfanın yanında, kendi kodlama ajanınla projeler üzerinde çalış.',
   'internalPages.announcementTry': 'Dene',
+  'internalPages.updateTitle': 'Yalqen {version} hazır',
+  'internalPages.updateText': 'Güncelleme indirildi. Kullanmaya başlamak için yeniden başlat.',
+  'internalPages.updateInstall': 'Yeniden başlat',
   'internalPages.feedbackTitle': 'Yalqen seni memnun ediyor mu?',
   'internalPages.feedbackText':
     'Neyin iyi gittiğini ve neyin gitmediğini yaz. Geri bildirimin sıradaki işleri belirliyor.',

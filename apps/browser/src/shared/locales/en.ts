@@ -953,6 +953,9 @@ export const en = {
   'internalPages.announcementText':
     'Work on your projects with your own coding agent, right beside the page you are testing.',
   'internalPages.announcementTry': 'Try it',
+  'internalPages.updateTitle': 'Yalqen {version} is ready',
+  'internalPages.updateText': 'The update is downloaded. Restart to start using it.',
+  'internalPages.updateInstall': 'Restart',
   'internalPages.feedbackTitle': 'How is Yalqen working for you?',
   'internalPages.feedbackText': 'Tell us what works and what does not. Your feedback shapes what we build next.',
   'internalPages.feedbackOpen': 'Give feedback',

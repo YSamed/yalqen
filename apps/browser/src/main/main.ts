@@ -383,6 +383,11 @@ function startBrowser(): void {
     repoPrompt,
     dismissAnnouncement: () => settings.update({ dismissedAnnouncement: app.getVersion() }),
     dismissFeedback: () => settings.update({ dismissedFeedback: app.getVersion() }),
+    dismissUpdate: () => {
+      const status = updater.status();
+      if (status.state === 'ready') settings.update({ dismissedUpdate: status.version });
+    },
+    installUpdate: () => updater.install(),
     chatPreferences,
     downloads,
     bookmarks,
@@ -499,6 +504,12 @@ function startBrowser(): void {
         const showWelcome = !settings.get().welcomeCompleted;
         if (showWelcome) settings.update({ welcomeCompleted: true });
         return showWelcome;
+      },
+      readyUpdate: () => {
+        const status = updater.status();
+        return !isPrivate && status.state === 'ready' && settings.get().dismissedUpdate !== status.version
+          ? status.version
+          : null;
       },
       showAnnouncement: () => !isPrivate && settings.get().dismissedAnnouncement !== app.getVersion(),
       showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),

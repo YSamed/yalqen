@@ -39,6 +39,7 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
     downloads: { list: () => [], changes: new changeFeed.ChangeFeed() },
     bookmarks: () => ({ folders: [], bookmarks: [] }),
     showWelcome: () => false,
+    readyUpdate: () => null,
     showAnnouncement: () => false,
     showFeedback: () => false,
     showRepoPrompt: () => false,
@@ -91,6 +92,15 @@ test('the announcement shows beside the welcome and replaces the repo prompt', a
   assert.match(await body({ showWelcome: () => true, showAnnouncement: () => true }), /announcement\?action=close/);
   const both = await body({ showAnnouncement: () => true, showRepoPrompt: () => true });
   assert.doesNotMatch(both, /repo\?action=star/);
+});
+
+test('the update card shows the ready version and replaces the repo prompt', async () => {
+  const body = async (sources) => (await serve(sources)(new Request('yalqen://newtab/'))).text();
+  assert.doesNotMatch(await body({}), /newtab\/update\?action/);
+  const shown = await body({ readyUpdate: () => '1.2.3', showRepoPrompt: () => true });
+  assert.match(shown, /yalqen:\/\/newtab\/update\?action=install/);
+  assert.match(shown, /1\.2\.3/);
+  assert.doesNotMatch(shown, /repo\?action=star/);
 });
 
 test('the feedback card is its own card and never shows on the welcome', async () => {

@@ -66,6 +66,7 @@ test('unknown or mistyped fields fall back', () => {
       welcomeCompleted: false,
       dismissedAnnouncement: '',
       dismissedFeedback: '',
+      dismissedUpdate: '',
       agentBridge: false,
       agentOrigins: [],
       agentActions: 'ask',

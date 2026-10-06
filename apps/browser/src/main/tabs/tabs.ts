@@ -46,6 +46,7 @@ import {
   isAllowedFrom,
   type AnnouncementAction,
   type FeedbackAction,
+  type UpdateCardAction,
   type InternalNavigation,
 } from '../pages/internal-navigation.js';
 import { PROCEED_URL } from '../privacy/certificates.js';
@@ -96,6 +97,7 @@ interface TabManagerOptions {
   onRepoPrompt: (action: RepoPromptAction) => void;
   onAnnouncement: (action: AnnouncementAction) => void;
   onFeedback: (action: FeedbackAction) => void;
+  onUpdateCard: (action: UpdateCardAction) => void;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
   onVisit: (url: string, title: string) => string | null;
   onVisitTitle: (id: string | null, title: string) => void;
@@ -1344,6 +1346,10 @@ export class TabManager {
       case 'new-tab-announcement':
         this.options.onAnnouncement(navigation.action);
         contents.reload();
+        return;
+      case 'new-tab-update':
+        this.options.onUpdateCard(navigation.action);
+        if (navigation.action === 'close') contents.reload();
         return;
       case 'new-tab-feedback':
         this.options.onFeedback(navigation.action);

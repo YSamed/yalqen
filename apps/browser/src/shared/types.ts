@@ -686,6 +686,7 @@ export interface SettingsValues {
   welcomeCompleted: boolean;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
+  dismissedUpdate: string;
   agentBridge: boolean;
   agentOrigins: string[];
   agentActions: AgentActionPolicy;

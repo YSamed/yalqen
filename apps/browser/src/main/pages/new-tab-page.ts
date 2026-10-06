@@ -11,6 +11,7 @@ const PINNED_MARKER = '__YALQEN_PINNED_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
 const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
 const ANNOUNCEMENT_MARKER = '__YALQEN_ANNOUNCEMENT_SLOT__';
+const UPDATE_MARKER = '__YALQEN_UPDATE_SLOT__';
 const FEEDBACK_MARKER = '__YALQEN_FEEDBACK_SLOT__';
 const REPO_PROMPT_MARKER = '__YALQEN_REPO_PROMPT_SLOT__';
 const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
@@ -24,6 +25,7 @@ export interface NewTabAssets {
 export interface NewTabSources {
   pinned: () => RecentPage[];
   showWelcome: () => boolean;
+  readyUpdate: () => string | null;
   showAnnouncement: () => boolean;
   showFeedback: () => boolean;
   showRepoPrompt: () => boolean;
@@ -70,6 +72,17 @@ function renderAnnouncement(): string {
   </aside>`;
 }
 
+function renderUpdate(version: string): string {
+  return `<aside class="repo-prompt update" aria-labelledby="update-title">
+    <a class="icon-btn sm tone-muted repo-prompt-close" href="${NEW_TAB_URL}update?action=close" aria-label="${t('internalPages.close')}">${SMALL_FORGET_ICON}</a>
+    <strong id="update-title">${t('internalPages.updateTitle', { version: escapeHtml(version) })}</strong>
+    <p>${t('internalPages.updateText')}</p>
+    <div class="repo-prompt-actions">
+      <a class="btn primary" href="${NEW_TAB_URL}update?action=install">${t('internalPages.updateInstall')}</a>
+    </div>
+  </aside>`;
+}
+
 function renderFeedback(): string {
   return `<aside class="repo-prompt feedback" aria-labelledby="feedback-title">
     <a class="icon-btn sm tone-muted repo-prompt-close" href="${NEW_TAB_URL}feedback?action=close" aria-label="${t('internalPages.close')}">${SMALL_FORGET_ICON}</a>
@@ -107,17 +120,19 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
       });
     case '/': {
       const welcomeVisible = sources.showWelcome();
+      const readyUpdate = sources.readyUpdate();
       const announcementVisible = sources.showAnnouncement();
       const feedbackVisible = !welcomeVisible && sources.showFeedback();
       const slots: [string, string][] = [
         [WELCOME_MARKER, welcomeVisible ? renderWelcome() : ''],
         [PINNED_MARKER, renderPinned(sources.pinned())],
         [TIPS_MARKER, welcomeVisible ? renderTips() : ''],
+        [UPDATE_MARKER, readyUpdate ? renderUpdate(readyUpdate) : ''],
         [ANNOUNCEMENT_MARKER, announcementVisible ? renderAnnouncement() : ''],
         [FEEDBACK_MARKER, feedbackVisible ? renderFeedback() : ''],
         [
           REPO_PROMPT_MARKER,
-          !welcomeVisible && !announcementVisible && !feedbackVisible && sources.showRepoPrompt()
+          !welcomeVisible && !readyUpdate && !announcementVisible && !feedbackVisible && sources.showRepoPrompt()
             ? renderRepoPrompt()
             : '',
         ],
