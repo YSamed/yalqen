@@ -142,5 +142,8 @@
   },
   "engines": {
     "node": ">=22.12"
+  },
+  "overrides": {
+    "http-cache-semantics": "^4.3.0"
   }
 }
