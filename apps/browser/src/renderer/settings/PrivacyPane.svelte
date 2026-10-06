@@ -2,6 +2,7 @@
   import type { ClearDataRange, SettingsValues } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
+  import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import SettingRow from './SettingRow.svelte';
@@ -16,6 +17,10 @@
     { value: 'google', label: 'Google' },
     { value: 'quad9', label: 'Quad9' },
     { value: 'off', label: t('settings.off') },
+  ] as const;
+  const languageOptions = [
+    { value: 'tr', label: 'Türkçe' },
+    { value: 'en', label: 'English' },
   ] as const;
   const rangeOptions: { value: ClearDataRange; label: string }[] = [
     { value: 'hour', label: t('settings.rangeHour') },
@@ -91,6 +96,21 @@
     label={t('settings.usageCounting')}
     checked={values.usageCounting}
     onchange={(checked) => update({ usageCounting: checked })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.pageLanguage')} hint={t('settings.pageLanguageHint')}>
+  <SegmentedControl
+    label={t('settings.pageLanguage')}
+    options={languageOptions}
+    value={values.pageLanguage}
+    onchange={(value) => update({ pageLanguage: value })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.pageTranslation')} hint={t('settings.pageTranslationHint')}>
+  <Switch
+    label={t('settings.pageTranslation')}
+    checked={values.pageTranslation}
+    onchange={(checked) => update({ pageTranslation: checked })}
   />
 </SettingRow>
 <h2>{t('settings.browsingData')}</h2>

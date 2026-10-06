@@ -3,7 +3,6 @@
   import type { SettingsValues, SettingsView, UpdateStatus } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
-  import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
@@ -23,10 +22,6 @@
   const startupOptions = [
     { value: 'restore', label: t('settings.startupRestore') },
     { value: 'new-tab', label: t('settings.startupNewTab') },
-  ] as const;
-  const languageOptions = [
-    { value: 'tr', label: 'Türkçe' },
-    { value: 'en', label: 'English' },
   ] as const;
 
   const interfaceLanguageOptions = $derived([
@@ -141,21 +136,6 @@
   {#if languageChanged}
     <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
   {/if}
-</SettingRow>
-<SettingRow title={t('settings.pageLanguage')} hint={t('settings.pageLanguageHint')}>
-  <SegmentedControl
-    label={t('settings.pageLanguage')}
-    options={languageOptions}
-    value={values.pageLanguage}
-    onchange={(value) => update({ pageLanguage: value })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.pageTranslation')} hint={t('settings.pageTranslationHint')}>
-  <Switch
-    label={t('settings.pageTranslation')}
-    checked={values.pageTranslation}
-    onchange={(checked) => update({ pageTranslation: checked })}
-  />
 </SettingRow>
 
 <h2>{t('settings.updates')}</h2>
