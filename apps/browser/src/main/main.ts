@@ -701,6 +701,8 @@ function startBrowser(): void {
     clearData,
     updater,
     relaunch: () => {
+      // The new process starts before this one exits; while this one holds the lock it would quit at once.
+      app.releaseSingleInstanceLock();
       app.relaunch();
       app.quit();
     },
