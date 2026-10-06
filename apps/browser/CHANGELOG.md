@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.28](https://github.com/YSamed/yalqen/compare/v0.3.27...v0.3.28) (2026-10-06)
+
+
+### Features
+
+* group site permissions by domain with compact rows ([e1ee503](https://github.com/YSamed/yalqen/commit/e1ee50313ac284737c97a580aaa89bd10419769f))
+* show update-ready card on new tab page ([c16d419](https://github.com/YSamed/yalqen/commit/c16d419c7566cc0a66f04addc0c8fdb3988eed5b))
+
 ## [0.3.27](https://github.com/YSamed/yalqen/compare/v0.3.26...v0.3.27) (2026-10-05)
 
 
