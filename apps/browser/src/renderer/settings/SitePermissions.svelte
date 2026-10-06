@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { getDomain } from 'tldts';
   import { t } from '../../shared/i18n';
   import type {
     PermissionDecision,
@@ -36,15 +37,41 @@
 
   let view = $state<SitePermissionsView | null>(null);
 
+  interface Entry {
+    origin: string;
+    host: string;
+    kind: SitePermission;
+    decision: PermissionDecision;
+  }
+
   const host = (origin: string) => new URL(origin).host;
+  function subLabel(entry: Entry, domain: string): string {
+    const kind = t(`permissions.${entry.kind}`);
+    const subdomain = entry.host === domain ? '' : entry.host.slice(0, -domain.length - 1);
+    return subdomain ? `${subdomain} · ${kind}` : kind;
+  }
+
+  const groups = $derived.by(() => {
+    const byDomain: Record<string, { domain: string; origins: string[]; entries: Entry[] }> = {};
+    for (const site of view?.sites ?? []) {
+      const siteHost = host(site.origin);
+      const domain = getDomain(siteHost) ?? siteHost;
+      const group = (byDomain[domain] ??= { domain, origins: [], entries: [] });
+      group.origins.push(site.origin);
+      for (const { kind, decision } of site.permissions) {
+        group.entries.push({ origin: site.origin, host: siteHost, kind, decision });
+      }
+    }
+    return Object.values(byDomain);
+  });
   const refresh = () => api.sitePermissions().then((next) => (view = next));
 
   async function choose(origin: string, kind: SitePermission, choice: Choice): Promise<void> {
     view = await api.setSitePermission(origin, kind, choice === 'ask' ? null : choice);
   }
 
-  async function forget(origin: string): Promise<void> {
-    view = await api.forgetSitePermissions(origin);
+  async function forget(origins: string[]): Promise<void> {
+    for (const origin of origins) view = await api.forgetSitePermissions(origin);
   }
 
   onMount(() => {
@@ -73,31 +100,47 @@
 
   <h2>{t('sitePermissions.title')}</h2>
   <p class="hint intro">{t('sitePermissions.intro')}</p>
-  {#each view.sites as site (site.origin)}
+  {#each groups as group (group.domain)}
+    {#snippet picker(entry: Entry)}
+      <Select
+        options={choices(entry.kind)}
+        value={entry.decision as Choice}
+        aria-label={t('sitePermissions.choiceLabel', {
+          permission: t(`permissions.${entry.kind}`),
+          host: entry.host,
+        })}
+        onchange={(choice) => choose(entry.origin, entry.kind, choice)}
+      />
+    {/snippet}
+    {#snippet forgetButton()}
+      <IconButton
+        icon="close"
+        tone="muted"
+        label={t('sitePermissions.forget', { host: group.domain })}
+        onclick={() => forget(group.origins)}
+      />
+    {/snippet}
     <div class="site">
-      <div class="site-head">
-        <span class="name">{host(site.origin)}</span>
-        <IconButton
-          icon="close"
-          tone="muted"
-          label={t('sitePermissions.forget', { host: host(site.origin) })}
-          onclick={() => forget(site.origin)}
-        />
-      </div>
-      {#each site.permissions as { kind, decision } (kind)}
-        <div class="permission">
-          <span>{t(`permissions.${kind}`)}</span>
-          <Select
-            options={choices(kind)}
-            value={decision as Choice}
-            aria-label={t('sitePermissions.choiceLabel', {
-              permission: t(`permissions.${kind}`),
-              host: host(site.origin),
-            })}
-            onchange={(choice) => choose(site.origin, kind, choice)}
-          />
+      {#if group.entries.length === 1}
+        {@const entry = group.entries[0]}
+        <div class="line">
+          <span class="name">{entry.host}</span>
+          <span class="kind">{t(`permissions.${entry.kind}`)}</span>
+          {@render picker(entry)}
+          {@render forgetButton()}
         </div>
-      {/each}
+      {:else}
+        <div class="line">
+          <span class="name">{group.domain}</span>
+          {@render forgetButton()}
+        </div>
+        {#each group.entries as entry (`${entry.origin} ${entry.kind}`)}
+          <div class="line sub">
+            <span class="name">{subLabel(entry, group.domain)}</span>
+            {@render picker(entry)}
+          </div>
+        {/each}
+      {/if}
     </div>
   {:else}
     <p class="hint empty">{t('sitePermissions.empty')}</p>
@@ -114,29 +157,40 @@
   }
 
   .site {
-    padding: 10px 0;
+    padding: 6px 0;
     border-bottom: 1px solid var(--border);
   }
 
-  .site-head {
+  .line {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
+    min-height: 36px;
+  }
+
+  .line.sub {
+    padding-left: 12px;
+  }
+
+  .line.sub .name {
+    font-weight: 400;
   }
 
   .name {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .permission {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 4px 0 0 12px;
+  .kind {
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  .line > .kind {
+    flex: none;
   }
 </style>
