@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.30](https://github.com/YSamed/yalqen/compare/v0.3.29...v0.3.30) (2026-10-06)
+
+
+### Bug Fixes
+
+* guard pushState against destroyed window ([27b5174](https://github.com/YSamed/yalqen/commit/27b5174d4afde863363fc7f110c91948a29b4c75))
+* override http-cache-semantics to 4.3.0 ([#190](https://github.com/YSamed/yalqen/issues/190)) ([f0ae405](https://github.com/YSamed/yalqen/commit/f0ae4053ddb72ac84cd378c6ee03955c54a265a4))
+
 ## [0.3.29](https://github.com/YSamed/yalqen/compare/v0.3.28...v0.3.29) (2026-10-06)
 
 
