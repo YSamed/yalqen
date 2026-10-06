@@ -506,7 +506,7 @@ export class YalqenWindow {
     this.pushQueued = true;
     setImmediate(() => {
       this.pushQueued = false;
-      if (this.uiContents.isDestroyed()) return;
+      if (this.window.isDestroyed() || this.uiContents.isDestroyed()) return;
       const serialized = JSON.stringify(this.state());
       if (serialized === this.lastPushedState) return;
       this.lastPushedState = serialized;
