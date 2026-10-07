@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.32](https://github.com/YSamed/yalqen/compare/v0.3.31...v0.3.32) (2026-10-07)
+
+
+### Features
+
+* add saved password account selection ([fbc7dbb](https://github.com/YSamed/yalqen/commit/fbc7dbb75562dc0df7632c841ac45df3392d6a8c))
+
 ## [0.3.31](https://github.com/YSamed/yalqen/compare/v0.3.30...v0.3.31) (2026-10-07)
 
 
