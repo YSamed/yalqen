@@ -216,7 +216,7 @@ test('the menu offers detected browsers and a file to import', () => {
   ]);
   assert.deepEqual(
     importMenu.submenu.map((item) => item.label ?? '-'),
-    ['Chrome — Kişi 1', '-', 'Bookmarks dosyası seç…'],
+    ['Chrome — Kişi 1', '-', 'HTML veya tarayıcı yer imi dosyası seç…'],
   );
   importMenu.submenu[0].click();
   importMenu.submenu[2].click();
@@ -225,7 +225,7 @@ test('the menu offers detected browsers and a file to import', () => {
     bookmarksMenuTemplate([], [], { importFrom })
       .at(-1)
       .submenu.map((item) => item.label),
-    ['Bookmarks dosyası seç…'],
+    ['HTML veya tarayıcı yer imi dosyası seç…'],
   );
 });
 

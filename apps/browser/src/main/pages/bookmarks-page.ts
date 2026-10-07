@@ -21,6 +21,7 @@ export function renderBookmarks(
 ): string {
   const search = query.trim().slice(0, 200);
   const header =
+    `<div class="transfer"><a class="btn tonal" href="${BOOKMARKS_URL}import">${t('bookmarks.menuImport')}</a><a class="btn tonal" href="${BOOKMARKS_URL}export">${t('bookmarks.menuExport')}</a></div>` +
     searchFieldMarkup({ action: BOOKMARKS_URL, label: t('bookmarks.search'), valueHtml: escapeHtml(search) }) +
     (search
       ? ''

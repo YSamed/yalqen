@@ -178,6 +178,17 @@ export async function importChromiumBookmarks(store: BookmarkStore, file: string
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
 
+export async function importBookmarkFile(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
+  if (isFirefoxPlaces(file)) return importFirefoxBookmarks(store, file);
+  const { readBookmarkFile, parseBookmarkHtml } = await import('./bookmark-html.js');
+  const text = await readBookmarkFile(file);
+  const parsed = text.trimStart().startsWith('<')
+    ? await parseBookmarkHtml(text)
+    : { ...parseChromiumBookmarks(JSON.parse(text)), folders: [] };
+  const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
+  return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
+}
+
 // Chromium keeps one row per address with its latest visit; hidden rows are subframes the user never opened.
 // SQLite sorts newest first so reading can stop at the history cap; rowid keeps the source order at equal times.
 const CHROMIUM_HISTORY_QUERY =

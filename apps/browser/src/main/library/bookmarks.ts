@@ -28,6 +28,11 @@ export interface ImportedBookmark {
   createdAt: number | null;
 }
 
+export interface ImportedBookmarkFolder {
+  title: string;
+  createdAt: number | null;
+}
+
 interface SavedBookmarks {
   version: 1;
   folders: BookmarkFolder[];
@@ -38,7 +43,11 @@ const MAX_TITLE = 200;
 const MENU_TITLE = 60;
 
 export function canBookmark(url: string): boolean {
-  return /^(https?|file):/i.test(url);
+  try {
+    return ['https:', 'http:', 'file:'].includes(new URL(url).protocol);
+  } catch {
+    return false;
+  }
 }
 
 function cleanTitle(title: string, fallback: string): string {
@@ -186,24 +195,32 @@ export class BookmarkStore {
   }
 
   // Imports only add: known addresses are skipped and folders with the same title are reused.
-  importBookmarks(items: readonly ImportedBookmark[]): { bookmarks: number; folders: number } {
+  importBookmarks(
+    items: readonly ImportedBookmark[],
+    importedFolders: readonly ImportedBookmarkFolder[] = [],
+  ): { bookmarks: number; folders: number } {
     const urls = new Set(this.bookmarkList.map((bookmark) => bookmark.url));
     const folderIds = new Map<string, string>();
     for (const folder of this.folderList) if (!folderIds.has(folder.title)) folderIds.set(folder.title, folder.id);
     const before = { bookmarks: this.bookmarkList.length, folders: this.folderList.length };
     const now = Date.now();
+    const ensureFolder = (name: string, createdAt = now): string => {
+      const title = cleanTitle(name, t('bookmarks.newFolder'));
+      let id = folderIds.get(title);
+      if (!id) {
+        id = randomUUID();
+        folderIds.set(title, id);
+        this.folderList.push({ id, title, createdAt });
+      }
+      return id;
+    };
+    for (const folder of importedFolders) ensureFolder(folder.title, folder.createdAt ?? now);
     for (const item of items) {
       if (!canBookmark(item.url) || urls.has(item.url)) continue;
       urls.add(item.url);
       let folderId: string | null = null;
       if (item.folder !== null) {
-        const title = cleanTitle(item.folder, t('bookmarks.newFolder'));
-        folderId = folderIds.get(title) ?? null;
-        if (!folderId) {
-          folderId = randomUUID();
-          folderIds.set(title, folderId);
-          this.folderList.push({ id: folderId, title, createdAt: now });
-        }
+        folderId = ensureFolder(item.folder);
       }
       this.bookmarkList.push({
         id: randomUUID(),
@@ -217,7 +234,7 @@ export class BookmarkStore {
       bookmarks: this.bookmarkList.length - before.bookmarks,
       folders: this.folderList.length - before.folders,
     };
-    if (added.bookmarks > 0) this.save();
+    if (added.bookmarks > 0 || added.folders > 0) this.save();
     return added;
   }
 

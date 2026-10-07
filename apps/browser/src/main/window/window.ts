@@ -65,7 +65,7 @@ import { blockedPopupsTemplate } from '../tabs/popups.js';
 import { Preconnector } from '../address-bar/preconnect.js';
 import type { RepoPrompt } from '../app/repo-prompt.js';
 import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
-import { importBookmarksWithDialog, importHistoryWithDialog } from './import-dialogs.js';
+import { exportBookmarksWithDialog, importBookmarksWithDialog, importHistoryWithDialog } from './import-dialogs.js';
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
 import { loadWallpaper } from './wallpaper.js';
 import { libraryMenuTemplate, profileMenuTemplate, siteInfoMenu, tabMenuTemplate } from './window-menus.js';
@@ -367,8 +367,11 @@ export class YalqenWindow {
       onHistoryClear: () => app.history.clear(),
       isBookmarked: (url) => app.bookmarks.has(url),
       onPageCommand: (page, command, params) => {
-        if (page === 'bookmarks') app.runBookmarksCommand(command, params);
-        else app.runDownloadsCommand(command, params);
+        if (page === 'bookmarks') {
+          if (command === 'import') void importBookmarksWithDialog(this.window, app.importBookmarks);
+          else if (command === 'export') void exportBookmarksWithDialog(this.window, app.bookmarks);
+          else app.runBookmarksCommand(command, params);
+        } else app.runDownloadsCommand(command, params);
       },
       onFindResult: (result) => this.findBar.showResult(this.window, result),
       zoomFor: (url, isPrivate) => app.zoomFor(isPrivate).get(url),
@@ -1534,6 +1537,7 @@ export class YalqenWindow {
             showAll: () => tabs.openBookmarks(),
             importBookmarks: (file) => void importBookmarksWithDialog(this.window, app.importBookmarks, file),
             importHistory: (file) => void importHistoryWithDialog(this.window, app.importHistory, file),
+            exportBookmarks: () => void exportBookmarksWithDialog(this.window, app.bookmarks),
           }),
         );
         break;

@@ -10,11 +10,13 @@ for (const test of [
   'site-protections.mjs',
   'extension-updates.mjs',
   'login-selection.mjs',
+  'bookmark-transfer.mjs',
 ]) {
   const result = spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
     stdio: 'inherit',
     env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
     timeout: 45_000,
+    killSignal: 'SIGKILL',
   });
   if (result.error || result.status !== 0) {
     if (result.error) console.error(result.error);

@@ -1,6 +1,9 @@
 import { app, dialog, type BaseWindow } from 'electron';
+import path from 'node:path';
 import { t } from '../../shared/i18n.js';
 import { importErrorMessage, type BookmarkImportResult, type HistoryImportResult } from '../library/browser-import.js';
+import { writeBookmarkHtml } from '../library/bookmark-html.js';
+import type { BookmarkStore } from '../library/bookmarks.js';
 
 async function chooseFile(window: BaseWindow, title: string): Promise<string | null> {
   const { canceled, filePaths } = await dialog.showOpenDialog(window, {
@@ -61,5 +64,26 @@ export async function importHistoryWithDialog(
       message: t('window.historyImportFailed'),
       detail: importErrorMessage(error, 'history'),
     });
+  }
+}
+
+export async function exportBookmarksWithDialog(window: BaseWindow, store: BookmarkStore): Promise<void> {
+  try {
+    const { canceled, filePath } = await dialog.showSaveDialog(window, {
+      title: t('bookmarks.menuExport'),
+      defaultPath: path.join(app.getPath('documents'), 'bookmarks.html'),
+      filters: [{ name: 'HTML', extensions: ['html'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation'],
+    });
+    if (canceled || !filePath || window.isDestroyed()) return;
+    await writeBookmarkHtml(filePath, store.folders(), store.bookmarks());
+  } catch (error) {
+    console.warn('[bookmarks] could not export:', error);
+    if (!window.isDestroyed())
+      void dialog.showMessageBox(window, {
+        type: 'error',
+        message: t('window.bookmarksExportFailed'),
+        detail: error instanceof Error ? error.message : String(error),
+      });
   }
 }

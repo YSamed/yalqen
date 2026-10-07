@@ -18,6 +18,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — parola hesap seçimi:** Birden fazla kayıt olduğunda boş form kendiliğinden bir hesaba doldurulmaz. Parola alanının yanındaki düğme yerel hesap menüsünü açar; tek kayıt ve yazılmış kullanıcı adı için otomatik doldurma korunur. Hesap listesi yalnızca kimlik/kullanıcı adı taşır, parola seçilen hesap ve tam origin yeniden doğrulandıktan sonra alınır. Form değişikliği, gezinme, gizli oturum, iframe ve yeni parola alanları gerçek Electron testinde denetlendi. Parola üretme, elle düzenleme ve içe/dışa aktarma maddeleri henüz açık.
 
+- **Tamamlandı — yer imi HTML aktarımı:** Yer imleri sayfası ve menüsünden Netscape HTML içe/dışa aktarma; boş klasörler, başlıklar, adresler ve eklenme tarihleri korunur. İçe aktarma ekleme yapar, var olan kayıtları değiştirmez ve tekrar eden/uygun olmayan adresleri atlar. Çıktı geçici dosyaya yazılıp taşınır. İç içe klasörler mevcut düz veri modelinde `Üst / Alt` olarak tutulur; hiyerarşik düzenleme ve toplu düzenleme henüz açık. HTML bir belge ayrıştırıcısıyla veri olarak okunur, web sayfası çalıştırılmaz; 16 MB dosya sınırı uygulanır.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

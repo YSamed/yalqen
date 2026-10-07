@@ -62,6 +62,7 @@ interface LibraryMenuActions {
   showAll(): void;
   importBookmarks(file?: string): void;
   importHistory(file?: string): void;
+  exportBookmarks(): void;
 }
 
 // Bookmarks with an import submenu for every browser profile found on this Mac.
@@ -76,7 +77,10 @@ export function libraryMenuTemplate(
     { open: actions.open, showAll: actions.showAll, importFrom: actions.importBookmarks },
     [...chromiumProfiles('Bookmarks'), ...firefox],
   );
-  template.push(historyImportMenu([...chromiumProfiles('History'), ...firefox], actions.importHistory));
+  template.push(
+    { label: t('bookmarks.menuExport'), click: actions.exportBookmarks },
+    historyImportMenu([...chromiumProfiles('History'), ...firefox], actions.importHistory),
+  );
   return template;
 }
 

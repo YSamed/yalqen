@@ -51,16 +51,24 @@ app
     assert.ok(await manager.checkForUpdates());
     assert.equal(browsing.extensions.getExtension(identity.id).version, '2.0');
     assert.equal(JSON.parse(fs.readFileSync(path.join(directory, 'manifest.json'))).version, '2.0');
+    browsing.extensions.removeExtension(identity.id);
     console.log('PASS: real extension updated with stable identity and restored the prior version after a failed load');
   })
-  .then(() => app.quit())
+  .then(() => {
+    manager?.stopUpdates();
+    app.exit(0);
+  })
   .catch((error) => {
     console.error(error);
-    process.exitCode = 1;
-    app.quit();
+    manager?.stopUpdates();
+    app.exit(1);
   });
-app.on('before-quit', () => {
+app.on('quit', () => {
   clearTimeout(deadline);
   manager?.stopUpdates();
+  try {
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch (error) {
+    console.error('Extension test profile cleanup failed:', error);
+  }
 });
-app.on('quit', () => fs.rmSync(profile, { recursive: true, force: true }));

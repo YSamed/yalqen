@@ -34,9 +34,8 @@ import { AgentTokenStore } from './agent-bridge/token-store.js';
 import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench/bench-driver.js';
 import { BookmarkStore, runBookmarksCommand } from './library/bookmarks.js';
 import {
-  importChromiumBookmarks,
+  importBookmarkFile,
   importChromiumHistory,
-  importFirefoxBookmarks,
   importFirefoxHistory,
   isFirefoxPlaces,
 } from './library/browser-import.js';
@@ -442,8 +441,8 @@ function startBrowser(): void {
       if (runBookmarksCommand(bookmarks, command, params)) bookmarksChanged();
     },
     importBookmarks: async (file) => {
-      const result = await (isFirefoxPlaces(file) ? importFirefoxBookmarks : importChromiumBookmarks)(bookmarks, file);
-      if (result.bookmarks > 0) bookmarksChanged();
+      const result = await importBookmarkFile(bookmarks, file);
+      if (result.bookmarks > 0 || result.folders > 0) bookmarksChanged();
       return result;
     },
     importHistory: async (file) => {
