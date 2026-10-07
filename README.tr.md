@@ -29,7 +29,9 @@
 </div>
 
 <p align="center">
-  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><img src="assets/screenshots/website.webp" alt="Yalqen web sitesi: Light as paper. Clear as glass." width="900"></a>
+  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><img src="assets/screenshots/browser-demo.gif" alt="Yalqen kullanım demosu: dikey sekmeler, komut çubuğuyla açık sekmeye geçiş ve Chromium geliştirici araçları" width="900"></a>
+  <br>
+  <sub>Gerçek uygulama kaydı · Dikey sekmeler → ⌘L ile sekme değiştir → ⌥⌘I ile incele.</sub>
 </p>
 
 ## Özellikler
