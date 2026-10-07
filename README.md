@@ -46,6 +46,12 @@ Yalqen is for developers who want Chromium compatibility without a browser UI ge
 </p>
 
 
+## Help bring Yalqen to Windows and Linux
+
+Yalqen currently focuses on macOS. We're looking for contributors to help develop Windows and Linux support, resolve platform-specific issues, and set up builds and testing on both platforms.
+
+Interested? [Open an issue](https://github.com/YSamed/yalqen/issues/new) with the platform you'd like to help with and how you can contribute. See the [contributing guide](.github/CONTRIBUTING.md) to get started.
+
 ## Install
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/cards/requirements-dark.svg"><img src="assets/readme/cards/requirements-light.svg" alt="Requires macOS 13 or later on Apple Silicon, signed and notarized, updates itself" height="56"></picture>

@@ -47,6 +47,12 @@ Yalqen 适合想要 Chromium 兼容性、又不想被浏览器界面干扰的开
 
 查看全部[键盘快捷键](docs/keyboard-shortcuts.md)。Yalqen 还内置了七个搜索引擎。
 
+## 帮助 Yalqen 支持 Windows 和 Linux
+
+Yalqen 目前专注于 macOS。我们正在寻找贡献者，帮助开发 Windows 和 Linux 支持、解决平台特定问题，并建立这两个平台的构建和测试流程。
+
+感兴趣？请[创建 issue](https://github.com/YSamed/yalqen/issues/new)，说明你希望参与的平台以及可以提供的帮助。开始前可查看[贡献指南](.github/CONTRIBUTING.md)。
+
 ## 安装
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/cards/requirements-dark.zh-CN.svg"><img src="assets/readme/cards/requirements-light.zh-CN.svg" alt="需要搭载 Apple Silicon 的 macOS 13 或更高版本，已签名并公证，自动更新" height="56"></picture>

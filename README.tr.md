@@ -48,6 +48,12 @@ Yalqen, tarayıcı arayüzü yoluna çıkmadan Chromium uyumluluğu isteyen geli
 
 Tüm [klavye kısayollarına](docs/keyboard-shortcuts.tr.md) göz atın. Yalqen ayrıca yedi yerleşik arama motoruyla gelir.
 
+## Windows ve Linux desteğine katkıda bulunun
+
+Yalqen şu anda macOS'a odaklanıyor. Windows ve Linux desteğinin geliştirilmesine, platforma özgü sorunların çözülmesine ve her iki platformda derleme ve test süreçlerinin kurulmasına katkıda bulunacak geliştiriciler arıyoruz.
+
+İlgileniyorsanız hangi platformda ve nasıl katkıda bulunabileceğinizi belirterek [bir issue açın](https://github.com/YSamed/yalqen/issues/new). Başlamak için [katkı rehberine](.github/CONTRIBUTING.md) göz atabilirsiniz.
+
 ## Kurulum
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/cards/requirements-dark.tr.svg"><img src="assets/readme/cards/requirements-light.tr.svg" alt="Apple Silicon üzerinde macOS 13 veya üzeri gerekir, imzalı ve notarize, kendini günceller" height="56"></picture>
