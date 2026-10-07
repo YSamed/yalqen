@@ -16,6 +16,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — mağaza uzantı güncellemeleri:** Açılıştan bir dakika sonra ve altı saatte bir sürüm kontrolü, Uzantılar ekranında otomatik güncelleme anahtarı ve elle kontrol eklendi. Yeni izinler kullanıcı onayı bekler. Paket özeti, mağaza kimliği ve sürümü doğrulanır; yükleme hatasında önceki dosyalar/sürüm geri yüklenir, yarım işlem açılışta kurtarılır. Devre dışı uzantılar yeniden açılmaz; yerel klasörler otomatik güncellenmez. Gerçek Electron uzantı güncelleme/geri dönüş testi CI'a eklendi. **Site bazlı uzantı erişimi hâlâ ayrı bir iş olarak açık.** Güncelleme manifesti [Chrome'un resmi protokol açıklaması](https://developer.chrome.com/docs/extensions/how-to/distribute/host-on-linux#update) ve Google mağaza yanıtıyla doğrulandı.
 
+- **Tamamlandı — parola hesap seçimi:** Birden fazla kayıt olduğunda boş form kendiliğinden bir hesaba doldurulmaz. Parola alanının yanındaki düğme yerel hesap menüsünü açar; tek kayıt ve yazılmış kullanıcı adı için otomatik doldurma korunur. Hesap listesi yalnızca kimlik/kullanıcı adı taşır, parola seçilen hesap ve tam origin yeniden doğrulandıktan sonra alınır. Form değişikliği, gezinme, gizli oturum, iframe ve yeni parola alanları gerçek Electron testinde denetlendi. Parola üretme, elle düzenleme ve içe/dışa aktarma maddeleri henüz açık.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

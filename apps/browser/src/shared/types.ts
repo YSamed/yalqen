@@ -405,6 +405,8 @@ export const PageChannel = {
   credentialSubmitted: 'yalqen:credential-submitted',
   credentialAccepted: 'yalqen:credential-accepted',
   savedLogins: 'yalqen:saved-logins',
+  fillSavedLogin: 'yalqen:fill-saved-login',
+  chooseSavedLogin: 'yalqen:choose-saved-login',
 } as const;
 
 export interface SubmittedCredential {
@@ -812,6 +814,16 @@ export const ExtensionsChannel = {
   openOptions: 'yalqen-extensions:open-options',
   changed: 'yalqen-extensions:changed',
 } as const;
+
+export interface SavedLoginChoice {
+  id: string;
+  username: string;
+}
+
+export interface SavedLoginsView {
+  choices: SavedLoginChoice[];
+  chooseLabel: string;
+}
 
 export interface SavedPasswordInfo {
   id: string;

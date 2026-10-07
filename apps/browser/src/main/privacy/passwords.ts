@@ -129,6 +129,22 @@ export class PasswordStore {
       });
   }
 
+  choices(origin: string): { id: string; username: string }[] {
+    if (!this.cipher.available()) return [];
+    return this.passwords
+      .filter((entry) => entry.origin === origin)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map(({ id, username }) => ({ id, username }));
+  }
+
+  login(origin: string, id: string): SubmittedCredential | null {
+    if (!this.cipher.available()) return null;
+    const entry = this.passwords.find((candidate) => candidate.id === id && candidate.origin === origin);
+    if (!entry) return null;
+    const password = this.decrypt(entry);
+    return password === null ? null : { username: entry.username, password };
+  }
+
   reveal(id: string): string | null {
     const entry = this.passwords.find((candidate) => candidate.id === id);
     return entry ? this.decrypt(entry) : null;

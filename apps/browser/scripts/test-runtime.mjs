@@ -4,7 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const executable = require('electron');
-for (const test of ['before-unload.mjs', 'download-location.mjs', 'site-protections.mjs', 'extension-updates.mjs']) {
+for (const test of [
+  'before-unload.mjs',
+  'download-location.mjs',
+  'site-protections.mjs',
+  'extension-updates.mjs',
+  'login-selection.mjs',
+]) {
   const result = spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
     stdio: 'inherit',
     env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },

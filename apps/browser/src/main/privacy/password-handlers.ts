@@ -11,7 +11,8 @@ import {
   type WebContents,
 } from 'electron';
 import { t } from '../../shared/i18n.js';
-import { PageChannel, PasswordsChannel, type SubmittedCredential } from '../../shared/types.js';
+import { PageChannel, PasswordsChannel, type SubmittedCredential, type SavedLoginChoice } from '../../shared/types.js';
+import { chooseLogin } from './login-menu.js';
 import { passwordOrigin, sanitizeCredential, type Cipher, type PasswordStore, type SaveOffer } from './passwords.js';
 
 // A login that succeeds navigates or removes its form; one that does neither in time most likely failed.
@@ -29,6 +30,7 @@ interface PasswordHandlerOptions {
   parentOf: (contents: WebContents) => BaseWindow | undefined;
   isSettingsFrame: (event: IpcMainInvokeEvent) => boolean;
   onChange: () => void;
+  chooseAccount?: (parent: BaseWindow, choices: readonly SavedLoginChoice[]) => Promise<string | null>;
 }
 
 interface Submission {
@@ -78,6 +80,7 @@ export function installPasswordHandlers({
   parentOf,
   isSettingsFrame,
   onChange,
+  chooseAccount = chooseLogin,
 }: PasswordHandlerOptions): void {
   const pending = new WeakMap<WebContents, { accept: () => void; cancel: () => void }>();
   let prompts: Promise<unknown> = Promise.resolve();
@@ -140,7 +143,36 @@ export function installPasswordHandlers({
   });
   ipcMain.handle(PageChannel.savedLogins, (event) => {
     const origin = mainFrameOrigin(event);
-    return origin ? store.logins(origin) : [];
+    return { choices: origin ? store.choices(origin) : [], chooseLabel: t('passwordHandlers.chooseAccount') };
+  });
+  ipcMain.handle(PageChannel.fillSavedLogin, (event, id: unknown) => {
+    const origin = mainFrameOrigin(event);
+    return origin && typeof id === 'string' ? store.login(origin, id) : null;
+  });
+  const choosing = new WeakSet<WebContents>();
+  ipcMain.handle(PageChannel.chooseSavedLogin, async (event) => {
+    const origin = mainFrameOrigin(event);
+    const frame = event.senderFrame;
+    const contents = event.sender;
+    const parent = parentOf(contents);
+    if (!origin || !parent || choosing.has(contents)) return null;
+    const choices = store.choices(origin);
+    if (choices.length === 0) return null;
+    choosing.add(contents);
+    try {
+      const id = await chooseAccount(parent, choices);
+      if (
+        !id ||
+        contents.isDestroyed() ||
+        frame !== contents.mainFrame ||
+        !savesPasswords(contents) ||
+        passwordOrigin(contents.mainFrame.url) !== origin
+      )
+        return null;
+      return store.login(origin, id);
+    } finally {
+      choosing.delete(contents);
+    }
   });
 
   ipcMain.handle(PasswordsChannel.list, (event) => (isSettingsFrame(event) ? store.view() : null));

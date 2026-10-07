@@ -1209,6 +1209,7 @@ export const en = {
   'extensionsPanel.checkingUpdates': 'Checking…',
   'extensionsPanel.updateComplete': 'Update check complete.',
   'extensionsPanel.updateFailed': 'Update: {error}',
+  'passwordHandlers.chooseAccount': 'Choose a saved account',
 };
 
 export type MessageKey = keyof typeof en;

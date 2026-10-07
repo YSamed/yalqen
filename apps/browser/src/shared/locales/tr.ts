@@ -1213,4 +1213,5 @@ export const tr: Record<MessageKey, string> = {
   'extensionsPanel.checkingUpdates': 'Kontrol ediliyor…',
   'extensionsPanel.updateComplete': 'Güncelleme kontrolü tamamlandı.',
   'extensionsPanel.updateFailed': 'Güncelleme: {error}',
+  'passwordHandlers.chooseAccount': 'Kayıtlı hesap seç',
 };

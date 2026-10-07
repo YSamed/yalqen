@@ -18,6 +18,7 @@ import {
   type ExtensionInfo,
   type NewTabCenter,
   type PasswordsView,
+  type SavedLoginsView,
   type ProcessUsage,
   type RequestRule,
   type SettingsApi,
@@ -27,6 +28,7 @@ import {
   type SubmittedCredential,
 } from '../shared/types.js';
 import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
+import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
 
@@ -202,7 +204,7 @@ function isShown(input: HTMLInputElement): boolean {
 }
 
 function isFillable(input: HTMLInputElement): boolean {
-  return !input.disabled && isShown(input);
+  return input.isConnected && !input.disabled && !input.readOnly && isShown(input);
 }
 
 function passwordInputs(scope: ParentNode): HTMLInputElement[] {
@@ -256,12 +258,18 @@ interface LoginFields {
 
 // Sign-up and change-password forms carry several password fields or a new-password hint, so only
 // a form with a single current-password field is filled.
-function loginFields(): LoginFields | null {
-  const password = passwordInputs(document).find((input) => isFillable(input) && !hasToken(input, 'new-password'));
-  if (!password) return null;
-  const scope = password.form ?? document;
-  if (passwordInputs(scope).filter(isShown).length !== 1) return null;
-  const inputs = [...scope.querySelectorAll<HTMLInputElement>('input')].filter(isFillable);
+function loginFields(target?: HTMLInputElement): LoginFields | null {
+  const scope = target?.form ?? document;
+  const password =
+    target?.type === 'password'
+      ? target
+      : passwordInputs(scope).find((input) => isFillable(input) && !hasToken(input, 'new-password'));
+  if (!password || !isFillable(password) || hasToken(password, 'new-password')) return null;
+  const form = password.form ?? document;
+  if (passwordInputs(form).filter(isShown).length !== 1) return null;
+  const inputs = [...form.querySelectorAll<HTMLInputElement>('input')].filter(
+    (input) => input.isConnected && !input.disabled && isShown(input),
+  );
   const username =
     inputs.find((input) => hasToken(input, 'username')) ??
     inputs
@@ -272,31 +280,127 @@ function loginFields(): LoginFields | null {
   return { username, password };
 }
 
-function pickLogin(logins: SubmittedCredential[], { username }: LoginFields): SubmittedCredential | undefined {
-  const typed = username?.value.trim();
-  if (typed) return logins.find((login) => login.username === typed);
-  return username || logins.length === 1 ? logins[0] : undefined;
-}
-
 function setValue(input: HTMLInputElement, value: string): void {
-  input.value = value;
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
   input.dispatchEvent(new Event('input', { bubbles: true }));
   input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-let savedLogins: Promise<SubmittedCredential[]> | null = null;
+let savedLogins: Promise<SavedLoginsView> | null = null;
 const filledPasswords = new WeakSet<HTMLInputElement>();
+let pickerHost: HTMLElement | null = null;
+let pickerButton: HTMLButtonElement | null = null;
+let pickerFields: LoginFields | null = null;
+let picking = false;
+let pickerObserver: ResizeObserver | null = null;
 
-async function fillLogin(): Promise<void> {
-  const before = loginFields();
-  if (!before || before.password.value || filledPasswords.has(before.password)) return;
-  savedLogins ??= (ipcRenderer.invoke(PageChannel.savedLogins) as Promise<SubmittedCredential[]>).catch(() => []);
-  const logins = await savedLogins;
-  if (logins.length === 0) return;
-  const fields = loginFields();
-  if (!fields || fields.password.value || filledPasswords.has(fields.password)) return;
-  const login = pickLogin(logins, fields);
-  if (!login) return;
+function positionPicker(): void {
+  if (!pickerHost || !pickerFields) return;
+  const input = pickerFields.password;
+  const rect = input.getBoundingClientRect();
+  pickerHost.hidden =
+    !isFillable(input) || rect.bottom <= 0 || rect.top >= innerHeight || rect.right <= 0 || rect.left >= innerWidth;
+  pickerHost.style.setProperty('display', pickerHost.hidden ? 'none' : 'block', 'important');
+  pickerHost.style.setProperty('left', `${Math.max(0, Math.min(rect.right + 6, innerWidth - 32))}px`, 'important');
+  pickerHost.style.setProperty(
+    'top',
+    `${Math.max(0, Math.min(rect.top + (rect.height - 28) / 2, innerHeight - 28))}px`,
+    'important',
+  );
+}
+
+function showPicker(fields: LoginFields, label: string): void {
+  if (pickerFields?.password !== fields.password) {
+    pickerObserver?.disconnect();
+    pickerObserver = new ResizeObserver(positionPicker);
+    pickerObserver.observe(fields.password);
+  }
+  pickerFields = fields;
+  if (!pickerHost) {
+    pickerHost = document.createElement('div');
+    pickerHost.dataset.yalqenLoginPicker = '';
+    pickerHost.style.cssText =
+      'all: initial !important; position: fixed !important; z-index: 2147483647 !important; width: 28px !important; height: 28px !important;';
+    const shadow = pickerHost.attachShadow({ mode: 'closed' });
+    pickerButton = document.createElement('button');
+    pickerButton.style.cssText =
+      'all: initial; box-sizing: border-box; width: 28px; height: 28px; border: 1px solid GrayText; border-radius: 6px; background: Canvas; color: CanvasText; font: 16px system-ui; text-align: center; cursor: pointer; outline: revert;';
+    pickerButton.type = 'button';
+    pickerButton.textContent = '⌄';
+    pickerButton.addEventListener('click', async (event) => {
+      if (!event.isTrusted || picking || !pickerFields) return;
+      const fields = pickerFields;
+      const username = fields.username?.value;
+      const password = fields.password.value;
+      picking = true;
+      pickerButton!.disabled = true;
+      try {
+        const login = (await ipcRenderer.invoke(PageChannel.chooseSavedLogin)) as SubmittedCredential | null;
+        if (
+          !login ||
+          !isFillable(fields.password) ||
+          (fields.username &&
+            (!fields.username.isConnected ||
+              fields.username.disabled ||
+              !isShown(fields.username) ||
+              (fields.username.readOnly && fields.username.value.trim() !== login.username))) ||
+          fields.username?.value !== username ||
+          fields.password.value !== password
+        )
+          return;
+        if (fields.username && !fields.username.readOnly) setValue(fields.username, login.username);
+        setValue(fields.password, login.password);
+        filledPasswords.add(fields.password);
+      } catch {
+        /* A closed page or dismissed picker leaves the current form intact. */
+      } finally {
+        picking = false;
+        if (pickerButton) pickerButton.disabled = false;
+      }
+    });
+    shadow.append(pickerButton);
+    document.documentElement.append(pickerHost);
+    document.addEventListener('scroll', positionPicker, { capture: true, passive: true });
+    window.addEventListener('resize', positionPicker, { passive: true });
+  }
+  pickerButton!.ariaLabel = label;
+  pickerButton!.title = label;
+  positionPicker();
+}
+
+async function fillLogin(target?: HTMLInputElement): Promise<void> {
+  target ??= document.activeElement instanceof HTMLInputElement ? document.activeElement : undefined;
+  const before = loginFields(target);
+  if (!before) {
+    if (pickerHost) {
+      pickerHost.hidden = true;
+      pickerHost.style.setProperty('display', 'none', 'important');
+    }
+    return;
+  }
+  savedLogins ??= (ipcRenderer.invoke(PageChannel.savedLogins) as Promise<SavedLoginsView>).catch(() => ({
+    choices: [],
+    chooseLabel: '',
+  }));
+  const { choices, chooseLabel } = await savedLogins;
+  const fields = loginFields(before.password);
+  if (!fields || fields.password !== before.password || choices.length === 0) return;
+  showPicker(fields, chooseLabel);
+  if (fields.password.value || filledPasswords.has(fields.password)) return;
+  const choice = selectLogin(choices, fields.username?.value ?? '');
+  if (!choice) return;
+  const typed = fields.username?.value;
+  const login = (await ipcRenderer
+    .invoke(PageChannel.fillSavedLogin, choice.id)
+    .catch(() => null)) as SubmittedCredential | null;
+  if (
+    !login ||
+    !isFillable(fields.password) ||
+    fields.password.value ||
+    filledPasswords.has(fields.password) ||
+    fields.username?.value !== typed
+  )
+    return;
   if (fields.username && !fields.username.value.trim()) setValue(fields.username, login.username);
   setValue(fields.password, login.password);
   filledPasswords.add(fields.password);
@@ -324,7 +428,7 @@ if (window === window.top && (location.protocol === 'https:' || location.protoco
   document.addEventListener(
     'focusin',
     (event) => {
-      if (event.target instanceof HTMLInputElement) void fillLogin();
+      if (event.target instanceof HTMLInputElement) void fillLogin(event.target);
     },
     { capture: true },
   );
