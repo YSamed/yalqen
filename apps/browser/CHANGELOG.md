@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.33](https://github.com/YSamed/yalqen/compare/v0.3.32...v0.3.33) (2026-10-07)
+
+
+### Features
+
+* add bookmark html import and export ([e67dfca](https://github.com/YSamed/yalqen/commit/e67dfca0ca2d34e5bb5a39906e0d39bb27505115))
+* add tab duplication and bulk closing ([434ee44](https://github.com/YSamed/yalqen/commit/434ee44104b779768f2fabaa3fed0f0816d3de85))
+
 ## [0.3.32](https://github.com/YSamed/yalqen/compare/v0.3.31...v0.3.32) (2026-10-07)
 
 
