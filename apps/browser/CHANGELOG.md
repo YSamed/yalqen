@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.31](https://github.com/YSamed/yalqen/compare/v0.3.30...v0.3.31) (2026-10-07)
+
+
+### Features
+
+* add download location and save as options ([44fce5d](https://github.com/YSamed/yalqen/commit/44fce5da127f794f2a033cc56698bda963ecf7bb))
+* add per-site ad and cookie protection exceptions ([06c05a8](https://github.com/YSamed/yalqen/commit/06c05a8be0116e7a60c4f94743d5daf3bf0a8c0a))
+* automatically update store extensions with rollback ([f875b3c](https://github.com/YSamed/yalqen/commit/f875b3c6a24138b89f08358a6cfa374ee28c8374))
+
+
+### Bug Fixes
+
+* preserve unsaved pages when cancelling close ([c5a0ef8](https://github.com/YSamed/yalqen/commit/c5a0ef895967d2a0c65292927050b234e30fcb69))
+
 ## [0.3.30](https://github.com/YSamed/yalqen/compare/v0.3.29...v0.3.30) (2026-10-06)
 
 
