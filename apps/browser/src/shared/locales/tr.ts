@@ -918,6 +918,9 @@ export const tr: Record<MessageKey, string> = {
   'window.muteTab': 'Sessize al',
   'window.unloadTab': 'Bellekten çıkar',
   'window.closeTab': 'Sekmeyi kapat',
+  'window.duplicateTab': 'Sekmeyi çoğalt',
+  'window.closeOtherTabs': 'Diğer sekmeleri kapat',
+  'window.closeTabsRight': 'Sağdaki sekmeleri kapat',
   'window.showOriginalPage': 'Özgün sayfayı göster',
   'window.translatePage': 'Sayfayı çevir',
 

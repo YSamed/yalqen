@@ -71,6 +71,7 @@ import { episodePreview } from '../agent-bridge/timeline.js';
 import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } from '../agent-bridge/page-text.js';
 import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
+import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { TabTranslation } from './tab-translation.js';
 import { stepZoom } from './zoom.js';
 
@@ -146,6 +147,7 @@ export class TabManager {
   private readonly translation: TabTranslation;
   private picking: PickSession | null = null;
   private readonly closing = new Set<TabId>();
+  private readonly navigations = new WeakMap<Tab, number>();
 
   constructor(private readonly options: TabManagerOptions) {
     this.freezer = new TabFreezer({
@@ -315,6 +317,75 @@ export class TabManager {
       this.closing.delete(id);
       if (allowed && this.find(id) === tab) this.closeApproved(id);
     });
+  }
+
+  duplicate(id: TabId): TabId | null {
+    const source = this.find(id);
+    if (!source) return null;
+    const copy = this.createRecord(
+      {
+        url: source.url,
+        title: source.title,
+        faviconUrl: source.faviconUrl,
+        history: structuredClone(captureHistory(source)),
+      },
+      source.isPrivate,
+    );
+    copy.muted = source.muted;
+    this.tabs.splice(this.indexOf(id) + 1, 0, copy);
+    this.activate(copy.id);
+    return copy.id;
+  }
+
+  private bulkTargets(id: TabId, mode: BulkCloseMode): Tab[] {
+    const ordered = tabListOrder(this.tabs, this.openedPinned);
+    const source = this.find(id);
+    // A pinned launcher not opened in the list sits above all ordinary tabs.
+    if (source?.pinnedUrl && !ordered.includes(source)) ordered.unshift(source);
+    return bulkCloseTargets(ordered, id, mode);
+  }
+
+  canCloseRelated(id: TabId, mode: BulkCloseMode): boolean {
+    return this.bulkTargets(id, mode).length > 0;
+  }
+
+  async closeRelated(id: TabId, mode: BulkCloseMode): Promise<boolean> {
+    const source = this.find(id);
+    const targets = this.bulkTargets(id, mode);
+    if (!source || this.closing.has(id) || !targets.length || targets.some((tab) => this.closing.has(tab.id)))
+      return false;
+    const pages = targets.map((tab) => ({
+      tab,
+      contents: liveContents(tab),
+      url: liveContents(tab)?.getURL() ?? tab.url,
+      navigation: this.navigations.get(tab) ?? 0,
+    }));
+    this.closing.add(id);
+    for (const tab of targets) this.closing.add(tab.id);
+    try {
+      // Consent for the entire group comes before removing any page.
+      for (const tab of targets) if (!(await this.confirmClose(tab))) return false;
+      const current = this.bulkTargets(id, mode);
+      if (
+        this.find(id) !== source ||
+        current.length !== targets.length ||
+        current.some((tab, index) => tab !== targets[index]) ||
+        pages.some(
+          ({ tab, contents, url, navigation }) =>
+            liveContents(tab) !== contents ||
+            (contents?.getURL() ?? tab.url) !== url ||
+            (this.navigations.get(tab) ?? 0) !== navigation,
+        )
+      )
+        return false;
+      if (targets.some((tab) => tab.id === this.activeId)) this.activate(source.id);
+      // The active source stays visible and closed tabs reopen in their original list order.
+      for (const tab of targets.toReversed()) this.closeApproved(tab.id);
+      return true;
+    } finally {
+      this.closing.delete(id);
+      for (const tab of targets) this.closing.delete(tab.id);
+    }
   }
 
   async confirmCloseAll(): Promise<boolean> {
@@ -1242,6 +1313,7 @@ export class TabManager {
     listen('devtools-closed', () => this.freezer.maybeFreeze(tab));
     listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
       if (!isMainFrame || isSameDocument) return;
+      this.navigations.set(tab, (this.navigations.get(tab) ?? 0) + 1);
       const userAgent = signInUserAgent(url, process.platform) ?? contents.session.getUserAgent();
       if (contents.getUserAgent() !== userAgent) contents.setUserAgent(userAgent);
       this.syncAgentFor(tab, url);

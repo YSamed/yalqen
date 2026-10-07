@@ -16,14 +16,24 @@ interface TabMenuActions {
   toggleMute(): void;
   discard(): void;
   close(): void;
+  duplicate(): void;
+  closeOthers(): void;
+  closeRight(): void;
+}
+
+interface TabMenuAvailability {
+  others: boolean;
+  right: boolean;
 }
 
 export function tabMenuTemplate(
   tab: TabSnapshot,
   isActive: boolean,
   actions: TabMenuActions,
+  availability: TabMenuAvailability,
 ): MenuItemConstructorOptions[] {
   const template: MenuItemConstructorOptions[] = [];
+  template.push({ label: t('window.duplicateTab'), click: actions.duplicate });
   if (tab.pinned || (!tab.isPrivate && /^https?:/.test(tab.url))) {
     template.push({ label: tab.pinned ? t('window.unpinTab') : t('window.pinTab'), click: actions.togglePin });
   }
@@ -33,6 +43,10 @@ export function tabMenuTemplate(
   if (tab.live && !isActive) template.push({ label: t('window.unloadTab'), click: actions.discard });
   if (template.length > 0) template.push({ type: 'separator' });
   template.push({ label: t('window.closeTab'), click: actions.close });
+  template.push(
+    { label: t('window.closeOtherTabs'), enabled: availability.others, click: actions.closeOthers },
+    { label: t('window.closeTabsRight'), enabled: availability.right, click: actions.closeRight },
+  );
   return template;
 }
 

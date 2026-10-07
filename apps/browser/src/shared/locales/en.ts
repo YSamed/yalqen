@@ -914,6 +914,9 @@ export const en = {
   'window.muteTab': 'Mute',
   'window.unloadTab': 'Unload from Memory',
   'window.closeTab': 'Close Tab',
+  'window.duplicateTab': 'Duplicate Tab',
+  'window.closeOtherTabs': 'Close Other Tabs',
+  'window.closeTabsRight': 'Close Tabs to the Right',
   'window.showOriginalPage': 'Show Original Page',
   'window.translatePage': 'Translate Page',
 

@@ -1611,12 +1611,26 @@ export class YalqenWindow {
     const tab = tabs.snapshotFor(id);
     if (!tab) return;
     this.popup(
-      tabMenuTemplate(tab, id === tabs.activeTabId, {
-        togglePin: () => tabs.togglePin(id),
-        toggleMute: () => tabs.toggleMute(id),
-        discard: () => tabs.discard(id),
-        close: () => tabs.close(id),
-      }),
+      tabMenuTemplate(
+        tab,
+        id === tabs.activeTabId,
+        {
+          togglePin: () => tabs.togglePin(id),
+          toggleMute: () => tabs.toggleMute(id),
+          discard: () => tabs.discard(id),
+          close: () => tabs.close(id),
+          duplicate: () => {
+            tabs.duplicate(id);
+          },
+          closeOthers: () => {
+            void tabs.closeRelated(id, 'others');
+          },
+          closeRight: () => {
+            void tabs.closeRelated(id, 'right');
+          },
+        },
+        { others: tabs.canCloseRelated(id, 'others'), right: tabs.canCloseRelated(id, 'right') },
+      ),
     );
   }
 

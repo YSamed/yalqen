@@ -152,8 +152,7 @@ app
   .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    process.exitCode = 1;
-    app.quit();
+    app.exit(1);
   });
 app.on('before-quit', () => {
   clearTimeout(deadline);

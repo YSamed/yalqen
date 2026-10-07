@@ -99,6 +99,30 @@ test('cancelling window close preserves previously approved tabs too', async () 
   f.manager.destroyAll();
 });
 
+test('a same-address reload during group consent cancels closing even without a URL change', async () => {
+  const f = fixture();
+  f.view.webContents.allowUnload = true;
+  f.view.webContents.getUserAgent = () => '';
+  f.view.webContents.session = { getUserAgent: () => '' };
+  f.manager.options.agentScope = () => false;
+  const source = f.manager.createRecord({ id: 'source', url: 'https://source.example/' });
+  const last = f.manager.createRecord({ id: 'last', url: 'https://last.example/' });
+  f.manager.tabs.push(source, last);
+  f.manager.activeId = source.id;
+  const confirm = f.manager.confirmClose.bind(f.manager);
+  f.manager.confirmClose = async (tab) => {
+    if (tab === last)
+      f.view.webContents.emit('did-start-navigation', { url: f.tab.url, isMainFrame: true, isSameDocument: false });
+    return confirm(tab);
+  };
+  assert.equal(await f.manager.closeRelated(source.id, 'others'), false);
+  assert.equal(f.manager.count, 3);
+  assert.equal(f.view.webContents.isDestroyed(), false);
+  assert.deepEqual(f.manager.options.closed, []);
+  assert.equal(f.manager.closing.size, 0);
+  f.manager.destroyAll();
+});
+
 test('pinch zoom is allowed when a page is attached and released with its listeners', () => {
   const f = fixture();
   assert.deepEqual(f.view.webContents.pinchLimits, [[1, 3]]);
