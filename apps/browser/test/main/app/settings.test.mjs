@@ -63,6 +63,7 @@ test('unknown or mistyped fields fall back', () => {
       interfaceLanguage: 'system',
       pageTranslation: true,
       autoUpdate: true,
+      autoUpdateExtensions: true,
       usageCounting: false,
       askBeforeDownload: true,
       askDownloadLocation: false,

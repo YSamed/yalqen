@@ -157,6 +157,7 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     openSystemSettings: (device) =>
       ipcRenderer.invoke(SitePermissionsChannel.openSystemSettings, device) as Promise<void>,
     extensions: () => ipcRenderer.invoke(ExtensionsChannel.list) as Promise<ExtensionInfo[]>,
+    checkExtensionUpdates: () => ipcRenderer.invoke(ExtensionsChannel.checkUpdates) as Promise<string | null>,
     installExtension: () => ipcRenderer.invoke(ExtensionsChannel.install) as Promise<string | null>,
     installExtensionFromStore: (input: string) =>
       ipcRenderer.invoke(ExtensionsChannel.installFromStore, input) as Promise<string | null>,

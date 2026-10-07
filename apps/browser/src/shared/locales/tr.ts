@@ -1201,4 +1201,16 @@ export const tr: Record<MessageKey, string> = {
   'settings.cookieExceptions': 'Üçüncü taraf çerezlerine izin verilen siteler',
   'settings.noSiteExceptions': 'Kayıtlı istisna yok.',
   'settings.removeSiteException': 'Kaldır',
+  'extensions.updatePackageMismatch': 'Güncelleme paketi doğrulanamadı. Önceki sürüm korundu.',
+  'extensions.updateNeedsPermission':
+    'Bu güncelleme yeni izinler için onay istiyor. İncelemek için Güncellemeleri kontrol et düğmesine basın.',
+  'extensions.updatePermissionsPrompt': '{name} güncellemesi için yeni izinlere onay verilsin mi?',
+  'extensions.updateAllow': 'İzin ver ve güncelle',
+  'extensionsPanel.automaticUpdates': 'Mağaza uzantılarını otomatik güncelle',
+  'extensionsPanel.automaticUpdatesHint':
+    'Açılıştan sonra ve altı saatte bir kontrol eder. Yeni izinler için onayınız gerekir. Klasörden yüklenen uzantıları siz yönetirsiniz.',
+  'extensionsPanel.checkUpdates': 'Güncellemeleri kontrol et',
+  'extensionsPanel.checkingUpdates': 'Kontrol ediliyor…',
+  'extensionsPanel.updateComplete': 'Güncelleme kontrolü tamamlandı.',
+  'extensionsPanel.updateFailed': 'Güncelleme: {error}',
 };

@@ -1,14 +1,28 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../shared/i18n';
-  import type { ExtensionInfo } from '../../shared/types';
+  import type { ExtensionInfo, SettingsValues } from '../../shared/types';
+  import SettingRow from './SettingRow.svelte';
   import Icon from '../ui/Icon.svelte';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
 
+  let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
+    $props();
   const api = window.yalqenSettings;
+  let checking = $state(false);
+  let updateStatus = $state<string | null>(null);
+  async function checkUpdates(): Promise<void> {
+    checking = true;
+    updateStatus = null;
+    try {
+      updateStatus = (await api.checkExtensionUpdates()) ?? t('extensionsPanel.updateComplete');
+    } finally {
+      checking = false;
+    }
+  }
 
   let extensions = $state<ExtensionInfo[]>([]);
   let installing = $state(false);
@@ -45,6 +59,25 @@
 
 <h2>{t('extensionsPanel.title')}</h2>
 <p class="hint intro">{t('extensionsPanel.intro')}</p>
+<SettingRow title={t('extensionsPanel.automaticUpdates')} hint={t('extensionsPanel.automaticUpdatesHint')}>
+  <Switch
+    label={t('extensionsPanel.automaticUpdates')}
+    checked={values.autoUpdateExtensions}
+    onchange={(checked) => update({ autoUpdateExtensions: checked })}
+  />
+</SettingRow>
+<div class="actions">
+  <Button
+    variant="tonal"
+    disabled={checking ||
+      extensions.some((extension) => extension.updating) ||
+      !extensions.some((extension) => extension.fromStore)}
+    onclick={checkUpdates}
+  >
+    {checking ? t('extensionsPanel.checkingUpdates') : t('extensionsPanel.checkUpdates')}
+  </Button>
+  {#if updateStatus}<span class="hint" role="status">{updateStatus}</span>{/if}
+</div>
 
 {#each extensions as extension (extension.path)}
   <div class="extension" class:disabled={!extension.enabled}>
@@ -62,6 +95,9 @@
       {#if extension.error}<span class="error" role="alert"
           >{t('extensionsPanel.loadFailed', { error: extension.error })}</span
         >{/if}
+      {#if extension.updateError}<span class="error" role="status"
+          >{t('extensionsPanel.updateFailed', { error: extension.updateError })}</span
+        >{/if}
     </div>
     <div class="controls">
       {#if extension.hasOptions}
@@ -72,10 +108,12 @@
       <Switch
         label={t('extensionsPanel.enabledLabel', { name: extension.name })}
         checked={extension.enabled}
+        disabled={extension.updating}
         onchange={(checked) => api.setExtensionEnabled(extension.path, checked)}
       />
       <IconButton
         icon="close"
+        disabled={extension.updating}
         tone="muted"
         label={t('extensionsPanel.removeLabel', { name: extension.name })}
         onclick={() => api.removeExtension(extension.path)}

@@ -162,10 +162,15 @@ function startBrowser(): void {
     for (const window of [...windows]) run(window);
   };
   const pushState = () => eachWindow((window) => window.pushState());
-  const extensions = new ExtensionManager(userData, daily, () => {
-    pushState();
-    broadcastExtensions(extensions.list());
-  });
+  const extensions = new ExtensionManager(
+    userData,
+    daily,
+    () => {
+      pushState();
+      broadcastExtensions(extensions.list());
+    },
+    { automatic: () => settings.get().autoUpdateExtensions },
+  );
   const extensionPopup = new ExtensionPopup();
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
@@ -376,6 +381,7 @@ function startBrowser(): void {
     if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs)
       eachWindow((window) => window.tabs.applyFreezeSetting());
     if (next.autoUpdate !== previous.autoUpdate) updater.schedule();
+    if (next.autoUpdateExtensions !== previous.autoUpdateExtensions && !bench) extensions.scheduleUpdates();
     if (next.usageCounting !== previous.usageCounting) usage.schedule();
     if (next.agentBridge !== previous.agentBridge) void agentBridge.sync();
     else if (next.agentOrigins !== previous.agentOrigins) eachWindow((window) => window.tabs.syncAgent());
@@ -769,6 +775,7 @@ function startBrowser(): void {
     commandBar.destroy();
     findBar.destroy();
     extensionPopup.close();
+    extensions.stopUpdates();
     extensions.saveNow();
     history.saveNow();
     repoPrompt.saveNow();
@@ -818,6 +825,7 @@ function startBrowser(): void {
   };
   void extensions.loadAll().then(() => {
     bench?.mark('extensions-loaded');
+    if (!bench) extensions.scheduleUpdates();
     openInitialWindows();
     usage.schedule();
     void agentBridge.sync();

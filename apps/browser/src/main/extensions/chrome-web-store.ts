@@ -110,8 +110,12 @@ export async function downloadCrx(
   id: string,
   fetchFile: (url: string, init: RequestInit) => Promise<Response>,
   chromeVersion: string,
+  update?: { url: string; sha256: string; signal?: AbortSignal },
 ): Promise<DownloadedCrx> {
-  const response = await fetchFile(crxUrl(id, chromeVersion), { credentials: 'omit' });
+  const response = await fetchFile(update?.url ?? crxUrl(id, chromeVersion), {
+    credentials: 'omit',
+    ...(update?.signal ? { signal: update.signal } : {}),
+  });
   if (response.status === 204 || response.status === 404) throw new Error(t('chromeWebStore.notFound'));
   if (!response.ok) throw new Error(t('chromeWebStore.noResponse', { status: response.status }));
   const declared = Number(response.headers.get('content-length'));
@@ -140,5 +144,8 @@ export async function downloadCrx(
     }
   }
   const file = Buffer.concat(chunks, size);
+  if (update && createHash('sha256').update(file).digest('hex') !== update.sha256.toLowerCase()) {
+    throw new Error(t('extensions.updatePackageMismatch'));
+  }
   return { zip: crxPayload(file), key: crxPublicKey(file, id) };
 }

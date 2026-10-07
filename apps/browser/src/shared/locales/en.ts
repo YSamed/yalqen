@@ -1197,6 +1197,18 @@ export const en = {
   'settings.cookieExceptions': 'Third-party cookies allowed',
   'settings.noSiteExceptions': 'No saved exceptions.',
   'settings.removeSiteException': 'Remove',
+  'extensions.updatePackageMismatch': 'The update package could not be verified. The previous version was kept.',
+  'extensions.updateNeedsPermission':
+    'This update needs approval for new permissions. Click Check for updates to review.',
+  'extensions.updatePermissionsPrompt': 'Allow new permissions to update {name}?',
+  'extensions.updateAllow': 'Allow and update',
+  'extensionsPanel.automaticUpdates': 'Automatically update store extensions',
+  'extensionsPanel.automaticUpdatesHint':
+    'Checks after startup and every six hours. New permissions need your approval. Extensions loaded from a folder are managed by you.',
+  'extensionsPanel.checkUpdates': 'Check for updates',
+  'extensionsPanel.checkingUpdates': 'Checking…',
+  'extensionsPanel.updateComplete': 'Update check complete.',
+  'extensionsPanel.updateFailed': 'Update: {error}',
 };
 
 export type MessageKey = keyof typeof en;

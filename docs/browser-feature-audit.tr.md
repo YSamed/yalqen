@@ -14,6 +14,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — siteye özel koruma istisnaları:** Site menüsüne reklam ve üçüncü taraf çerez engellemesi için ayrı anahtarlar, Gizlilik ayarlarına kayıtlı istisnaları kaldırma listeleri eklendi. İstisnalar tam HTTP/HTTPS origin ile sınırlandırıldı. Gizli sekme seçimleri bellekte tutulur ve son gizli sekmede temizlenir. Ağ, CSP, kozmetik filtre ve scriptlet yolları birlikte denetlenir. Gerçek Chromium reklam/kozmetik filtreleri ve üçüncü taraf Cookie başlıklarıyla çalışma testi CI'a eklendi.
 
+- **Tamamlandı — mağaza uzantı güncellemeleri:** Açılıştan bir dakika sonra ve altı saatte bir sürüm kontrolü, Uzantılar ekranında otomatik güncelleme anahtarı ve elle kontrol eklendi. Yeni izinler kullanıcı onayı bekler. Paket özeti, mağaza kimliği ve sürümü doğrulanır; yükleme hatasında önceki dosyalar/sürüm geri yüklenir, yarım işlem açılışta kurtarılır. Devre dışı uzantılar yeniden açılmaz; yerel klasörler otomatik güncellenmez. Gerçek Electron uzantı güncelleme/geri dönüş testi CI'a eklendi. **Site bazlı uzantı erişimi hâlâ ayrı bir iş olarak açık.** Güncelleme manifesti [Chrome'un resmi protokol açıklaması](https://developer.chrome.com/docs/extensions/how-to/distribute/host-on-linux#update) ve Google mağaza yanıtıyla doğrulandı.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

@@ -95,7 +95,7 @@
         {:else if pane === 'passwords'}
           <Passwords />
         {:else if pane === 'extensions'}
-          <Extensions />
+          <Extensions values={view.values} {update} />
         {:else if pane === 'developer'}
           <AgentBridge values={view.values} {update} />
           <RequestRules />

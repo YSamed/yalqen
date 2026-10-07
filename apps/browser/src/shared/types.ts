@@ -683,6 +683,7 @@ export interface SettingsValues {
   interfaceLanguage: InterfaceLanguage;
   pageTranslation: boolean;
   autoUpdate: boolean;
+  autoUpdateExtensions: boolean;
   usageCounting: boolean;
   askBeforeDownload: boolean;
   askDownloadLocation: boolean;
@@ -795,6 +796,9 @@ export interface ExtensionInfo {
   error: string | null;
   icon: string | null;
   hasOptions: boolean;
+  fromStore: boolean;
+  updating: boolean;
+  updateError: string | null;
 }
 
 export const ExtensionsChannel = {
@@ -802,6 +806,7 @@ export const ExtensionsChannel = {
   install: 'yalqen-extensions:install',
   installFromStore: 'yalqen-extensions:install-from-store',
   openStore: 'yalqen-extensions:open-store',
+  checkUpdates: 'yalqen-extensions:check-updates',
   remove: 'yalqen-extensions:remove',
   setEnabled: 'yalqen-extensions:set-enabled',
   openOptions: 'yalqen-extensions:open-options',
@@ -897,6 +902,7 @@ export interface SettingsApi {
   forgetSitePermissions(origin: string): Promise<SitePermissionsView>;
   openSystemSettings(device: SystemDevice): Promise<void>;
   extensions(): Promise<ExtensionInfo[]>;
+  checkExtensionUpdates(): Promise<string | null>;
   installExtension(): Promise<string | null>;
   installExtensionFromStore(input: string): Promise<string | null>;
   openExtensionStore(): Promise<void>;

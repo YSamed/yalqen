@@ -13,6 +13,21 @@ interface ExtensionsIpcHost {
 
 export function registerExtensionsIpc({ extensions, parentWindow, openTab }: ExtensionsIpcHost): void {
   handleSettingsCall(ExtensionsChannel.list, () => extensions.list());
+  handleSettingsCall(ExtensionsChannel.checkUpdates, (event) =>
+    extensions.checkForUpdates(async (name, permissions) => {
+      const options: Electron.MessageBoxOptions = {
+        type: 'question',
+        message: t('extensions.updatePermissionsPrompt', { name }),
+        detail: permissions.slice(0, 12).join(', ') + (permissions.length > 12 ? '…' : ''),
+        buttons: [t('extensions.updateAllow'), t('webStoreApi.cancel')],
+        defaultId: 1,
+        cancelId: 1,
+      };
+      const parent = parentWindow(event.sender);
+      const result = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
+      return result.response === 0;
+    }),
+  );
   handleSettingsCall(ExtensionsChannel.install, async (event) => {
     const parent = parentWindow(event.sender);
     const options: OpenDialogOptions = {

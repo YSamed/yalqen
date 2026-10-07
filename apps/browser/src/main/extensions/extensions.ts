@@ -21,12 +21,26 @@ import {
 import { downloadCrx, parseStoreId } from './chrome-web-store.js';
 import { JsonFile } from '../storage/json-file.js';
 import { extractZip } from './zip.js';
+import {
+  addedPermissions,
+  EXTENSION_FIRST_CHECK_MS,
+  EXTENSION_CHECK_INTERVAL_MS,
+  parseStoreUpdate,
+  readUpdateManifest,
+  updateManifestUrl,
+} from './extension-updates.js';
 
 const MENU_ICON_SIZE = 16;
 const LIST_ICON_SIZE = 64;
 const STORE_DIRECTORY = 'store-extensions';
 
 type StoreExtensionStatus = 'available' | 'installing' | 'installed';
+
+interface ExtensionUpdateOptions {
+  fetch?: (url: string, init: RequestInit) => Promise<Response>;
+  automatic?: () => boolean;
+}
+type ConfirmUpdatePermissions = (name: string, permissions: string[]) => Promise<boolean>;
 
 interface ExtensionAction {
   title: string;
@@ -85,16 +99,23 @@ export class ExtensionManager {
   private readonly ids = new Map<string, string>();
   private readonly errors = new Map<string, string>();
   private readonly installing = new Set<string>();
+  private readonly updateErrors = new Map<string, string>();
+  private checking: Promise<string | null> | null = null;
+  private updateTimer: NodeJS.Timeout | null = null;
+  private stopped = false;
+  private readonly updateRequests = new Set<AbortController>();
 
   constructor(
     directory: string,
     private readonly browsing: Session,
     private readonly onChange: () => void,
+    private readonly updateOptions: ExtensionUpdateOptions = {},
   ) {
     const file = path.join(directory, 'extensions.json');
     this.storeRoot = path.join(directory, STORE_DIRECTORY);
     this.json = new JsonFile(file, 'extensions');
     this.entries = sanitizeSavedExtensions((readJson(file) as { extensions?: unknown } | null)?.extensions);
+    this.recoverUpdates();
   }
 
   async loadAll(): Promise<void> {
@@ -132,6 +153,9 @@ export class ExtensionManager {
         error: this.errors.get(entry.path) ?? null,
         icon: this.icon(entry.path, manifest, LIST_ICON_SIZE)?.toDataURL() ?? null,
         hasOptions: extension !== null && optionsPage(manifest) !== null,
+        fromStore: this.isStorePath(entry.path),
+        updating: this.installing.has(path.basename(entry.path)),
+        updateError: this.updateErrors.get(entry.path) ?? null,
       };
     });
   }
@@ -227,9 +251,11 @@ export class ExtensionManager {
   }
 
   remove(directory: string): void {
-    if (!this.entries.some((entry) => entry.path === directory)) return;
+    if (this.installing.has(path.basename(directory)) || !this.entries.some((entry) => entry.path === directory))
+      return;
     this.unload(directory);
     this.errors.delete(directory);
+    this.updateErrors.delete(directory);
     this.entries = this.entries.filter((entry) => entry.path !== directory);
     this.deleteStoreFiles(directory);
     this.changed();
@@ -237,7 +263,7 @@ export class ExtensionManager {
 
   async setEnabled(directory: string, enabled: boolean): Promise<void> {
     const entry = this.entries.find((item) => item.path === directory);
-    if (!entry || entry.enabled === enabled) return;
+    if (!entry || entry.enabled === enabled || this.installing.has(path.basename(directory))) return;
     entry.enabled = enabled;
     if (enabled) {
       await this.load(directory);
@@ -246,6 +272,156 @@ export class ExtensionManager {
       this.errors.delete(directory);
     }
     this.changed();
+  }
+
+  scheduleUpdates(): void {
+    if (this.updateTimer) clearTimeout(this.updateTimer);
+    this.updateTimer = null;
+    if (!this.stopped && (this.updateOptions.automatic?.() ?? true)) this.checkAfter(EXTENSION_FIRST_CHECK_MS);
+  }
+
+  stopUpdates(): void {
+    this.stopped = true;
+    if (this.updateTimer) clearTimeout(this.updateTimer);
+    this.updateTimer = null;
+    for (const controller of this.updateRequests) controller.abort();
+  }
+
+  checkForUpdates(confirm?: ConfirmUpdatePermissions): Promise<string | null> {
+    if (this.checking) return this.checking;
+    if (this.stopped) return Promise.resolve(null);
+    this.checking = this.updateAll(confirm).finally(() => {
+      this.checking = null;
+    });
+    return this.checking;
+  }
+
+  private checkAfter(delay: number): void {
+    this.updateTimer = setTimeout(() => {
+      this.updateTimer = null;
+      void this.checkForUpdates().finally(() => {
+        if (!this.stopped && !this.updateTimer && (this.updateOptions.automatic?.() ?? true))
+          this.checkAfter(EXTENSION_CHECK_INTERVAL_MS);
+      });
+    }, delay);
+    this.updateTimer.unref();
+  }
+
+  private async updateAll(confirm?: ConfirmUpdatePermissions): Promise<string | null> {
+    let firstError: string | null = null;
+    for (const entry of [...this.entries]) {
+      if (this.stopped) break;
+      const id = path.basename(entry.path);
+      if (!this.isStorePath(entry.path) || this.installing.has(id)) continue;
+      this.installing.add(id);
+      this.updateErrors.delete(entry.path);
+      this.onChange();
+      try {
+        const error = await this.updateStoreEntry(entry, id, confirm);
+        if (error) {
+          this.updateErrors.set(entry.path, error);
+          firstError ??= error;
+        }
+      } catch (error) {
+        const message = errorMessage(error);
+        this.updateErrors.set(entry.path, message);
+        firstError ??= message;
+      } finally {
+        this.installing.delete(id);
+        this.onChange();
+      }
+    }
+    return firstError;
+  }
+
+  private async updateStoreEntry(
+    entry: SavedExtension,
+    id: string,
+    confirm?: ConfirmUpdatePermissions,
+  ): Promise<string | null> {
+    const controller = new AbortController();
+    this.updateRequests.add(controller);
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    const staging = `${entry.path}.update`;
+    const backup = `${entry.path}.previous`;
+    const fetchFile = this.updateOptions.fetch ?? ((url: string, init: RequestInit) => net.fetch(url, init));
+    let swapping = false;
+    try {
+      const previous = readJson(path.join(entry.path, 'manifest.json')) as Manifest | null;
+      if (!previous || typeof previous.version !== 'string') throw new Error(t('extensions.updatePackageMismatch'));
+      const response = await fetchFile(updateManifestUrl(id, previous.version, process.versions.chrome), {
+        credentials: 'omit',
+        signal: controller.signal,
+      });
+      const update = parseStoreUpdate(await readUpdateManifest(response), id, previous.version);
+      if (!update) return null;
+      const { zip, key } = await downloadCrx(id, fetchFile, process.versions.chrome, {
+        ...update,
+        signal: controller.signal,
+      });
+      if (!key) throw new Error(t('extensions.updatePackageMismatch'));
+      fs.rmSync(staging, { recursive: true, force: true });
+      extractZip(zip, staging);
+      const manifest = readJson(path.join(staging, 'manifest.json')) as Manifest | null;
+      if (
+        !manifest ||
+        manifest.version !== update.version ||
+        typeof manifest.manifest_version !== 'number' ||
+        manifest.manifest_version < 3
+      )
+        throw new Error(t('extensions.updatePackageMismatch'));
+      // The downloaded CRX's verified store identity overrides any declared manifest key.
+      fs.writeFileSync(path.join(staging, 'manifest.json'), JSON.stringify({ ...manifest, key }, null, 2));
+      clearTimeout(timeout);
+      const permissions = addedPermissions(previous, manifest);
+      if (permissions.length > 0 && (!confirm || !(await confirm(String(previous.name ?? id), permissions))))
+        return t('extensions.updateNeedsPermission');
+      if (
+        this.stopped ||
+        controller.signal.aborted ||
+        !this.entries.includes(entry) ||
+        (!confirm && !(this.updateOptions.automatic?.() ?? true))
+      )
+        return null;
+      swapping = true;
+      this.unload(entry.path);
+      fs.renameSync(entry.path, backup);
+      fs.renameSync(staging, entry.path);
+      if (entry.enabled) {
+        const error = await this.load(entry.path);
+        if (error) throw new Error(error);
+        if (this.loadedAt(entry.path)?.id !== id) throw new Error(t('extensions.updatePackageMismatch'));
+      }
+      fs.rmSync(backup, { recursive: true, force: true });
+      return null;
+    } catch (error) {
+      if (swapping) {
+        this.unload(entry.path);
+        if (fs.existsSync(backup)) {
+          fs.rmSync(entry.path, { recursive: true, force: true });
+          fs.renameSync(backup, entry.path);
+        }
+        if (entry.enabled) await this.load(entry.path);
+      }
+      return errorMessage(error);
+    } finally {
+      clearTimeout(timeout);
+      this.updateRequests.delete(controller);
+      fs.rmSync(staging, { recursive: true, force: true });
+    }
+  }
+
+  private recoverUpdates(): void {
+    for (const entry of this.entries) {
+      if (!this.isStorePath(entry.path)) continue;
+      const backup = `${entry.path}.previous`;
+      if (fs.existsSync(backup)) {
+        // A remaining backup means validation never committed, including after a crash.
+        fs.rmSync(entry.path, { recursive: true, force: true });
+        fs.renameSync(backup, entry.path);
+      }
+      fs.rmSync(`${entry.path}.update`, { recursive: true, force: true });
+    }
   }
 
   saveNow(): void {
@@ -273,7 +449,15 @@ export class ExtensionManager {
   }
 
   private isStorePath(directory: string): boolean {
-    return path.basename(path.dirname(directory)) === STORE_DIRECTORY;
+    let root = path.resolve(this.storeRoot);
+    try {
+      root = fs.realpathSync(root);
+    } catch {}
+    let parent = path.dirname(directory);
+    try {
+      parent = fs.realpathSync(parent);
+    } catch {}
+    return parent === root && parseStoreId(path.basename(directory)) !== null;
   }
 
   private storeEntry(id: string): SavedExtension | undefined {
