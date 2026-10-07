@@ -140,6 +140,16 @@ function startBrowser(): void {
   const windows: YalqenWindow[] = [];
   let current: YalqenWindow | null = null;
   let quitting = false;
+  let quitPending = false;
+  const confirmQuit = async (): Promise<boolean> => {
+    const open = [...windows];
+    for (const window of open) {
+      if (!(await window.tabs.confirmCloseAll())) return false;
+    }
+    if (open.length !== windows.length || open.some((window, index) => windows[index] !== window)) return false;
+    for (const window of open) window.approveClose();
+    return true;
+  };
   let started = false;
   const eachWindow = (run: (window: YalqenWindow) => void) => {
     for (const window of [...windows]) run(window);
@@ -337,9 +347,11 @@ function startBrowser(): void {
     automatic: () => settings.get().autoUpdate,
     onChange: () => broadcastSettings(settingsView()),
     // quitAndInstall closes the windows before before-quit fires, so the session is saved first.
-    beforeInstall: () => {
+    beforeInstall: async () => {
+      if (!(await confirmQuit())) return false;
       quitting = true;
       store.saveNow({ version: 2, windows: windowsToSave(), resume: true });
+      return true;
     },
   });
   const updateSettings = (patch: unknown) => {
@@ -701,10 +713,15 @@ function startBrowser(): void {
     clearData,
     updater,
     relaunch: () => {
-      // The new process starts before this one exits; while this one holds the lock it would quit at once.
-      app.releaseSingleInstanceLock();
-      app.relaunch();
-      app.quit();
+      void confirmQuit().then((allowed) => {
+        if (!allowed) return;
+        quitting = true;
+        store.saveNow(sessionSnapshot());
+        // Release only after consent: cancelling must not schedule a later relaunch.
+        app.releaseSingleInstanceLock();
+        app.relaunch();
+        app.quit();
+      });
     },
     requestRules,
     permissions,
@@ -716,10 +733,18 @@ function startBrowser(): void {
     afterMinutes: () => settings.get().discardAfterMinutes,
   });
 
-  app.on('before-quit', () => {
+  app.on('before-quit', (event) => {
     if (quitting) return;
-    quitting = true;
-    store.saveNow(sessionSnapshot());
+    event.preventDefault();
+    if (quitPending) return;
+    quitPending = true;
+    void confirmQuit().then((allowed) => {
+      quitPending = false;
+      if (!allowed) return;
+      quitting = true;
+      store.saveNow(sessionSnapshot());
+      app.quit();
+    });
   });
   app.on('will-quit', () => {
     stopMemorySaver();

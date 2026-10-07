@@ -67,7 +67,7 @@ test('the backend loads on the first check and quietly downloads in the backgrou
   assert.equal(backend.checks, 2);
 });
 
-test('backend events become statuses and a ready update can be installed', () => {
+test('backend events become statuses and a ready update can be installed', async () => {
   const { backend, events, updater } = setup();
   updater.check();
   backend.emit('checking-for-update');
@@ -81,7 +81,7 @@ test('backend events become statuses and a ready update can be installed', () =>
   updater.check();
   assert.equal(backend.checks, 1);
   assert.deepEqual(updater.status(), { state: 'ready', version: '0.3.0' });
-  updater.install();
+  await updater.install();
   assert.equal(backend.installs, 1);
   assert.deepEqual(events, [
     { state: 'checking' },
@@ -90,6 +90,32 @@ test('backend events become statuses and a ready update can be installed', () =>
     { state: 'ready', version: '0.3.0' },
     'before-install',
   ]);
+});
+
+test('cancelling a restart keeps the ready update available and duplicate requests wait', async () => {
+  const { backend, updater } = setup();
+  updater.check();
+  backend.emit('update-downloaded', { version: '0.3.0' });
+  let answer;
+  let prompts = 0;
+  updater.options.beforeInstall = () => {
+    prompts++;
+    return new Promise((resolve) => {
+      answer = resolve;
+    });
+  };
+  const first = updater.install();
+  await updater.install();
+  assert.equal(prompts, 1);
+  assert.equal(backend.installs, 0);
+  answer(false);
+  await first;
+  assert.equal(backend.installs, 0);
+  assert.equal(updater.status().state, 'ready');
+  const retry = updater.install();
+  answer(true);
+  await retry;
+  assert.equal(backend.installs, 1);
 });
 
 test('an update is not installed before it is ready and a failure allows another check', () => {

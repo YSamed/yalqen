@@ -1,4 +1,8 @@
 export const en = {
+  'window.unsavedChanges': 'Leave this page?',
+  'window.unsavedChangesDetail': 'Changes you made may not be saved.',
+  'window.stay': 'Stay',
+  'window.leave': 'Leave',
   'findBar.noResults': 'No results',
   'findBar.placeholder': 'Find on page',
   'findBar.previous': 'Previous',

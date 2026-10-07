@@ -59,6 +59,7 @@ import { PagePlacement } from './page-placement.js';
 import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, opensInPlace, recordBlocked } from './popups.js';
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
+import { checkBeforeUnload } from './before-unload.js';
 import { TabFreezer } from './tab-freezer.js';
 import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger, rulesFor } from './tab-overrides.js';
 import { observeTab, unobserveTab } from './tab-agent.js';
@@ -125,6 +126,7 @@ interface TabManagerOptions {
   translation: () => { enabled: boolean; language: PageLanguage };
   agentScope: (tab: { url: string; isPrivate: boolean }) => boolean;
   agentTracing: () => boolean;
+  confirmUnload: (tab: Tab) => boolean;
 }
 
 export type DetachedTab = Tab;
@@ -143,6 +145,7 @@ export class TabManager {
   private readonly freezer: TabFreezer;
   private readonly translation: TabTranslation;
   private picking: PickSession | null = null;
+  private readonly closing = new Set<TabId>();
 
   constructor(private readonly options: TabManagerOptions) {
     this.freezer = new TabFreezer({
@@ -301,6 +304,37 @@ export class TabManager {
   }
 
   close(id: TabId): void {
+    const tab = this.find(id);
+    if (!tab || this.closing.has(id)) return;
+    if (!liveContents(tab)) {
+      this.closeApproved(id);
+      return;
+    }
+    this.closing.add(id);
+    void this.confirmClose(tab).then((allowed) => {
+      this.closing.delete(id);
+      if (allowed && this.find(id) === tab) this.closeApproved(id);
+    });
+  }
+
+  async confirmCloseAll(): Promise<boolean> {
+    const tabs = [...this.tabs];
+    for (const tab of tabs) {
+      if (!(await this.confirmClose(tab))) return false;
+    }
+    return tabs.length === this.tabs.length && tabs.every((tab, index) => this.tabs[index] === tab);
+  }
+
+  private async confirmClose(tab: Tab): Promise<boolean> {
+    const contents = liveContents(tab);
+    if (!contents) return true;
+    this.freezer.unfreeze(tab);
+    const allowed = await checkBeforeUnload(contents);
+    this.freezer.maybeFreeze(tab);
+    return allowed && (!tab.view || tab.view.webContents === contents);
+  }
+
+  private closeApproved(id: TabId): void {
     const index = this.indexOf(id);
     if (index < 0) return;
     const { pinnedUrl } = this.tabs[index];
@@ -1125,6 +1159,9 @@ export class TabManager {
   }
 
   private listenForWindowRequests(tab: Tab, contents: WebContents, listen: Listen): void {
+    listen('will-prevent-unload', (event) => {
+      if (this.options.confirmUnload(tab)) event.preventDefault();
+    });
     listen('will-navigate', (event) => {
       const navigation = internalNavigation(event.url);
       if (navigation) {

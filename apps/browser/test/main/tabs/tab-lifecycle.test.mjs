@@ -13,6 +13,9 @@ function fixture() {
     onHtmlFullScreenChange: () => {},
     onChange: (persist) => changes.push(persist),
     onVisitTitle: () => {},
+    freezeBackground: () => false,
+    closed: [],
+    confirmUnload: () => false,
   });
   const tab = manager.createRecord({ id: 'background', url: 'https://example.com/' });
   manager.tabs.push(tab);
@@ -35,9 +38,22 @@ function createView() {
   contents.navigationHistory = {
     getAllEntries: () => [{ url: 'https://example.com/', title: 'Example' }],
     getActiveIndex: () => 0,
+    length: () => 1,
+    getEntryAtIndex: () => ({ url: 'https://example.com/', title: 'Example' }),
   };
+  contents.executeJavaScriptInIsolatedWorld = async () => true;
+  contents.allowUnload = false;
   contents.isDestroyed = () => destroyed;
-  contents.close = () => {
+  contents.close = (options) => {
+    if (options?.waitForBeforeUnload) {
+      const event = {
+        preventDefault() {
+          this.defaultPrevented = true;
+        },
+      };
+      contents.emit('-before-unload-fired', event, contents.allowUnload);
+      if (event.defaultPrevented) return;
+    }
     destroyed = true;
     contents.emit('page-title-updated', {}, 'Late title');
   };
@@ -45,6 +61,43 @@ function createView() {
 }
 
 const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
+
+test('cancelling tab close preserves its view, listeners and closed-tab history', async () => {
+  const f = fixture();
+  f.manager.close(f.tab.id);
+  f.manager.close(f.tab.id);
+  await nextTurn();
+  assert.equal(f.manager.count, 1);
+  assert.equal(f.tab.view, f.view);
+  assert.equal(f.view.webContents.isDestroyed(), false);
+  assert.ok(f.view.webContents.listenerCount('page-title-updated') > 0);
+  assert.deepEqual(f.manager.options.closed, []);
+  assert.deepEqual(f.removed, []);
+  f.view.webContents.allowUnload = true;
+  f.manager.close(f.tab.id);
+  await nextTurn();
+  assert.equal(f.manager.count, 0);
+  assert.equal(f.view.webContents.isDestroyed(), true);
+  assert.equal(f.manager.options.closed.length, 1);
+});
+
+test('cancelling window close preserves previously approved tabs too', async () => {
+  const f = fixture();
+  f.view.webContents.allowUnload = true;
+  const second = f.manager.createRecord({ id: 'second', url: 'https://example.com/' });
+  second.view = createView();
+  f.manager.tabs.push(second);
+  assert.equal(await f.manager.confirmCloseAll(), false);
+  assert.equal(f.manager.count, 2);
+  assert.equal(f.tab.view, f.view);
+  assert.equal(f.view.webContents.isDestroyed(), false);
+  assert.equal(second.view.webContents.isDestroyed(), false);
+  second.view.webContents.allowUnload = true;
+  assert.equal(await f.manager.confirmCloseAll(), true);
+  assert.equal(f.manager.count, 2);
+  assert.deepEqual(f.manager.options.closed, []);
+  f.manager.destroyAll();
+});
 
 test('pinch zoom is allowed when a page is attached and released with its listeners', () => {
   const f = fixture();

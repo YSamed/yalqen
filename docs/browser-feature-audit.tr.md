@@ -1,0 +1,75 @@
+# Yalqen: standart tarayıcı özellikleri incelemesi
+
+İnceleme tarihi: 8 Ekim 2026. Kaynak sürümü: 0.3.30, commit `3365cce`. Canlı uygulamanın Ayarlar → Genel ekranında da 0.3.30 görüldü.
+
+Yalqen günlük gezinmenin temelini karşılıyor. En önemli eksik, kaydedilmemiş değişiklik bulunan bir sekmenin uyarısız kapanması. Diğer açıklar ağırlıklı olarak mevcut özelliklerin kapsamı, veri taşınabilirliği ve günlük kullanım kolaylığıyla ilgili.
+
+## Uygulama durumu
+
+Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda izlenir:
+
+- **Tamamlandı — kaydedilmemiş değişiklik koruması:** Sekme, pencere, uygulamadan çıkış, ayar sonrası yeniden başlatma ve güncelleme yeniden başlatması Chromium'un `beforeunload` sonucunu denetler. “Kal” seçilirse tüm sayfalar ve form içerikleri korunur. Birim testleri ve ayrı profilde gerçek Electron olaylarıyla doğrulandı. Electron'un dahili `-before-unload-fired` olayı kullanıldığından motor güncellemelerinde `test/runtime/before-unload.mjs` de çalıştırılmalı.
+
+## Yöntem ve kapsam
+
+- Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.
+- Sekme kapanışındaki form koruması, gizli pencerede oluşturulan boş bir yerel HTML sayfasıyla denendi.
+- Menü, sekme, oturum, parola, indirme, yer imi, izin, uzantı ve ayar kaynakları okundu; ilgili özellik adları kaynak ağacında arandı.
+- Electron'un kapanış ve uzantı davranışları resmi belgelerden kontrol edildi.
+- Uygulama kodu ve kullanıcı ayarları değiştirilmedi. İnceleme için açılan pencere ve ayar sekmesi kapatıldı; başlangıçtaki sekme yeniden seçildi.
+
+“Yok”, uygulama düzeyinde ilgili arayüz veya uygulamanın bulunamadığını ifade eder. Chromium'un sağlayabildiği web API'leri yalnızca kaynakta adları geçmediği için desteklenmiyor sayılmadı. Chrome, Safari ve Firefox'un her özelliği ortak bir zorunluluk değil; aşağıdaki ileri özellikler ayrıca değerlendirilmiştir.
+
+## Mevcut özellikler
+
+Kaynakta mevcut olanlar: geri/ileri, yenileme ve durdurma; adres ve arama çubuğu; açık sekme/geçmiş/yer imi önerileri; çoklu pencere; gizli sekme/pencere; sekme sabitleme, sıralama, ses kapatma ve kapatılan sekmeyi yeniden açma; açılışta oturum geri yükleme; geçmiş arama/silme/içe aktarma; yer imi oluşturma/düzenleme/klasöre taşıma/içe aktarma; indirme listesi ve duraklatma/devam/iptal/yeniden deneme; şifreli parola kaydı ve doldurma; sayfa/seçim çevirisi; yazım denetimi; sayfada bulma; site bazlı kalıcı yakınlaştırma; yazdırma ve PDF kaydetme; ekran görüntüsü; tam ekran; reklam engelleme; HTTPS ve sertifika uyarıları; güvenli DNS; üçüncü taraf çerez engelleme; temel site izinleri; site verisi temizleme; uzantı kurulumu; geliştirici araçları; bellek tasarrufu ve uygulama güncellemeleri.
+
+Bu liste her özelliğin uçtan uca test edildiği anlamına gelmez. Canlı gözlem ve kaynak incelemesinin sonuçları birlikte kullanılmıştır.
+
+## Öncelikli eksikler ve kısmi destekler
+
+P1: önce ele alınmalı. P2: günlük kullanım kapsamını tamamlar. P3: ürün hedeflerine göre seçilebilir.
+
+| Öncelik | Özellik                                              | Durum ve kullanıcıya etkisi                                                                                                                                                                                                                                | Kanıt                                                                                                                             |
+| ------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| P1      | Kaydedilmemiş değişiklik uyarısı                     | **Canlı testte eksik.** `beforeunload` etkin bir form, ⌘W ile onay sorulmadan kapandı. Yazılan metin kaybolabilir.                                                                                                                                         | `tabs.ts` içindeki `close()` ve `destroyView()`; kapanışta `contents.close()` seçenek verilmeden çağrılıyor.                      |
+| P1      | İndirme konumu ve dosya adı seçimi                   | **Kısmi.** Onay yalnızca indir/iptal soruyor; “Farklı kaydet” penceresi ve varsayılan indirme klasörü ayarı yok.                                                                                                                                           | `download-manager.ts` içindeki `confirm()`; `main.ts` indirmeleri `app.getPath('downloads')` klasörüne yönlendiriyor.             |
+| P1      | Siteye özel koruma istisnaları                       | **Eksik.** Reklam/üçüncü taraf çerez engellemeyi yalnızca sorun yaşanan site için kapatma arayüzü yok. Kullanıcı genel korumayı kapatmak zorunda kalabilir.                                                                                                | `adblock.ts` içindeki genel `setEnabled()`; `third-party-cookies.ts`; `site-info.ts` menüsü.                                      |
+| P1      | URL ve indirme itibar koruması                       | **Entegrasyon bulunamadı.** Kimlik avı/zararlı yazılım listesi, dosya itibar kontrolü ve bunlara ait uyarı akışı uygulama kaynaklarında yok. HTTPS/sertifika kontrolü ayrı olarak mevcut. Motorun paket düzeyindeki davranışı bu incelemede test edilmedi. | `privacy/`, `download-manager.ts`, `error-page.ts` ve kaynak ağacı araması.                                                       |
+| P1      | Uzantı güncellemeleri ve site erişimi yönetimi       | **Kısmi.** Kurma, kaldırma ve etkinleştirme var; otomatik güncelleme denetimi ve “tıklayınca / bu sitede / tüm sitelerde” erişim yönetimi bulunamadı.                                                                                                      | `extensions.ts`, `extensions-ipc.ts`, `web-store-api.ts`, `Extensions.svelte`.                                                    |
+| P2      | Parola yöneticisinin kapsamı                         | **Kısmi.** Çoklu hesap seçici, güçlü parola üretme, elle kayıt düzenleme ve parola içe/dışa aktarma yok. Boş kullanıcı adı alanında kayıtlar arasından ilk uygun hesap dolduruluyor; alan yanında hesap seçimi sunulmuyor.                                 | `page-preload.ts` içindeki `pickLogin()` ve `fillLogin()`; `passwords.ts`; `Passwords.svelte`.                                    |
+| P2      | Adres ve ödeme formu doldurma                        | **Eksik.** Kullanıcı adı/parola dışında isim, adres, telefon ve ödeme bilgisi için yerleşik kayıt/doldurma arayüzü yok.                                                                                                                                    | `page-preload.ts`, `shared/types.ts`, ayar bileşenleri ve kaynak ağacı araması.                                                   |
+| P2      | Kullanıcının oluşturduğu kalıcı profiller            | **Kısmi.** Kişisel/geliştirici/gizli modları var; ayrı kalıcı İş/Kişisel profilleri oluşturma ve her profil için ayrı veriler yok. Yalnızca `persist:daily` kalıcı; geliştirici ve gizli oturumlar bellekte.                                               | `sessions.ts`, `main.ts` içindeki tekil veri depoları; `ProfileKind` sabit üç değerle sınırlı.                                    |
+| P2      | Yer imi taşınabilirliği ve hiyerarşisi               | **Kısmi.** İç içe klasörler, HTML içe/dışa aktarma ve toplu düzenleme yok. İçe aktarılan alt klasörler `Üst / Alt` adlı tek düz klasöre dönüşüyor.                                                                                                         | `bookmarks.ts` içindeki `BookmarkFolder`; `browser-import.ts` içindeki `folderTitle()`; `import-dialogs.ts`; `bookmarks-page.ts`. |
+| P2      | Sekme toplu işlemleri                                | **Kısmi.** Sekmeyi çoğaltma, çoklu seçme, diğerlerini/sağdakileri kapatma yok. Sabitleme, sürükleyerek sıralama, ses kapatma ve yeni pencereye taşıma mevcut.                                                                                              | `window-menus.ts` içindeki `tabMenuTemplate()`; `menu.ts`; `TabPanel.svelte`; sekme eylem türleri.                                |
+| P2      | Sayfayı çevrimdışı kaydetme ve dosya açma            | **Kısmi.** PDF ve ekran görüntüsü kaydı var; HTML + kaynaklar/MHTML kaydı ve Dosya → Dosya aç akışı yok. Yerel `file://` adresinden HTML açmak canlı testte çalıştı.                                                                                       | `menu.ts`, `page-capture.ts`; `savePage` araması.                                                                                 |
+| P2      | Ana sayfa ve açılış URL'leri                         | **Eksik.** Özel ana sayfa, ana sayfa düğmesi ve “şu sayfaları aç” listesi yok. Açılış seçenekleri son oturumu geri yükleme/yeni sekme.                                                                                                                     | `settings.ts`, `GeneralPane.svelte`, araç çubuğu düğme türleri.                                                                   |
+| P2      | Ayrıntılı site güvenliği/veri yönetimi               | **Kısmi.** Bağlantı durumu, kayıtlı izinler ve veri silme var; sertifika ayrıntıları görüntüleyici ve tüm sitelerin depolama kullanımını listeleyen yönetici yok.                                                                                          | `site-info.ts`, `site-data.ts`, `SitePermissions.svelte`.                                                                         |
+| P2      | Yeniden başlatma sonrası kapatılan sekmeler          | **Kısmi.** Açık oturum kaydediliyor; kapatılan sekmeler yalnızca bellekteki en fazla 20 kayıtla tutuluyor. Yeniden açılan tarayıcıda önceki kapatılmış sekmeleri geri getiren kalıcı liste yok.                                                            | `main.ts` içindeki `closedTabs`; `tabs.ts` içindeki `MAX_CLOSED_TABS`; `persistence.ts`.                                          |
+| P3      | Cihazlar arası senkronizasyon                        | **Eksik.** Yer imleri, geçmiş, parolalar, ayarlar ve sekmeleri diğer cihazlarla senkronize eden hesap/servis yok.                                                                                                                                          | Yerel JSON veri depoları; ayar/IPC kaynakları ve kaynak ağacı araması.                                                            |
+| P3      | Okuma modu, okuma listesi ve kurulu web uygulamaları | **Eksik.** Sade makale görünümü, sonra oku listesi ve PWA kurma/yönetme akışı bulunamadı. Service worker/site depolama desteği bununla aynı özellik değil.                                                                                                 | Menü, ayar, sayfa ve kaynak ağacı araması.                                                                                        |
+| P3      | Sekme grupları ve tarayıcı çalışma alanları          | **Eksik.** Adlandırılmış sekme grupları ve kaydedilen gezinme çalışma alanları yok. Ajan projesi gruplaması ayrı bir geliştirici özelliği.                                                                                                                 | `SavedTab`, `SavedWindow`, `TabPanel.svelte`, sekme menüleri.                                                                     |
+
+## En önemli bulgunun tekrarlanması
+
+1. Gizli pencerede yerel bir HTML sayfası açıldı.
+2. Bir metin alanına `test` yazıldı. Sayfa, `input` olayından sonra `window.onbeforeunload` tanımladı; olayda `preventDefault()` ve `returnValue = ''` kullanıldı.
+3. Sayfa üzerinde “Kaydedilmemiş değişiklik var; beforeunload etkin.” metni görüldü.
+4. ⌘W basıldı. Uyarı yerine yeni sekme açıldı; form sekmesi kapandı.
+
+Kaynakta `close()` önce sekme kaydını listeden çıkarıyor; `destroyView()` dinleyicileri kaldırıp `contents.close()` çağırıyor. Electron belgesine göre `waitForBeforeUnload` verilmediğinde kapanış sayfanın engellemesine bakmadan tamamlanır. Düzeltme, kullanıcı kapanışı ile kaynak boşaltmayı ayırmalı; sekme kaydı/görünümü, kullanıcı “kal” dediğinde korunmalıdır. Pencere kapanışı da aynı kapanış altyapısını kullandığı için ayrıca test edilmelidir. [Electron kapanış API'si](https://www.electronjs.org/docs/latest/api/web-contents#contentscloseopts).
+
+## Ayrıca test edilmesi gerekenler
+
+Bu konulara “yok” sonucu verilmedi:
+
+- **Passkey/WebAuthn:** Kodda özel yönetim akışı bulunamadı; işletim sistemi ve Chromium üzerinden çalışma durumu gerçek kayıt/giriş senaryosuyla ölçülmeli.
+- **DRM/Widevine ve yayın servisleri:** Paket yapılandırmasında özel entegrasyon bulunamadı. Gerçek korumalı medya ve lisans akışı çalıştırılmadı.
+- **Arka plan web push:** Bildirim izni var. Sayfa kapalıyken/uygulama yeniden açıldığında push teslimi doğrulanmadı.
+- **WebUSB, WebHID, WebSerial, Bluetooth ve panodan okuma:** İzin işleyicisi temel medya/konum/bildirimleri ve sınırlı otomatik izinleri kapsıyor; diğer izinler reddediliyor. Cihaz seçimi akışları bulunamadı. İlgili API'lerin gerçek davranışı ayrıca denenmeli.
+- **Video kontrolleri/Picture-in-Picture:** Video sağ tık menüsü uygulamada yok; web sayfasının kendi PiP düğmesi veya Chromium davranışı bu incelemede denenmedi.
+- **Uzantı uyumluluğu:** Mağazadan kurulumun bulunması bütün Chrome uzantılarının çalıştığı anlamına gelmez. Electron resmi olarak Chrome uzantı API'lerinin bir alt kümesini destekliyor; hedef uzantılar tek tek denenmeli. [Electron uzantı desteği](https://www.electronjs.org/docs/latest/api/extensions).
+
+## Önerilen sıra
+
+Önce veri kaybına yol açan kapanış davranışı; ardından indirme konumu seçimi, siteye özel koruma istisnaları ve uzantı güncellemeleri. Sonraki adım parola hesap seçimi, yer imi HTML aktarımı, sekme toplu işlemleri ve kalıcı profil ayrımı. URL/indirme itibar koruması ayrı bir güvenlik işi olarak kapsamlandırılmalı. Senkronizasyon ve PWA gibi geniş işler, ürün önceliğine göre planlanmalı.

@@ -160,6 +160,8 @@ export interface WindowOptions {
 }
 
 export class YalqenWindow {
+  private closeApproved = false;
+  private closePending = false;
   readonly window: BaseWindow;
   readonly tabs: TabManager;
   readonly isPrivate: boolean;
@@ -301,6 +303,20 @@ export class YalqenWindow {
       session: app.daily,
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
+      confirmUnload: (tab) => {
+        this.tabs.activate(tab.id);
+        return (
+          dialog.showMessageBoxSync(this.window, {
+            type: 'question',
+            message: t('window.unsavedChanges'),
+            detail: t('window.unsavedChangesDetail'),
+            buttons: [t('window.stay'), t('window.leave')],
+            defaultId: 0,
+            cancelId: 0,
+            noLink: true,
+          }) === 1
+        );
+      },
       freezeBackground: () => app.settings.get().freezeBackgroundTabs,
       onChange: (persist) => {
         this.syncAgentProjectWithTab();
@@ -429,7 +445,21 @@ export class YalqenWindow {
       void this.sendWallpaper();
     });
 
-    this.window.on('close', () => {
+    this.window.on('close', (event) => {
+      if (!this.closeApproved) {
+        event.preventDefault();
+        if (!this.closePending) {
+          this.closePending = true;
+          void this.tabs.confirmCloseAll().then((allowed) => {
+            this.closePending = false;
+            if (allowed && !this.window.isDestroyed()) {
+              this.approveClose();
+              this.window.close();
+            }
+          });
+        }
+        return;
+      }
       app.onWindowClosing(this);
       nativeTheme.off('updated', this.pushState);
       this.preconnector.cancel();
@@ -1366,6 +1396,10 @@ export class YalqenWindow {
 
   close(): void {
     if (!this.window.isDestroyed()) this.window.close();
+  }
+
+  approveClose(): void {
+    this.closeApproved = true;
   }
 
   handleAction(action: UiAction): void {

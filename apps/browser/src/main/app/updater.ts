@@ -13,7 +13,7 @@ interface UpdaterOptions {
   load: (() => UpdaterBackend) | null;
   automatic(): boolean;
   onChange(): void;
-  beforeInstall(): void;
+  beforeInstall(): void | boolean | Promise<void | boolean>;
 }
 
 // electron-updater loads every platform's updater up front, so it is only required once the first check runs.
@@ -26,6 +26,7 @@ export class Updater {
   private current: UpdateStatus;
   private backend: UpdaterBackend | null = null;
   private timer: NodeJS.Timeout | null = null;
+  private installing = false;
 
   constructor(private readonly options: UpdaterOptions) {
     this.current = options.load ? { state: 'idle' } : { state: 'unavailable' };
@@ -46,10 +47,16 @@ export class Updater {
       .catch(() => {});
   }
 
-  install(): void {
-    if (!this.backend || this.current.state !== 'ready') return;
-    this.options.beforeInstall();
-    this.backend.quitAndInstall();
+  async install(): Promise<void> {
+    if (!this.backend || this.current.state !== 'ready' || this.installing) return;
+    this.installing = true;
+    try {
+      if ((await this.options.beforeInstall()) !== false) this.backend.quitAndInstall();
+    } catch (error) {
+      console.warn('[updater] could not prepare restart:', error);
+    } finally {
+      this.installing = false;
+    }
   }
 
   schedule(): void {

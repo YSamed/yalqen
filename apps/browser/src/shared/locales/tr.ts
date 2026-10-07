@@ -1,6 +1,10 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'window.unsavedChanges': 'Bu sayfadan ayrılmak istiyor musunuz?',
+  'window.unsavedChangesDetail': 'Yaptığınız değişiklikler kaydedilmemiş olabilir.',
+  'window.stay': 'Kal',
+  'window.leave': 'Ayrıl',
   'findBar.noResults': 'Sonuç yok',
   'findBar.placeholder': 'Sayfada bul',
   'findBar.previous': 'Önceki',
