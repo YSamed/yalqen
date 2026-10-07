@@ -28,9 +28,7 @@
 </div>
 
 <p align="center">
-  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><img src="assets/screenshots/browser-demo.gif" alt="Yalqen 实际演示：垂直标签页、通过命令栏切换到已打开的标签页，以及 Chromium 开发者工具" width="900"></a>
-  <br>
-  <sub>真实应用录制 · 垂直标签页 → ⌘L 切换标签页 → ⌥⌘I 检查页面。</sub>
+  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><img src="assets/screenshots/website.webp" alt="Yalqen 官网：Light as paper. Clear as glass." width="900"></a>
 </p>
 
 ## 功能

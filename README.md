@@ -28,9 +28,7 @@
 </div>
 
 <p align="center">
-  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><img src="assets/screenshots/browser-demo.gif" alt="Yalqen in action: vertical tabs, switching to an open tab with the command bar, and Chromium DevTools" width="900"></a>
-  <br>
-  <sub>Real app capture · Vertical tabs → switch tabs with ⌘L → inspect with ⌥⌘I.</sub>
+  <a href="https://yalqen.com/?utm_source=github&amp;utm_medium=readme"><img src="assets/screenshots/website.webp" alt="Yalqen website: Light as paper. Clear as glass." width="900"></a>
 </p>
 
 ## Features
