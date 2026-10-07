@@ -50,6 +50,8 @@ const DEFAULTS: Settings = {
   autoUpdate: true,
   usageCounting: false,
   askBeforeDownload: true,
+  askDownloadLocation: false,
+  downloadDirectory: null,
   welcomeCompleted: false,
   dismissedAnnouncement: '',
   dismissedFeedback: '',
@@ -105,6 +107,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     autoUpdate,
     usageCounting,
     askBeforeDownload,
+    askDownloadLocation,
+    downloadDirectory,
     welcomeCompleted,
     dismissedAnnouncement,
     dismissedFeedback,
@@ -162,6 +166,12 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     autoUpdate: typeof autoUpdate === 'boolean' ? autoUpdate : base.autoUpdate,
     usageCounting: typeof usageCounting === 'boolean' ? usageCounting : base.usageCounting,
     askBeforeDownload: typeof askBeforeDownload === 'boolean' ? askBeforeDownload : base.askBeforeDownload,
+    askDownloadLocation: typeof askDownloadLocation === 'boolean' ? askDownloadLocation : base.askDownloadLocation,
+    downloadDirectory:
+      downloadDirectory === null ||
+      (typeof downloadDirectory === 'string' && path.isAbsolute(downloadDirectory) && !downloadDirectory.includes('\0'))
+        ? downloadDirectory
+        : base.downloadDirectory,
     welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
     dismissedAnnouncement:
       typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,

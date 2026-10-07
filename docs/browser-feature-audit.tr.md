@@ -10,6 +10,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — kaydedilmemiş değişiklik koruması:** Sekme, pencere, uygulamadan çıkış, ayar sonrası yeniden başlatma ve güncelleme yeniden başlatması Chromium'un `beforeunload` sonucunu denetler. “Kal” seçilirse tüm sayfalar ve form içerikleri korunur. Birim testleri ve ayrı profilde gerçek Electron olaylarıyla doğrulandı. Electron'un dahili `-before-unload-fired` olayı kullanıldığından motor güncellemelerinde `test/runtime/before-unload.mjs` de çalıştırılmalı.
 
+- **Tamamlandı — indirme konumu seçimi:** Onay penceresinde “Farklı kaydet”, Ayarlar → Genel altında varsayılan klasör seçimi/sıfırlama ve her dosyada konum sorma seçeneği eklendi. İptal, eşzamanlı dosya çakışması ve yeniden deneme akışları test edildi. Ayrı profilde gerçek Electron indirmesinin seçilen dosyaya eksiksiz yazdığı doğrulandı. Kapanış ve indirme çalışma testleri `npm run test:runtime` komutuna ve CI'a eklendi.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

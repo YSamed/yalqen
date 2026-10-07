@@ -33,6 +33,7 @@
 
   let templateDraft = $state('');
   let editingTemplate = $state(false);
+  let choosingDirectory = $state(false);
 
   const values = $derived(view.values);
   const languageChanged = $derived(values.interfaceLanguage !== startupInterfaceLanguage);
@@ -50,6 +51,15 @@
   function commitTemplate(): void {
     editingTemplate = false;
     void update({ customSearchTemplate: templateDraft.trim() || null });
+  }
+
+  async function chooseDownloadDirectory(): Promise<void> {
+    choosingDirectory = true;
+    try {
+      await api.chooseDownloadDirectory();
+    } finally {
+      choosingDirectory = false;
+    }
   }
 
   function updateMessage(status: UpdateStatus): string {
@@ -118,6 +128,25 @@
     options={startupOptions}
     value={values.startupBehavior}
     onchange={(value) => update({ startupBehavior: value })}
+  />
+</SettingRow>
+
+<h2>{t('settings.downloads')}</h2>
+<SettingRow title={t('settings.downloadDirectory')} hint={view.downloadDirectory}>
+  <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDownloadDirectory}>
+    {t('settings.changeDownloadDirectory')}
+  </Button>
+  {#if values.downloadDirectory}
+    <Button variant="ghost" onclick={() => update({ downloadDirectory: null })}
+      >{t('settings.resetDownloadDirectory')}</Button
+    >
+  {/if}
+</SettingRow>
+<SettingRow title={t('settings.askDownloadLocation')} hint={t('settings.askDownloadLocationHint')}>
+  <Switch
+    label={t('settings.askDownloadLocation')}
+    checked={values.askDownloadLocation}
+    onchange={(checked) => update({ askDownloadLocation: checked })}
   />
 </SettingRow>
 

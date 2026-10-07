@@ -210,8 +210,9 @@ function startBrowser(): void {
     daily,
     privateBrowsing,
     developer,
-    directory: () => app.getPath('downloads'),
+    directory: () => settings.get().downloadDirectory ?? app.getPath('downloads'),
     askBeforeDownload: () => settings.get().askBeforeDownload,
+    askDownloadLocation: () => settings.get().askDownloadLocation,
     parentOf: (contents) => windowOf(contents)?.window,
     onStateChange: pushState,
   });
@@ -335,6 +336,7 @@ function startBrowser(): void {
     const { version: _version, ...values } = settings.get();
     return {
       values,
+      downloadDirectory: values.downloadDirectory ?? app.getPath('downloads'),
       defaultBrowser: isDefaultBrowser(),
       engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
       customTemplateValid: isValidSearchTemplate(values.customSearchTemplate),

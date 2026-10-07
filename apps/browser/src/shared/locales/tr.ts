@@ -651,6 +651,12 @@ export const tr: Record<MessageKey, string> = {
   'settings.blockThirdPartyCookiesHint':
     'Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum açma ve yorum alanları çalışmayabilir.',
   'settings.askBeforeDownload': 'İndirmeden önce sor',
+  'settings.downloadDirectory': 'İndirme konumu',
+  'settings.chooseDownloadDirectory': 'İndirme klasörü seç',
+  'settings.changeDownloadDirectory': 'Değiştir…',
+  'settings.resetDownloadDirectory': 'Varsayılanı kullan',
+  'settings.askDownloadLocation': 'Her dosyanın nereye kaydedileceğini sor',
+  'settings.askDownloadLocationHint': 'İndirme başlamadan önce dosya adı ve klasör seçin.',
   'settings.usageCounting': 'Aktif kurulumların sayılmasına yardımcı ol',
   'settings.usageCountingHint':
     'Varsayılan olarak kapalıdır. Son 30 gündeki aktif kurulumları saymak için yalqen.com’a günde bir kez yalnızca rastgele bir kurulum kimliği gönderir. Gezinme geçmişi veya hesap bilgisi gönderilmez. İstediğiniz zaman kapatabilirsiniz.',
@@ -923,6 +929,9 @@ export const tr: Record<MessageKey, string> = {
   'downloadManager.source': 'Kaynak: {source}{size}',
   'downloadManager.download': 'İndir',
   'downloadManager.cancel': 'İptal',
+  'downloadManager.saveAs': 'Farklı kaydet…',
+  'downloadManager.saveTitle': 'İndirmeyi kaydet',
+  'downloadManager.pathBusy': 'Başka bir indirme bu dosyaya kaydediliyor. Farklı bir ad seçin.',
 
   'search.placeholderGoogle': "Google'da ara veya adres yaz",
   'search.placeholderYandex': "Yandex'te ara veya adres yaz",

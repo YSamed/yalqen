@@ -648,6 +648,12 @@ export const en = {
   'settings.blockThirdPartyCookiesHint':
     'Makes it harder for other sites to track you across the web through embedded content. Some embedded sign-in and comment fields may not work.',
   'settings.askBeforeDownload': 'Ask before downloading',
+  'settings.downloadDirectory': 'Download location',
+  'settings.chooseDownloadDirectory': 'Choose download folder',
+  'settings.changeDownloadDirectory': 'Change…',
+  'settings.resetDownloadDirectory': 'Use default',
+  'settings.askDownloadLocation': 'Ask where to save each file',
+  'settings.askDownloadLocationHint': 'Choose a file name and folder before each download starts.',
   'settings.usageCounting': 'Help count active installations',
   'settings.usageCountingHint':
     'Off by default. Sends only a random installation ID to yalqen.com once per day to count active installations over 30 days. No browsing history or account information is sent. You can turn it off at any time.',
@@ -919,6 +925,9 @@ export const en = {
   'downloadManager.source': 'Source: {source}{size}',
   'downloadManager.download': 'Download',
   'downloadManager.cancel': 'Cancel',
+  'downloadManager.saveAs': 'Save as…',
+  'downloadManager.saveTitle': 'Save download',
+  'downloadManager.pathBusy': 'Another download is already saving to this file. Choose a different name.',
 
   'search.placeholderGoogle': 'Search Google or enter address',
   'search.placeholderYandex': 'Search Yandex or enter address',

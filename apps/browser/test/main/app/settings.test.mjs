@@ -63,6 +63,8 @@ test('unknown or mistyped fields fall back', () => {
       autoUpdate: true,
       usageCounting: false,
       askBeforeDownload: true,
+      askDownloadLocation: false,
+      downloadDirectory: null,
       welcomeCompleted: false,
       dismissedAnnouncement: '',
       dismissedFeedback: '',
@@ -86,6 +88,24 @@ test('toolbar buttons are deduplicated, filtered and always keep settings', () =
   ]);
   assert.deepEqual(sanitizeSettings({ toolbarButtons: [] }).toolbarButtons, ['settings']);
   assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 7);
+});
+
+test('download settings persist absolute folders and reject invalid paths', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-download-settings-'));
+  try {
+    const store = new SettingsStore(dir);
+    const folder = path.join(dir, 'Downloads');
+    store.update({ downloadDirectory: folder, askDownloadLocation: true });
+    store.update({ downloadDirectory: 'relative/path', askDownloadLocation: 'yes' });
+    store.update({ downloadDirectory: '/bad\0path' });
+    const reloaded = new SettingsStore(dir);
+    assert.equal(reloaded.get().downloadDirectory, folder);
+    assert.equal(reloaded.get().askDownloadLocation, true);
+    reloaded.update({ downloadDirectory: null });
+    assert.equal(new SettingsStore(dir).get().downloadDirectory, null);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('updates keep valid fields and persist', () => {

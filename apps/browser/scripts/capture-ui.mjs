@@ -116,6 +116,7 @@ async function capture() {
 
   const now = Date.UTC(2026, 9, 3, 12);
   const settingsView = {
+    downloadDirectory: path.join(profile, 'Downloads'),
     values: (({ version: _version, ...rest }) => rest)(
       sanitizeSettings({ agentBridge: true, agentOrigins: ['https://my-app.ngrok.app'] }),
     ),

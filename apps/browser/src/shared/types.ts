@@ -683,6 +683,8 @@ export interface SettingsValues {
   autoUpdate: boolean;
   usageCounting: boolean;
   askBeforeDownload: boolean;
+  askDownloadLocation: boolean;
+  downloadDirectory: string | null;
   welcomeCompleted: boolean;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
@@ -707,6 +709,7 @@ export type UpdateStatus =
 
 export interface SettingsView {
   values: SettingsValues;
+  downloadDirectory: string;
   defaultBrowser: boolean;
   engines: { id: SearchEngineId; label: string }[];
   customTemplateValid: boolean;
@@ -734,6 +737,7 @@ export const SettingsChannel = {
   processUsage: 'yalqen-settings:process-usage',
   checkForUpdates: 'yalqen-settings:check-for-updates',
   installUpdate: 'yalqen-settings:install-update',
+  chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
 } as const;
 
 export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
@@ -879,6 +883,7 @@ export interface SettingsApi {
   processUsage(): Promise<ProcessUsage>;
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;
+  chooseDownloadDirectory(): Promise<SettingsView>;
   requestRules(): Promise<RequestRule[]>;
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
   sitePermissions(): Promise<SitePermissionsView>;

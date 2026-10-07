@@ -1,3 +1,5 @@
+import { dialog, type OpenDialogOptions } from 'electron';
+import { t } from '../../shared/i18n.js';
 import {
   RequestRulesChannel,
   SettingsChannel,
@@ -51,6 +53,16 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
   handleSettingsCall(SettingsChannel.processUsage, () => processUsage());
   handleSettingsCall(SettingsChannel.checkForUpdates, () => host.updater.check());
   handleSettingsCall(SettingsChannel.installUpdate, () => host.updater.install());
+  handleSettingsCall(SettingsChannel.chooseDownloadDirectory, async () => {
+    const options: OpenDialogOptions = {
+      title: t('settings.chooseDownloadDirectory'),
+      defaultPath: host.view().downloadDirectory,
+      properties: ['openDirectory', 'createDirectory'],
+    };
+    const { canceled, filePaths } = await dialog.showOpenDialog(options);
+    if (!canceled && filePaths[0]) host.update({ downloadDirectory: filePaths[0] });
+    return host.view();
+  });
   handleSettingsCall(SitePermissionsChannel.list, () => sitePermissionsView(host.permissions));
   handleSettingsCall(SitePermissionsChannel.set, (_event, origin, kind, decision) => {
     if (
