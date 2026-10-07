@@ -14,6 +14,7 @@ import {
   type SettingsView,
 } from '../shared/types.js';
 import { AdBlocker } from './privacy/adblock.js';
+import { SiteProtections } from './privacy/site-protections.js';
 import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
 import type { BridgeHost } from './agent-bridge/tools.js';
@@ -115,6 +116,12 @@ function startBrowser(): void {
   const sessions = openBrowsingSessions();
   const { daily, privateBrowsing, developer } = sessions;
   const settings = new SettingsStore(userData, getLocale());
+  const siteProtections = new SiteProtections(
+    () => settings.get(),
+    (patch) => updateSettings(patch),
+  );
+  const cookiesAllowed = (url: string, isPrivate: boolean) =>
+    siteProtections.isAllowed('blockThirdPartyCookies', url, isPrivate);
   const { interfaceLanguage } = settings.get();
   if (interfaceLanguage !== 'system') setLocale(interfaceLanguage);
   const history = new HistoryStore(userData);
@@ -177,7 +184,7 @@ function startBrowser(): void {
   };
 
   applyPageLanguage(sessions, settings.get().pageLanguage);
-  applyCookieBlocking(sessions, settings.get().blockThirdPartyCookies);
+  applyCookieBlocking(sessions, settings.get().blockThirdPartyCookies, cookiesAllowed);
   installPermissionHandlers({
     sessions: [
       [daily, false],
@@ -318,7 +325,9 @@ function startBrowser(): void {
   });
 
   handleCertificateErrors(certificates, eachSession(sessions));
-  const adBlocker = new AdBlocker([daily, privateBrowsing], path.join(userData, 'adblock-engine.bin'));
+  const adBlocker = new AdBlocker([daily, privateBrowsing], path.join(userData, 'adblock-engine.bin'), (session, url) =>
+    siteProtections.isAllowed('adBlocking', url, session === privateBrowsing),
+  );
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () => resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
   const commandBar = new CommandBar({
@@ -372,7 +381,7 @@ function startBrowser(): void {
     else if (next.agentOrigins !== previous.agentOrigins) eachWindow((window) => window.tabs.syncAgent());
     if (next.agentTracing !== previous.agentTracing) eachWindow((window) => window.tabs.refreshRequestRules());
     adBlocker.setEnabled(next.adBlocking);
-    applyCookieBlocking(sessions, next.blockThirdPartyCookies);
+    applyCookieBlocking(sessions, next.blockThirdPartyCookies, cookiesAllowed);
     pushState();
     broadcastSettings(settingsView());
   };
@@ -391,6 +400,7 @@ function startBrowser(): void {
     developer,
     requestRules,
     settings,
+    siteProtections,
     commandBar,
     findBar,
     history,
@@ -450,6 +460,7 @@ function startBrowser(): void {
     },
     onPrivateTabsClosed: () => {
       if (windows.some((window) => !window.isDeveloper && window.tabs.hasPrivateTabs)) return;
+      siteProtections.clearPrivate();
       privatePermissions = new PermissionStore(null);
       privateZoom = new ZoomStore(null, defaultZoom);
       downloads.removePrivate();

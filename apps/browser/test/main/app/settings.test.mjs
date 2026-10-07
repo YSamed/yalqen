@@ -52,6 +52,8 @@ test('unknown or mistyped fields fall back', () => {
       freezeBackgroundTabs: true,
       discardAfterMinutes: 30,
       adBlocking: true,
+      adBlockExceptions: [],
+      thirdPartyCookieExceptions: [],
       httpsOnly: false,
       blockThirdPartyCookies: false,
       secureDns: 'automatic',

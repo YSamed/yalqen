@@ -77,3 +77,28 @@ test('saved permissions can be changed from the menu', () => {
     ['notifications', 'allow'],
   ]);
 });
+
+test('site protection checkboxes show effective state and disable globally inactive protections', () => {
+  const changes = [];
+  const items = siteInfoTemplate(
+    {
+      url: 'https://example.com/',
+      security: 'secure',
+      permissions: [],
+      protections: {
+        adBlocking: false,
+        blockThirdPartyCookies: false,
+        adBlockingEnabled: true,
+        cookieBlockingEnabled: false,
+      },
+    },
+    { setProtection: (kind, blocked) => changes.push([kind, blocked]) },
+  );
+  const choices = items.filter((item) => item.type === 'checkbox');
+  assert.equal(choices.length, 2);
+  assert.equal(choices[0].checked, false);
+  assert.equal(choices[0].enabled, true);
+  assert.equal(choices[1].enabled, false);
+  choices[0].click({ checked: true });
+  assert.deepEqual(changes, [['adBlocking', true]]);
+});

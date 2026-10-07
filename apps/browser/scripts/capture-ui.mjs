@@ -118,7 +118,12 @@ async function capture() {
   const settingsView = {
     downloadDirectory: path.join(profile, 'Downloads'),
     values: (({ version: _version, ...rest }) => rest)(
-      sanitizeSettings({ agentBridge: true, agentOrigins: ['https://my-app.ngrok.app'] }),
+      sanitizeSettings({
+        agentBridge: true,
+        agentOrigins: ['https://my-app.ngrok.app'],
+        adBlockExceptions: ['https://example.com'],
+        thirdPartyCookieExceptions: ['https://accounts.example.com'],
+      }),
     ),
     defaultBrowser: false,
     engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),

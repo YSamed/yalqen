@@ -1,6 +1,7 @@
 import type { MenuItemConstructorOptions } from 'electron';
 import { t } from '../../shared/i18n.js';
 import type { SecurityState } from '../../shared/types.js';
+import type { SiteProtection } from './site-protections.js';
 import { permissionLabel, type Decision, type SitePermission } from './permissions.js';
 import { siteDataItems, type SiteData, type SiteDataActions } from './site-data.js';
 
@@ -20,10 +21,17 @@ interface SiteInfo {
   security: SecurityState;
   permissions: { kind: SitePermission; decision: Decision }[];
   data?: SiteData;
+  protections?: {
+    adBlocking: boolean;
+    blockThirdPartyCookies: boolean;
+    adBlockingEnabled: boolean;
+    cookieBlockingEnabled: boolean;
+  };
 }
 
 interface SiteInfoActions extends SiteDataActions {
   revokeCertificateException(): void;
+  setProtection?(kind: SiteProtection, blocked: boolean): void;
   setPermission(kind: SitePermission, decision: Decision | null): void;
 }
 
@@ -41,6 +49,25 @@ export function siteInfoTemplate(info: SiteInfo, actions: SiteInfoActions): Menu
       ? [
           { type: 'separator' as const },
           { label: t('siteInfo.reenableCertificateWarnings'), click: actions.revokeCertificateException },
+        ]
+      : []),
+    ...(info.protections
+      ? [
+          { type: 'separator' as const },
+          {
+            label: t('siteInfo.blockAds'),
+            type: 'checkbox' as const,
+            checked: info.protections.adBlocking,
+            enabled: info.protections.adBlockingEnabled,
+            click: (item: Electron.MenuItem) => actions.setProtection?.('adBlocking', item.checked),
+          },
+          {
+            label: t('siteInfo.blockThirdPartyCookies'),
+            type: 'checkbox' as const,
+            checked: info.protections.blockThirdPartyCookies,
+            enabled: info.protections.cookieBlockingEnabled,
+            click: (item: Electron.MenuItem) => actions.setProtection?.('blockThirdPartyCookies', item.checked),
+          },
         ]
       : []),
     ...(info.permissions.length > 0 ? [{ type: 'separator' as const }] : []),

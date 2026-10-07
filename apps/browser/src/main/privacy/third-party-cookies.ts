@@ -45,7 +45,11 @@ const blocking = new WeakSet<Session>();
 
 // webRequest listeners route every request of the session through the main process,
 // so they are attached only while blocking is on.
-export function setThirdPartyCookieBlocking(session: Session, enabled: boolean): void {
+export function setThirdPartyCookieBlocking(
+  session: Session,
+  enabled: boolean,
+  allowed: (url: string) => boolean = () => false,
+): void {
   if (blocking.has(session) === enabled) return;
   const { webRequest } = session;
   if (!enabled) {
@@ -78,7 +82,7 @@ export function setThirdPartyCookieBlocking(session: Session, enabled: boolean):
     const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
     const request = page ? siteOf(details.url, domains) : null;
     const signIn = signInRequestHeaders(details.url, details.requestHeaders, process.platform);
-    if (!page || request === null || request === page.site) {
+    if (!page || allowed(page.url) || request === null || request === page.site) {
       callback(signIn ? { requestHeaders: signIn } : {});
       return;
     }

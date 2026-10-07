@@ -67,7 +67,7 @@ test('cookie listeners are attached only while blocking is on', () => {
   ]);
 });
 
-function fixture() {
+function fixture(allowed) {
   const listeners = {};
   const removed = [];
   const session = {
@@ -88,7 +88,7 @@ function fixture() {
   let url = 'https://www.example.com/';
   let destroyed = false;
   const contents = { getURL: () => url, isDestroyed: () => destroyed };
-  cookies.setThirdPartyCookieBlocking(session, true);
+  cookies.setThirdPartyCookieBlocking(session, true, allowed);
   const request = (requestUrl, extra = {}) => {
     const details = {
       id: 1,
@@ -197,4 +197,17 @@ test('domain eviction and independently enabled sessions preserve classification
   cookies.setThirdPartyCookieBlocking(a.session, true);
   assert.deepEqual(a.request('https://tracker.net/p'), {});
   assert.deepEqual(a.request('https://example.com/p'), { requestHeaders: { Accept: '*/*' } });
+});
+
+test('a page exception preserves third-party cookies and follows changes without replacing listeners', () => {
+  let allowed = true;
+  const f = fixture((url) => allowed && url === 'https://www.example.com/');
+  assert.deepEqual(f.request('https://tracker.net/p'), {});
+  f.listeners.onCompleted({ id: 1, url: 'https://tracker.net/p', responseHeaders: { 'Set-Cookie': ['fresh=1'] } });
+  assert.deepEqual(f.removed, []);
+  allowed = false;
+  assert.deepEqual(f.request('https://tracker.net/p'), { requestHeaders: { Accept: '*/*' } });
+  allowed = true;
+  f.navigate('https://other.test/');
+  assert.deepEqual(f.request('https://tracker.net/p'), { requestHeaders: { Accept: '*/*' } });
 });

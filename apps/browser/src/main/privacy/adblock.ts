@@ -1,5 +1,6 @@
 import type { ElectronBlocker } from '@ghostery/adblocker-electron';
 import { ipcMain, powerMonitor, type Session } from 'electron';
+import { applyAdBlockExceptions } from './adblock-exceptions.js';
 
 const CACHE_REFRESH_DELAY_MS = 30_000;
 const MIN_IDLE_SECONDS = 10;
@@ -25,6 +26,7 @@ export class AdBlocker {
   constructor(
     private readonly sessions: readonly Session[],
     private readonly cacheFile: string,
+    private readonly allowed: (session: Session, url: string) => boolean = () => false,
   ) {}
 
   setEnabled(enabled: boolean): void {
@@ -53,6 +55,7 @@ export class AdBlocker {
     try {
       const { blocker, stale } = await loadEngine(this.cacheFile);
       if (this.destroyed) return;
+      applyAdBlockExceptions(blocker, this.allowed);
       this.blocker = blocker;
       this.stale = stale;
       this.apply(this.blocker);
@@ -85,6 +88,7 @@ export class AdBlocker {
       for (const session of this.sessions) {
         if (this.blocker?.isBlockingEnabled(session)) this.blocker.disableBlockingInSession(session);
       }
+      applyAdBlockExceptions(next, this.allowed);
       this.blocker = next;
       this.stale = false;
       this.apply(next);

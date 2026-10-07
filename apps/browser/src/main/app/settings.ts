@@ -18,6 +18,7 @@ import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/me
 import { FONT_SIZES } from './page-preferences.js';
 import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from '../address-bar/search.js';
+import { sanitizeProtectionExceptions } from '../privacy/site-protections.js';
 
 export interface Settings extends SettingsValues {
   version: 1;
@@ -39,6 +40,8 @@ const DEFAULTS: Settings = {
   freezeBackgroundTabs: true,
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   adBlocking: true,
+  adBlockExceptions: [],
+  thirdPartyCookieExceptions: [],
   httpsOnly: false,
   blockThirdPartyCookies: false,
   secureDns: 'automatic',
@@ -96,6 +99,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs,
     discardAfterMinutes,
     adBlocking,
+    adBlockExceptions,
+    thirdPartyCookieExceptions,
     httpsOnly,
     blockThirdPartyCookies,
     secureDns,
@@ -147,6 +152,12 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs: typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
+    adBlockExceptions: Array.isArray(adBlockExceptions)
+      ? sanitizeProtectionExceptions(adBlockExceptions)
+      : base.adBlockExceptions,
+    thirdPartyCookieExceptions: Array.isArray(thirdPartyCookieExceptions)
+      ? sanitizeProtectionExceptions(thirdPartyCookieExceptions)
+      : base.thirdPartyCookieExceptions,
     httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,
     blockThirdPartyCookies:
       typeof blockThirdPartyCookies === 'boolean' ? blockThirdPartyCookies : base.blockThirdPartyCookies,

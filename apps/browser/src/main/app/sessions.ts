@@ -31,9 +31,13 @@ export function applyPageLanguage(sessions: BrowsingSessions, language: PageLang
   }
 }
 
-export function applyCookieBlocking({ daily, privateBrowsing, developer }: BrowsingSessions, enabled: boolean): void {
-  setThirdPartyCookieBlocking(daily, enabled);
-  setThirdPartyCookieBlocking(privateBrowsing, enabled);
+export function applyCookieBlocking(
+  { daily, privateBrowsing, developer }: BrowsingSessions,
+  enabled: boolean,
+  allowed: (url: string, isPrivate: boolean) => boolean = () => false,
+): void {
+  setThirdPartyCookieBlocking(daily, enabled, (url) => allowed(url, false));
+  setThirdPartyCookieBlocking(privateBrowsing, enabled, (url) => allowed(url, true));
   setThirdPartyCookieBlocking(developer, false);
 }
 

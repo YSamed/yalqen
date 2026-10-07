@@ -1192,4 +1192,13 @@ export const tr: Record<MessageKey, string> = {
   'agentActions.errors.one': '{count} konsol hatası',
   'agentActions.notSent': 'gönderilmedi',
   'agentActions.requestFailed': 'başarısız',
+  'siteInfo.blockAds': 'Bu sitede reklamları engelle',
+  'siteInfo.blockThirdPartyCookies': 'Bu sitede üçüncü taraf çerezlerini engelle',
+  'settings.siteExceptions': 'Site istisnaları',
+  'settings.siteExceptionsHint':
+    'Bir sitede reklamlara veya üçüncü taraf çerezlerine izin vermek için adresin yanındaki site menüsünü kullanın. Gizli sekme seçimleri tüm gizli sekmeler kapanana kadar geçerlidir. Bir istisnayı kaldırdıktan sonra açık sayfaları yenileyin.',
+  'settings.adBlockExceptions': 'Reklamlara izin verilen siteler',
+  'settings.cookieExceptions': 'Üçüncü taraf çerezlerine izin verilen siteler',
+  'settings.noSiteExceptions': 'Kayıtlı istisna yok.',
+  'settings.removeSiteException': 'Kaldır',
 };

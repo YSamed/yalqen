@@ -8,6 +8,8 @@ import { permissionOrigin, type PermissionStore } from '../privacy/permissions.j
 import { cookieUrl, cookiesForHost } from '../privacy/site-data.js';
 import { siteInfoTemplate } from '../privacy/site-info.js';
 import type { TabManager } from '../tabs/tabs.js';
+import type { SiteProtections } from '../privacy/site-protections.js';
+import type { SettingsValues } from '../../shared/types.js';
 
 interface TabMenuActions {
   togglePin(): void;
@@ -84,6 +86,7 @@ interface SiteInfoHost {
   session(isPrivate: boolean): Session;
   certificates: CertificateExceptions;
   clearSiteData(): void;
+  protections?: { preferences: SiteProtections; settings(): SettingsValues };
 }
 
 // Null when the active tab changed while cookies and storage were being measured.
@@ -108,10 +111,28 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
     {
       url: tab.url,
       security: tab.security,
+      protections:
+        origin && host.protections
+          ? {
+              adBlocking:
+                host.protections.settings().adBlocking &&
+                !host.protections.preferences.isAllowed('adBlocking', tab.url, tab.isPrivate),
+              blockThirdPartyCookies:
+                host.protections.settings().blockThirdPartyCookies &&
+                !host.protections.preferences.isAllowed('blockThirdPartyCookies', tab.url, tab.isPrivate),
+              adBlockingEnabled: host.protections.settings().adBlocking,
+              cookieBlockingEnabled: host.protections.settings().blockThirdPartyCookies,
+            }
+          : undefined,
       permissions: origin ? store.list(origin) : [],
       data: origin ? { cookies: cookies.length, storage } : undefined,
     },
     {
+      setProtection: (kind, blocked) => {
+        if (!host.protections || tabs.activeTabId !== tab.id || tabs.snapshotFor()?.url !== tab.url) return;
+        host.protections.preferences.setAllowed(kind, tab.url, tab.isPrivate, !blocked);
+        tabs.reload();
+      },
       setPermission: (kind, decision) => {
         if (origin) store.set(origin, [kind], decision);
       },

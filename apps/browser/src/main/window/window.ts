@@ -71,6 +71,7 @@ import { loadWallpaper } from './wallpaper.js';
 import { libraryMenuTemplate, profileMenuTemplate, siteInfoMenu, tabMenuTemplate } from './window-menus.js';
 import { buildSearchUrl, type SearchEngine } from '../address-bar/search.js';
 import type { SettingsStore } from '../app/settings.js';
+import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
 import { EMPTY_HISTORY_INDEX, suggest } from '../address-bar/suggestions.js';
 import { TabManager, type DetachedTab } from '../tabs/tabs.js';
@@ -109,6 +110,7 @@ export interface AppContext {
   developer: Session;
   requestRules: RequestRuleStore;
   settings: SettingsStore;
+  siteProtections: SiteProtections;
   commandBar: CommandBar;
   findBar: FindBar;
   history: HistoryStore;
@@ -1562,6 +1564,12 @@ export class YalqenWindow {
       permissions: (isPrivate) => this.app.permissionsFor(isPrivate),
       session: (isPrivate) => this.sessionFor(isPrivate),
       certificates: this.app.certificates,
+      protections: this.isDeveloper
+        ? undefined
+        : {
+            preferences: this.app.siteProtections,
+            settings: () => this.app.settings.get(),
+          },
       clearSiteData: () => this.runDevCommand('clear-site-data'),
     });
     if (template && !this.window.isDestroyed()) this.popup(template);

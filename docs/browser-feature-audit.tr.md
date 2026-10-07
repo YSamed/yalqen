@@ -12,6 +12,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — indirme konumu seçimi:** Onay penceresinde “Farklı kaydet”, Ayarlar → Genel altında varsayılan klasör seçimi/sıfırlama ve her dosyada konum sorma seçeneği eklendi. İptal, eşzamanlı dosya çakışması ve yeniden deneme akışları test edildi. Ayrı profilde gerçek Electron indirmesinin seçilen dosyaya eksiksiz yazdığı doğrulandı. Kapanış ve indirme çalışma testleri `npm run test:runtime` komutuna ve CI'a eklendi.
 
+- **Tamamlandı — siteye özel koruma istisnaları:** Site menüsüne reklam ve üçüncü taraf çerez engellemesi için ayrı anahtarlar, Gizlilik ayarlarına kayıtlı istisnaları kaldırma listeleri eklendi. İstisnalar tam HTTP/HTTPS origin ile sınırlandırıldı. Gizli sekme seçimleri bellekte tutulur ve son gizli sekmede temizlenir. Ağ, CSP, kozmetik filtre ve scriptlet yolları birlikte denetlenir. Gerçek Chromium reklam/kozmetik filtreleri ve üçüncü taraf Cookie başlıklarıyla çalışma testi CI'a eklendi.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

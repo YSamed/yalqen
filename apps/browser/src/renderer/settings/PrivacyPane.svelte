@@ -6,6 +6,7 @@
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import SettingRow from './SettingRow.svelte';
+  import SiteProtectionExceptions from './SiteProtectionExceptions.svelte';
 
   let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
     $props();
@@ -113,6 +114,7 @@
     onchange={(checked) => update({ pageTranslation: checked })}
   />
 </SettingRow>
+<SiteProtectionExceptions {values} {update} />
 <h2>{t('settings.browsingData')}</h2>
 <SettingRow title={t('settings.clearBrowsingData')} hint={t('settings.clearBrowsingDataHint')} stacked>
   <div class="clear">

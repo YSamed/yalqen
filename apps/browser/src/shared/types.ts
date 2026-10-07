@@ -672,6 +672,8 @@ export interface SettingsValues {
   freezeBackgroundTabs: boolean;
   discardAfterMinutes: number;
   adBlocking: boolean;
+  adBlockExceptions: string[];
+  thirdPartyCookieExceptions: string[];
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
   secureDns: SecureDnsSetting;

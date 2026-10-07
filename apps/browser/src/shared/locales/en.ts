@@ -1188,6 +1188,15 @@ export const en = {
   'agentActions.errors.one': '{count} console error',
   'agentActions.notSent': 'not sent',
   'agentActions.requestFailed': 'failed',
+  'siteInfo.blockAds': 'Block ads on this site',
+  'siteInfo.blockThirdPartyCookies': 'Block third-party cookies on this site',
+  'settings.siteExceptions': 'Site exceptions',
+  'settings.siteExceptionsHint':
+    'Use the site menu next to the address to allow ads or third-party cookies for a site. Private tab choices last until all private tabs close. Reload existing pages after removing an exception.',
+  'settings.adBlockExceptions': 'Ads allowed',
+  'settings.cookieExceptions': 'Third-party cookies allowed',
+  'settings.noSiteExceptions': 'No saved exceptions.',
+  'settings.removeSiteException': 'Remove',
 };
 
 export type MessageKey = keyof typeof en;
