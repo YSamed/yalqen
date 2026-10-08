@@ -12,6 +12,8 @@ for (const test of [
   'extension-access.mjs',
   'extension-access-settings.mjs',
   'login-selection.mjs',
+  'autofill.mjs',
+  'autofill-settings.mjs',
   'bookmark-transfer.mjs',
   'bulk-tabs.mjs',
   'tab-selection.mjs',

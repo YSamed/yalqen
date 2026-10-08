@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
+  AutofillChannel,
   AgentBridgeChannel,
   ExtensionsChannel,
   NEW_TAB_URL,
@@ -35,6 +36,9 @@ import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
 import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
+import { setupAutofill } from './autofill.js';
+
+setupAutofill();
 
 const THRESHOLD = 90;
 const GAP_MS = 350;
@@ -190,6 +194,12 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     removePassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.remove, id) as Promise<void>,
     allowSaving: (origin: string) => ipcRenderer.invoke(PasswordsChannel.allowSaving, origin) as Promise<void>,
     onPasswordsChange: (listener) => subscribe<PasswordsView>(PasswordsChannel.changed, listener),
+    autofill: () => ipcRenderer.invoke(AutofillChannel.list),
+    saveAutofill: (value) => ipcRenderer.invoke(AutofillChannel.save, value),
+    readAutofill: (id) => ipcRenderer.invoke(AutofillChannel.read, id),
+    removeAutofill: (id) => ipcRenderer.invoke(AutofillChannel.remove, id),
+    onAutofillChange: (listener) =>
+      subscribe<import('../shared/autofill.js').AutofillView>(AutofillChannel.changed, listener),
     agentBridge: () => ipcRenderer.invoke(AgentBridgeChannel.status) as Promise<AgentBridgeView>,
     copyAgentSetup: (kind: AgentSetupKind) => ipcRenderer.invoke(AgentBridgeChannel.copy, kind) as Promise<boolean>,
     regenerateAgentToken: () => ipcRenderer.invoke(AgentBridgeChannel.regenerate) as Promise<AgentBridgeView>,

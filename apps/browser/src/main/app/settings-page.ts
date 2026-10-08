@@ -1,6 +1,7 @@
 import { ipcMain, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import {
   AgentBridgeChannel,
+  AutofillChannel,
   ExtensionsChannel,
   PasswordsChannel,
   SETTINGS_URL,
@@ -55,4 +56,8 @@ export function broadcastAgentBridge(view: AgentBridgeView): void {
 
 export function broadcastPasswords(view: PasswordsView): void {
   broadcast(PasswordsChannel.changed, view);
+}
+
+export function broadcastAutofill(view: import('../../shared/autofill.js').AutofillView): void {
+  broadcast(AutofillChannel.changed, view);
 }

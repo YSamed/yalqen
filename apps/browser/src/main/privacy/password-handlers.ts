@@ -42,7 +42,7 @@ interface Submission {
   credential: SubmittedCredential;
 }
 
-async function confirmOwner(reason: string): Promise<boolean> {
+export async function confirmOwner(reason: string): Promise<boolean> {
   if (!systemPreferences.canPromptTouchID()) return true;
   try {
     await systemPreferences.promptTouchID(reason);

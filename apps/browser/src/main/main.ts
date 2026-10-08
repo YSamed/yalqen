@@ -66,6 +66,8 @@ import { installAppMenu } from './app/app-menu.js';
 import { getLocale, pickLocale, setLocale, t } from '../shared/i18n.js';
 import { installPasswordHandlers, safeStorageCipher } from './privacy/password-handlers.js';
 import { PasswordStore } from './privacy/passwords.js';
+import { AutofillStore } from './privacy/autofill.js';
+import { installAutofillHandlers } from './privacy/autofill-handlers.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
@@ -80,6 +82,7 @@ import {
   broadcastAgentBridge,
   broadcastExtensions,
   broadcastPasswords,
+  broadcastAutofill,
   broadcastSettings,
   isSettingsFrame,
 } from './app/settings-page.js';
@@ -158,6 +161,7 @@ function startBrowser(): void {
   const zoom = new ZoomStore(userData, defaultZoom);
   const permissions = new PermissionStore(userData);
   const passwords = new PasswordStore(userData, safeStorageCipher);
+  const autofill = new AutofillStore(userData, safeStorageCipher);
   const requestRules = new RequestRuleStore(userData);
   const certificates = new CertificateExceptions();
   const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
@@ -262,6 +266,15 @@ function startBrowser(): void {
     parentOf: (contents) => windowOf(contents)?.window,
     isSettingsFrame,
     onChange: () => broadcastPasswords(passwords.view()),
+  });
+  installAutofillHandlers({
+    store: autofill,
+    allowed: (contents) =>
+      contents.session === daily &&
+      !certificates.hasException(contents.getURL()) &&
+      windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.activeContents() === contents),
+    parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
+    changed: () => broadcastAutofill(autofill.view()),
   });
 
   const bookmarksChanged = () => {

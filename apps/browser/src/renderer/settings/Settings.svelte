@@ -9,6 +9,7 @@
   import Extensions from './Extensions.svelte';
   import GeneralPane from './GeneralPane.svelte';
   import Passwords from './Passwords.svelte';
+  import Autofill from './Autofill.svelte';
   import PerformancePane from './PerformancePane.svelte';
   import PrivacyPane from './PrivacyPane.svelte';
   import RequestRules from './RequestRules.svelte';
@@ -16,12 +17,14 @@
 
   const api = window.yalqenSettings;
 
-  type PaneId = 'general' | 'appearance' | 'privacy' | 'passwords' | 'performance' | 'extensions' | 'developer';
+  type PaneId =
+    'general' | 'appearance' | 'privacy' | 'passwords' | 'autofill' | 'performance' | 'extensions' | 'developer';
   const panes: { id: PaneId; label: string; icon: IconName }[] = [
     { id: 'general', label: t('settings.paneGeneral'), icon: 'settings' },
     { id: 'appearance', label: t('settings.paneAppearance'), icon: 'appearance' },
     { id: 'privacy', label: t('settings.panePrivacy'), icon: 'lock' },
     { id: 'passwords', label: t('settings.panePasswords'), icon: 'key' },
+    { id: 'autofill', label: t('autofill.title'), icon: 'profile' },
     { id: 'performance', label: t('settings.panePerformance'), icon: 'gauge' },
     { id: 'extensions', label: t('settings.paneExtensions'), icon: 'extensions' },
     { id: 'developer', label: t('settings.paneDeveloper'), icon: 'sparkle' },
@@ -94,6 +97,8 @@
           <SitePermissions />
         {:else if pane === 'passwords'}
           <Passwords />
+        {:else if pane === 'autofill'}
+          <Autofill />
         {:else if pane === 'extensions'}
           <Extensions values={view.values} {update} />
         {:else if pane === 'developer'}

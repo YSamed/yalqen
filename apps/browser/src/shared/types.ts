@@ -415,6 +415,8 @@ export const PageChannel = {
   savedLogins: 'yalqen:saved-logins',
   fillSavedLogin: 'yalqen:fill-saved-login',
   chooseSavedLogin: 'yalqen:choose-saved-login',
+  autofillAvailable: 'yalqen:autofill-available',
+  chooseAutofill: 'yalqen:choose-autofill',
 } as const;
 
 export interface SubmittedCredential {
@@ -956,6 +958,14 @@ export const PasswordsChannel = {
   changed: 'yalqen-passwords:changed',
 } as const;
 
+export const AutofillChannel = {
+  list: 'yalqen-autofill:list',
+  save: 'yalqen-autofill:save',
+  read: 'yalqen-autofill:read',
+  remove: 'yalqen-autofill:remove',
+  changed: 'yalqen-autofill:changed',
+} as const;
+
 export interface SettingsApi {
   get(): Promise<SettingsView>;
   update(patch: Partial<SettingsValues>): Promise<SettingsView>;
@@ -1003,6 +1013,11 @@ export interface SettingsApi {
   removePassword(id: string): Promise<void>;
   allowSaving(origin: string): Promise<void>;
   onPasswordsChange(listener: (view: PasswordsView) => void): () => void;
+  autofill(): Promise<import('./autofill.js').AutofillView>;
+  saveAutofill(value: import('./autofill.js').ManualAutofill): Promise<boolean>;
+  readAutofill(id: string): Promise<import('./autofill.js').AutofillData | null>;
+  removeAutofill(id: string): Promise<boolean>;
+  onAutofillChange(listener: (view: import('./autofill.js').AutofillView) => void): () => void;
   agentBridge(): Promise<AgentBridgeView>;
   copyAgentSetup(kind: AgentSetupKind): Promise<boolean>;
   regenerateAgentToken(): Promise<AgentBridgeView>;
