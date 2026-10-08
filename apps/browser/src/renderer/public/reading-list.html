@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{readingList.title}}</title>
+    <style>
+      __YALQEN_STYLES_SLOT__
+    </style>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page: var(--bg);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        font: 14px/1.5 system-ui;
+      }
+      main {
+        max-width: 850px;
+        margin: auto;
+        padding: 40px 24px 80px;
+      }
+      h1 {
+        font-size: 30px;
+        margin: 0 0 12px;
+      }
+      p {
+        color: var(--text-muted);
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        margin: 24px 0;
+      }
+      input {
+        flex: 1;
+        min-width: 0;
+      }
+      ol {
+        padding: 0;
+        list-style: none;
+      }
+      li {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--page-divider);
+      }
+      a {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-width: 0;
+        color: inherit;
+        text-decoration: none;
+      }
+      a:hover strong {
+        color: var(--accent);
+      }
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      .url {
+        color: var(--text-muted);
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .empty {
+        margin: 40px 0;
+        text-align: center;
+      }
+      .error {
+        color: var(--danger);
+      }
+      button[aria-pressed='true'] {
+        opacity: 0.7;
+      }
+      @media (max-width: 600px) {
+        li {
+          flex-wrap: wrap;
+        }
+        li a {
+          flex-basis: 100%;
+        }
+      }
+    </style>
+    <script src="/reading-list.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>{{readingList.title}}</h1>
+      <p>{{readingList.intro}}</p>
+      <form>
+        <input
+          type="search"
+          class="field lg"
+          maxlength="200"
+          placeholder="{{readingList.search}}"
+          aria-label="{{readingList.search}}"
+        /><select class="field" aria-label="{{readingList.status}}">
+          <option value="all">{{readingList.all}}</option>
+          <option value="unread">{{readingList.unread}}</option>
+          <option value="read">{{readingList.read}}</option></select
+        ><button class="btn tonal">{{readingList.search}}</button>
+      </form>
+      <p data-readonly hidden>{{readingList.readOnly}}</p>
+      <p role="alert" class="error" hidden>{{readingList.failed}}</p>
+      <p class="empty" data-empty hidden>{{readingList.empty}}</p>
+      <ol></ol>
+      <template
+        ><li>
+          <a><strong></strong><span class="url"></span></a
+          ><button
+            class="btn tonal"
+            data-read
+            data-read-label="{{readingList.markRead}}"
+            data-unread-label="{{readingList.markUnread}}"
+          ></button
+          ><button class="btn" data-remove>{{readingList.remove}}</button>
+        </li></template
+      >
+    </main>
+  </body>
+</html>

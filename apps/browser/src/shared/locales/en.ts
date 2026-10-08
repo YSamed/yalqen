@@ -1,4 +1,21 @@
 export const en = {
+  'readingList.title': 'Reading list',
+  'readingList.savePage': 'Save page to reading list',
+  'readingList.intro':
+    'Save a regular web tab from the Bookmarks menu to read it later. This list stores links; pages require a connection unless you have saved an offline copy separately.',
+  'readingList.search': 'Search',
+  'readingList.status': 'Reading status',
+  'readingList.all': 'All pages',
+  'readingList.read': 'Read',
+  'readingList.unread': 'Unread',
+  'readingList.markRead': 'Mark as read',
+  'readingList.markUnread': 'Mark as unread',
+  'readingList.remove': 'Remove',
+  'readingList.readOnly': 'The reading list is read only in private and developer tabs.',
+  'readingList.empty': 'No matching saved pages.',
+  'readingList.failed': 'The reading list could not be loaded or saved.',
+  'readingList.saveFailed':
+    'The page could not be saved. Use a regular HTTP/HTTPS tab and check that the list has fewer than 1,000 pages.',
   'reader.title': 'Reader view',
   'reader.toggle': 'Toggle reader view',
   'reader.smaller': 'Smaller text',

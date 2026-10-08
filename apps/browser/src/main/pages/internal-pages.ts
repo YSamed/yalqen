@@ -9,7 +9,7 @@ import { serveDownloads, type DownloadsPageAssets, type DownloadsPageSource } fr
 import { serveHistory } from './history-page.js';
 import { escapeHtml, fillSlot } from './html.js';
 import { serveNewTab, type NewTabAssets, type NewTabSources } from './new-tab-page.js';
-import { htmlResponse, notFound } from './responses.js';
+import { htmlResponse, notFound, scriptResponse } from './responses.js';
 import type { Bookmark, BookmarkFolder } from '../library/bookmarks.js';
 
 const SETTINGS_CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
@@ -31,6 +31,7 @@ interface InternalPageFiles {
   history: string;
   downloads: string;
   bookmarks: string;
+  readingList?: string;
   settings: string;
 }
 
@@ -45,6 +46,7 @@ interface InternalPages {
   history: string;
   downloads: DownloadsPageAssets;
   bookmarks: BookmarksPageAssets;
+  readingList?: { template: string; script: string };
   settings: { template: string; asset: (name: string) => Buffer<ArrayBuffer> | null };
 }
 
@@ -73,6 +75,9 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
     history: readPage(files.history),
     downloads: { template: readPage(files.downloads), script: readScript(files.downloads, 'downloads.js') },
     bookmarks: { template: readPage(files.bookmarks), script: readScript(files.bookmarks, 'bookmarks.js') },
+    readingList: files.readingList
+      ? { template: readPage(files.readingList), script: readScript(files.readingList, 'reading-list.js') }
+      : undefined,
     settings: {
       template: localizePage(fs.readFileSync(files.settings, 'utf8')),
       asset: (name) => {
@@ -113,6 +118,15 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         return serveHistory(url, pages.history, sources.visits);
       case 'bookmarks':
         return serveBookmarks(url, pages.bookmarks, sources.bookmarks);
+      case 'reading-list':
+        if (!pages.readingList) return notFound();
+        if (url.pathname === '/reading-list.js') return scriptResponse(pages.readingList.script);
+        return url.pathname === '/'
+          ? htmlResponse(
+              pages.readingList.template,
+              "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+            )
+          : notFound();
       default:
         return notFound();
     }

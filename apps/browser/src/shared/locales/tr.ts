@@ -1,6 +1,23 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'readingList.title': 'Okuma listesi',
+  'readingList.savePage': 'Sayfayı okuma listesine kaydet',
+  'readingList.intro':
+    'Normal bir web sekmesini daha sonra okumak için Yer imleri menüsünden kaydedin. Bu liste bağlantıları saklar; ayrıca çevrimdışı kopya kaydetmediyseniz sayfalar internet bağlantısı gerektirir.',
+  'readingList.search': 'Ara',
+  'readingList.status': 'Okuma durumu',
+  'readingList.all': 'Tüm sayfalar',
+  'readingList.read': 'Okundu',
+  'readingList.unread': 'Okunmadı',
+  'readingList.markRead': 'Okundu olarak işaretle',
+  'readingList.markUnread': 'Okunmadı olarak işaretle',
+  'readingList.remove': 'Kaldır',
+  'readingList.readOnly': 'Okuma listesi gizli ve geliştirici sekmelerinde salt okunur.',
+  'readingList.empty': 'Eşleşen kayıtlı sayfa yok.',
+  'readingList.failed': 'Okuma listesi yüklenemedi veya kaydedilemedi.',
+  'readingList.saveFailed':
+    'Sayfa kaydedilemedi. Normal bir HTTP/HTTPS sekmesi kullanın ve listede 1.000’den az sayfa bulunduğunu kontrol edin.',
   'reader.title': 'Okuma görünümü',
   'reader.toggle': 'Okuma görünümünü aç / kapat',
   'reader.smaller': 'Metni küçült',

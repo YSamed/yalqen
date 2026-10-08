@@ -15,6 +15,7 @@ export interface AppMenuHost {
   updateSettings(patch: unknown): void;
   updater: Updater;
   toggleBookmark(url: string, title: string): void;
+  saveReadingPage(window: YalqenWindow): void;
   deviceId(): DeviceId;
   selectDevice(id: DeviceId): void;
 }
@@ -97,6 +98,8 @@ export function installAppMenu(host: AppMenuHost): void {
         if (page) host.toggleBookmark(page.url, page.title);
       },
       showBookmarks: inWindow((window) => window.tabs.openBookmarks()),
+      saveReadingPage: inWindow((window) => host.saveReadingPage(window)),
+      showReadingList: inWindow((window) => window.tabs.openReadingList()),
       print: () => current()?.print(),
       savePdf: () => void current()?.savePageAsPdf(),
       savePage: () => void current()?.savePageOffline(),

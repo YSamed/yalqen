@@ -38,8 +38,19 @@ import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
 import { setupAutofill } from './autofill.js';
 import { SiteStorageChannel } from '../shared/site-storage.js';
+import { READING_LIST_URL, ReadingListChannel, type ReadingListApi } from '../shared/reading-list.js';
 
 setupAutofill();
+
+if (location.href.startsWith(READING_LIST_URL) && window === window.top) {
+  const api: ReadingListApi = {
+    list: (query, status) => ipcRenderer.invoke(ReadingListChannel.list, query, status),
+    setRead: (id, read) => ipcRenderer.invoke(ReadingListChannel.read, id, read),
+    remove: (id) => ipcRenderer.invoke(ReadingListChannel.remove, id),
+    onChange: (listener) => subscribe(ReadingListChannel.changed, listener),
+  };
+  contextBridge.exposeInMainWorld('yalqenReadingList', api);
+}
 
 const THRESHOLD = 90;
 const GAP_MS = 350;

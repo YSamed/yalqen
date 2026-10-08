@@ -73,6 +73,7 @@ import { episodePreview } from '../agent-bridge/timeline.js';
 import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } from '../agent-bridge/page-text.js';
 import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
+import { READING_LIST_URL } from '../../shared/reading-list.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
 import { TabTranslation } from './tab-translation.js';
@@ -698,6 +699,9 @@ export class TabManager {
 
   openBookmarks(): void {
     this.openSingle(BOOKMARKS_URL);
+  }
+  openReadingList(): void {
+    this.openSingle(READING_LIST_URL);
   }
 
   openSettings(pane?: string): void {

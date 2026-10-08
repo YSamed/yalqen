@@ -42,6 +42,8 @@ interface MenuActions {
   checkForUpdates: (() => void) | null;
   toggleBookmark(): void;
   showBookmarks(): void;
+  saveReadingPage(): void;
+  showReadingList(): void;
   print(): void;
   savePdf(): void;
   savePage(): void;
@@ -134,6 +136,9 @@ export function buildMenu(actions: MenuActions): Menu {
       submenu: [
         { label: t('menu.toggleBookmark'), accelerator: 'CmdOrCtrl+D', click: actions.toggleBookmark },
         { label: t('menu.allBookmarks'), accelerator: 'CmdOrCtrl+Alt+B', click: actions.showBookmarks },
+        { type: 'separator' },
+        { label: t('readingList.savePage'), accelerator: 'CmdOrCtrl+Shift+D', click: actions.saveReadingPage },
+        { label: t('readingList.title'), click: actions.showReadingList },
       ],
     },
     {

@@ -70,6 +70,8 @@ import { AutofillStore } from './privacy/autofill.js';
 import { installAutofillHandlers } from './privacy/autofill-handlers.js';
 import { StorageOrigins, SiteStorageManager } from './privacy/site-storage.js';
 import { installSiteStorageHandlers, observeStorageOrigins } from './privacy/site-storage-handlers.js';
+import { ReadingListStore, saveReadingPage } from './library/reading-list.js';
+import { installReadingListHandlers, broadcastReadingList } from './library/reading-list-handlers.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
@@ -158,6 +160,7 @@ function startBrowser(): void {
   const chatPreferences = new ChatPreferenceStore(userData);
   const downloads = new DownloadStore(userData);
   const bookmarks = new BookmarkStore(userData);
+  const readingList = new ReadingListStore(userData);
   const store = new SessionStore(userData);
   const defaultZoom = () => settings.get().defaultZoom;
   const zoom = new ZoomStore(userData, defaultZoom);
@@ -176,6 +179,15 @@ function startBrowser(): void {
   const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
 
   const windows: YalqenWindow[] = [];
+  const readingListChanged = () => broadcastReadingList(webContents.getAllWebContents());
+  installReadingListHandlers({
+    store: readingList,
+    owned: (contents) => windows.some((window) => window.tabs.hasContents(contents)),
+    writable: (contents) =>
+      contents.session === daily &&
+      windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
+    changed: readingListChanged,
+  });
   const storageOrigins = new StorageOrigins(userData);
   const siteStorage = new SiteStorageManager(daily, storageOrigins, () => history.list().map((entry) => entry.url));
   observeStorageOrigins(daily, storageOrigins, (contents) =>
@@ -604,6 +616,7 @@ function startBrowser(): void {
     history: rendererPath('history.html'),
     downloads: rendererPath('downloads.html'),
     bookmarks: rendererPath('bookmarks.html'),
+    readingList: rendererPath('reading-list.html'),
     settings: rendererPath('settings.html'),
   });
   for (const [browsing, isPrivate] of [
@@ -648,6 +661,13 @@ function startBrowser(): void {
     updateSettings,
     updater,
     toggleBookmark: context.toggleBookmark,
+    saveReadingPage: (window) => {
+      const page = window.tabs.snapshotFor();
+      if (page && saveReadingPage(readingList, { ...page, developer: window.isDeveloper })) {
+        readingListChanged();
+        window.tabs.openReadingList();
+      } else void dialog.showMessageBox(window.window, { type: 'info', message: t('readingList.saveFailed') });
+    },
     deviceId: () => deviceId,
     selectDevice: (id) => {
       deviceId = id;

@@ -10,6 +10,7 @@ for (const test of [
   'site-protections.mjs',
   'site-storage.mjs',
   'reader.mjs',
+  'reading-list.mjs',
   'extension-updates.mjs',
   'extension-access.mjs',
   'extension-access-settings.mjs',
