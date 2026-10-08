@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../shared/i18n';
-  import type { PasswordsView, SavedPasswordInfo } from '../../shared/types';
+  import type { PasswordsView, SavedPasswordInfo, ManualPassword } from '../../shared/types';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import SearchField from '../ui/SearchField.svelte';
+  import TextField from '../ui/TextField.svelte';
 
   const COPIED_MS = 2000;
   const api = window.yalqenSettings;
@@ -13,6 +14,54 @@
   let query = $state('');
   let revealed = $state<Record<string, string>>({});
   let copiedId = $state<string | null>(null);
+  let editing = $state<ManualPassword | null>(null);
+  let busy = $state(false);
+  let message = $state('');
+  let failed = $state(false);
+
+  function edit(entry?: SavedPasswordInfo): void {
+    editing = { id: entry?.id ?? null, url: entry?.origin ?? '', username: entry?.username ?? '', password: '' };
+    message = '';
+  }
+  async function save(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (!editing || busy) return;
+    busy = true;
+    try {
+      failed = !(await api.savePassword($state.snapshot(editing)));
+      if (!failed) {
+        editing = null;
+        message = '';
+      } else message = t('passwordTools.saveFailed');
+    } finally {
+      busy = false;
+    }
+  }
+  async function generate(): Promise<void> {
+    const draft = editing;
+    if (!draft || busy) return;
+    busy = true;
+    try {
+      const password = await api.generatePassword();
+      if (password && editing === draft) draft.password = password;
+    } finally {
+      busy = false;
+    }
+  }
+  async function transfer(mode: 'import' | 'export'): Promise<void> {
+    if (busy) return;
+    busy = true;
+    try {
+      const result = await api.transferPasswords(mode);
+      if (result.status === 'cancelled') return;
+      failed = result.status === 'failed';
+      message = failed
+        ? t('passwordTools.transferFailed')
+        : t('passwordTools.transferDone', { count: result.added, skipped: result.skipped });
+    } finally {
+      busy = false;
+    }
+  }
 
   const host = (origin: string) => new URL(origin).host;
   const matches = (entry: SavedPasswordInfo, needle: string) =>
@@ -40,9 +89,8 @@
     void api.passwords().then((next) => (view = next));
     return api.onPasswordsChange((next) => {
       view = next;
-      revealed = Object.fromEntries(
-        Object.entries(revealed).filter(([id]) => next.passwords.some((entry) => entry.id === id)),
-      );
+      revealed = {};
+      copiedId = null;
     });
   });
 </script>
@@ -53,6 +101,58 @@
 {#if view}
   {#if !view.available}
     <p class="error" role="alert">{t('passwordsPanel.unavailable')}</p>
+  {/if}
+
+  <div class="actions">
+    <Button disabled={busy || !view.available} onclick={() => edit()}>{t('passwordTools.add')}</Button>
+    <Button variant="tonal" disabled={busy || !view.available} onclick={() => transfer('import')}
+      >{t('passwordTools.import')}</Button
+    >
+    <Button
+      variant="tonal"
+      disabled={busy || !view.available || !view.passwords.length}
+      onclick={() => transfer('export')}>{t('passwordTools.export')}</Button
+    >
+  </div>
+  {#if message}<p class:error={failed} class="hint" role="status">{message}</p>{/if}
+  {#if editing}
+    <form onsubmit={save} class="editor">
+      <label for="credential-url">{t('passwordTools.site')}</label>
+      <TextField
+        id="credential-url"
+        type="url"
+        maxlength={8192}
+        required
+        bind:value={editing.url}
+        autocomplete="off"
+        disabled={busy}
+      />
+      <p class="hint">{t('passwordTools.siteHint')}</p>
+      <label for="credential-username">{t('passwordTools.username')}</label>
+      <TextField
+        id="credential-username"
+        maxlength={512}
+        bind:value={editing.username}
+        autocomplete="off"
+        disabled={busy}
+      />
+      <label for="credential-password">{t('passwordsPanel.password')}</label>
+      <TextField
+        id="credential-password"
+        type="password"
+        maxlength={4096}
+        required={!editing.id}
+        bind:value={editing.password}
+        autocomplete="new-password"
+        disabled={busy}
+      />
+      {#if editing.id}<p class="hint">{t('passwordTools.keepPassword')}</p>{/if}
+      <div class="actions">
+        <Button type="submit" disabled={busy}>{t('passwordTools.save')}</Button>
+        <Button variant="tonal" disabled={busy} onclick={generate}>{t('passwordTools.generate')}</Button>
+        <Button variant="ghost" disabled={busy} onclick={() => (editing = null)}>{t('profiles.cancel')}</Button>
+      </div>
+    </form>
   {/if}
 
   {#if view.passwords.length > 0}
@@ -73,6 +173,7 @@
       </div>
       <code class="secret" aria-label={t('passwordsPanel.password')}>{revealed[entry.id] ?? '••••••••'}</code>
       <div class="controls">
+        <Button size="sm" variant="tonal" disabled={busy} onclick={() => edit(entry)}>{t('passwordTools.edit')}</Button>
         <Button size="sm" variant="tonal" onclick={() => toggleReveal(entry.id)}
           >{entry.id in revealed ? t('passwordsPanel.hide') : t('passwordsPanel.show')}</Button
         >
@@ -108,6 +209,23 @@
 {/if}
 
 <style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+  }
+  .editor .hint {
+    margin: 0;
+  }
   .intro {
     margin: 0 0 8px;
   }

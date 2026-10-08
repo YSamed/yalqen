@@ -1,4 +1,28 @@
 export const en = {
+  'passwordTools.add': 'Add password',
+  'passwordTools.edit': 'Edit',
+  'passwordTools.site': 'Website',
+  'passwordTools.siteHint':
+    'Use an HTTPS address (HTTP is allowed only for localhost). Each site/account pair must be unique.',
+  'passwordTools.username': 'Username',
+  'passwordTools.keepPassword': 'Leave the password empty to keep the saved password.',
+  'passwordTools.save': 'Save',
+  'passwordTools.generate': 'Generate strong password',
+  'passwordTools.saveFailed': 'Could not save the password. Check the address and account, or retry authentication.',
+  'passwordTools.ownerReason': 'manage your saved passwords',
+  'passwordTools.importTitle': 'Import passwords from CSV',
+  'passwordTools.exportTitle': 'Export passwords to CSV',
+  'passwordTools.import': 'Import CSV…',
+  'passwordTools.export': 'Export CSV…',
+  'passwordTools.importConfirm': 'Import these passwords?',
+  'passwordTools.importDetail':
+    'Read {count} valid entries; {skipped} invalid entries were skipped. Existing accounts are kept. The imported records will be encrypted. Notes and extra columns are not imported.',
+  'passwordTools.exportConfirm': 'Export unencrypted passwords?',
+  'passwordTools.exportDetail':
+    'Anyone who can read this CSV file can see every exported password. Keep it private and delete it after importing it into another password manager.',
+  'passwordTools.transferFailed':
+    'The transfer failed. Use a valid CSV with url, username and password columns (up to 8 MB). Existing passwords were kept.',
+  'passwordTools.transferDone': 'Processed {count} entries; skipped {skipped} invalid or existing accounts.',
   'toolbar.home': 'Home',
   'settings.startupPages': 'Open specific pages',
   'settings.startupUrls': 'Startup pages',

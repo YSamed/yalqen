@@ -1,6 +1,31 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'passwordTools.add': 'Parola ekle',
+  'passwordTools.edit': 'Düzenle',
+  'passwordTools.site': 'Web sitesi',
+  'passwordTools.siteHint':
+    'HTTPS adresi kullanın (HTTP yalnızca localhost için geçerlidir). Site/hesap çiftleri benzersiz olmalıdır.',
+  'passwordTools.username': 'Kullanıcı adı',
+  'passwordTools.keepPassword': 'Kayıtlı parolayı korumak için parola alanını boş bırakın.',
+  'passwordTools.save': 'Kaydet',
+  'passwordTools.generate': 'Güçlü parola üret',
+  'passwordTools.saveFailed':
+    'Parola kaydedilemedi. Adresi ve hesabı kontrol edin veya kimlik doğrulamayı tekrar deneyin.',
+  'passwordTools.ownerReason': 'kayıtlı parolalarınızı yönetmek',
+  'passwordTools.importTitle': 'CSV dosyasından parola içe aktar',
+  'passwordTools.exportTitle': 'Parolaları CSV dosyasına dışa aktar',
+  'passwordTools.import': 'CSV içe aktar…',
+  'passwordTools.export': 'CSV dışa aktar…',
+  'passwordTools.importConfirm': 'Bu parolalar içe aktarılsın mı?',
+  'passwordTools.importDetail':
+    '{count} geçerli kayıt okundu; {skipped} geçersiz kayıt atlandı. Var olan hesaplar korunur. İçe aktarılan kayıtlar şifrelenir. Notlar ve ek sütunlar aktarılmaz.',
+  'passwordTools.exportConfirm': 'Şifrelenmemiş parolalar dışa aktarılsın mı?',
+  'passwordTools.exportDetail':
+    'Bu CSV dosyasını okuyabilen herkes dışa aktarılan parolaları görebilir. Dosyayı özel tutun ve başka bir parola yöneticisine aktardıktan sonra silin.',
+  'passwordTools.transferFailed':
+    'Aktarım başarısız oldu. url, username ve password sütunları olan geçerli bir CSV kullanın (en fazla 8 MB). Var olan parolalar korundu.',
+  'passwordTools.transferDone': '{count} kayıt işlendi; {skipped} geçersiz veya var olan hesap atlandı.',
   'toolbar.home': 'Ana sayfa',
   'settings.startupPages': 'Belirli sayfaları aç',
   'settings.startupUrls': 'Açılış sayfaları',

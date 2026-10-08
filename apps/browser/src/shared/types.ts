@@ -411,6 +411,7 @@ export const PageChannel = {
   newTabCenter: 'yalqen:newtab-center',
   credentialSubmitted: 'yalqen:credential-submitted',
   credentialAccepted: 'yalqen:credential-accepted',
+  generatePassword: 'yalqen:generate-password',
   savedLogins: 'yalqen:saved-logins',
   fillSavedLogin: 'yalqen:fill-saved-login',
   chooseSavedLogin: 'yalqen:choose-saved-login',
@@ -860,6 +861,7 @@ export interface SavedLoginChoice {
 }
 
 export interface SavedLoginsView {
+  generateLabel?: string | null;
   choices: SavedLoginChoice[];
   chooseLabel: string;
 }
@@ -922,7 +924,22 @@ export const AgentBridgeChannel = {
   changed: 'yalqen-agent:changed',
 } as const;
 
+export interface PasswordTransferResult {
+  status: 'success' | 'cancelled' | 'failed';
+  added: number;
+  skipped: number;
+}
+export interface ManualPassword {
+  id: string | null;
+  url: string;
+  username: string;
+  password: string;
+}
+
 export const PasswordsChannel = {
+  save: 'yalqen-passwords:save',
+  generate: 'yalqen-passwords:generate',
+  transfer: 'yalqen-passwords:transfer',
   list: 'yalqen-passwords:list',
   reveal: 'yalqen-passwords:reveal',
   copy: 'yalqen-passwords:copy',
@@ -969,6 +986,9 @@ export interface SettingsApi {
   openExtensionOptions(path: string): Promise<void>;
   onExtensionsChange(listener: (extensions: ExtensionInfo[]) => void): () => void;
   passwords(): Promise<PasswordsView>;
+  savePassword(value: ManualPassword): Promise<boolean>;
+  generatePassword(): Promise<string | null>;
+  transferPasswords(mode: 'import' | 'export'): Promise<PasswordTransferResult>;
   revealPassword(id: string): Promise<string | null>;
   copyPassword(id: string): Promise<boolean>;
   removePassword(id: string): Promise<void>;

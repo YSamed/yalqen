@@ -104,6 +104,74 @@ export class PasswordStore {
     this.persist();
   }
 
+  saveManual(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || !this.cipher.available()) return false;
+    const input = value as Record<string, unknown>;
+    if (input.id !== null && typeof input.id !== 'string') return false;
+    const existing = typeof input.id === 'string' ? this.passwords.find(({ id }) => id === input.id) : undefined;
+    if (input.id !== null && !existing) return false;
+    const origin = typeof input.url === 'string' ? passwordOrigin(input.url) : null;
+    if (!origin || typeof input.username !== 'string' || typeof input.password !== 'string') return false;
+    if (input.username.trim().length > MAX_USERNAME_LENGTH) return false;
+    const credential = sanitizeCredential(input);
+    if (!credential && (!existing || input.password !== '')) return false;
+    const username = input.username.trim();
+    if (this.passwords.some((entry) => entry !== existing && entry.origin === origin && entry.username === username))
+      return false;
+    const secret = credential ? this.cipher.encrypt(credential.password) : existing!.secret;
+    const now = Date.now();
+    if (existing) Object.assign(existing, { origin, username, secret, updatedAt: now });
+    else this.passwords.push({ id: randomUUID(), origin, username, secret, createdAt: now, updatedAt: now });
+    this.persist();
+    this.saveNow();
+    return true;
+  }
+
+  importCredentials(records: readonly (SubmittedCredential & { origin: string })[]): {
+    added: number;
+    skipped: number;
+  } {
+    if (!this.cipher.available()) throw new Error('Encrypted storage unavailable');
+    const known = new Set(this.passwords.map(({ origin, username }) => JSON.stringify([origin, username])));
+    const additions: SavedPassword[] = [];
+    let skipped = 0;
+    const now = Date.now();
+    for (const record of records) {
+      const credential = sanitizeCredential(record);
+      const origin = passwordOrigin(record.origin);
+      const key = JSON.stringify([origin, credential?.username]);
+      if (!credential || !origin || known.has(key) || this.passwords.length + additions.length >= 10000) {
+        skipped++;
+        continue;
+      }
+      const secret = this.cipher.encrypt(credential.password);
+      additions.push({
+        id: randomUUID(),
+        origin,
+        ...{ username: credential.username },
+        secret,
+        createdAt: now,
+        updatedAt: now,
+      });
+      known.add(key);
+    }
+    this.passwords.push(...additions);
+    if (additions.length) {
+      this.persist();
+      this.saveNow();
+    }
+    return { added: additions.length, skipped };
+  }
+
+  exportCredentials(): (SubmittedCredential & { origin: string })[] {
+    if (!this.cipher.available()) throw new Error('Encrypted storage unavailable');
+    return this.passwords.map((entry) => {
+      const password = this.decrypt(entry);
+      if (password === null) throw new Error('A saved password could not be decrypted');
+      return { origin: entry.origin, username: entry.username, password };
+    });
+  }
+
   neverSave(origin: string): void {
     this.never.add(origin);
     this.persist();

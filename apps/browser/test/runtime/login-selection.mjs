@@ -35,9 +35,9 @@ async function eventually(contents, predicate) {
     await new Promise((resolve) => setTimeout(resolve, 30));
   }
 }
-async function clickPicker(contents) {
+async function clickPicker(contents, selector = '[data-yalqen-login-picker]') {
   const rect = await contents.executeJavaScript(`(() => {
-    const r = document.querySelector('[data-yalqen-login-picker]').getBoundingClientRect();
+    const r = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();
     return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
   })()`);
   contents.focus();
@@ -133,6 +133,26 @@ app
     assert.equal(await privatePage.executeJavaScript("!!document.querySelector('[data-yalqen-login-picker]')"), false);
     const signup = await open(`${origin}/signup`);
     assert.equal(await signup.executeJavaScript("!!document.querySelector('[data-yalqen-login-picker]')"), false);
+    await eventually(signup, "!!document.querySelector('[data-yalqen-password-generator]')");
+    await signup.executeJavaScript("document.querySelector('[data-yalqen-password-generator]').click()");
+    assert.deepEqual(
+      await signup.executeJavaScript(
+        "Array.from(document.querySelectorAll('input[type=password]')).map(input => input.value)",
+      ),
+      ['', ''],
+    );
+    await clickPicker(signup, '[data-yalqen-password-generator]');
+    await eventually(signup, "document.querySelector('input[type=password]').value.length === 20");
+    const generated = await signup.executeJavaScript(
+      "Array.from(document.querySelectorAll('input[type=password]')).map(input => input.value)",
+    );
+    assert.equal(generated[0], generated[1]);
+    for (const pattern of [/[a-z]/, /[A-Z]/, /[0-9]/, /[!@#$%*_=+?-]/]) assert.match(generated[0], pattern);
+    const privateSignup = await open(`${origin}/signup`, true);
+    assert.equal(
+      await privateSignup.executeJavaScript("!!document.querySelector('[data-yalqen-password-generator]')"),
+      false,
+    );
     const framed = await open(`${origin}/iframe`);
     assert.equal(
       await framed.executeJavaScript(

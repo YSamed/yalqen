@@ -12,6 +12,8 @@ import {
 } from 'electron';
 import { t } from '../../shared/i18n.js';
 import { PageChannel, PasswordsChannel, type SubmittedCredential, type SavedLoginChoice } from '../../shared/types.js';
+import { generatePassword } from './password-tools.js';
+import { transferPasswords } from './password-transfer.js';
 import { chooseLogin } from './login-menu.js';
 import { passwordOrigin, sanitizeCredential, type Cipher, type PasswordStore, type SaveOffer } from './passwords.js';
 
@@ -30,6 +32,8 @@ interface PasswordHandlerOptions {
   parentOf: (contents: WebContents) => BaseWindow | undefined;
   isSettingsFrame: (event: IpcMainInvokeEvent) => boolean;
   onChange: () => void;
+  authenticate?: (reason: string) => Promise<boolean>;
+  transferDialogs?: Pick<typeof dialog, 'showOpenDialog' | 'showSaveDialog' | 'showMessageBox'>;
   chooseAccount?: (parent: BaseWindow, choices: readonly SavedLoginChoice[]) => Promise<string | null>;
 }
 
@@ -81,6 +85,8 @@ export function installPasswordHandlers({
   isSettingsFrame,
   onChange,
   chooseAccount = chooseLogin,
+  authenticate = confirmOwner,
+  transferDialogs = dialog,
 }: PasswordHandlerOptions): void {
   const pending = new WeakMap<WebContents, { accept: () => void; cancel: () => void }>();
   let prompts: Promise<unknown> = Promise.resolve();
@@ -141,9 +147,16 @@ export function installPasswordHandlers({
   ipcMain.on(PageChannel.credentialAccepted, (event) => {
     if (mainFrameOrigin(event)) pending.get(event.sender)?.accept();
   });
+  ipcMain.handle(PageChannel.generatePassword, (event, length: unknown) =>
+    mainFrameOrigin(event) ? generatePassword(length) : null,
+  );
   ipcMain.handle(PageChannel.savedLogins, (event) => {
     const origin = mainFrameOrigin(event);
-    return { choices: origin ? store.choices(origin) : [], chooseLabel: t('passwordHandlers.chooseAccount') };
+    return {
+      choices: origin ? store.choices(origin) : [],
+      chooseLabel: t('passwordHandlers.chooseAccount'),
+      generateLabel: origin ? t('passwordTools.generate') : null,
+    };
   });
   ipcMain.handle(PageChannel.fillSavedLogin, (event, id: unknown) => {
     const origin = mainFrameOrigin(event);
@@ -175,14 +188,40 @@ export function installPasswordHandlers({
     }
   });
 
+  ipcMain.handle(PasswordsChannel.generate, (event) => (isSettingsFrame(event) ? generatePassword() : null));
+  ipcMain.handle(PasswordsChannel.save, async (event, value: unknown) => {
+    if (!isSettingsFrame(event) || !(await authenticate(t('passwordTools.ownerReason'))) || !isSettingsFrame(event))
+      return false;
+    try {
+      const saved = store.saveManual(value);
+      if (saved) onChange();
+      return saved;
+    } catch {
+      return false;
+    }
+  });
+  ipcMain.handle(PasswordsChannel.transfer, async (event, mode: unknown) => {
+    if (!isSettingsFrame(event) || (mode !== 'import' && mode !== 'export'))
+      return { status: 'cancelled', added: 0, skipped: 0 };
+    const result = await transferPasswords(
+      mode,
+      store,
+      parentOf(event.sender),
+      () => isSettingsFrame(event),
+      authenticate,
+      transferDialogs,
+    );
+    if (mode === 'import' && result.status === 'success') onChange();
+    return result;
+  });
   ipcMain.handle(PasswordsChannel.list, (event) => (isSettingsFrame(event) ? store.view() : null));
   ipcMain.handle(PasswordsChannel.reveal, async (event, id: unknown) => {
     if (!isSettingsFrame(event) || typeof id !== 'string') return null;
-    return (await confirmOwner(t('passwordHandlers.revealReason'))) ? store.reveal(id) : null;
+    return (await authenticate(t('passwordHandlers.revealReason'))) && isSettingsFrame(event) ? store.reveal(id) : null;
   });
   ipcMain.handle(PasswordsChannel.copy, async (event, id: unknown) => {
     if (!isSettingsFrame(event) || typeof id !== 'string') return false;
-    if (!(await confirmOwner(t('passwordHandlers.copyReason')))) return false;
+    if (!(await authenticate(t('passwordHandlers.copyReason'))) || !isSettingsFrame(event)) return false;
     const password = store.reveal(id);
     if (password === null) return false;
     clipboard.writeText(password);

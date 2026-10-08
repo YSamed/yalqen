@@ -18,6 +18,8 @@ import {
   type ExtensionInfo,
   type NewTabCenter,
   type PasswordsView,
+  type ManualPassword,
+  type PasswordTransferResult,
   type SavedLoginsView,
   type ProcessUsage,
   type ProfilesView,
@@ -176,6 +178,10 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     openExtensionOptions: (path: string) => ipcRenderer.invoke(ExtensionsChannel.openOptions, path) as Promise<void>,
     onChange: (listener) => subscribe<SettingsView>(settingsChannel.changed, listener),
     onExtensionsChange: (listener) => subscribe<ExtensionInfo[]>(ExtensionsChannel.changed, listener),
+    savePassword: (value: ManualPassword) => ipcRenderer.invoke(PasswordsChannel.save, value) as Promise<boolean>,
+    generatePassword: () => ipcRenderer.invoke(PasswordsChannel.generate) as Promise<string | null>,
+    transferPasswords: (mode: 'import' | 'export') =>
+      ipcRenderer.invoke(PasswordsChannel.transfer, mode) as Promise<PasswordTransferResult>,
     passwords: () => ipcRenderer.invoke(PasswordsChannel.list) as Promise<PasswordsView>,
     revealPassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.reveal, id) as Promise<string | null>,
     copyPassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.copy, id) as Promise<boolean>,
@@ -297,6 +303,7 @@ const filledPasswords = new WeakSet<HTMLInputElement>();
 let pickerHost: HTMLElement | null = null;
 let pickerButton: HTMLButtonElement | null = null;
 let pickerFields: LoginFields | null = null;
+let pickerMode: 'login' | 'generate' = 'login';
 let picking = false;
 let pickerObserver: ResizeObserver | null = null;
 
@@ -315,7 +322,8 @@ function positionPicker(): void {
   );
 }
 
-function showPicker(fields: LoginFields, label: string): void {
+function showPicker(fields: LoginFields, label: string, mode: 'login' | 'generate' = 'login'): void {
+  pickerMode = mode;
   if (pickerFields?.password !== fields.password) {
     pickerObserver?.disconnect();
     pickerObserver = new ResizeObserver(positionPicker);
@@ -336,11 +344,31 @@ function showPicker(fields: LoginFields, label: string): void {
     pickerButton.addEventListener('click', async (event) => {
       if (!event.isTrusted || picking || !pickerFields) return;
       const fields = pickerFields;
+      const mode = pickerMode;
+      const generation = mode === 'generate' ? generationFields(fields.password) : null;
+      const values = generation?.inputs.map((input) => input.value);
       const username = fields.username?.value;
       const password = fields.password.value;
       picking = true;
       pickerButton!.disabled = true;
       try {
+        if (mode === 'generate') {
+          if (!generation) return;
+          const generated = (await ipcRenderer.invoke(PageChannel.generatePassword, generation.length)) as
+            string | null;
+          const current = generationFields(fields.password);
+          if (
+            !generated ||
+            !current ||
+            current.password !== fields.password ||
+            current.length !== generation.length ||
+            current.inputs.length !== generation.inputs.length ||
+            current.inputs.some((input, index) => input !== generation.inputs[index] || input.value !== values?.[index])
+          )
+            return;
+          for (const input of current.inputs) setValue(input, generated);
+          return;
+        }
         const login = (await ipcRenderer.invoke(PageChannel.chooseSavedLogin)) as SubmittedCredential | null;
         if (
           !login ||
@@ -369,13 +397,48 @@ function showPicker(fields: LoginFields, label: string): void {
     document.addEventListener('scroll', positionPicker, { capture: true, passive: true });
     window.addEventListener('resize', positionPicker, { passive: true });
   }
+  delete pickerHost!.dataset.yalqenLoginPicker;
+  delete pickerHost!.dataset.yalqenPasswordGenerator;
+  if (mode === 'login') pickerHost!.dataset.yalqenLoginPicker = '';
+  else pickerHost!.dataset.yalqenPasswordGenerator = '';
+  pickerButton!.textContent = mode === 'generate' ? '✦' : '⌄';
   pickerButton!.ariaLabel = label;
   pickerButton!.title = label;
   positionPicker();
 }
 
+function generationFields(
+  target?: HTMLInputElement,
+): { password: HTMLInputElement; inputs: HTMLInputElement[]; length: number } | null {
+  const scope = target?.form ?? document;
+  const password =
+    target?.type === 'password' && hasToken(target, 'new-password')
+      ? target
+      : passwordInputs(scope).find((input) => hasToken(input, 'new-password') && isFillable(input));
+  if (!password || !isFillable(password)) return null;
+  const inputs = passwordInputs(password.form ?? document).filter(
+    (input) => hasToken(input, 'new-password') && isFillable(input),
+  );
+  const minimum = Math.max(12, ...inputs.map((input) => input.minLength));
+  const maximum = Math.min(128, ...inputs.map((input) => (input.maxLength < 0 ? 128 : input.maxLength)));
+  if (minimum > maximum || maximum < 12) return null;
+  return { password, inputs, length: Math.max(minimum, Math.min(20, maximum)) };
+}
+
 async function fillLogin(target?: HTMLInputElement): Promise<void> {
   target ??= document.activeElement instanceof HTMLInputElement ? document.activeElement : undefined;
+  const generation = generationFields(target);
+  if (generation) {
+    savedLogins ??= (ipcRenderer.invoke(PageChannel.savedLogins) as Promise<SavedLoginsView>).catch(() => ({
+      choices: [],
+      chooseLabel: '',
+    }));
+    const { generateLabel } = await savedLogins;
+    const current = generationFields(generation.password);
+    if (generateLabel && current?.password === generation.password)
+      showPicker({ username: null, password: generation.password }, generateLabel, 'generate');
+    return;
+  }
   const before = loginFields(target);
   if (!before) {
     if (pickerHost) {
