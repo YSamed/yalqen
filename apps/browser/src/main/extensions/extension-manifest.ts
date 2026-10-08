@@ -1,4 +1,6 @@
 import path from 'node:path';
+import type { ExtensionSiteAccess } from '../../shared/types.js';
+import { parseExtensionAccess } from '../../shared/extension-sites.js';
 
 export type Manifest = Record<string, unknown>;
 export type Messages = Record<string, string>;
@@ -6,6 +8,7 @@ export type Messages = Record<string, string>;
 export interface SavedExtension {
   path: string;
   enabled: boolean;
+  access?: ExtensionSiteAccess;
 }
 
 const MAX_EXTENSIONS = 100;
@@ -28,7 +31,15 @@ export function sanitizeSavedExtensions(raw: unknown): SavedExtension[] {
     const directory = nonEmpty(entry?.path);
     if (!entry || !directory || !path.isAbsolute(directory) || seen.has(directory)) return [];
     seen.add(directory);
-    return [{ path: directory, enabled: entry.enabled !== false }];
+    return [
+      {
+        path: directory,
+        enabled: entry.enabled !== false,
+        ...(entry.access === undefined
+          ? {}
+          : { access: parseExtensionAccess(entry.access) ?? { mode: 'click' as const, sites: [] } }),
+      },
+    ];
   });
 }
 

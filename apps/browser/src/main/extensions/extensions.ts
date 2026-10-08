@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { nativeImage, net, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
 import { t } from '../../shared/i18n.js';
-import type { ExtensionInfo } from '../../shared/types.js';
+import type { ExtensionInfo, ExtensionSiteAccess } from '../../shared/types.js';
+import { extensionSite, parseExtensionAccess } from '../../shared/extension-sites.js';
+import {
+  extensionIdentity,
+  prepareRestrictedExtension,
+  restrictedManifest,
+  runtimeExtensionPath,
+} from './extension-access.js';
 import {
   actionTitle,
   extensionPage,
@@ -43,6 +50,8 @@ interface ExtensionUpdateOptions {
 type ConfirmUpdatePermissions = (name: string, permissions: string[]) => Promise<boolean>;
 
 interface ExtensionAction {
+  path?: string;
+  requestAccess?: boolean;
   title: string;
   icon: NativeImage | null;
   popupUrl: string | null;
@@ -54,6 +63,8 @@ interface ExtensionsMenuHandlers {
   openOptions(url: string): void;
   openStore(): void;
   manage(): void;
+  requestAccess?(directory: string): void;
+  canRequestAccess?: boolean;
 }
 
 export function extensionsMenuTemplate(
@@ -62,15 +73,26 @@ export function extensionsMenuTemplate(
 ): MenuItemConstructorOptions[] {
   const items = [...actions]
     .sort((a, b) => a.title.localeCompare(b.title, 'tr'))
-    .map((action): MenuItemConstructorOptions => ({
-      label: action.title,
-      icon: action.icon ?? undefined,
-      enabled: action.popupUrl !== null || action.optionsUrl !== null,
-      click: () => {
-        if (action.popupUrl) handlers.openPopup(action.popupUrl);
-        else if (action.optionsUrl) handlers.openOptions(action.optionsUrl);
+    .flatMap((action): MenuItemConstructorOptions[] => [
+      {
+        label: action.title,
+        icon: action.icon ?? undefined,
+        enabled: action.popupUrl !== null || action.optionsUrl !== null,
+        click: () => {
+          if (action.popupUrl) handlers.openPopup(action.popupUrl);
+          else if (action.optionsUrl) handlers.openOptions(action.optionsUrl);
+        },
       },
-    }));
+      ...(action.requestAccess && action.path && handlers.requestAccess
+        ? [
+            {
+              label: t('extensions.allowCurrentSite', { name: action.title }),
+              enabled: handlers.canRequestAccess === true,
+              click: () => handlers.requestAccess!(action.path!),
+            },
+          ]
+        : []),
+    ]);
   return [
     ...items,
     ...(items.length > 0 ? [{ type: 'separator' as const }] : []),
@@ -95,6 +117,7 @@ export function errorMessage(error: unknown): string {
 export class ExtensionManager {
   private readonly json: JsonFile;
   private readonly storeRoot: string;
+  private readonly runtimeRoot: string;
   private entries: SavedExtension[];
   private readonly ids = new Map<string, string>();
   private readonly errors = new Map<string, string>();
@@ -104,6 +127,9 @@ export class ExtensionManager {
   private updateTimer: NodeJS.Timeout | null = null;
   private stopped = false;
   private readonly updateRequests = new Set<AbortController>();
+  private readonly changingAccess = new Set<string>();
+  private readonly sessionSites = new Map<string, Set<string>>();
+  private readonly loadingIds = new Set<string>();
 
   constructor(
     directory: string,
@@ -113,6 +139,7 @@ export class ExtensionManager {
   ) {
     const file = path.join(directory, 'extensions.json');
     this.storeRoot = path.join(directory, STORE_DIRECTORY);
+    this.runtimeRoot = path.join(directory, 'extension-runtime');
     this.json = new JsonFile(file, 'extensions');
     this.entries = sanitizeSavedExtensions((readJson(file) as { extensions?: unknown } | null)?.extensions);
     this.recoverUpdates();
@@ -129,6 +156,8 @@ export class ExtensionManager {
       const manifest = extension.manifest as Manifest;
       return [
         {
+          path: entry.path,
+          requestAccess: this.accessFor(entry.path).mode === 'click',
           title: actionTitle(manifest, extension.name),
           icon: this.icon(entry.path, manifest, MENU_ICON_SIZE),
           popupUrl: extensionPage(extension.url, popupPage(manifest)),
@@ -154,8 +183,10 @@ export class ExtensionManager {
         icon: this.icon(entry.path, manifest, LIST_ICON_SIZE)?.toDataURL() ?? null,
         hasOptions: extension !== null && optionsPage(manifest) !== null,
         fromStore: this.isStorePath(entry.path),
-        updating: this.installing.has(path.basename(entry.path)),
+        updating: this.installing.has(path.basename(entry.path)) || this.changingAccess.has(entry.path),
         updateError: this.updateErrors.get(entry.path) ?? null,
+        access: this.accessFor(entry.path),
+        sessionSites: [...(this.sessionSites.get(entry.path) ?? [])].sort(),
       };
     });
   }
@@ -172,6 +203,7 @@ export class ExtensionManager {
     } catch (error) {
       return errorMessage(error);
     }
+    if (this.changingAccess.has(directory)) return t('extensions.accessBusy');
     this.unload(directory);
     const error = await this.load(directory);
     const saved = this.entries.find((entry) => entry.path === directory);
@@ -251,19 +283,31 @@ export class ExtensionManager {
   }
 
   remove(directory: string): void {
-    if (this.installing.has(path.basename(directory)) || !this.entries.some((entry) => entry.path === directory))
+    if (
+      this.changingAccess.has(directory) ||
+      this.installing.has(path.basename(directory)) ||
+      !this.entries.some((entry) => entry.path === directory)
+    )
       return;
     this.unload(directory);
     this.errors.delete(directory);
     this.updateErrors.delete(directory);
     this.entries = this.entries.filter((entry) => entry.path !== directory);
     this.deleteStoreFiles(directory);
+    this.sessionSites.delete(directory);
+    fs.rmSync(runtimeExtensionPath(this.runtimeRoot, directory), { recursive: true, force: true });
     this.changed();
   }
 
   async setEnabled(directory: string, enabled: boolean): Promise<void> {
     const entry = this.entries.find((item) => item.path === directory);
-    if (!entry || entry.enabled === enabled || this.installing.has(path.basename(directory))) return;
+    if (
+      !entry ||
+      entry.enabled === enabled ||
+      this.changingAccess.has(directory) ||
+      this.installing.has(path.basename(directory))
+    )
+      return;
     entry.enabled = enabled;
     if (enabled) {
       await this.load(directory);
@@ -272,6 +316,71 @@ export class ExtensionManager {
       this.errors.delete(directory);
     }
     this.changed();
+  }
+
+  accessFor(directory: string): ExtensionSiteAccess {
+    const access = this.entries.find((entry) => entry.path === directory)?.access ?? {
+      mode: 'all' as const,
+      sites: [],
+    };
+    return { mode: access.mode, sites: [...access.sites] };
+  }
+
+  hasEntry(directory: string): boolean {
+    return this.entries.some((entry) => entry.path === directory);
+  }
+
+  accessWillChange(directory: string, access: ExtensionSiteAccess): boolean {
+    return (
+      JSON.stringify(this.accessFor(directory)) !== JSON.stringify(access) || !!this.sessionSites.get(directory)?.size
+    );
+  }
+
+  async setAccess(directory: string, value: unknown): Promise<string | null> {
+    const access = parseExtensionAccess(value);
+    if (!access) return t('extensions.accessInvalid');
+    return this.changeAccess(directory, (entry) => {
+      entry.access = access;
+      this.sessionSites.delete(directory);
+    });
+  }
+
+  async grantSite(directory: string, url: string): Promise<string | null> {
+    const site = extensionSite(url);
+    if (!site || this.accessFor(directory).mode !== 'click') return t('extensions.accessInvalid');
+    return this.changeAccess(directory, () => {
+      const sites = this.sessionSites.get(directory) ?? new Set<string>();
+      if (sites.size >= 100 && !sites.has(site)) throw new Error(t('extensions.accessInvalid'));
+      sites.add(site);
+      this.sessionSites.set(directory, sites);
+    });
+  }
+
+  private async changeAccess(directory: string, change: (entry: SavedExtension) => void): Promise<string | null> {
+    const entry = this.entries.find((item) => item.path === directory);
+    if (!entry) return t('extensions.accessInvalid');
+    if (this.changingAccess.has(directory) || this.installing.has(path.basename(directory)))
+      return t('extensions.accessBusy');
+    this.changingAccess.add(directory);
+    this.onChange();
+    try {
+      change(entry);
+      this.unload(directory);
+      if (entry.enabled) {
+        const error = await this.load(directory);
+        if (error) {
+          entry.enabled = false;
+          return error;
+        }
+      }
+      return null;
+    } catch (error) {
+      return errorMessage(error);
+    } finally {
+      this.changingAccess.delete(directory);
+      this.changed();
+      this.saveNow();
+    }
   }
 
   scheduleUpdates(): void {
@@ -312,7 +421,7 @@ export class ExtensionManager {
     for (const entry of [...this.entries]) {
       if (this.stopped) break;
       const id = path.basename(entry.path);
-      if (!this.isStorePath(entry.path) || this.installing.has(id)) continue;
+      if (!this.isStorePath(entry.path) || this.installing.has(id) || this.changingAccess.has(entry.path)) continue;
       this.installing.add(id);
       this.updateErrors.delete(entry.path);
       this.onChange();
@@ -429,8 +538,32 @@ export class ExtensionManager {
   }
 
   private async load(directory: string): Promise<string | null> {
+    let reserved: string | null = null;
     try {
-      const extension = await this.browsing.extensions.loadExtension(directory);
+      const manifest = readJson(path.join(directory, 'manifest.json')) as Manifest | null;
+      if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest))
+        throw new Error(t('extensions.accessPackageFailed'));
+      const identity = extensionIdentity(directory, manifest);
+      if (
+        this.loadingIds.has(identity.id) ||
+        [...this.ids].some(([other, id]) => other !== directory && id === identity.id)
+      )
+        throw new Error(t('extensions.accessDuplicate'));
+      reserved = identity.id;
+      this.loadingIds.add(reserved);
+      const access = this.accessFor(directory);
+      const source =
+        access.mode === 'all'
+          ? directory
+          : prepareRestrictedExtension(this.runtimeRoot, directory, {
+              ...restrictedManifest(manifest, access, [...(this.sessionSites.get(directory) ?? [])]),
+              key: identity.key,
+            });
+      const extension = await this.browsing.extensions.loadExtension(source);
+      if (extension.id !== identity.id) {
+        this.browsing.extensions.removeExtension(extension.id);
+        throw new Error(t('extensions.accessPackageFailed'));
+      }
       this.ids.set(directory, extension.id);
       this.errors.delete(directory);
       return null;
@@ -439,6 +572,8 @@ export class ExtensionManager {
       this.errors.set(directory, message);
       console.warn(`[extensions] could not load ${directory}:`, message);
       return message;
+    } finally {
+      if (reserved) this.loadingIds.delete(reserved);
     }
   }
 

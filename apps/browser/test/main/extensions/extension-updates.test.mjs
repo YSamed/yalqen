@@ -211,7 +211,13 @@ test('concurrent checks are deduplicated and local folders are excluded', async 
     path.join(local, 'manifest.json'),
     JSON.stringify(manifest('1', { key: identity.key.toString('base64') })),
   );
-  await f.manager.install(local);
+  assert.ok(await f.manager.install(local), 'a duplicate identity cannot replace the loaded store extension');
+  assert.equal(f.manager.list().find((entry) => entry.path === f.target).id, identity.id);
+  fs.writeFileSync(
+    path.join(local, 'manifest.json'),
+    JSON.stringify(manifest('1', { key: storeIdentity().key.toString('base64') })),
+  );
+  assert.equal(await f.manager.install(local), null);
   const before = f.requests.length;
   await f.manager.checkForUpdates();
   assert.equal(f.requests.length, before + 1);

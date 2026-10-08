@@ -769,6 +769,70 @@ export class TabManager {
     this.active()?.view?.webContents.reload();
   }
 
+  async approveExtensionReload(
+    contents: WebContents,
+  ): Promise<{ current(): boolean; reload(): Promise<boolean> } | null> {
+    const tab = this.tabs.find((item) => liveContents(item) === contents);
+    if (!tab) return null;
+    const navigation = this.navigations.get(tab) ?? 0;
+    const input = tab.activatedAt;
+    const url = contents.getURL();
+    const valid = (reloading = false) =>
+      !contents.isDestroyed() &&
+      liveContents(tab) === contents &&
+      this.tabs.includes(tab) &&
+      contents.getURL() === url &&
+      tab.activatedAt === input &&
+      ((this.navigations.get(tab) ?? 0) === navigation ||
+        (reloading && (this.navigations.get(tab) ?? 0) === navigation + 1));
+    if (!(await this.confirmClose(tab)) || !valid()) return null;
+    let used = false;
+    return {
+      current: () => !used && valid(),
+      reload: () => {
+        if (used || !valid()) return Promise.resolve(false);
+        used = true;
+        this.freezer.unfreeze(tab);
+        return new Promise((resolve) => {
+          let done = false;
+          const finish = (success: boolean) => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            if (!contents.isDestroyed()) {
+              contents.off('will-prevent-unload', authorize);
+              contents.off('did-finish-load', loaded);
+              contents.off('did-fail-load', failed);
+              contents.off('destroyed', destroyed);
+              this.freezer.maybeFreeze(tab);
+            }
+            resolve(success);
+          };
+          // Consent was already collected for this exact document and input state.
+          // A new document or fresh page input never inherits that consent.
+          const authorize = (event: Electron.Event) => {
+            if (valid(true)) event.preventDefault();
+          };
+          const loaded = () => finish(valid(true));
+          const failed = (_event: unknown, code: number, _description: string, _url: string, main: boolean) => {
+            if (main && code !== -3) finish(false);
+          };
+          const destroyed = () => finish(false);
+          const timer = setTimeout(() => finish(false), 15_000);
+          contents.prependListener('will-prevent-unload', authorize);
+          contents.on('did-finish-load', loaded);
+          contents.on('did-fail-load', failed);
+          contents.on('destroyed', destroyed);
+          try {
+            contents.reload();
+          } catch {
+            finish(false);
+          }
+        });
+      },
+    };
+  }
+
   reloadIgnoringCache(): void {
     this.active()?.view?.webContents.reloadIgnoringCache();
   }
@@ -1390,6 +1454,7 @@ export class TabManager {
 
   private listenForWindowRequests(tab: Tab, contents: WebContents, listen: Listen): void {
     listen('will-prevent-unload', (event) => {
+      if (event.defaultPrevented) return;
       if (this.options.confirmUnload(tab)) event.preventDefault();
     });
     listen('will-navigate', (event) => {

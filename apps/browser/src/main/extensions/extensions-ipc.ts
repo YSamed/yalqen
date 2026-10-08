@@ -1,18 +1,30 @@
 import { dialog, type BaseWindow, type OpenDialogOptions, type WebContents } from 'electron';
 import { t } from '../../shared/i18n.js';
 import { ExtensionsChannel } from '../../shared/types.js';
-import { handleSettingsCall } from '../app/settings-page.js';
+import { handleSettingsCall, isSettingsFrame } from '../app/settings-page.js';
+import type { ExtensionAccessController } from './extension-access-controller.js';
 import { STORE_HOME } from './chrome-web-store.js';
 import type { ExtensionManager } from './extensions.js';
 
 interface ExtensionsIpcHost {
   extensions: ExtensionManager;
+  access: ExtensionAccessController;
   parentWindow(contents: WebContents): BaseWindow | undefined;
   openTab(contents: WebContents, url: string): void;
 }
 
-export function registerExtensionsIpc({ extensions, parentWindow, openTab }: ExtensionsIpcHost): void {
+export function registerExtensionsIpc({ extensions, access, parentWindow, openTab }: ExtensionsIpcHost): void {
   handleSettingsCall(ExtensionsChannel.list, () => extensions.list());
+  handleSettingsCall(ExtensionsChannel.setAccess, (event, directory, value) =>
+    typeof directory === 'string'
+      ? access.setAccess(
+          directory,
+          value,
+          parentWindow(event.sender),
+          () => !event.sender.isDestroyed() && isSettingsFrame(event),
+        )
+      : t('extensions.accessInvalid'),
+  );
   handleSettingsCall(ExtensionsChannel.checkUpdates, (event) =>
     extensions.checkForUpdates(async (name, permissions) => {
       const options: Electron.MessageBoxOptions = {

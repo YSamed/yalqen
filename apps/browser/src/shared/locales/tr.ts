@@ -1,6 +1,34 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'extensions.accessInvalid': 'En fazla 100 HTTP/HTTPS site adresi girin.',
+  'extensions.accessBusy': 'Bir uzantı değişikliği devam ediyor.',
+  'extensions.accessCancelled': 'Site erişimi değiştirilmedi.',
+  'extensions.accessPrompt': '{name} için site erişimi değiştirilsin mi?',
+  'extensions.accessGrantPrompt': '{name}, bu tarayıcı oturumunda {site} üzerinde çalışsın mı?',
+  'extensions.accessReloadDetail':
+    'Erişimi uygulamak ve daha önce eklenmiş betikleri kaldırmak için açık web sayfaları yeniden yüklenecek. Herhangi bir sayfada kalmayı seçerseniz erişim değiştirilmez.',
+  'extensions.accessGrantDetail':
+    'İzin, bu profilin tüm normal sekmelerinde belirtilen protokol ve alan adının tüm portları için tarayıcı kapanana kadar geçerlidir. Açık web sayfaları yeniden yüklenecek; kalmayı seçmek değişikliği iptal eder.',
+  'extensions.accessApply': 'Uygula ve yeniden yükle',
+  'extensions.accessReloadFailed':
+    'Bazı sayfalar yeniden yüklenemedi. Uzantı devre dışı bırakıldı. Tekrar etkinleştirmeden önce ilgili sayfaları yeniden yükleyin.',
+  'extensions.accessPackageFailed':
+    'Sınırlı erişim paketi güvenli biçimde hazırlanamadı (128 MB / 50.000 dosya; sembolik bağlantı kabul edilmez).',
+  'extensions.accessDuplicate': 'Aynı kimliğe sahip bir uzantı zaten yüklü.',
+  'extensions.allowCurrentSite': '{name} için bu siteye izin ver…',
+  'extensionsPanel.siteAccess': 'Site erişimi',
+  'extensionsPanel.accessAll': 'İstenen tüm siteler',
+  'extensionsPanel.accessSites': 'Seçilen siteler',
+  'extensionsPanel.accessClick': 'Uzantı menüsünden izin verildiğinde',
+  'extensionsPanel.accessSitesLabel': 'Site adresleri, her satıra bir adres',
+  'extensionsPanel.accessHint':
+    'Uzantının istediği siteler kapsamında site izinlerini ve içerik betiklerini sınırlar. Her adres, protokol ve alan adının tüm portlarını kapsar; uzantının diğer API izinleri değişmez.',
+  'extensionsPanel.accessClickHint':
+    'Bir web sayfasında uzantı menüsünü kullanarak o siteye bu profilin tüm normal sekmelerinde tarayıcı kapanana kadar izin verebilirsiniz. Gizli ve geliştirici oturumları kapsam dışındadır.',
+  'extensionsPanel.accessSession': 'Bu oturumda izin verilen siteler',
+  'extensionsPanel.accessSave': 'Erişimi kaydet / oturum izinlerini temizle',
+  'extensionsPanel.accessSaved': 'Site erişimi kaydedildi.',
   'certificate.title': 'Sertifika ayrıntıları…',
   'certificate.chainEntry': 'Sertifika {number}',
   'certificate.subject': 'Kime verildi',

@@ -175,6 +175,8 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     removeExtension: (path: string) => ipcRenderer.invoke(ExtensionsChannel.remove, path) as Promise<void>,
     setExtensionEnabled: (path: string, enabled: boolean) =>
       ipcRenderer.invoke(ExtensionsChannel.setEnabled, path, enabled) as Promise<void>,
+    setExtensionAccess: (path, access) =>
+      ipcRenderer.invoke(ExtensionsChannel.setAccess, path, access) as Promise<string | null>,
     openExtensionOptions: (path: string) => ipcRenderer.invoke(ExtensionsChannel.openOptions, path) as Promise<void>,
     onChange: (listener) => subscribe<SettingsView>(settingsChannel.changed, listener),
     onExtensionsChange: (listener) => subscribe<ExtensionInfo[]>(ExtensionsChannel.changed, listener),

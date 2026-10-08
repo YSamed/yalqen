@@ -44,9 +44,11 @@ app
     });
     await manager.loadAll();
     assert.equal(manager.list()[0].id, identity.id);
+    assert.equal(await manager.setAccess(directory, { mode: 'click', sites: [] }), null);
     assert.equal(await manager.checkForUpdates(), null);
     assert.equal(browsing.extensions.getExtension(identity.id).version, '2.0');
     assert.equal(manager.list()[0].enabled, true);
+    assert.equal(manager.accessFor(directory).mode, 'click');
     next = { ...manifest, version: '3.0', name: 42 };
     assert.ok(await manager.checkForUpdates());
     assert.equal(browsing.extensions.getExtension(identity.id).version, '2.0');

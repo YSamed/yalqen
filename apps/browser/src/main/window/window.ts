@@ -126,6 +126,7 @@ export interface AppContext {
   bookmarks: BookmarkStore;
   extensions: ExtensionManager;
   extensionPopup: ExtensionPopup;
+  extensionAccess: import('../extensions/extension-access-controller.js').ExtensionAccessController;
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
   persistentProfiles: import('../app/profile-controller.js').ProfileController;
@@ -1643,6 +1644,27 @@ export class YalqenWindow {
   private openExtensionsMenu(anchor: AnchorRect): void {
     const openTab = (url: string) => this.tabs.open(url, { isPrivate: false });
     const template = extensionsMenuTemplate(this.app.extensions.actions(), {
+      canRequestAccess: !this.isPrivate && !this.isDeveloper && /^https?:/.test(this.tabs.activeUrl),
+      requestAccess: (directory) => {
+        const contents = this.tabs.activeContents();
+        const url = this.tabs.activeUrl;
+        if (!contents || contents.session !== this.app.daily || this.isPrivate || this.isDeveloper) return;
+        void this.app.extensionAccess
+          .requestSite(
+            directory,
+            url,
+            this.window,
+            () =>
+              !this.window.isDestroyed() &&
+              !contents.isDestroyed() &&
+              this.tabs.activeContents() === contents &&
+              this.tabs.activeUrl === url,
+          )
+          .then((error) => {
+            if (error && !this.window.isDestroyed())
+              void dialog.showMessageBox(this.window, { type: 'info', message: error });
+          });
+      },
       openPopup: (url) =>
         this.app.extensionPopup.open({
           window: this.window,

@@ -1,4 +1,32 @@
 export const en = {
+  'extensions.accessInvalid': 'Enter up to 100 HTTP/HTTPS site addresses.',
+  'extensions.accessBusy': 'An extension change is already in progress.',
+  'extensions.accessCancelled': 'Site access was not changed.',
+  'extensions.accessPrompt': 'Change site access for {name}?',
+  'extensions.accessGrantPrompt': 'Allow {name} on {site} for this browser session?',
+  'extensions.accessReloadDetail':
+    'Open web pages will reload to apply access and remove previously injected scripts. If you choose to stay on any page, access will not change.',
+  'extensions.accessGrantDetail':
+    'This allows the scheme and hostname on every port, in all regular tabs of this profile until the browser exits. Open web pages will reload; choosing to stay cancels the change.',
+  'extensions.accessApply': 'Apply and reload',
+  'extensions.accessReloadFailed':
+    'Some pages could not reload. The extension was disabled. Reload affected pages before enabling it again.',
+  'extensions.accessPackageFailed':
+    'The restricted extension package could not be prepared safely (128 MB / 50,000 files; no symbolic links).',
+  'extensions.accessDuplicate': 'An extension with the same identity is already loaded.',
+  'extensions.allowCurrentSite': 'Allow {name} on this site…',
+  'extensionsPanel.siteAccess': 'Site access',
+  'extensionsPanel.accessAll': 'All requested sites',
+  'extensionsPanel.accessSites': 'Selected sites',
+  'extensionsPanel.accessClick': 'When allowed from the extension menu',
+  'extensionsPanel.accessSitesLabel': 'Site addresses, one per line',
+  'extensionsPanel.accessHint':
+    'Controls host permissions and content scripts within the sites requested by the extension. Each address covers its scheme and hostname on all ports; other extension API permissions remain unchanged.',
+  'extensionsPanel.accessClickHint':
+    'Use the extensions menu on a web page to allow its site in all regular tabs of this profile until the browser exits. Private and developer sessions are excluded.',
+  'extensionsPanel.accessSession': 'Sites allowed for this session',
+  'extensionsPanel.accessSave': 'Save access / clear session grants',
+  'extensionsPanel.accessSaved': 'Site access saved.',
   'certificate.title': 'Certificate details…',
   'certificate.chainEntry': 'Certificate {number}',
   'certificate.subject': 'Issued to',

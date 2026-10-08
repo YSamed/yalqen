@@ -828,6 +828,11 @@ export const RequestRulesChannel = {
   save: 'yalqen-rules:save',
 } as const;
 
+export interface ExtensionSiteAccess {
+  mode: 'all' | 'sites' | 'click';
+  sites: string[];
+}
+
 export interface ExtensionInfo {
   path: string;
   id: string | null;
@@ -841,6 +846,8 @@ export interface ExtensionInfo {
   fromStore: boolean;
   updating: boolean;
   updateError: string | null;
+  access: ExtensionSiteAccess;
+  sessionSites: string[];
 }
 
 export const ExtensionsChannel = {
@@ -852,6 +859,7 @@ export const ExtensionsChannel = {
   remove: 'yalqen-extensions:remove',
   setEnabled: 'yalqen-extensions:set-enabled',
   openOptions: 'yalqen-extensions:open-options',
+  setAccess: 'yalqen-extensions:set-access',
   changed: 'yalqen-extensions:changed',
 } as const;
 
@@ -983,6 +991,7 @@ export interface SettingsApi {
   openExtensionStore(): Promise<void>;
   removeExtension(path: string): Promise<void>;
   setExtensionEnabled(path: string, enabled: boolean): Promise<void>;
+  setExtensionAccess(path: string, access: ExtensionSiteAccess): Promise<string | null>;
   openExtensionOptions(path: string): Promise<void>;
   onExtensionsChange(listener: (extensions: ExtensionInfo[]) => void): () => void;
   passwords(): Promise<PasswordsView>;

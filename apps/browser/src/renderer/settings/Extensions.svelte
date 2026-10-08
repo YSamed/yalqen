@@ -8,6 +8,7 @@
   import IconButton from '../ui/IconButton.svelte';
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
+  import ExtensionAccessEditor from './ExtensionAccessEditor.svelte';
 
   let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
     $props();
@@ -98,6 +99,7 @@
       {#if extension.updateError}<span class="error" role="status"
           >{t('extensionsPanel.updateFailed', { error: extension.updateError })}</span
         >{/if}
+      <ExtensionAccessEditor {extension} />
     </div>
     <div class="controls">
       {#if extension.hasOptions}

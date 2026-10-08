@@ -9,6 +9,8 @@ for (const test of [
   'download-location.mjs',
   'site-protections.mjs',
   'extension-updates.mjs',
+  'extension-access.mjs',
+  'extension-access-settings.mjs',
   'login-selection.mjs',
   'bookmark-transfer.mjs',
   'bulk-tabs.mjs',

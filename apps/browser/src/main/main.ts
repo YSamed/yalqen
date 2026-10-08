@@ -2,7 +2,8 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain, nativeTheme } from 'electron';
+import { app, dialog, ipcMain, nativeTheme, webContents } from 'electron';
+import { ExtensionAccessController } from './extensions/extension-access-controller.js';
 import {
   BOOKMARKS_URL,
   HISTORY_URL,
@@ -210,6 +211,22 @@ function startBrowser(): void {
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;
+  const extensionAccess = new ExtensionAccessController({
+    extensions,
+    pages: () =>
+      webContents
+        .getAllWebContents()
+        .filter(
+          (contents) =>
+            !contents.isDestroyed() &&
+            contents.session === daily &&
+            /^https?:/.test(contents.getURL()) &&
+            windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
+        ),
+    approveReload: (contents) =>
+      windows.find((window) => window.tabs.hasContents(contents))?.tabs.approveExtensionReload(contents) ??
+      Promise.resolve(null),
+  });
   const windowsToSave = () =>
     windows.filter((window) => !window.isPrivate).map((window) => window.tabs.toSavedWindow());
   const sessionSnapshot = (): SavedSession => {
@@ -464,6 +481,7 @@ function startBrowser(): void {
     bookmarks,
     extensions,
     extensionPopup,
+    extensionAccess,
     certificates,
     httpsOnly,
     threatGuard,
@@ -751,6 +769,7 @@ function startBrowser(): void {
   });
   registerExtensionsIpc({
     extensions,
+    access: extensionAccess,
     parentWindow: (contents) => windowOf(contents)?.window,
     openTab: (contents, url) => {
       windowOf(contents)?.tabs.open(url, { isPrivate: false });
