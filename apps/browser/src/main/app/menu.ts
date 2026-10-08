@@ -44,6 +44,8 @@ interface MenuActions {
   showBookmarks(): void;
   saveReadingPage(): void;
   showWorkspaces(): void;
+  installWebApp(): void;
+  manageWebApps(): void;
   showReadingList(): void;
   print(): void;
   savePdf(): void;
@@ -159,6 +161,8 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.moveTabToNewWindow'), click: actions.moveTabToNewWindow },
         { type: 'separator' },
         { label: t('workspaces.title'), click: actions.showWorkspaces },
+        { label: t('webApps.installPage'), click: actions.installWebApp },
+        { label: t('webApps.manage'), click: actions.manageWebApps },
         ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({
           label: i === 8 ? t('menu.lastTab') : t('menu.tabNumber', { number: i + 1 }),
           accelerator: `CmdOrCtrl+${i + 1}`,

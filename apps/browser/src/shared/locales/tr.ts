@@ -2,6 +2,21 @@ import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
   'readingList.title': 'Okuma listesi',
+  'webApps.installPage': 'Bu siteyi web uygulaması olarak kur…',
+  'webApps.manage': 'Kurulu web uygulamaları',
+  'webApps.installQuestion': '{name} kurulsun mu?',
+  'webApps.installDetail':
+    'Adres ve güvenlik kontrolleri bulunan ayrı bir Yalqen penceresinde açılır. Bu profilin site verilerini paylaşır. Çevrimdışı kullanım sitenin desteğine bağlıdır. Ayrı bir macOS başlatıcısı oluşturulmaz.',
+  'webApps.install': 'Kur',
+  'webApps.removeQuestion': '{name} kaldırılsın mı?',
+  'webApps.removeDetail':
+    'Uygulamayı bu profilin listesinden kaldırır. Açık pencereler ve paylaşılan site verileri korunur.',
+  'webApps.remove': 'Kaldır',
+  'webApps.open': 'Uygulamayı aç',
+  'webApps.empty': 'Kurulu web uygulaması yok',
+  'webApps.unavailable':
+    'Bu sayfada desteklenen web uygulaması manifesti yok. Normal, güvenilir bir HTTPS sayfasından veya yerel test sitesinden kurulum yapın.',
+  'webApps.failed': 'Web uygulaması değişikliği kaydedilemedi. Bir profilde en fazla 50 uygulama olabilir.',
   'tabGroups.manage': 'Sekme grupları',
   'tabGroups.failed': '1–80 karakterlik benzersiz bir grup adı kullanın. Bir pencerede en fazla 50 grup olabilir.',
   'tabGroups.selectionHint': 'Seçili sekmelere, seçim yoksa etkin sekmeye uygulanır.',

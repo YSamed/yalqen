@@ -76,6 +76,7 @@ import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { READING_LIST_URL } from '../../shared/reading-list.js';
 import { tabGroupName, type TabGroup } from '../../shared/tab-groups.js';
 import { WORKSPACES_URL } from '../../shared/workspaces.js';
+import { webAppContains } from '../../shared/web-apps.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
 import { TabTranslation } from './tab-translation.js';
@@ -137,6 +138,8 @@ interface TabManagerOptions {
   agentTracing: () => boolean;
   confirmUnload: (tab: Tab) => boolean;
   threatGuard?: ThreatGuard;
+  webAppScope?: string;
+  onAppExternal?(url: string): void;
 }
 
 export type DetachedTab = Tab;
@@ -278,6 +281,7 @@ export class TabManager {
   }
 
   open(url = NEW_TAB_URL, { activate = true, isPrivate = this.options.privateWindow } = {}): TabId {
+    if (this.routeAppNavigation(null, url)) return this.activeId ?? '';
     const upgraded = this.options.upgradeHttp(url);
     const tab = this.createRecord({ url: upgraded ?? url }, isPrivate);
     tab.group = this.active()?.group ?? null;
@@ -737,6 +741,7 @@ export class TabManager {
   navigate(url: string): void {
     const tab = this.active();
     if (!tab) return;
+    if (this.routeAppNavigation(tab, url)) return;
     const upgraded = this.options.upgradeHttp(url);
     tab.upgrade = upgraded ? { https: upgraded, http: url } : null;
     if (upgraded) url = upgraded;
@@ -1540,6 +1545,10 @@ export class TabManager {
       if (this.options.confirmUnload(tab)) event.preventDefault();
     });
     listen('will-navigate', (event) => {
+      if (this.routeAppNavigation(tab, event.url)) {
+        event.preventDefault();
+        return;
+      }
       const navigation = internalNavigation(event.url);
       if (navigation) {
         event.preventDefault();
@@ -1642,6 +1651,10 @@ export class TabManager {
     const contents = view.webContents;
     listen('will-redirect', (event) => {
       if (!event.isMainFrame) return;
+      if (this.routeAppNavigation(tab, event.url)) {
+        event.preventDefault();
+        return;
+      }
       if (!this.options.upgradeHttp(event.url)) return;
       event.preventDefault();
       const http = event.url;
@@ -1842,6 +1855,12 @@ export class TabManager {
 
   private active(): Tab | undefined {
     return this.activeId ? this.find(this.activeId) : undefined;
+  }
+
+  private routeAppNavigation(tab: Tab | null, url: string): boolean {
+    if (!this.options.webAppScope || tab?.openerId || webAppContains(this.options.webAppScope, url)) return false;
+    this.options.onAppExternal?.(url);
+    return true;
   }
 
   private find(id: TabId): Tab | undefined {

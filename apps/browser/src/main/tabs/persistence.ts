@@ -54,6 +54,7 @@ export interface SavedWindow {
   activeTabId: TabId | null;
   tabs: SavedTab[];
   collapsedGroups?: string[];
+  webAppId?: string;
 }
 
 export interface SavedSession {
@@ -71,7 +72,12 @@ export function pinnedOnly(window: SavedWindow): SavedWindow {
     const pinnedUrl = tab.pinnedUrl ?? (tab.keepAlive ? tab.url : null);
     return pinnedUrl ? [{ ...tab, url: pinnedUrl, pinnedUrl, keepAlive: undefined, history: null }] : [];
   });
-  return { activeTabId: null, tabs, ...(window.collapsedGroups && { collapsedGroups: window.collapsedGroups }) };
+  return {
+    activeTabId: null,
+    tabs,
+    ...(window.collapsedGroups && { collapsedGroups: window.collapsedGroups }),
+    ...(window.webAppId && { webAppId: window.webAppId }),
+  };
 }
 
 function isSavedWindow(value: unknown): value is SavedWindow {

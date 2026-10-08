@@ -98,6 +98,8 @@ import { VisualComparisonManager, VisualComparisonError, type VisualComparisonTa
 import { captureVisualPage } from './visual-capture.js';
 import { ResponsiveScanManager, ResponsiveScanError, createResponsiveScanSession } from './responsive-scan.js';
 import { acquirePageWork, pageWorkBusy } from '../tabs/page-work.js';
+import { readingUrl } from '../../shared/reading-list.js';
+import type { WebAppInfo } from '../../shared/web-apps.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -160,6 +162,7 @@ export interface AppContext {
 }
 
 export interface WindowOptions {
+  webApp?: WebAppInfo;
   isPrivate?: boolean;
   developer?: boolean;
   saved?: SavedWindow;
@@ -169,6 +172,7 @@ export interface WindowOptions {
 }
 
 export class YalqenWindow {
+  readonly webApp: WebAppInfo | null;
   private closeApproved = false;
   private closePending = false;
   readonly window: BaseWindow;
@@ -221,6 +225,7 @@ export class YalqenWindow {
   ) {
     this.isDeveloper = options.developer ?? false;
     this.isPrivate = this.isDeveloper || (options.isPrivate ?? false);
+    this.webApp = this.isPrivate ? null : (options.webApp ?? null);
     const from = options.from?.window.getBounds();
     this.window = new BaseWindow({
       width: from?.width ?? 1280,
@@ -310,6 +315,11 @@ export class YalqenWindow {
       closed: app.closedTabs,
       onClosedChanged: () => app.onClosedTabsChange(),
       privateWindow: this.isPrivate,
+      webAppScope: this.webApp?.scope,
+      onAppExternal: (url) => {
+        const safe = readingUrl(url);
+        if (safe) app.openWindow({ url: safe, from: this });
+      },
       session: app.daily,
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
@@ -501,6 +511,7 @@ export class YalqenWindow {
       if (hadPrivate) app.onPrivateTabsClosed();
     });
 
+    this.updateProfileName();
     if (options.tab) this.tabs.adopt(options.tab);
     else if (options.saved && options.saved.tabs.length > 0) this.tabs.restore(options.saved, options.url);
     else this.tabs.open(options.url);
@@ -563,7 +574,7 @@ export class YalqenWindow {
 
   updateProfileName(): void {
     this.window.setTitle(
-      `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${this.app.persistentProfiles.currentName()}`,
+      `${this.webApp ? `${this.webApp.name} · ${new URL(this.webApp.startUrl).host}` : this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${this.app.persistentProfiles.currentName()}`,
     );
   }
 
@@ -580,10 +591,10 @@ export class YalqenWindow {
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
-      sidebarVisible: this.app.settings.get().sidebarVisible,
-      toolbarVisible: this.app.settings.get().toolbarVisible,
-      toolbarTabs: this.app.settings.get().toolbarTabs,
-      toolbarButtons: this.app.settings.get().toolbarButtons,
+      sidebarVisible: this.webApp ? false : this.app.settings.get().sidebarVisible,
+      toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
+      toolbarTabs: this.webApp ? false : this.app.settings.get().toolbarTabs,
+      toolbarButtons: this.webApp ? ['settings', 'downloads'] : this.app.settings.get().toolbarButtons,
       material: this.material(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
@@ -1439,6 +1450,10 @@ export class YalqenWindow {
   }
 
   handleAction(action: UiAction): void {
+    if (this.webApp && ['new-tab', 'open-settings', 'open-history', 'open-downloads'].includes(action.type)) {
+      this.app.openWindow({ from: this }).handleAction(action);
+      return;
+    }
     const tabs = this.tabs;
     const app = this.app;
     switch (action.type) {

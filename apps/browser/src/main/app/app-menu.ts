@@ -16,6 +16,8 @@ export interface AppMenuHost {
   updater: Updater;
   toggleBookmark(url: string, title: string): void;
   saveReadingPage(window: YalqenWindow): void;
+  installWebApp(window: YalqenWindow): void;
+  manageWebApps(window: YalqenWindow): void;
   deviceId(): DeviceId;
   selectDevice(id: DeviceId): void;
 }
@@ -26,7 +28,11 @@ export function installAppMenu(host: AppMenuHost): void {
   const from = () => current() ?? undefined;
   const inWindow = (run: (window: YalqenWindow) => void) => () => {
     const window = current();
-    run(window && !window.window.isDestroyed() ? window : host.openWindow({}));
+    run(
+      window && !window.window.isDestroyed() && !window.webApp
+        ? window
+        : host.openWindow({ from: window ?? undefined }),
+    );
   };
   Menu.setApplicationMenu(
     buildMenu({
@@ -36,7 +42,12 @@ export function installAppMenu(host: AppMenuHost): void {
       newDeveloperWindow: () => host.openWindow({ developer: true, from: from() }),
       newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
       closeTab: () => {
-        const tabs = current()?.tabs;
+        const window = current();
+        if (window?.webApp && window.tabs.count === 1) {
+          window.close();
+          return;
+        }
+        const tabs = window?.tabs;
         if (tabs && tabs.selectedTabIds.length > 1) void tabs.closeSelected();
         else if (tabs?.activeTabId) tabs.close(tabs.activeTabId);
       },
@@ -101,6 +112,11 @@ export function installAppMenu(host: AppMenuHost): void {
       saveReadingPage: inWindow((window) => host.saveReadingPage(window)),
       showReadingList: inWindow((window) => window.tabs.openReadingList()),
       showWorkspaces: inWindow((window) => window.tabs.openWorkspaces()),
+      installWebApp: () => {
+        const window = current();
+        if (window) host.installWebApp(window);
+      },
+      manageWebApps: () => host.manageWebApps(current() ?? host.openWindow({})),
       print: () => current()?.print(),
       savePdf: () => void current()?.savePageAsPdf(),
       savePage: () => void current()?.savePageOffline(),

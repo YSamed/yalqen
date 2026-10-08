@@ -1,5 +1,19 @@
 export const en = {
   'readingList.title': 'Reading list',
+  'webApps.installPage': 'Install this site as a web app…',
+  'webApps.manage': 'Installed web apps',
+  'webApps.installQuestion': 'Install {name}?',
+  'webApps.installDetail':
+    'Opens in a separate Yalqen window with address and security controls. It shares this profile’s site data. Offline use depends on the site. No separate macOS launcher is created.',
+  'webApps.install': 'Install',
+  'webApps.removeQuestion': 'Remove {name}?',
+  'webApps.removeDetail': 'Removes the app from this profile’s list. Open windows and shared site data are preserved.',
+  'webApps.remove': 'Remove',
+  'webApps.open': 'Open app',
+  'webApps.empty': 'No installed web apps',
+  'webApps.unavailable':
+    'This page does not have a supported web app manifest. Install from a normal, trusted HTTPS page or a local test site.',
+  'webApps.failed': 'Could not save the web app change. A profile can have up to 50 installed apps.',
   'tabGroups.manage': 'Tab groups',
   'tabGroups.failed': 'Use a unique group name of 1–80 characters. A window can have up to 50 groups.',
   'tabGroups.selectionHint': 'Applies to selected tabs, or the active tab when none are selected.',

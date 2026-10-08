@@ -75,6 +75,9 @@ import { installReadingListHandlers, broadcastReadingList } from './library/read
 import { WorkspaceStore } from './library/workspaces.js';
 import { installWorkspaceHandlers } from './library/workspace-handlers.js';
 import { WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
+import { WebAppStore } from './library/web-apps.js';
+import { WebAppController } from './app/web-app-controller.js';
+import { webAppContains } from '../shared/web-apps.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
@@ -165,6 +168,13 @@ function startBrowser(): void {
   const bookmarks = new BookmarkStore(userData);
   const readingList = new ReadingListStore(userData);
   const workspaces = new WorkspaceStore(userData);
+  const webAppStore = new WebAppStore(userData);
+  const webApps = new WebAppController({
+    store: webAppStore,
+    open: (webApp) => {
+      openWindow({ url: webApp.startUrl, webApp });
+    },
+  });
   const store = new SessionStore(userData);
   const defaultZoom = () => settings.get().defaultZoom;
   const zoom = new ZoomStore(userData, defaultZoom);
@@ -275,7 +285,9 @@ function startBrowser(): void {
       Promise.resolve(null),
   });
   const windowsToSave = () =>
-    windows.filter((window) => !window.isPrivate).map((window) => window.tabs.toSavedWindow());
+    windows
+      .filter((window) => !window.isPrivate)
+      .map((window) => ({ ...window.tabs.toSavedWindow(), ...(window.webApp && { webAppId: window.webApp.id }) }));
   const sessionSnapshot = (): SavedSession => {
     const saved = windowsToSave();
     return {
@@ -682,6 +694,28 @@ function startBrowser(): void {
     updateSettings,
     updater,
     toggleBookmark: context.toggleBookmark,
+    installWebApp: (window) => {
+      const contents = window.tabs.activeContents();
+      if (
+        !contents ||
+        window.isPrivate ||
+        window.isDeveloper ||
+        contents.session !== daily ||
+        certificates.hasException(contents.getURL())
+      ) {
+        void dialog.showMessageBox(window.window, { type: 'info', message: t('webApps.unavailable') });
+        return;
+      }
+      void webApps.install(
+        window.window,
+        contents,
+        () =>
+          window.tabs.activeContents() === contents &&
+          contents.session === daily &&
+          !certificates.hasException(contents.getURL()),
+      );
+    },
+    manageWebApps: (window) => webApps.show(window.window),
     saveReadingPage: (window) => {
       const page = window.tabs.snapshotFor();
       if (page && saveReadingPage(readingList, { ...page, developer: window.isDeveloper })) {
@@ -965,7 +999,13 @@ function startBrowser(): void {
     const [first, ...rest] = launchUrls;
     if (restored.length === 0) openWindow(first ? { url: first } : {});
     restored.forEach((window, index) =>
-      openWindow({ saved: window, url: !restoring && index === restored.length - 1 ? first : undefined }),
+      openWindow({
+        saved: window,
+        webApp: webAppStore
+          .list()
+          .find((app) => app.id === window.webAppId && window.tabs.every((tab) => webAppContains(app.scope, tab.url))),
+        url: !restoring && index === restored.length - 1 ? first : undefined,
+      }),
     );
     if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
     else if (rest.length > 0) openExternal(rest);
