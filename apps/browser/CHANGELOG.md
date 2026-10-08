@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.36](https://github.com/YSamed/yalqen/compare/v0.3.35...v0.3.36) (2026-10-08)
+
+
+### Features
+
+* add encrypted address and payment card autofill ([0854211](https://github.com/YSamed/yalqen/commit/0854211bd7a6d999eaf7855584230810a4e69f3e))
+* manage stored site data across the browser profile ([04a2bd5](https://github.com/YSamed/yalqen/commit/04a2bd59c92215ad7ab7c3590db48b2ed690fea3))
+
 ## [0.3.35](https://github.com/YSamed/yalqen/compare/v0.3.34...v0.3.35) (2026-10-08)
 
 
