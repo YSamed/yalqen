@@ -7,6 +7,7 @@
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
   import SettingRow from './SettingRow.svelte';
+  import Profiles from './Profiles.svelte';
 
   let {
     view,
@@ -82,6 +83,7 @@
   }
 </script>
 
+<Profiles />
 <h2>{t('settings.search')}</h2>
 <SettingRow title={t('settings.searchEngine')} hint={t('settings.searchEngineHint')} labelFor="engine">
   <Select

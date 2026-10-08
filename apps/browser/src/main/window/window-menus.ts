@@ -69,9 +69,28 @@ interface ProfileMenuActions {
   openSettings(): void;
 }
 
-export function profileMenuTemplate(actions: ProfileMenuActions): MenuItemConstructorOptions[] {
+export function profileMenuTemplate(
+  actions: ProfileMenuActions,
+  persistent?: {
+    currentId: string;
+    profiles: { id: string; name: string }[];
+    open(id: string): void;
+    manage(): void;
+  },
+): MenuItemConstructorOptions[] {
   return [
     { label: t('window.profileMenuTitle'), enabled: false },
+    ...(persistent
+      ? [
+          ...persistent.profiles.map((profile) => ({
+            label: profile.name,
+            type: 'checkbox' as const,
+            checked: profile.id === persistent.currentId,
+            click: () => persistent.open(profile.id),
+          })),
+          { label: t('profiles.manage'), click: persistent.manage },
+        ]
+      : []),
     { type: 'separator' },
     { label: t('window.newWindow'), click: actions.newWindow },
     { label: t('window.newPrivateWindow'), click: actions.newPrivateWindow },

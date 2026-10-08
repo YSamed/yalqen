@@ -127,6 +127,7 @@ export interface BrowserState {
   downloads: DownloadsSummary;
   extensions: boolean;
   profile: ProfileKind;
+  profileName?: string;
   agentPanelOpen: boolean;
   agentSession: AgentSessionState;
   agentChat: AgentChatState;
@@ -726,6 +727,22 @@ export interface ThreatListsView {
   failed: boolean;
 }
 
+export interface PersistentProfileInfo {
+  id: string;
+  name: string;
+  active: boolean;
+  default: boolean;
+  running: boolean;
+}
+export interface ProfilesView {
+  currentId: string;
+  profiles: PersistentProfileInfo[];
+}
+export interface ProfilesResult {
+  view: ProfilesView;
+  error: 'invalid-name' | 'missing' | 'busy' | 'protected' | 'failed' | null;
+}
+
 export interface SettingsView {
   values: SettingsValues;
   downloadDirectory: string;
@@ -759,6 +776,8 @@ export const SettingsChannel = {
   installUpdate: 'yalqen-settings:install-update',
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
   updateThreatLists: 'yalqen-settings:update-threat-lists',
+  profiles: 'yalqen-settings:profiles',
+  profileAction: 'yalqen-settings:profile-action',
 } as const;
 
 export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
@@ -920,6 +939,12 @@ export interface SettingsApi {
   installUpdate(): Promise<void>;
   chooseDownloadDirectory(): Promise<SettingsView>;
   updateThreatLists(): Promise<SettingsView>;
+  profiles(): Promise<ProfilesView>;
+  profileAction(
+    action: 'create' | 'rename' | 'default' | 'open' | 'remove',
+    id?: string,
+    name?: string,
+  ): Promise<ProfilesResult>;
   requestRules(): Promise<RequestRule[]>;
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
   sitePermissions(): Promise<SitePermissionsView>;

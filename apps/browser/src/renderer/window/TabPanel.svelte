@@ -23,6 +23,7 @@
     edgeInset,
     fullWidth,
     profile,
+    profileName,
     pinnedDisplay,
   }: {
     tabs: TabSnapshot[];
@@ -38,6 +39,7 @@
     edgeInset: number;
     fullWidth: number;
     profile: ProfileKind;
+    profileName?: string;
     pinnedDisplay: PinnedDisplay;
   } = $props();
 
@@ -93,11 +95,11 @@
       .map((id) => tabsById.get(id))
       .filter((tab): tab is TabSnapshot => tab !== undefined && (!showPinned || !collapsed || !tab.pinned)),
   );
-  const profiles: { id: ProfileKind; name: string }[] = [
-    { id: 'personal', name: t('tabPanel.profilePersonal') },
+  const profiles: { id: ProfileKind; name: string }[] = $derived([
+    { id: 'personal', name: profileName ?? t('tabPanel.profilePersonal') },
     { id: 'developer', name: t('tabPanel.profileDeveloper') },
     { id: 'private', name: t('tabPanel.profilePrivate') },
-  ];
+  ]);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function reveal(node: Element) {

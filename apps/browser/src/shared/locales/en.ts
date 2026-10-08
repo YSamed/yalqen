@@ -1,4 +1,33 @@
 export const en = {
+  'profiles.title': 'Persistent profiles',
+  'profiles.hint':
+    'Create separate profiles for work and personal browsing. Cookies, history, bookmarks, passwords, extensions and settings are kept separately. Each profile opens in its own browser instance.',
+  'profiles.manage': 'Manage profiles…',
+  'profiles.current': 'Current',
+  'profiles.running': 'Open',
+  'profiles.default': 'Default on startup',
+  'profiles.switch': 'Switch',
+  'profiles.open': 'Open',
+  'profiles.rename': 'Rename',
+  'profiles.makeDefault': 'Make default',
+  'profiles.remove': 'Delete profile',
+  'profiles.name': 'Profile name',
+  'profiles.placeholder': 'Work or personal',
+  'profiles.create': 'Create profile',
+  'profiles.save': 'Save',
+  'profiles.cancel': 'Cancel',
+  'profiles.originalHint': 'The original profile contains your existing data and cannot be deleted.',
+  'profiles.closeHint': 'Quit this profile before deleting it.',
+  'profiles.removeTitle': 'Delete profile “{name}”?',
+  'profiles.removeDetail':
+    'All browsing data in this profile will be permanently deleted. Downloaded files outside the profile are kept.',
+  'profiles.failedTitle': 'Profile could not be opened',
+  'profiles.invalid-name': 'Enter a profile name of 1–80 characters without control characters.',
+  'profiles.missing': 'This profile no longer exists.',
+  'profiles.busy':
+    'The profile is in use or the profile limit has been reached. Quit its browser instance and try again.',
+  'profiles.protected': 'The current or original profile cannot be deleted.',
+  'profiles.failed': 'The profile operation failed. Check that the data folder is accessible.',
   'threats.protection': 'Phishing and malicious download protection',
   'threats.protectionHint':
     'Check addresses and downloaded files against local threat lists. Browsing addresses and file contents stay on your device.',

@@ -126,6 +126,7 @@ export interface AppContext {
   extensionPopup: ExtensionPopup;
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
+  persistentProfiles: import('../app/profile-controller.js').ProfileController;
   threatGuard: import('../privacy/threat-guard.js').ThreatGuard;
   closedTabs: SavedTab[];
   pageTheme: string;
@@ -222,7 +223,7 @@ export class YalqenWindow {
       ...(from ? { x: from.x + CASCADE_OFFSET, y: from.y + CASCADE_OFFSET } : {}),
       minWidth: 640,
       minHeight: 400,
-      title: this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen',
+      title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
       titleBarStyle: 'hiddenInset',
       transparent: glassAvailable,
@@ -551,6 +552,12 @@ export class YalqenWindow {
     });
   };
 
+  updateProfileName(): void {
+    this.window.setTitle(
+      `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${this.app.persistentProfiles.currentName()}`,
+    );
+  }
+
   state(): BrowserState {
     const tabState = this.tabs.state();
     const tabIds = new Set(tabState.tabs.map((tab) => tab.id));
@@ -573,6 +580,7 @@ export class YalqenWindow {
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
       profile: this.profile,
+      profileName: this.app.persistentProfiles.currentName(),
       agentPanelOpen: this.agentPanelOpen,
       agentSession: this.agentSession.state(),
       agentChat: this.agentChat.state(),
@@ -1527,13 +1535,26 @@ export class YalqenWindow {
         break;
       case 'open-profile-menu':
         this.popup(
-          profileMenuTemplate({
-            newWindow: () => app.openWindow({ from: this }),
-            newPrivateWindow: () => app.openWindow({ isPrivate: true, from: this }),
-            newPrivateTab: () => tabs.open(NEW_TAB_URL, { isPrivate: true }),
-            newDeveloperWindow: () => app.openWindow({ developer: true, from: this }),
-            openSettings: () => tabs.openSettings(),
-          }),
+          profileMenuTemplate(
+            {
+              newWindow: () => app.openWindow({ from: this }),
+              newPrivateWindow: () => app.openWindow({ isPrivate: true, from: this }),
+              newPrivateTab: () => tabs.open(NEW_TAB_URL, { isPrivate: true }),
+              newDeveloperWindow: () => app.openWindow({ developer: true, from: this }),
+              openSettings: () => tabs.openSettings(),
+            },
+            {
+              currentId: app.persistentProfiles.id,
+              profiles: app.persistentProfiles.view().profiles,
+              open: (id) => {
+                void app.persistentProfiles.run('open', id, undefined).then(({ error }) => {
+                  if (error)
+                    void dialog.showMessageBox(this.window, { type: 'error', message: t(`profiles.${error}`) });
+                });
+              },
+              manage: () => tabs.openSettings(),
+            },
+          ),
         );
         break;
       case 'toggle-bookmark': {

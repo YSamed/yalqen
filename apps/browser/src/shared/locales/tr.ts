@@ -1,6 +1,34 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'profiles.title': 'Kalıcı profiller',
+  'profiles.hint':
+    'İş ve kişisel gezinme için ayrı profiller oluşturun. Çerezler, geçmiş, yer imleri, parolalar, uzantılar ve ayarlar ayrı tutulur. Her profil kendi tarayıcı örneğinde açılır.',
+  'profiles.manage': 'Profilleri yönet…',
+  'profiles.current': 'Geçerli',
+  'profiles.running': 'Açık',
+  'profiles.default': 'Açılışta varsayılan',
+  'profiles.switch': 'Geçiş yap',
+  'profiles.open': 'Aç',
+  'profiles.rename': 'Adını değiştir',
+  'profiles.makeDefault': 'Varsayılan yap',
+  'profiles.remove': 'Profili sil',
+  'profiles.name': 'Profil adı',
+  'profiles.placeholder': 'İş veya kişisel',
+  'profiles.create': 'Profil oluştur',
+  'profiles.save': 'Kaydet',
+  'profiles.cancel': 'İptal',
+  'profiles.originalHint': 'İlk profil mevcut verilerinizi içerir ve silinemez.',
+  'profiles.closeHint': 'Silmeden önce bu profilden çıkın.',
+  'profiles.removeTitle': '“{name}” profili silinsin mi?',
+  'profiles.removeDetail':
+    'Bu profildeki tüm gezinme verileri kalıcı olarak silinecek. Profil dışında indirilen dosyalar korunur.',
+  'profiles.failedTitle': 'Profil açılamadı',
+  'profiles.invalid-name': 'Kontrol karakteri içermeyen 1–80 karakterlik bir profil adı girin.',
+  'profiles.missing': 'Bu profil artık yok.',
+  'profiles.busy': 'Profil kullanılıyor veya profil sınırına ulaşıldı. Tarayıcı örneğinden çıkıp tekrar deneyin.',
+  'profiles.protected': 'Geçerli veya ilk profil silinemez.',
+  'profiles.failed': 'Profil işlemi başarısız. Veri klasörüne erişilebildiğini kontrol edin.',
   'threats.protection': 'Kimlik avı ve zararlı indirme koruması',
   'threats.protectionHint':
     'Adresler ve indirilen dosyalar yerel tehdit listeleriyle kontrol edilir. Gezilen adresler ve dosya içerikleri cihazınızda kalır.',

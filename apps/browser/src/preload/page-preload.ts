@@ -20,6 +20,8 @@ import {
   type PasswordsView,
   type SavedLoginsView,
   type ProcessUsage,
+  type ProfilesView,
+  type ProfilesResult,
   type RequestRule,
   type SettingsApi,
   type SettingsValues,
@@ -149,6 +151,9 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
     chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
     updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,
+    profiles: () => ipcRenderer.invoke(settingsChannel.profiles) as Promise<ProfilesView>,
+    profileAction: (action, id, name) =>
+      ipcRenderer.invoke(settingsChannel.profileAction, action, id, name) as Promise<ProfilesResult>,
     requestRules: () => ipcRenderer.invoke(RequestRulesChannel.list) as Promise<RequestRule[]>,
     saveRequestRules: (rules: RequestRule[]) =>
       ipcRenderer.invoke(RequestRulesChannel.save, rules) as Promise<RequestRule[]>,

@@ -1,7 +1,7 @@
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, ipcMain, nativeTheme } from 'electron';
+import { app, dialog, ipcMain, nativeTheme } from 'electron';
 import {
   BOOKMARKS_URL,
   HISTORY_URL,
@@ -71,6 +71,8 @@ import { RequestRuleStore } from './devtools/request-rules.js';
 import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './tabs/persistence.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './address-bar/search.js';
 import { SettingsStore } from './app/settings.js';
+import { ProfileRegistry, profileArguments, initializeProfile } from './app/profiles.js';
+import { ProfileController } from './app/profile-controller.js';
 import {
   broadcastAgentBridge,
   broadcastExtensions,
@@ -100,7 +102,7 @@ const COMMAND_BAR_PREWARM_MS = 5000;
 bench?.mark('modules-loaded');
 if (bench) prepareBenchApp();
 // The profile folder keeps its prototype name: renaming it would leave every existing profile behind.
-app.setPath('userData', bench?.profile ?? path.join(app.getPath('appData'), 'yalqen-electron-prototype'));
+const profileRoot = bench?.profile ?? path.join(app.getPath('appData'), 'yalqen-electron-prototype');
 
 const appIcon = appIconPath();
 
@@ -108,7 +110,18 @@ registerInternalScheme();
 app.setName('Yalqen');
 setLocale(pickLocale(app.getPreferredSystemLanguages()));
 
-const primary = app.requestSingleInstanceLock();
+const selectedProfile = (() => {
+  try {
+    const registry = new ProfileRegistry(profileRoot, t('tabPanel.profilePersonal'));
+    return { ...initializeProfile(registry, process.argv, app), registry };
+  } catch {
+    dialog.showErrorBox(t('profiles.failedTitle'), t('profiles.failed'));
+    app.exit(1);
+    return { primary: false, profile: { id: 'default', name: '' }, registry: null };
+  }
+})();
+const profileRegistry = selectedProfile.registry!;
+const primary = selectedProfile.primary;
 const externalUrls = new ExternalUrlInbox(primary);
 
 function startBrowser(): void {
@@ -170,6 +183,17 @@ function startBrowser(): void {
     for (const window of [...windows]) run(window);
   };
   const pushState = () => eachWindow((window) => window.pushState());
+  const persistentProfiles = new ProfileController(
+    profileRegistry,
+    selectedProfile.profile.id,
+    selectedProfile.profile.name,
+    () => {
+      eachWindow((window) => window.updateProfileName());
+      broadcastSettings(settingsView());
+      pushState();
+    },
+  );
+  persistentProfiles.start();
   const extensions = new ExtensionManager(
     userData,
     daily,
@@ -440,6 +464,7 @@ function startBrowser(): void {
     certificates,
     httpsOnly,
     threatGuard,
+    persistentProfiles,
     closedTabs,
     pageTheme: fs.readFileSync(rendererPath('tokens.css'), 'utf8'),
     permissionsFor,
@@ -744,6 +769,7 @@ function startBrowser(): void {
   registerSettingsIpc({
     view: settingsView,
     updateThreatLists: () => threatLists.update(true),
+    profiles: persistentProfiles,
     update: updateSettings,
     clearData,
     updater,
@@ -754,7 +780,7 @@ function startBrowser(): void {
         store.saveNow(sessionSnapshot());
         // Release only after consent: cancelling must not schedule a later relaunch.
         app.releaseSingleInstanceLock();
-        app.relaunch();
+        app.relaunch({ args: profileArguments(process.argv.slice(1), persistentProfiles.id) });
         app.quit();
       });
     },
@@ -782,6 +808,7 @@ function startBrowser(): void {
     });
   });
   app.on('will-quit', () => {
+    persistentProfiles.stop();
     stopMemorySaver();
     void agentBridge.stop();
     updater.stop();
@@ -806,6 +833,10 @@ function startBrowser(): void {
   });
   app.on('activate', () => {
     if (started && windows.length === 0 && !quitting) openWindow({});
+  });
+  app.on('second-instance', () => {
+    if (!started || quitting) return;
+    (current ?? openWindow({})).focus();
   });
 
   // The first address bar open would otherwise wait for a new renderer, so it loads right after the first page.

@@ -27,6 +27,7 @@ export interface SettingsIpcHost {
   permissions: PermissionStore;
   onRequestRulesSaved(): void;
   updateThreatLists(): Promise<void>;
+  profiles: import('./profile-controller.js').ProfileController;
 }
 
 function sitePermissionsView(store: PermissionStore): SitePermissionsView {
@@ -37,6 +38,8 @@ function sitePermissionsView(store: PermissionStore): SitePermissionsView {
 }
 
 export function registerSettingsIpc(host: SettingsIpcHost): void {
+  handleSettingsCall(SettingsChannel.profiles, () => host.profiles.view());
+  handleSettingsCall(SettingsChannel.profileAction, (_event, action, id, name) => host.profiles.run(action, id, name));
   handleSettingsCall(SettingsChannel.get, () => host.view());
   handleSettingsCall(SettingsChannel.update, (_event, patch) => {
     host.update(patch);

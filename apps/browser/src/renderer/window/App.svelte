@@ -318,6 +318,7 @@
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={PANEL_WIDTH}
         {profile}
+        profileName={browser.profileName}
         {pinnedDisplay}
       />
     {/if}
