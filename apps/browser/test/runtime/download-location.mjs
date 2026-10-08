@@ -9,7 +9,7 @@ import downloads from '../../dist/main/library/download-manager.js';
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-download-test-'));
 app.setPath('userData', profile);
 let manager;
-const deadline = setTimeout(() => app.exit(1), 30_000);
+const deadline = setTimeout(() => finish(1), 30_000);
 
 app
   .whenReady()
@@ -54,13 +54,16 @@ app
     assert.equal(fs.readFileSync(destination, 'utf8'), 'download location test');
     console.log('PASS: real paused DownloadItem saved selected name, path and complete bytes');
   })
-  .then(() => app.quit())
+  .then(() => finish(0))
   .catch((error) => {
     console.error(error);
-    app.exit(1);
+    finish(1);
   });
-app.on('before-quit', () => {
+// app.quit() can stall while Chromium flushes the download session's disk cache on
+// CI runners, so the result is reported with an explicit exit after cleanup.
+function finish(code) {
   clearTimeout(deadline);
   manager?.destroy();
-});
-app.on('quit', () => fs.rmSync(profile, { recursive: true, force: true }));
+  fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  app.exit(code);
+}

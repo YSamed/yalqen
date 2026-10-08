@@ -42,13 +42,22 @@ async function focus(id) {
     "!!document.querySelector('[data-yalqen-autofill]') && getComputedStyle(document.querySelector('[data-yalqen-autofill]')).display!=='none'",
   );
 }
+// The button stays disabled until the previous pick's IPC reply reaches the page,
+// so a single synthetic click can be dropped on slow CI runners.
 async function click() {
-  const rect = await window.webContents.executeJavaScript(
-    `(() => {const r=document.querySelector('[data-yalqen-autofill]').getBoundingClientRect();return{x:Math.round(r.x+14),y:Math.round(r.y+14)}})()`,
-  );
-  window.webContents.focus();
-  window.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...rect });
-  window.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...rect });
+  const before = picks;
+  for (let attempt = 0; attempt < 5 && picks === before; attempt++) {
+    const rect = await window.webContents.executeJavaScript(
+      `(() => {const r=document.querySelector('[data-yalqen-autofill]').getBoundingClientRect();return{x:Math.round(r.x+14),y:Math.round(r.y+14)}})()`,
+    );
+    window.webContents.focus();
+    window.webContents.sendInputEvent({ type: 'mouseMove', ...rect });
+    window.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...rect });
+    window.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...rect });
+    const sent = Date.now();
+    while (picks === before && Date.now() - sent < 1000) await new Promise((r) => setTimeout(r, 20));
+  }
+  if (picks === before) throw Error('Autofill button click did not open the chooser');
 }
 process.on('uncaughtException', (error) => {
   console.error(error);
