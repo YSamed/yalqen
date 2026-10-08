@@ -68,6 +68,8 @@ import { installPasswordHandlers, safeStorageCipher } from './privacy/password-h
 import { PasswordStore } from './privacy/passwords.js';
 import { AutofillStore } from './privacy/autofill.js';
 import { installAutofillHandlers } from './privacy/autofill-handlers.js';
+import { StorageOrigins, SiteStorageManager } from './privacy/site-storage.js';
+import { installSiteStorageHandlers, observeStorageOrigins } from './privacy/site-storage-handlers.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
@@ -174,6 +176,15 @@ function startBrowser(): void {
   const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
 
   const windows: YalqenWindow[] = [];
+  const storageOrigins = new StorageOrigins(userData);
+  const siteStorage = new SiteStorageManager(daily, storageOrigins, () => history.list().map((entry) => entry.url));
+  observeStorageOrigins(daily, storageOrigins, (contents) =>
+    windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
+  );
+  installSiteStorageHandlers({
+    manager: siteStorage,
+    parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
+  });
   let current: YalqenWindow | null = null;
   let quitting = false;
   let quitPending = false;
@@ -800,7 +811,10 @@ function startBrowser(): void {
       downloads.removeSince(since);
       downloadsChanged();
     }
-    if (request.siteData) await daily.clearStorageData();
+    if (request.siteData) {
+      await daily.clearStorageData();
+      storageOrigins.clear();
+    }
     if (request.cache) await daily.clearCache();
   };
   registerSettingsIpc({
@@ -859,6 +873,7 @@ function startBrowser(): void {
     extensions.stopUpdates();
     extensions.saveNow();
     history.saveNow();
+    storageOrigins.saveNow();
     repoPrompt.saveNow();
     chatPreferences.saveNow();
     downloads.saveNow();

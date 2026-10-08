@@ -37,6 +37,7 @@ import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
 import { setupAutofill } from './autofill.js';
+import { SiteStorageChannel } from '../shared/site-storage.js';
 
 setupAutofill();
 
@@ -200,6 +201,8 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     removeAutofill: (id) => ipcRenderer.invoke(AutofillChannel.remove, id),
     onAutofillChange: (listener) =>
       subscribe<import('../shared/autofill.js').AutofillView>(AutofillChannel.changed, listener),
+    siteStorage: (query, offset) => ipcRenderer.invoke(SiteStorageChannel.list, query, offset),
+    clearSiteStorage: (domain) => ipcRenderer.invoke(SiteStorageChannel.clear, domain),
     agentBridge: () => ipcRenderer.invoke(AgentBridgeChannel.status) as Promise<AgentBridgeView>,
     copyAgentSetup: (kind: AgentSetupKind) => ipcRenderer.invoke(AgentBridgeChannel.copy, kind) as Promise<boolean>,
     regenerateAgentToken: () => ipcRenderer.invoke(AgentBridgeChannel.regenerate) as Promise<AgentBridgeView>,

@@ -1,6 +1,30 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'siteStorage.title': 'Site verileri',
+  'siteStorage.intro':
+    'Siteler alt alan adlarıyla birlikte gruplanır. Bir siteyi temizlemek bilinen adreslerindeki kayıtlı verileri ve çerezleri siler, oturumunuzu kapatabilir.',
+  'siteStorage.measureHint':
+    'Veritabanı/önbellek kullanımı yerel/oturum depolamasını ve ağ önbelleğini içermez. Liste bu profilin çerezlerinden, kayıtlı veritabanlarından ve görülen adreslerinden oluşur. Geçmişi olmayan eski, yalnızca yerel depolama kullanan siteler görünmeyebilir; Tümünü temizle listelenmeyen verileri de siler.',
+  'siteStorage.search': 'Sitelerde ara',
+  'siteStorage.refresh': 'Yenile',
+  'siteStorage.clear': 'Verileri temizle',
+  'siteStorage.clearAll': 'Tüm site verilerini temizle',
+  'siteStorage.clearPrompt': '{domain} ve alt alan adlarının kayıtlı verileri temizlensin mi?',
+  'siteStorage.clearAllPrompt': 'Bu tarayıcı profilindeki tüm site verileri temizlensin mi?',
+  'siteStorage.clearDetail':
+    'Web sitelerinin çerezleri, veritabanları, yerel depolaması, service worker kayıtları ve önbellekteki site kaynakları silinir. Açık sayfalar verileri yeniden oluşturabilir. Kayıtlı parolalar, adresler, yer imleri ve geçmiş korunur.',
+  'siteStorage.cancel': 'İptal',
+  'siteStorage.failed': 'Site verileri okunamadı veya temizlenemedi.',
+  'siteStorage.counts': '{cookies} çerez · {origins} adres',
+  'siteStorage.databaseUsage': 'Veritabanı/önbellek kullanımı: {size}',
+  'siteStorage.unknown': 'Ölçülemedi',
+  'siteStorage.empty': 'Eşleşen site yok.',
+  'siteStorage.total': '{count} site',
+  'siteStorage.previous': 'Önceki',
+  'siteStorage.next': 'Sonraki',
+  'siteStorage.limited':
+    'Site listesi sınırına ulaşıldı. Tüm site verilerini temizlemek listenin dışındaki verileri de siler.',
   'autofill.title': 'Adresler ve ödeme kartları',
   'autofill.intro':
     'Kayıtlar bu tarayıcı profilinde şifreli saklanır. Otomatik doldurma etiketi bulunan bir alana odaklanıp yanındaki doldurma düğmesinden kayıt seçin. Yalnızca aynı form bölümündeki boş alanlar doldurulur.',

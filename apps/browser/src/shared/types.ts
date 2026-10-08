@@ -1018,6 +1018,8 @@ export interface SettingsApi {
   readAutofill(id: string): Promise<import('./autofill.js').AutofillData | null>;
   removeAutofill(id: string): Promise<boolean>;
   onAutofillChange(listener: (view: import('./autofill.js').AutofillView) => void): () => void;
+  siteStorage(query: string, offset: number): Promise<import('./site-storage.js').SiteStorageView | null>;
+  clearSiteStorage(domain: string | null): Promise<boolean>;
   agentBridge(): Promise<AgentBridgeView>;
   copyAgentSetup(kind: AgentSetupKind): Promise<boolean>;
   regenerateAgentToken(): Promise<AgentBridgeView>;

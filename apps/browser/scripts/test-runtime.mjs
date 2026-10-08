@@ -8,6 +8,7 @@ for (const test of [
   'before-unload.mjs',
   'download-location.mjs',
   'site-protections.mjs',
+  'site-storage.mjs',
   'extension-updates.mjs',
   'extension-access.mjs',
   'extension-access-settings.mjs',

@@ -7,6 +7,7 @@
   import Switch from '../ui/Switch.svelte';
   import SettingRow from './SettingRow.svelte';
   import SiteProtectionExceptions from './SiteProtectionExceptions.svelte';
+  import SiteStorage from './SiteStorage.svelte';
 
   let {
     values,
@@ -185,6 +186,8 @@
     </div>
   </div>
 </SettingRow>
+
+<SiteStorage />
 
 <style>
   .check {

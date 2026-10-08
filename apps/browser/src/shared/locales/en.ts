@@ -1,4 +1,27 @@
 export const en = {
+  'siteStorage.title': 'Site data',
+  'siteStorage.intro':
+    'Sites are grouped with their subdomains. Clearing a site removes its stored data and cookies across its known addresses and may sign you out.',
+  'siteStorage.measureHint':
+    'Database/cache usage excludes local/session storage and network cache. Sites come from this profile’s cookies, stored databases, and observed addresses. Older local-storage-only sites without history may be missing; Clear all also removes unlisted data.',
+  'siteStorage.search': 'Search sites',
+  'siteStorage.refresh': 'Refresh',
+  'siteStorage.clear': 'Clear data',
+  'siteStorage.clearAll': 'Clear all site data',
+  'siteStorage.clearPrompt': 'Clear stored data for {domain} and its subdomains?',
+  'siteStorage.clearAllPrompt': 'Clear all site data in this browser profile?',
+  'siteStorage.clearDetail':
+    'This removes website cookies, databases, local storage, service workers and cached site resources. Open pages may recreate data. Saved passwords, addresses, bookmarks and history are kept.',
+  'siteStorage.cancel': 'Cancel',
+  'siteStorage.failed': 'Site data could not be read or cleared.',
+  'siteStorage.counts': '{cookies} cookies · {origins} addresses',
+  'siteStorage.databaseUsage': 'Database/cache usage: {size}',
+  'siteStorage.unknown': 'Unavailable',
+  'siteStorage.empty': 'No matching sites.',
+  'siteStorage.total': '{count} sites',
+  'siteStorage.previous': 'Previous',
+  'siteStorage.next': 'Next',
+  'siteStorage.limited': 'The site index reached its limit. Clear all site data also removes data beyond the list.',
   'autofill.title': 'Addresses and payment cards',
   'autofill.intro':
     'Records are encrypted in this browser profile. Focus a field with an autocomplete hint, then use its fill button to choose a record. Only blank fields in the same form section are filled.',
