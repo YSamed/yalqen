@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.34](https://github.com/YSamed/yalqen/compare/v0.3.33...v0.3.34) (2026-10-08)
+
+
+### Features
+
+* add isolated persistent browser profiles ([1c1810b](https://github.com/YSamed/yalqen/commit/1c1810beb99952690b97d232d65597e98b0b3bb7))
+* add multi-tab selection and group actions ([4576fb8](https://github.com/YSamed/yalqen/commit/4576fb85d01cd200ae26f5a0ba8e55979663aee8))
+* configure home and startup pages ([b38a19f](https://github.com/YSamed/yalqen/commit/b38a19fb833a50d701ada8af995e9562ed09e168))
+* generate edit and transfer saved passwords ([9960dcb](https://github.com/YSamed/yalqen/commit/9960dcb162781d82c948f571e4068b680ad584ca))
+* organize bookmarks in nested folders and edit selections ([42353d3](https://github.com/YSamed/yalqen/commit/42353d3fb979fbe50c9de71241fac97f225fac50))
+* protect browsing and downloads with local threat lists ([ca38014](https://github.com/YSamed/yalqen/commit/ca3801494ee020644bacc051a719813a7cafb40a))
+* restore recently closed tabs across restarts ([0472142](https://github.com/YSamed/yalqen/commit/04721421a641a0294ac44183134ad8fe3af3f8ad))
+* save offline web pages and open local files ([34ed205](https://github.com/YSamed/yalqen/commit/34ed20577db7724891b584b20e077a4ccb890494))
+* show certificates from active page connections ([57f65b7](https://github.com/YSamed/yalqen/commit/57f65b7890540bd78abfb9d741fdd7b8f20b6515))
+
 ## [0.3.33](https://github.com/YSamed/yalqen/compare/v0.3.32...v0.3.33) (2026-10-07)
 
 
