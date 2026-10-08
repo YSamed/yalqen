@@ -67,6 +67,7 @@ import type { RepoPrompt } from '../app/repo-prompt.js';
 import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
 import { exportBookmarksWithDialog, importBookmarksWithDialog, importHistoryWithDialog } from './import-dialogs.js';
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
+import { showCertificateDetails } from '../privacy/certificate-details.js';
 import { saveOfflinePage, openLocalFiles } from './page-files.js';
 import { loadWallpaper } from './wallpaper.js';
 import { libraryMenuTemplate, profileMenuTemplate, siteInfoMenu, tabMenuTemplate } from './window-menus.js';
@@ -1628,6 +1629,12 @@ export class YalqenWindow {
             preferences: this.app.siteProtections,
             settings: () => this.app.settings.get(),
           },
+      showCertificateDetails: () => {
+        const id = this.tabs.activeTabId;
+        const url = this.tabs.activeUrl;
+        const current = () => this.tabs.activeTabId === id && this.tabs.activeUrl === url;
+        void this.tabs.certificateChain().then((chain) => showCertificateDetails(this.window, url, chain, current));
+      },
       clearSiteData: () => this.runDevCommand('clear-site-data'),
     });
     if (template && !this.window.isDestroyed()) this.popup(template);

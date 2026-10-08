@@ -1,6 +1,18 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'certificate.title': 'Sertifika ayrıntıları…',
+  'certificate.chainEntry': 'Sertifika {number}',
+  'certificate.subject': 'Kime verildi',
+  'certificate.issuer': 'Veren kuruluş',
+  'certificate.serial': 'Seri numarası',
+  'certificate.validFrom': 'Geçerlilik başlangıcı (UTC)',
+  'certificate.validTo': 'Geçerlilik sonu (UTC)',
+  'certificate.names': 'Alternatif konu adları',
+  'certificate.publicKey': 'Açık anahtar',
+  'certificate.unavailable': 'Bu bağlantı için sertifika ayrıntıları alınamadı.',
+  'certificate.close': 'Kapat',
+  'certificate.copy': 'Ayrıntıları ve PEM verisini kopyala',
   'passwordTools.add': 'Parola ekle',
   'passwordTools.edit': 'Düzenle',
   'passwordTools.site': 'Web sitesi',

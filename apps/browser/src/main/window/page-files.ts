@@ -64,8 +64,8 @@ export async function saveOfflinePage(
 ): Promise<void> {
   if (!contents || contents.isDestroyed()) return;
   let navigated = false;
-  const navigation = (_event: unknown, _url: unknown, _inPlace: unknown, main: boolean) => {
-    if (main) navigated = true;
+  const navigation = ({ isMainFrame }: { isMainFrame: boolean }) => {
+    if (isMainFrame) navigated = true;
   };
   contents.on('did-start-navigation', navigation);
   const current = () => !navigated && !contents.isDestroyed();

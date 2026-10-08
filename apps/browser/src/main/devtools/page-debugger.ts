@@ -6,30 +6,44 @@ import { PREPARE_SCREENSHOT_SCRIPT } from './screenshot-preparation.js';
 const PROTOCOL_VERSION = '1.3';
 const SCREENSHOT_WORLD_ID = 1005;
 const captures = new WeakMap<WebContents, Promise<Buffer>>();
+const leases = new WeakMap<WebContents, number>();
 
 export function attachDebugger(contents: WebContents): void {
   if (!contents.debugger.isAttached()) contents.debugger.attach(PROTOCOL_VERSION);
 }
 
 export function detachDebugger(contents: WebContents): void {
-  if (!contents.isDestroyed() && contents.debugger.isAttached()) contents.debugger.detach();
+  if (!leases.get(contents) && !contents.isDestroyed() && contents.debugger.isAttached()) contents.debugger.detach();
+}
+
+export async function withDebugger<T>(contents: WebContents, operation: () => Promise<T>): Promise<T> {
+  attachDebugger(contents);
+  leases.set(contents, (leases.get(contents) ?? 0) + 1);
+  try {
+    return await operation();
+  } finally {
+    const remaining = (leases.get(contents) ?? 1) - 1;
+    if (remaining) leases.set(contents, remaining);
+    else leases.delete(contents);
+  }
 }
 
 export async function sendCommands(contents: WebContents, commands: readonly ProtocolCommand[]): Promise<void> {
-  attachDebugger(contents);
-  for (const { method, params, optional } of commands) {
-    try {
-      await contents.debugger.sendCommand(method, params);
-    } catch (error) {
-      if (!optional) throw error;
+  await withDebugger(contents, async () => {
+    for (const { method, params, optional } of commands) {
+      try {
+        await contents.debugger.sendCommand(method, params);
+      } catch (error) {
+        if (!optional) throw error;
+      }
     }
-  }
+  });
 }
 
 export async function captureFullPage(contents: WebContents): Promise<Buffer> {
   const pending = captures.get(contents);
   if (pending) return pending;
-  const capture = capturePreparedPage(contents);
+  const capture = withDebugger(contents, () => capturePreparedPage(contents));
   captures.set(contents, capture);
   try {
     return await capture;

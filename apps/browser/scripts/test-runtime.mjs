@@ -19,6 +19,7 @@ for (const test of [
   'closed-tabs.mjs',
   'page-files.mjs',
   'password-tools.mjs',
+  'certificate-details.mjs',
 ]) {
   const result = spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
     stdio: 'inherit',

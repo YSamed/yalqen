@@ -58,7 +58,7 @@ export async function unobserveTab(tab: Tab, contents: WebContents): Promise<voi
     { method: 'Page.disable', optional: true },
     { method: 'Runtime.disable', optional: true },
     { method: 'Log.disable', optional: true },
-    ...(networkOverridden ? [] : [{ method: 'Network.disable', optional: true }]),
+    ...(networkOverridden || tab.certificateLoading ? [] : [{ method: 'Network.disable', optional: true }]),
   ]).catch(() => undefined);
   if (!contents.isDestroyed()) releaseDebugger(tab, contents);
 }

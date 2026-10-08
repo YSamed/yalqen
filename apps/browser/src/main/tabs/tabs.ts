@@ -76,6 +76,7 @@ import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
 import { TabTranslation } from './tab-translation.js';
+import { CertificateTracker, type CertificateDetails } from '../privacy/certificate-details.js';
 import { stepZoom } from './zoom.js';
 import { MAX_CLOSED_TABS } from './closed-tabs.js';
 
@@ -151,6 +152,8 @@ export class TabManager {
   private readonly freezer: TabFreezer;
   private readonly translation: TabTranslation;
   private picking: PickSession | null = null;
+  private readonly certificateTrackers = new WeakMap<WebContents, CertificateTracker>();
+  private readonly preparingViews = new WeakSet<WebContentsView>();
   private readonly closing = new Set<TabId>();
   private readonly navigations = new WeakMap<Tab, number>();
   private selected = new Set<TabId>();
@@ -670,6 +673,12 @@ export class TabManager {
     const upgraded = this.options.upgradeHttp(url);
     tab.upgrade = upgraded ? { https: upgraded, http: url } : null;
     if (upgraded) url = upgraded;
+    if (tab.view && this.preparingViews.has(tab.view)) {
+      tab.url = url;
+      tab.history = null;
+      this.changed(true);
+      return;
+    }
     if (!tab.view && tab.emulation) {
       tab.url = url;
       tab.history = null;
@@ -693,6 +702,13 @@ export class TabManager {
 
   openSettings(pane?: string): void {
     this.openSingle(pane ? `${SETTINGS_URL}${pane}` : SETTINGS_URL);
+  }
+
+  async certificateChain(): Promise<CertificateDetails[] | null> {
+    const tab = this.active();
+    const contents = liveContents(tab);
+    if (!tab || !contents) return null;
+    return this.certificateTrackers.get(contents)?.read() ?? null;
   }
 
   activeContents(): WebContents | null {
@@ -1169,14 +1185,45 @@ export class TabManager {
         nodeIntegration: false,
       },
     });
-    const emulated = this.mount(tab, view);
-    if (emulated) {
-      void emulated.then(() => {
-        if (tab.view === view) this.load(tab, view);
-      });
-    } else {
-      this.load(tab, view);
-    }
+    const start = (prepared = false) => {
+      if (view.webContents.isDestroyed()) return;
+      if (prepared && !tab.history) {
+        view.webContents.once('did-navigate', () => {
+          tab.preparing = false;
+          const entries = view.webContents.navigationHistory.getAllEntries();
+          if (entries.slice(0, -1).every((entry) => entry.url === 'about:blank')) {
+            view.webContents.navigationHistory.clear();
+          }
+        });
+      } else tab.preparing = false;
+      const emulated = this.mount(tab, view);
+      if (emulated) {
+        void emulated.then(() => {
+          if (tab.view === view) this.load(tab, view);
+        });
+      } else this.load(tab, view);
+    };
+    if (/^https?:/.test(tab.url) && typeof view.webContents.debugger.isAttached === 'function') {
+      // Network observation on an uninitialized renderer misses the first TLS
+      // connection. Prepare its blank frame before mounting browser listeners,
+      // so preparation never appears in history, visits or persisted tab state.
+      tab.view = view;
+      tab.loading = true;
+      tab.preparing = true;
+      this.preparingViews.add(view);
+      void view.webContents.loadURL('about:blank').then(
+        () => {
+          if (tab.view !== view || view.webContents.isDestroyed()) return;
+          view.webContents.navigationHistory.clear();
+          this.preparingViews.delete(view);
+          start(true);
+        },
+        () => {
+          this.preparingViews.delete(view);
+          if (tab.view === view && !view.webContents.isDestroyed()) start();
+        },
+      );
+    } else start();
     return view;
   }
 
@@ -1272,6 +1319,20 @@ export class TabManager {
     tab.detachListeners = () => {
       for (const dispose of disposers) dispose();
     };
+    if (typeof contents.debugger.isAttached === 'function') {
+      const tracker = new CertificateTracker(contents, (active) => {
+        tab.certificateLoading = active;
+        if (contents.isDestroyed()) return;
+        if (active) this.freezer.unfreeze(tab);
+        else {
+          releaseDebugger(tab, contents);
+          if (this.tabs.includes(tab)) this.freezer.maybeFreeze(tab);
+        }
+      });
+      this.certificateTrackers.set(contents, tracker);
+      disposers.push(() => tracker.stop());
+      tracker.begin(tab.url);
+    }
     // Registration order matters where several listeners share an event, so the groups run in sequence.
     this.listenForInput(tab, view, listen);
     this.listenForPageChrome(tab, view, listen);

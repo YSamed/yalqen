@@ -12,7 +12,7 @@ import {
 import type { Tab } from './tab.js';
 
 export function needsDebugger(tab: Tab): boolean {
-  return tab.emulation !== null || tab.agent !== null || hasOverrides(tab.overrides);
+  return tab.certificateLoading === true || tab.emulation !== null || tab.agent !== null || hasOverrides(tab.overrides);
 }
 
 export function releaseDebugger(tab: Tab, contents: WebContents): void {
@@ -46,7 +46,7 @@ export async function pushOverrides(
       rulesFor(tab, userRules),
       tab.agent !== null,
       traced,
-    ),
+    ).filter((command) => !(tab.certificateLoading && command.method === 'Network.disable')),
   );
   releaseDebugger(tab, contents);
 }

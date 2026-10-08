@@ -119,6 +119,16 @@ app
     fs.writeFileSync(stale, 'keep stale');
     await assert.rejects(files.writeOfflinePage(contents, stale, () => false));
     assert.equal(fs.readFileSync(stale, 'utf8'), 'keep stale');
+    const changed = path.join(root, 'changed.mhtml');
+    fs.writeFileSync(changed, 'keep changed');
+    await files.saveOfflinePage(window, contents, {
+      ...dialogs(changed),
+      showSaveDialog: async () => {
+        await contents.loadURL('data:text/html,new-page');
+        return { canceled: false, filePath: changed };
+      },
+    });
+    assert.equal(fs.readFileSync(changed, 'utf8'), 'keep changed');
     console.log(
       'PASS: real MHTML/complete HTML reopen without the server with CSS/images; native file URL encoding, cancellation and failed/stale saves preserve existing files',
     );

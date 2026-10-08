@@ -31,6 +31,7 @@ interface SiteInfo {
 
 interface SiteInfoActions extends SiteDataActions {
   revokeCertificateException(): void;
+  showCertificateDetails?(): void;
   setProtection?(kind: SiteProtection, blocked: boolean): void;
   setPermission(kind: SitePermission, decision: Decision | null): void;
 }
@@ -45,6 +46,9 @@ export function siteInfoTemplate(info: SiteInfo, actions: SiteInfoActions): Menu
   return [
     { label: host, enabled: false },
     { label: stateText(info.security), enabled: false },
+    ...(info.url.startsWith('https:') && actions.showCertificateDetails
+      ? [{ label: t('certificate.title'), click: actions.showCertificateDetails }]
+      : []),
     ...(info.security === 'dangerous'
       ? [
           { type: 'separator' as const },

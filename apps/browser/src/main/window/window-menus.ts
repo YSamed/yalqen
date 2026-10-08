@@ -134,6 +134,7 @@ interface SiteInfoHost {
   session(isPrivate: boolean): Session;
   certificates: CertificateExceptions;
   clearSiteData(): void;
+  showCertificateDetails?(): void;
   protections?: { preferences: SiteProtections; settings(): SettingsValues };
 }
 
@@ -154,7 +155,7 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
         tabs.measureActiveStorage(),
       ])
     : [[], null];
-  if (tabs.activeTabId !== tab.id) return null;
+  if (tabs.activeTabId !== tab.id || tabs.snapshotFor()?.url !== tab.url) return null;
   return siteInfoTemplate(
     {
       url: tab.url,
@@ -176,6 +177,11 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
       data: origin ? { cookies: cookies.length, storage } : undefined,
     },
     {
+      showCertificateDetails: host.showCertificateDetails
+        ? () => {
+            if (tabs.activeTabId === tab.id && tabs.snapshotFor()?.url === tab.url) host.showCertificateDetails?.();
+          }
+        : undefined,
       setProtection: (kind, blocked) => {
         if (!host.protections || tabs.activeTabId !== tab.id || tabs.snapshotFor()?.url !== tab.url) return;
         host.protections.preferences.setAllowed(kind, tab.url, tab.isPrivate, !blocked);
