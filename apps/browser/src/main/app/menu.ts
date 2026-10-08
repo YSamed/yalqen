@@ -42,6 +42,8 @@ interface MenuActions {
   showBookmarks(): void;
   print(): void;
   savePdf(): void;
+  savePage(): void;
+  openFile(): void;
   viewSource(): void;
   devCommand(id: DevCommandId): void;
 }
@@ -93,7 +95,9 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.closeWindow'), accelerator: 'CmdOrCtrl+Shift+W', click: actions.closeWindow },
         { type: 'separator' },
         { label: t('menu.addressBar'), accelerator: 'CmdOrCtrl+L', click: actions.focusAddress },
+        { label: t('menu.openFile'), accelerator: 'CmdOrCtrl+O', click: actions.openFile },
         { type: 'separator' },
+        { label: t('menu.savePage'), accelerator: 'CmdOrCtrl+S', click: actions.savePage },
         { label: t('menu.savePdf'), accelerator: 'CmdOrCtrl+Shift+S', click: actions.savePdf },
         { label: t('menu.screenshot'), click: () => actions.devCommand('screenshot') },
         {
@@ -185,7 +189,7 @@ export function buildMenu(actions: MenuActions): Menu {
           click: () => actions.zoom(1),
         },
         { label: t('menu.zoomOut'), accelerator: 'CmdOrCtrl+-', click: () => actions.zoom(-1) },
-        { label: t('menu.togglePanel'), accelerator: 'CmdOrCtrl+S', click: actions.togglePanel },
+        { label: t('menu.togglePanel'), accelerator: 'CmdOrCtrl+Shift+Y', click: actions.togglePanel },
         { label: t('menu.toggleToolbar'), accelerator: 'CmdOrCtrl+Shift+B', click: actions.toggleToolbar },
         { label: t('menu.toggleSidebar'), accelerator: 'CmdOrCtrl+Shift+U', click: actions.toggleSidebar },
         { label: t('agentPanel.toggle'), accelerator: 'CmdOrCtrl+Alt+A', click: actions.toggleAgentPanel },

@@ -67,6 +67,7 @@ import type { RepoPrompt } from '../app/repo-prompt.js';
 import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
 import { exportBookmarksWithDialog, importBookmarksWithDialog, importHistoryWithDialog } from './import-dialogs.js';
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
+import { saveOfflinePage, openLocalFiles } from './page-files.js';
 import { loadWallpaper } from './wallpaper.js';
 import { libraryMenuTemplate, profileMenuTemplate, siteInfoMenu, tabMenuTemplate } from './window-menus.js';
 import { buildSearchUrl, type SearchEngine } from '../address-bar/search.js';
@@ -1340,6 +1341,14 @@ export class YalqenWindow {
 
   savePageAsPdf(): Promise<void> {
     return savePdfFile(this.window, this.tabs.activeContents());
+  }
+
+  savePageOffline(): Promise<void> {
+    return saveOfflinePage(this.window, this.tabs.activeContents());
+  }
+
+  openLocalFiles(): Promise<void> {
+    return openLocalFiles(this.window, (url) => this.tabs.open(url));
   }
 
   saveScreenshot(fullPage: boolean): Promise<void> {

@@ -28,6 +28,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — yeniden başlatma sonrası kapatılan sekmeler:** Her kalıcı profilin son 20 kapatılan sekmesi adresi, başlığı ve geri/ileri geçmişiyle diskte saklanır; yeniden açma listeden tüketir ve yeni sekme kimliği kullanır. Gizli/geliştirici sekmeleri kaydedilmez ve bu oturumlar kişisel kapatılan sekmeleri yeniden açamaz. Geçmişin tamamını veya zaman aralığını temizlemek ilgili kapatılan kayıtları da derhal siler. Bozuk/büyük kayıtlar ve uygun olmayan gezinme verileri süzülür. Ayrı Electron süreçlerinde yeniden başlatma, gerçek Chromium geri gezinmesi ve tüketilen kaydın sonraki açılışta bulunmaması doğrulandı.
 
+- **Tamamlandı — çevrimdışı sayfa kaydı ve dosya açma:** Dosya → Sayfayı farklı kaydet (⌘/Ctrl+S), tek dosyalı MHTML ve HTML + kaynaklar seçeneklerini sunar. Geçici dizinde hazırlanan kayıt başarıyla tamamlanınca hedefe taşınır; HTML kaynakları ayrı ve benzersiz bir klasörde tutulur. İptal, gezinme veya kayıt hatası önceki hedef dosyayı değiştirmez. Dosya → Dosya aç (⌘/Ctrl+O) birden fazla yerel belge/görsel açar ve özel pencerenin gizliliğini korur. Yan panel daraltma kısayolu ⇧⌘/Ctrl+Y oldu. Gerçek Electron testinde sunucu kapalıyken MHTML ve HTML'nin metin, CSS ve görselleri yüklediği doğrulandı; MHTML denetiminde arşivlerde JavaScript kapalı olduğundan Chromium DOM/CSS protokolü kullanıldı. İptal ve hata/eskimiş kayıtların dosyayı koruması da doğrulandı.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

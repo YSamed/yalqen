@@ -80,6 +80,8 @@ export function installAppMenu(host: AppMenuHost): void {
       showBookmarks: inWindow((window) => window.tabs.openBookmarks()),
       print: () => current()?.print(),
       savePdf: () => void current()?.savePageAsPdf(),
+      savePage: () => void current()?.savePageOffline(),
+      openFile: inWindow((window) => void window.openLocalFiles()),
       viewSource: () => current()?.tabs.viewSource(),
       devCommand: (id) => current()?.runDevCommand(id),
     }),

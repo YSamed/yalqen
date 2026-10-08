@@ -17,6 +17,7 @@ for (const test of [
   'persistent-profiles.mjs',
   'profile-settings.mjs',
   'closed-tabs.mjs',
+  'page-files.mjs',
 ]) {
   const result = spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
     stdio: 'inherit',

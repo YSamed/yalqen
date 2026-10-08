@@ -1,6 +1,17 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'menu.savePage': 'Sayfayı farklı kaydet…',
+  'menu.openFile': 'Dosya aç…',
+  'pageFiles.saveTitle': 'Sayfayı çevrimdışı kullanım için kaydet',
+  'pageFiles.archive': 'Web arşivi (tek dosya)',
+  'pageFiles.complete': 'Web sayfası, tam (HTML ve kaynaklar)',
+  'pageFiles.saveFailed': 'Sayfa kaydedilemedi.',
+  'pageFiles.openTitle': 'Yerel dosyaları aç',
+  'pageFiles.webFiles': 'Web belgeleri ve görseller',
+  'pageFiles.allFiles': 'Tüm dosyalar',
+  'pageFiles.openFailed': 'Dosyalar açılamadı.',
+  'pageFiles.pageChanged': 'Kaydetme sırasında sayfa değişti.',
   'profiles.title': 'Kalıcı profiller',
   'profiles.hint':
     'İş ve kişisel gezinme için ayrı profiller oluşturun. Çerezler, geçmiş, yer imleri, parolalar, uzantılar ve ayarlar ayrı tutulur. Her profil kendi tarayıcı örneğinde açılır.',
@@ -570,8 +581,8 @@ export const tr: Record<MessageKey, string> = {
   'tabPanel.profileSwitch': '{name} profiline geç',
   'tabPanel.expandSidebar': 'Yan paneli genişlet',
   'tabPanel.collapseSidebar': 'Yan paneli daralt',
-  'tabPanel.expandSidebarTitle': 'Yan paneli genişlet (⌘S)',
-  'tabPanel.collapseSidebarTitle': 'Yan paneli daralt (⌘S)',
+  'tabPanel.expandSidebarTitle': 'Yan paneli genişlet (⇧⌘Y)',
+  'tabPanel.collapseSidebarTitle': 'Yan paneli daralt (⇧⌘Y)',
 
   'settings.toolbarSettings': 'Ayarlar',
   'settings.paneAppearance': 'Görünüm',

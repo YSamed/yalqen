@@ -1,4 +1,15 @@
 export const en = {
+  'menu.savePage': 'Save Page As…',
+  'menu.openFile': 'Open File…',
+  'pageFiles.saveTitle': 'Save page for offline use',
+  'pageFiles.archive': 'Web archive (single file)',
+  'pageFiles.complete': 'Webpage, complete (HTML and resources)',
+  'pageFiles.saveFailed': 'The page could not be saved.',
+  'pageFiles.openTitle': 'Open local files',
+  'pageFiles.webFiles': 'Web documents and images',
+  'pageFiles.allFiles': 'All files',
+  'pageFiles.openFailed': 'The files could not be opened.',
+  'pageFiles.pageChanged': 'The page changed while it was being saved.',
   'profiles.title': 'Persistent profiles',
   'profiles.hint':
     'Create separate profiles for work and personal browsing. Cookies, history, bookmarks, passwords, extensions and settings are kept separately. Each profile opens in its own browser instance.',
@@ -568,8 +579,8 @@ export const en = {
   'tabPanel.profileSwitch': 'Switch to {name} profile',
   'tabPanel.expandSidebar': 'Expand sidebar',
   'tabPanel.collapseSidebar': 'Collapse sidebar',
-  'tabPanel.expandSidebarTitle': 'Expand sidebar (⌘S)',
-  'tabPanel.collapseSidebarTitle': 'Collapse sidebar (⌘S)',
+  'tabPanel.expandSidebarTitle': 'Expand sidebar (⇧⌘Y)',
+  'tabPanel.collapseSidebarTitle': 'Collapse sidebar (⇧⌘Y)',
 
   'settings.toolbarSettings': 'Settings',
   'settings.paneAppearance': 'Appearance',

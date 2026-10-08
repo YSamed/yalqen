@@ -2,7 +2,7 @@ import { t } from '../../shared/i18n.js';
 
 const MAX_NAME = 120;
 
-export function pageFileName(title: string, url: string, extension: 'pdf' | 'png'): string {
+export function pageFileName(title: string, url: string, extension: 'pdf' | 'png' | 'mhtml'): string {
   let name = title.trim();
   if (name === '' || name === url) {
     try {
