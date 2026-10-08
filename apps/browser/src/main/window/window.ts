@@ -1335,6 +1335,10 @@ export class YalqenWindow {
     else this.findBar.findNext(this.findHost, forward);
   }
 
+  goHome(): void {
+    this.tabs.navigate(this.app.settings.get().homePageUrl ?? NEW_TAB_URL);
+  }
+
   print(contents = this.tabs.activeContents()): void {
     printPage(contents);
   }
@@ -1471,6 +1475,9 @@ export class YalqenWindow {
         break;
       case 'navigate':
         tabs.navigate(resolveInput(action.input, app.searchEngine()));
+        break;
+      case 'go-home':
+        this.goHome();
         break;
       case 'go-back':
         this.goInHistory('back');

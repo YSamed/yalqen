@@ -90,6 +90,7 @@ export type PanelSide = 'left' | 'right';
 export type PinnedDisplay = 'always' | 'expanded' | 'never';
 
 export const TOOLBAR_BUTTON_IDS = [
+  'home',
   'bookmarks',
   'history',
   'extensions',
@@ -377,6 +378,7 @@ export type UiAction =
   | { type: 'open-tab-menu'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }
+  | { type: 'go-home' }
   | { type: 'go-back' }
   | { type: 'go-forward' }
   | { type: 'reload' }
@@ -668,7 +670,9 @@ export interface SettingsValues {
   searchEngine: SearchEngineId;
   customSearchTemplate: string | null;
   theme: ThemeSource;
-  startupBehavior: 'restore' | 'new-tab';
+  startupBehavior: 'restore' | 'new-tab' | 'pages';
+  homePageUrl: string | null;
+  startupUrls: string[];
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;

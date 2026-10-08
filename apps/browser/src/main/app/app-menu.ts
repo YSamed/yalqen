@@ -46,6 +46,7 @@ export function installAppMenu(host: AppMenuHost): void {
       focusAddress: inWindow((window) => window.openAddress()),
       find: () => current()?.openFind(),
       findNext: (forward) => current()?.openFind(forward),
+      home: inWindow((window) => window.goHome()),
       reload: () => current()?.tabs.reload(),
       hardReload: () => current()?.tabs.reloadIgnoringCache(),
       zoom: (direction) => current()?.tabs.zoom(direction),

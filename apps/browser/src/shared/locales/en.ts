@@ -1,4 +1,12 @@
 export const en = {
+  'toolbar.home': 'Home',
+  'settings.startupPages': 'Open specific pages',
+  'settings.startupUrls': 'Startup pages',
+  'settings.startupUrlsHint': 'One HTTP/HTTPS address per line, up to 20 pages. Pinned tabs are kept.',
+  'settings.homePage': 'Home page',
+  'settings.homePageHint': 'Leave empty to open a new tab. You can also use Alt+Home.',
+  'settings.showHomeButton': 'Show Home button',
+  'settings.pageUrlError': 'Enter HTTP/HTTPS addresses without embedded credentials (up to 20 startup pages).',
   'menu.savePage': 'Save Page As…',
   'menu.openFile': 'Open File…',
   'pageFiles.saveTitle': 'Save page for offline use',

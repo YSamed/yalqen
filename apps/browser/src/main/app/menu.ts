@@ -24,6 +24,7 @@ interface MenuActions {
   focusAddress(): void;
   find(): void;
   findNext(forward: boolean): void;
+  home(): void;
   reload(): void;
   hardReload(): void;
   zoom(direction: 1 | -1 | 0): void;
@@ -161,6 +162,7 @@ export function buildMenu(actions: MenuActions): Menu {
     {
       label: t('menu.view'),
       submenu: [
+        { label: t('toolbar.home'), accelerator: 'Alt+Home', click: actions.home },
         { label: t('menu.reload'), accelerator: 'CmdOrCtrl+R', click: actions.reload },
         { label: t('menu.hardReload'), accelerator: 'CmdOrCtrl+Shift+R', click: actions.hardReload },
         { label: t('menu.toggleCache'), click: () => actions.devCommand('toggle-cache') },

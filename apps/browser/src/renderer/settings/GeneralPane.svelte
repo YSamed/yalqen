@@ -8,6 +8,7 @@
   import TextField from '../ui/TextField.svelte';
   import SettingRow from './SettingRow.svelte';
   import Profiles from './Profiles.svelte';
+  import { webPageUrl } from '../../shared/startup-pages';
 
   let {
     view,
@@ -23,6 +24,7 @@
   const startupOptions = [
     { value: 'restore', label: t('settings.startupRestore') },
     { value: 'new-tab', label: t('settings.startupNewTab') },
+    { value: 'pages', label: t('settings.startupPages') },
   ] as const;
 
   const interfaceLanguageOptions = $derived([
@@ -35,6 +37,18 @@
   let templateDraft = $state('');
   let editingTemplate = $state(false);
   let choosingDirectory = $state(false);
+  let homeDraft = $state('');
+  let pagesDraft = $state('');
+  let editingHome = $state(false);
+  let editingPages = $state(false);
+  const pageLines = $derived(
+    pagesDraft
+      .split('\n')
+      .map((url) => url.trim())
+      .filter(Boolean),
+  );
+  const homeInvalid = $derived(!!homeDraft.trim() && !webPageUrl(homeDraft));
+  const pagesInvalid = $derived(pageLines.length > 20 || pageLines.some((url) => !webPageUrl(url)));
 
   const values = $derived(view.values);
   const languageChanged = $derived(values.interfaceLanguage !== startupInterfaceLanguage);
@@ -48,6 +62,21 @@
   $effect(() => {
     if (!editingTemplate) templateDraft = values.customSearchTemplate ?? '';
   });
+  $effect(() => {
+    if (!editingHome) homeDraft = values.homePageUrl ?? '';
+    if (!editingPages) pagesDraft = values.startupUrls.join('\n');
+  });
+
+  function saveHome(): void {
+    if (homeInvalid) return;
+    editingHome = false;
+    void update({ homePageUrl: webPageUrl(homeDraft) });
+  }
+  function savePages(): void {
+    if (pagesInvalid) return;
+    editingPages = false;
+    void update({ startupUrls: pageLines });
+  }
 
   function commitTemplate(): void {
     editingTemplate = false;
@@ -133,6 +162,52 @@
   />
 </SettingRow>
 
+{#if values.startupBehavior === 'pages'}
+  <SettingRow title={t('settings.startupUrls')} hint={t('settings.startupUrlsHint')} labelFor="startup-urls" stacked>
+    <textarea
+      id="startup-urls"
+      class="field md"
+      rows="4"
+      maxlength="164000"
+      bind:value={pagesDraft}
+      aria-invalid={pagesInvalid}
+      class:invalid={pagesInvalid}
+      onfocus={() => (editingPages = true)}
+      onchange={savePages}
+      spellcheck="false"
+      autocomplete="off"></textarea>
+    {#if pagesInvalid}<span class="error" role="alert">{t('settings.pageUrlError')}</span>{/if}
+  </SettingRow>
+{/if}
+
+<SettingRow title={t('settings.homePage')} hint={t('settings.homePageHint')} labelFor="home-page" stacked>
+  <TextField
+    id="home-page"
+    type="url"
+    maxlength={8192}
+    bind:value={homeDraft}
+    invalid={homeInvalid}
+    onfocus={() => (editingHome = true)}
+    onchange={saveHome}
+    spellcheck="false"
+    autocomplete="off"
+    placeholder="https://example.com/"
+  />
+  {#if homeInvalid}<span class="error" role="alert">{t('settings.pageUrlError')}</span>{/if}
+</SettingRow>
+<SettingRow title={t('settings.showHomeButton')}>
+  <Switch
+    label={t('settings.showHomeButton')}
+    checked={values.toolbarButtons.includes('home')}
+    onchange={(shown) =>
+      update({
+        toolbarButtons: shown
+          ? ['home', ...values.toolbarButtons.filter((id) => id !== 'home')]
+          : values.toolbarButtons.filter((id) => id !== 'home'),
+      })}
+  />
+</SettingRow>
+
 <h2>{t('settings.downloads')}</h2>
 <SettingRow title={t('settings.downloadDirectory')} hint={view.downloadDirectory}>
   <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDownloadDirectory}>
@@ -201,6 +276,15 @@
 </SettingRow>
 
 <style>
+  #startup-urls {
+    width: 100%;
+    min-height: 88px;
+    max-height: 280px;
+    padding: 8px 10px;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+
   .label .hint.ready {
     color: var(--text);
   }

@@ -1,3 +1,4 @@
+import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -869,7 +870,11 @@ function startBrowser(): void {
       for (const url of urls) window.tabs.open(url);
       window.focus();
     };
-    const [first, ...rest] = externalUrls.deliverTo(openExternal);
+    const launchUrls = [
+      ...startupPages(settings.get().startupBehavior, settings.get().startupUrls, saved?.resume === true),
+      ...externalUrls.deliverTo(openExternal),
+    ];
+    const [first, ...rest] = launchUrls;
     if (restored.length === 0) openWindow(first ? { url: first } : {});
     restored.forEach((window, index) =>
       openWindow({ saved: window, url: !restoring && index === restored.length - 1 ? first : undefined }),

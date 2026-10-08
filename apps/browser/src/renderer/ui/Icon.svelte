@@ -1,5 +1,6 @@
 <script lang="ts" module>
   const paths = {
+    home: 'M2 7 8 2l6 5M4 6v7h8V6M6.5 13V9h3v4',
     back: 'M10 3 5 8l5 5',
     forward: 'm6 3 5 5-5 5',
     up: 'm3 10 5-5 5 5',

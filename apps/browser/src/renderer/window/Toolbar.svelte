@@ -159,7 +159,9 @@
 {/snippet}
 
 {#snippet button(id: ToolbarButtonId)}
-  {#if id === 'bookmarks'}
+  {#if id === 'home'}
+    <IconButton icon="home" label={t('toolbar.home')} onclick={() => send({ type: 'go-home' })} />
+  {:else if id === 'bookmarks'}
     <IconButton icon="bookmarks" label={t('toolbar.bookmarks')} onclick={() => send({ type: 'open-bookmarks-menu' })} />
   {:else if id === 'history'}
     <IconButton

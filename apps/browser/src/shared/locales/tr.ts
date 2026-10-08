@@ -1,6 +1,15 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'toolbar.home': 'Ana sayfa',
+  'settings.startupPages': 'Belirli sayfaları aç',
+  'settings.startupUrls': 'Açılış sayfaları',
+  'settings.startupUrlsHint': 'Her satıra bir HTTP/HTTPS adresi; en fazla 20 sayfa. Sabitlenmiş sekmeler korunur.',
+  'settings.homePage': 'Ana sayfa',
+  'settings.homePageHint': 'Yeni sekme açmak için boş bırakın. Alt+Home da kullanılabilir.',
+  'settings.showHomeButton': 'Ana sayfa düğmesini göster',
+  'settings.pageUrlError': 'Kullanıcı bilgisi içermeyen HTTP/HTTPS adresleri girin (en fazla 20 açılış sayfası).',
+
   'menu.savePage': 'Sayfayı farklı kaydet…',
   'menu.openFile': 'Dosya aç…',
   'pageFiles.saveTitle': 'Sayfayı çevrimdışı kullanım için kaydet',

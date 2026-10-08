@@ -30,6 +30,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — çevrimdışı sayfa kaydı ve dosya açma:** Dosya → Sayfayı farklı kaydet (⌘/Ctrl+S), tek dosyalı MHTML ve HTML + kaynaklar seçeneklerini sunar. Geçici dizinde hazırlanan kayıt başarıyla tamamlanınca hedefe taşınır; HTML kaynakları ayrı ve benzersiz bir klasörde tutulur. İptal, gezinme veya kayıt hatası önceki hedef dosyayı değiştirmez. Dosya → Dosya aç (⌘/Ctrl+O) birden fazla yerel belge/görsel açar ve özel pencerenin gizliliğini korur. Yan panel daraltma kısayolu ⇧⌘/Ctrl+Y oldu. Gerçek Electron testinde sunucu kapalıyken MHTML ve HTML'nin metin, CSS ve görselleri yüklediği doğrulandı; MHTML denetiminde arşivlerde JavaScript kapalı olduğundan Chromium DOM/CSS protokolü kullanıldı. İptal ve hata/eskimiş kayıtların dosyayı koruması da doğrulandı.
 
+- **Tamamlandı — ana sayfa ve açılış URL'leri:** Genel ayarlarda ana sayfa adresi, düğmeyi gösterme ve satır başına bir adresle en fazla 20 açılış URL'si eklendi. Araç çubuğundaki Ana sayfa ve Alt+Home etkin sekmenin oturumunda gezinir; boş adres yeni sekmeye gider. Açılış listesi sabitlenmiş sekmelerle birlikte yüklenir; güncelleme yeniden başlatmasının tek seferlik oturum geri yüklemesi önceliklidir. Yalnızca açık HTTP/HTTPS adresleri kabul edilir; kullanıcı bilgili ve çalıştırılabilir/yerel şemalar reddedilir, tekrarlar ayıklanır. Ayarlar profil içinde kalıcıdır. Üretim Svelte ayar ekranında geçersiz adres reddi ve ana sayfa/çoklu URL kaydı, birim testinde kalıcılık ve yeniden başlatma önceliği doğrulandı.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

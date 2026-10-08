@@ -51,6 +51,7 @@
     { value: 'right', label: t('settings.right') },
   ] as const;
   const toolbarButtonLabels: Record<ToolbarButtonId, { label: string; icon: IconName }> = {
+    home: { label: t('toolbar.home'), icon: 'home' },
     bookmarks: { label: t('settings.bookmarks'), icon: 'bookmarks' },
     history: { label: t('settings.history'), icon: 'history' },
     extensions: { label: t('settings.paneExtensions'), icon: 'extensions' },

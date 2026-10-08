@@ -43,13 +43,15 @@ test('unknown or mistyped fields fall back', () => {
       customSearchTemplate: null,
       theme: 'light',
       startupBehavior: 'restore',
+      homePageUrl: null,
+      startupUrls: [],
       panelCollapsed: false,
       panelSide: 'left',
       pinnedDisplay: 'always',
       sidebarVisible: true,
       toolbarVisible: true,
       toolbarTabs: true,
-      toolbarButtons: ['bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
+      toolbarButtons: ['home', 'bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
       freezeBackgroundTabs: true,
       discardAfterMinutes: 30,
       adBlocking: true,
@@ -92,7 +94,7 @@ test('toolbar buttons are deduplicated, filtered and always keep settings', () =
     'settings',
   ]);
   assert.deepEqual(sanitizeSettings({ toolbarButtons: [] }).toolbarButtons, ['settings']);
-  assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 7);
+  assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 8);
 });
 
 test('download settings persist absolute folders and reject invalid paths', () => {

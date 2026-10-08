@@ -13,6 +13,7 @@ import type {
   ToolbarButtonId,
 } from '../../shared/types.js';
 import { DEFAULT_ZOOM_FACTORS, REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../../shared/types.js';
+import { webPageUrl, sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { JsonFile } from '../storage/json-file.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
 import { FONT_SIZES } from './page-preferences.js';
@@ -30,6 +31,8 @@ const DEFAULTS: Settings = {
   customSearchTemplate: null,
   theme: 'light',
   startupBehavior: 'restore',
+  homePageUrl: null,
+  startupUrls: [],
   panelCollapsed: false,
   panelSide: 'left',
   pinnedDisplay: 'always',
@@ -73,7 +76,7 @@ const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource
 const PINNED_DISPLAYS = new Set<string>(['always', 'expanded', 'never'] satisfies PinnedDisplay[]);
 const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
-const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab'] satisfies Settings['startupBehavior'][]);
+const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab', 'pages'] satisfies Settings['startupBehavior'][]);
 
 const TOOLBAR_BUTTONS = new Set<string>(TOOLBAR_BUTTON_IDS);
 const AGENT_ACTIONS = new Set<string>(['off', 'ask', 'allow'] satisfies AgentActionPolicy[]);
@@ -91,6 +94,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     customSearchTemplate,
     theme,
     startupBehavior,
+    homePageUrl,
+    startupUrls,
     panelCollapsed,
     panelSide,
     pinnedDisplay,
@@ -143,6 +148,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
       typeof startupBehavior === 'string' && STARTUP_BEHAVIORS.has(startupBehavior)
         ? (startupBehavior as Settings['startupBehavior'])
         : base.startupBehavior,
+    homePageUrl: homePageUrl === null || homePageUrl === '' ? null : (webPageUrl(homePageUrl) ?? base.homePageUrl),
+    startupUrls: Array.isArray(startupUrls) ? sanitizeStartupUrls(startupUrls) : base.startupUrls,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
     panelSide: typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
     pinnedDisplay:
