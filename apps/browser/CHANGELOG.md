@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.37](https://github.com/YSamed/yalqen/compare/v0.3.36...v0.3.37) (2026-10-08)
+
+
+### Features
+
+* add installable web app windows ([a0656b2](https://github.com/YSamed/yalqen/commit/a0656b2def4389b885aa4daea21dcce786b5e533))
+* add isolated article reader view ([cd4577f](https://github.com/YSamed/yalqen/commit/cd4577f01d6f909b58f6486c9726c775d4d75d48))
+* add persistent profile reading list ([ab25601](https://github.com/YSamed/yalqen/commit/ab256013493ddfb64ae14ff30461890bdac9ecad))
+* add tab groups and saved browsing workspaces ([afacdce](https://github.com/YSamed/yalqen/commit/afacdce05e3dd5b869c3a273ba60ddfb007fe266))
+
+
+### Bug Fixes
+
+* keep newly pinned background tabs accessible ([237fb29](https://github.com/YSamed/yalqen/commit/237fb29a551dc71ad0e8e15e9a8ac57efc49e15f))
+
 ## [0.3.36](https://github.com/YSamed/yalqen/compare/v0.3.35...v0.3.36) (2026-10-08)
 
 
