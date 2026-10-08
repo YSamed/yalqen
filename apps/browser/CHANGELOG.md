@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.35](https://github.com/YSamed/yalqen/compare/v0.3.34...v0.3.35) (2026-10-08)
+
+
+### Features
+
+* manage extension access to selected sites ([d9c765e](https://github.com/YSamed/yalqen/commit/d9c765ed9f69bc6b80cb1b7eff9671cebaaba546))
+
 ## [0.3.34](https://github.com/YSamed/yalqen/compare/v0.3.33...v0.3.34) (2026-10-08)
 
 
