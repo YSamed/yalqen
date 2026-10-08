@@ -72,6 +72,7 @@ import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } fr
 import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
+import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
 import { TabTranslation } from './tab-translation.js';
 import { stepZoom } from './zoom.js';
 
@@ -148,6 +149,8 @@ export class TabManager {
   private picking: PickSession | null = null;
   private readonly closing = new Set<TabId>();
   private readonly navigations = new WeakMap<Tab, number>();
+  private selected = new Set<TabId>();
+  private selectionAnchor: TabId | null = null;
 
   constructor(private readonly options: TabManagerOptions) {
     this.freezer = new TabFreezer({
@@ -179,12 +182,13 @@ export class TabManager {
     return this.tabs.length;
   }
 
-  state(): Pick<BrowserState, 'tabs' | 'listOrder' | 'activeTabId' | 'device' | 'zoom'> {
+  state(): Pick<BrowserState, 'tabs' | 'listOrder' | 'activeTabId' | 'selectedTabIds' | 'device' | 'zoom'> {
     const contents = liveContents(this.active());
     return {
       tabs: this.tabs.map((tab) => this.snapshot(tab)),
       listOrder: tabListOrder(this.tabs, this.openedPinned).map((tab) => tab.id),
       activeTabId: this.activeId,
+      selectedTabIds: this.selectedTabIds,
       device: this.placement.deviceFrame(this.active()),
       zoom: contents ? contents.getZoomFactor() : 1,
     };
@@ -275,6 +279,8 @@ export class TabManager {
   activate(id: TabId): void {
     const next = this.find(id);
     if (!next) return;
+    this.selected.clear();
+    this.selectionAnchor = id;
 
     const previous = this.active();
     if (previous?.view && previous.id !== id) {
@@ -319,6 +325,66 @@ export class TabManager {
     });
   }
 
+  get selectedTabIds(): TabId[] {
+    return this.selectionOrder()
+      .filter((tab) => this.selected.has(tab.id))
+      .map((tab) => tab.id);
+  }
+
+  private selectionOrder(): Tab[] {
+    const ordered = tabListOrder(this.tabs, this.openedPinned);
+    const seen = new Set(ordered.map((tab) => tab.id));
+    return [...this.tabs.filter((tab) => tab.pinnedUrl && !seen.has(tab.id)), ...ordered];
+  }
+
+  selectTab(id: TabId, mode: TabSelectionMode): void {
+    if (!this.find(id) || !['toggle', 'range'].includes(mode)) return;
+    const next = selectTabIds(
+      this.selectionOrder().map((tab) => tab.id),
+      this.selectedTabIds,
+      this.selectionAnchor,
+      this.activeId,
+      id,
+      mode,
+    );
+    this.selected = new Set(next.ids);
+    this.selectionAnchor = next.anchor;
+    this.changed();
+  }
+
+  clearSelection(): void {
+    this.selected.clear();
+    this.selectionAnchor = this.activeId;
+    this.changed();
+  }
+
+  toggleSelectedMute(): void {
+    const selected = this.tabs.filter((tab) => this.selected.has(tab.id));
+    const muted = !selected.every((tab) => tab.muted);
+    for (const tab of selected) {
+      tab.muted = muted;
+      liveContents(tab)?.setAudioMuted(muted);
+    }
+    this.changed();
+  }
+
+  toggleSelectedPin(): void {
+    const selected = this.tabs.filter((tab) => this.selected.has(tab.id));
+    const pin = !selected.every((tab) => tab.pinnedUrl);
+    for (const tab of selected) {
+      if (!!tab.pinnedUrl !== pin && (tab.pinnedUrl || (!tab.isPrivate && /^https?:/.test(tab.url))))
+        this.togglePin(tab.id);
+    }
+  }
+
+  async closeSelected(): Promise<boolean> {
+    const targets = this.selectionOrder().filter((tab) => this.selected.has(tab.id));
+    return this.closeGroup(targets, undefined, () => {
+      const current = this.selectionOrder().filter((tab) => this.selected.has(tab.id));
+      return current.length === targets.length && current.every((tab, index) => tab === targets[index]);
+    });
+  }
+
   duplicate(id: TabId): TabId | null {
     const source = this.find(id);
     if (!source) return null;
@@ -352,7 +418,19 @@ export class TabManager {
   async closeRelated(id: TabId, mode: BulkCloseMode): Promise<boolean> {
     const source = this.find(id);
     const targets = this.bulkTargets(id, mode);
-    if (!source || this.closing.has(id) || !targets.length || targets.some((tab) => this.closing.has(tab.id)))
+    if (!source) return false;
+    return this.closeGroup(targets, id, () => {
+      const current = this.bulkTargets(id, mode);
+      return (
+        this.find(id) === source &&
+        current.length === targets.length &&
+        current.every((tab, index) => tab === targets[index])
+      );
+    });
+  }
+
+  private async closeGroup(targets: Tab[], keepId: TabId | undefined, unchanged: () => boolean): Promise<boolean> {
+    if ((keepId && this.closing.has(keepId)) || !targets.length || targets.some((tab) => this.closing.has(tab.id)))
       return false;
     const pages = targets.map((tab) => ({
       tab,
@@ -360,16 +438,13 @@ export class TabManager {
       url: liveContents(tab)?.getURL() ?? tab.url,
       navigation: this.navigations.get(tab) ?? 0,
     }));
-    this.closing.add(id);
+    if (keepId) this.closing.add(keepId);
     for (const tab of targets) this.closing.add(tab.id);
     try {
       // Consent for the entire group comes before removing any page.
       for (const tab of targets) if (!(await this.confirmClose(tab))) return false;
-      const current = this.bulkTargets(id, mode);
       if (
-        this.find(id) !== source ||
-        current.length !== targets.length ||
-        current.some((tab, index) => tab !== targets[index]) ||
+        !unchanged() ||
         pages.some(
           ({ tab, contents, url, navigation }) =>
             liveContents(tab) !== contents ||
@@ -378,12 +453,19 @@ export class TabManager {
         )
       )
         return false;
-      if (targets.some((tab) => tab.id === this.activeId)) this.activate(source.id);
+      if (targets.some((tab) => tab.id === this.activeId)) {
+        const retained = keepId
+          ? this.find(keepId)
+          : tabListOrder(this.tabs, this.openedPinned).find((tab) => !targets.includes(tab));
+        if (retained) this.activate(retained.id);
+        else this.activeId = null;
+      }
       // The active source stays visible and closed tabs reopen in their original list order.
       for (const tab of targets.toReversed()) this.closeApproved(tab.id);
+      if (this.activeId === null) this.open();
       return true;
     } finally {
-      this.closing.delete(id);
+      if (keepId) this.closing.delete(keepId);
       for (const tab of targets) this.closing.delete(tab.id);
     }
   }
@@ -408,6 +490,8 @@ export class TabManager {
   private closeApproved(id: TabId): void {
     const index = this.indexOf(id);
     if (index < 0) return;
+    this.selected.delete(id);
+    if (this.selectionAnchor === id) this.selectionAnchor = null;
     const { pinnedUrl } = this.tabs[index];
     const neighbor = this.listNeighbor(id);
     if (pinnedUrl) {
@@ -456,9 +540,14 @@ export class TabManager {
   move(id: TabId, toIndex: number): void {
     const from = this.indexOf(id);
     if (from < 0) return;
-    const [tab] = this.tabs.splice(from, 1);
-    const target = Math.max(0, Math.min(toIndex, this.tabs.length));
-    this.tabs.splice(target, 0, tab);
+    const selected = this.selectedTabIds;
+    if (
+      selected.includes(id) &&
+      this.tabs.some((tab) => this.selected.has(tab.id) && !!tab.pinnedUrl !== !!this.tabs[from].pinnedUrl)
+    )
+      return;
+    const ordered = moveTabSelection(this.tabs, selected, id, toIndex);
+    this.tabs.splice(0, this.tabs.length, ...ordered);
     this.changed(true);
   }
 
@@ -1008,6 +1097,8 @@ export class TabManager {
     const index = this.indexOf(id);
     const tab = this.tabs[index];
     if (!tab || this.tabs.length < 2) return null;
+    this.selected.delete(id);
+    if (this.selectionAnchor === id) this.selectionAnchor = null;
     this.reanchorOpenedPinned(id);
     this.openedPinned.delete(id);
     this.tabs.splice(index, 1);

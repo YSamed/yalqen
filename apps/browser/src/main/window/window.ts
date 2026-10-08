@@ -1417,6 +1417,15 @@ export class YalqenWindow {
       case 'activate-tab':
         tabs.activate(action.id);
         break;
+      case 'select-tab':
+        tabs.selectTab(action.id, action.mode);
+        break;
+      case 'clear-tab-selection':
+        tabs.clearSelection();
+        break;
+      case 'close-selected-tabs':
+        void tabs.closeSelected();
+        break;
       case 'close-tab':
         tabs.close(action.id);
         break;
@@ -1628,8 +1637,17 @@ export class YalqenWindow {
           closeRight: () => {
             void tabs.closeRelated(id, 'right');
           },
+          closeSelected: () => {
+            void tabs.closeSelected();
+          },
+          muteSelected: () => tabs.toggleSelectedMute(),
+          pinSelected: () => tabs.toggleSelectedPin(),
         },
-        { others: tabs.canCloseRelated(id, 'others'), right: tabs.canCloseRelated(id, 'right') },
+        {
+          others: tabs.canCloseRelated(id, 'others'),
+          right: tabs.canCloseRelated(id, 'right'),
+          selected: tabs.selectedTabIds.includes(id) ? tabs.selectedTabIds.length : 0,
+        },
       ),
     );
   }

@@ -46,7 +46,9 @@ app
     draft.view.webContents.on('will-prevent-unload', (event) => {
       if (leave) event.preventDefault();
     });
-    assert.equal(await manager.closeRelated(source.id, 'others'), false);
+    manager.selectTab(draft.id, 'toggle');
+    assert.deepEqual(manager.selectedTabIds, ['clean', 'draft']);
+    assert.equal(await manager.closeSelected(), false);
     assert.equal(manager.count, 4);
     assert.equal(manager.options.closed.length, 0);
     assert.equal(privateEnded, 0);
@@ -55,7 +57,7 @@ app
     const cleanContents = clean.view.webContents;
     const draftContents = draft.view.webContents;
     leave = true;
-    assert.equal(await manager.closeRelated(source.id, 'right'), true);
+    assert.equal(await manager.closeSelected(), true);
     assert.deepEqual(
       manager.tabs.map(({ id }) => id),
       ['source', 'pinned'],
@@ -75,7 +77,7 @@ app
       ['clean'],
     );
     console.log(
-      'PASS: real bulk close cancels atomically, preserves forms and pinned tabs, then closes with private history isolation',
+      'PASS: real selected-tab close cancels atomically, preserves forms and pinned tabs, then closes with private history isolation',
     );
   })
   .then(() => app.quit())

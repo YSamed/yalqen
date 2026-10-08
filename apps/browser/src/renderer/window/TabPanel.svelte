@@ -14,6 +14,7 @@
     listOrder,
     developer,
     activeTabId,
+    selectedTabIds,
     collapsed,
     fading,
     side,
@@ -28,6 +29,7 @@
     listOrder: TabId[];
     developer: boolean;
     activeTabId: TabId | null;
+    selectedTabIds: TabId[];
     collapsed: boolean;
     fading: boolean;
     side: PanelSide;
@@ -72,6 +74,13 @@
   let brokenIcons: Record<string, true> = $state({});
 
   const send = window.yalqen.send;
+  const selected = $derived(new Set(selectedTabIds));
+
+  function selectTab(event: MouseEvent, id: TabId): void {
+    if (event.shiftKey) send({ type: 'select-tab', id, mode: 'range' });
+    else if (event.metaKey || event.ctrlKey) send({ type: 'select-tab', id, mode: 'toggle' });
+    else send({ type: 'activate-tab', id });
+  }
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
   const listed = $derived(tabs.filter((tab) => !tab.pinned));
@@ -107,6 +116,7 @@
   function label(tab: TabSnapshot): string {
     const states = [
       tab.id === activeTabId ? t('tabPanel.stateActive') : null,
+      selected.has(tab.id) ? t('tabPanel.stateSelected') : null,
       developer ? t('tabPanel.stateDeveloper') : tab.isPrivate ? t('tabPanel.statePrivate') : null,
       tab.live ? null : t('tabPanel.stateUnloaded'),
       tab.frozen ? t('tabPanel.stateFrozen') : null,
@@ -120,7 +130,7 @@
   // Pointer events instead of HTML drag and drop, so reordering does not depend on the
   // native macOS drag session inside the transparent glass window.
   function onPointerDown(event: PointerEvent & { currentTarget: HTMLElement }, id: TabId, group: DragGroup): void {
-    if (event.button !== 0 || !event.isPrimary || !lists) return;
+    if (event.button !== 0 || !event.isPrimary || !lists || event.ctrlKey || event.metaKey || event.shiftKey) return;
     if (settleOrder !== null) resetDragState();
     press = {
       id,
@@ -163,6 +173,10 @@
   }
 
   function onKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && selectedTabIds.length > 0 && !press?.dragging) {
+      send({ type: 'clear-tab-selection' });
+      return;
+    }
     if (event.key !== 'Escape' || !press?.dragging) return;
     press.cancelled = true;
     resetDragState();
@@ -321,7 +335,8 @@
     variant={tab.id === activeTabId ? 'surface' : 'ghost'}
     label={label(tab)}
     aria-current={tab.id === activeTabId ? 'page' : undefined}
-    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+    aria-pressed={selected.has(tab.id)}
+    onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
     {@render favicon(tab, 16)}
@@ -336,7 +351,8 @@
     class="tab-icon"
     label={tabLabel}
     tabindex={-1}
-    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+    aria-pressed={selected.has(tab.id)}
+    onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
     {@render favicon(tab, 16)}
@@ -361,7 +377,8 @@
     title={tab.url}
     aria-label={tabLabel}
     aria-current={tab.id === activeTabId ? 'page' : undefined}
-    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+    aria-pressed={selected.has(tab.id)}
+    onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
     <span class="title">{tab.title}</span>
@@ -411,6 +428,7 @@
               <li
                 class="favorite"
                 class:active={tab.id === activeTabId}
+                class:selected={selected.has(tab.id)}
                 class:discarded={!tab.live}
                 class:lifted={tab.id === dragId}
                 class:returning={tab.id === returningId}
@@ -434,7 +452,8 @@
                     class="tile"
                     label={label(tab)}
                     aria-current={tab.id === activeTabId ? 'page' : undefined}
-                    onclick={() => send({ type: 'activate-tab', id: tab.id })}
+                    aria-pressed={selected.has(tab.id)}
+                    onclick={(e) => selectTab(e, tab.id)}
                     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
                   >
                     {@render favicon(tab, 16)}
@@ -458,6 +477,7 @@
                 class="row"
                 class:private={tab.isPrivate}
                 class:active={tab.id === activeTabId}
+                class:selected={selected.has(tab.id)}
                 class:discarded={!tab.live}
                 class:lifted={index >= 0 && tab.id === dragId}
                 class:returning={index >= 0 && tab.id === returningId}
@@ -493,6 +513,27 @@
       </div>
 
       <footer class="footer" class:compact={collapsed}>
+        {#if selectedTabIds.length > 1}
+          <div
+            class="selection"
+            aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
+            title={t('tabPanel.selectionHint')}
+          >
+            {#if !collapsed}<span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span
+              >{/if}
+            <IconButton
+              icon="close"
+              size="sm"
+              label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
+              onclick={() => send({ type: 'close-selected-tabs' })}
+            />
+            <button
+              class="clear-selection"
+              aria-label={t('tabPanel.clearSelection')}
+              onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
+            >
+          </div>
+        {/if}
         <div class="profiles" role="group" aria-label={t('tabPanel.profiles')}>
           {#each profiles as item (item.id)}
             <button
@@ -643,6 +684,37 @@
     box-shadow:
       var(--shadow),
       inset 0 0 0 1.5px var(--accent);
+  }
+
+  .favorite.selected :global(.icon-btn),
+  .row.selected .pill,
+  .collapsed .row.selected :global(.icon-btn) {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .selection {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 100%;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+  }
+  .selection span {
+    flex: 1;
+  }
+  .clear-selection {
+    border: 0;
+    border-radius: 5px;
+    padding: 4px;
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+  }
+  .compact .selection {
+    flex-direction: column;
+    flex-basis: auto;
   }
 
   .favorite:not(.active) .favicon {
@@ -887,6 +959,7 @@
 
   .footer {
     display: flex;
+    flex-wrap: wrap;
     flex: none;
     align-items: center;
     justify-content: space-between;

@@ -12,6 +12,7 @@ for (const test of [
   'login-selection.mjs',
   'bookmark-transfer.mjs',
   'bulk-tabs.mjs',
+  'tab-selection.mjs',
 ]) {
   const result = spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
     stdio: 'inherit',

@@ -109,6 +109,7 @@ export interface BrowserState {
   listOrder: TabId[];
   developer: boolean;
   activeTabId: TabId | null;
+  selectedTabIds: TabId[];
   pageFullScreen: boolean;
   windowFullScreen: boolean;
   addressPlaceholder: string;
@@ -365,6 +366,9 @@ export interface AnchorRect {
 export type UiAction =
   | { type: 'new-tab'; url?: string }
   | { type: 'activate-tab'; id: TabId }
+  | { type: 'select-tab'; id: TabId; mode: 'toggle' | 'range' }
+  | { type: 'clear-tab-selection' }
+  | { type: 'close-selected-tabs' }
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }

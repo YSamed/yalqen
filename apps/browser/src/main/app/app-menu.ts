@@ -34,7 +34,8 @@ export function installAppMenu(host: AppMenuHost): void {
       newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
       closeTab: () => {
         const tabs = current()?.tabs;
-        if (tabs?.activeTabId) tabs.close(tabs.activeTabId);
+        if (tabs && tabs.selectedTabIds.length > 1) void tabs.closeSelected();
+        else if (tabs?.activeTabId) tabs.close(tabs.activeTabId);
       },
       closeWindow: () => BaseWindow.getFocusedWindow()?.close(),
       reopenClosedTab: inWindow((window) => window.tabs.reopenClosed()),

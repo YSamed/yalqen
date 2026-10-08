@@ -917,6 +917,13 @@ export const en = {
   'window.duplicateTab': 'Duplicate Tab',
   'window.closeOtherTabs': 'Close Other Tabs',
   'window.closeTabsRight': 'Close Tabs to the Right',
+  'window.closeSelectedTabs': 'Close {count} Selected Tabs',
+  'window.muteSelectedTabs': 'Mute/Unmute Selected Tabs',
+  'window.pinSelectedTabs': 'Pin/Unpin Selected Tabs',
+  'tabPanel.selected': '{count} tabs selected',
+  'tabPanel.clearSelection': 'Clear Tab Selection',
+  'tabPanel.selectionHint': 'Cmd/Ctrl-click to select tabs, Shift-click to select a range',
+  'tabPanel.stateSelected': 'selected',
   'window.showOriginalPage': 'Show Original Page',
   'window.translatePage': 'Translate Page',
 

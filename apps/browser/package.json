@@ -19,7 +19,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run build:main && npm run build:preload && node --test 'test/**/*.test.mjs'",
-    "test:runtime": "node scripts/test-runtime.mjs",
+    "test:runtime": "npm run build:renderer && node scripts/test-runtime.mjs",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
     "bench": "npm run build && node scripts/bench.mjs",
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",

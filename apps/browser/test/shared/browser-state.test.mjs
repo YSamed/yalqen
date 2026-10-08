@@ -42,6 +42,7 @@ const fixture = () => ({
   listOrder: ['a', 'b'],
   developer: false,
   activeTabId: 'a',
+  selectedTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
   addressPlaceholder: 'Search',
@@ -191,6 +192,7 @@ test('all window fields and nested summaries remain current while tabs are reuse
     ['device', null],
     ['toolbarButtons', ['downloads', 'settings']],
     ['listOrder', ['b', 'a']],
+    ['selectedTabIds', ['a', 'b']],
   ]) {
     const next = structuredClone(previous);
     next[key] = value;

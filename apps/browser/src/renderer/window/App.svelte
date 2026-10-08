@@ -36,6 +36,7 @@
     listOrder: [],
     developer: false,
     activeTabId: null,
+    selectedTabIds: [],
     pageFullScreen: false,
     windowFullScreen: false,
     addressPlaceholder: t('app.addressPlaceholder'),
@@ -308,6 +309,7 @@
         {listOrder}
         {developer}
         {activeTabId}
+        selectedTabIds={browser.selectedTabIds}
         collapsed={contentCollapsed}
         fading={contentFading}
         {side}

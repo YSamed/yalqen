@@ -19,11 +19,15 @@ interface TabMenuActions {
   duplicate(): void;
   closeOthers(): void;
   closeRight(): void;
+  closeSelected?(): void;
+  muteSelected?(): void;
+  pinSelected?(): void;
 }
 
 interface TabMenuAvailability {
   others: boolean;
   right: boolean;
+  selected?: number;
 }
 
 export function tabMenuTemplate(
@@ -47,6 +51,13 @@ export function tabMenuTemplate(
     { label: t('window.closeOtherTabs'), enabled: availability.others, click: actions.closeOthers },
     { label: t('window.closeTabsRight'), enabled: availability.right, click: actions.closeRight },
   );
+  if ((availability.selected ?? 0) > 1)
+    template.push(
+      { type: 'separator' },
+      { label: t('window.closeSelectedTabs', { count: availability.selected! }), click: actions.closeSelected },
+      { label: t('window.muteSelectedTabs'), click: actions.muteSelected },
+      { label: t('window.pinSelectedTabs'), click: actions.pinSelected },
+    );
   return template;
 }
 

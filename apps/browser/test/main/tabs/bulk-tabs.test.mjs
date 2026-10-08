@@ -188,3 +188,68 @@ test('tab menu exposes duplicate and disables bulk operations without eligible t
   assert.equal(menu.find(({ label }) => label === 'Sağdaki sekmeleri kapat').enabled, false);
   assert.deepEqual(called, ['duplicate', 'others']);
 });
+
+test('selected tabs close atomically, retain nonselected tabs and leave private data out of history', async () => {
+  const manager = fixture();
+  manager.tabs.at(-1).isPrivate = true;
+  manager.selectTab('right', 'toggle');
+  manager.selectTab('last', 'toggle');
+  assert.deepEqual(manager.selectedTabIds, ['source', 'right', 'last']);
+  manager.confirmClose = async (tab) => tab.id !== 'last';
+  assert.equal(await manager.closeSelected(), false);
+  assert.equal(manager.count, 4);
+  assert.deepEqual(manager.options.closed, []);
+  manager.confirmClose = async () => true;
+  assert.equal(await manager.closeSelected(), true);
+  assert.deepEqual(
+    manager.tabs.map(({ id }) => id),
+    ['left'],
+  );
+  assert.deepEqual(manager.selectedTabIds, []);
+  assert.deepEqual(
+    manager.options.closed.map(({ id }) => id),
+    ['right', 'source'],
+  );
+  assert.equal(manager.activeTabId, 'left');
+});
+
+test('selected group operations update mute, pin and ordering consistently', () => {
+  const manager = fixture();
+  manager.selectTab('last', 'toggle');
+  manager.toggleSelectedMute();
+  assert.deepEqual(
+    manager.tabs.map(({ muted }) => muted),
+    [false, true, false, true],
+  );
+  manager.toggleSelectedMute();
+  assert.equal(
+    manager.tabs.some(({ muted }) => muted),
+    false,
+  );
+  manager.move('source', 3);
+  assert.deepEqual(
+    manager.tabs.map(({ id }) => id),
+    ['left', 'right', 'source', 'last'],
+  );
+  manager.toggleSelectedPin();
+  assert.equal(manager.tabs.filter(({ pinnedUrl }) => pinnedUrl).length, 2);
+  manager.toggleSelectedPin();
+  assert.equal(
+    manager.tabs.some(({ pinnedUrl }) => pinnedUrl),
+    false,
+  );
+  manager.clearSelection();
+  assert.deepEqual(manager.selectedTabIds, []);
+});
+
+test('changing selection during consent aborts the operation', async () => {
+  const manager = fixture();
+  manager.selectTab('right', 'toggle');
+  manager.confirmClose = async () => {
+    if (!manager.selectedTabIds.includes('last')) manager.selectTab('last', 'toggle');
+    return true;
+  };
+  assert.equal(await manager.closeSelected(), false);
+  assert.equal(manager.count, 4);
+  assert.equal(manager.closing.size, 0);
+});

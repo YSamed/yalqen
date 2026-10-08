@@ -921,6 +921,13 @@ export const tr: Record<MessageKey, string> = {
   'window.duplicateTab': 'Sekmeyi çoğalt',
   'window.closeOtherTabs': 'Diğer sekmeleri kapat',
   'window.closeTabsRight': 'Sağdaki sekmeleri kapat',
+  'window.closeSelectedTabs': 'Seçilen {count} sekmeyi kapat',
+  'window.muteSelectedTabs': 'Seçilenlerin sesini aç/kapat',
+  'window.pinSelectedTabs': 'Seçilenleri sabitle/kaldır',
+  'tabPanel.selected': '{count} sekme seçildi',
+  'tabPanel.clearSelection': 'Sekme seçimini temizle',
+  'tabPanel.selectionHint': 'Cmd/Ctrl ile tek tek, Shift ile aralık seçin',
+  'tabPanel.stateSelected': 'seçili',
   'window.showOriginalPage': 'Özgün sayfayı göster',
   'window.translatePage': 'Sayfayı çevir',
 
