@@ -1,7 +1,7 @@
 {
   "name": "yalqen",
   "productName": "Yalqen",
-  "version": "0.3.34",
+  "version": "0.3.35",
   "private": true,
   "license": "MIT",
   "description": "A fast, privacy-minded web browser for macOS",
