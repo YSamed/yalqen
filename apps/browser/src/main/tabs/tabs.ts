@@ -609,7 +609,9 @@ export class TabManager {
     } else {
       if (tab.isPrivate || !/^https?:/.test(tab.url)) return;
       this.reanchorOpenedPinned(id);
-      if (id === this.activeId) this.openedPinned.set(id, this.previousUnpinnedId(id));
+      // Pinning an existing row keeps it open even in the background. Otherwise
+      // expanded-only/hidden launchers make that row inaccessible in a collapsed panel.
+      this.openedPinned.set(id, this.previousUnpinnedId(id));
       tab.pinnedUrl = tab.url;
       this.freezer.unfreeze(tab);
     }
