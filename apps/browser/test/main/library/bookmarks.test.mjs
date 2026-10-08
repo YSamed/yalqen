@@ -297,7 +297,7 @@ test('the page lists folders once, however many bookmarks can be moved', () => {
   const html = renderBookmarks(folders, list, '');
   const template = /<template id="folder-options">(.*?)<\/template>/s.exec(html)?.[1] ?? '';
   assert.equal(template.match(/<option /g)?.length, folders.length + 1);
-  assert.equal(html.match(/<option /g)?.length, folders.length + 1 + list.length);
+  assert.equal(html.match(/<option /g)?.length, folders.length * 2 + 3 + list.length);
   assert.match(html, /<option value="f2" selected>Folder 2<\/option><\/select>/);
   assert.match(html, /<select [^>]*data-folder-options><option value="" selected>Klasör yok<\/option><\/select>/);
   assert.doesNotMatch(renderBookmarks([], list.slice(0, 1), ''), /folder-options/);

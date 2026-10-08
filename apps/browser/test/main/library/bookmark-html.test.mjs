@@ -36,9 +36,9 @@ const source = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
 test('Netscape HTML handles omitted tags, nested folders, entities, dates and unsupported URLs', async () => {
   const parsed = await parseBookmarkHtml(source);
   assert.deepEqual(parsed.folders, [
-    { title: 'İş & araştırma', createdAt: 1700000000000 },
-    { title: 'İş & araştırma / Alt klasör', createdAt: null },
-    { title: 'Boş', createdAt: null },
+    { title: 'İş & araştırma', createdAt: 1700000000000, path: ['İş & araştırma'] },
+    { title: 'İş & araştırma / Alt klasör', createdAt: null, path: ['İş & araştırma', 'Alt klasör'] },
+    { title: 'Boş', createdAt: null, path: ['Boş'] },
   ]);
   assert.deepEqual(
     parsed.bookmarks.map(({ title, url, folder }) => [title, url, folder]),
@@ -79,7 +79,7 @@ test('HTML exports round trip names, URLs, dates, loose bookmarks and empty fold
   const result = await parseBookmarkHtml(html);
   assert.deepEqual(
     result.folders,
-    folders.map(({ title, createdAt }) => ({ title, createdAt })),
+    folders.map(({ title, createdAt }) => ({ title, createdAt, path: [title] })),
   );
   assert.deepEqual(
     result.bookmarks,
@@ -88,6 +88,7 @@ test('HTML exports round trip names, URLs, dates, loose bookmarks and empty fold
       url,
       createdAt,
       folder: index === 0 ? folders[0].title : null,
+      folderPath: index === 0 ? [folders[0].title] : [],
     })),
   );
   assert.equal(result.skipped, 0);

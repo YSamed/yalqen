@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { MenuItemConstructorOptions } from 'electron';
-import { canBookmark, menuTitle, type BookmarkStore, type ImportedBookmark } from './bookmarks.js';
+import {
+  canBookmark,
+  menuTitle,
+  type BookmarkStore,
+  type ImportedBookmark,
+  type ImportedBookmarkFolder,
+} from './bookmarks.js';
 import { isWebUrl, MAX_VISITS, type HistoryStore, type ImportedVisit } from './history.js';
 import { t } from '../../shared/i18n.js';
 
@@ -13,6 +19,7 @@ export interface ImportSource {
 
 interface ParsedBookmarks {
   bookmarks: ImportedBookmark[];
+  folders: ImportedBookmarkFolder[];
   skipped: number;
 }
 
@@ -94,7 +101,7 @@ export function firefoxTimeToUnixMs(value: unknown): number | null {
   return microsToUnixMs(value, 0);
 }
 
-// Yalqen folders are flat, so a nested source folder becomes one `Parent / Child` folder.
+// The legacy display label is retained; structured paths preserve actual nesting.
 function folderTitle(segments: readonly string[]): string | null {
   return (
     segments
@@ -108,14 +115,22 @@ export function parseChromiumBookmarks(data: unknown): ParsedBookmarks {
   const roots = (data as { roots?: unknown } | null)?.roots;
   if (!roots || typeof roots !== 'object') throw new SyntaxError('Not a Chromium bookmarks file');
   const bookmarks: ImportedBookmark[] = [];
+  const importedFolders: ImportedBookmarkFolder[] = [];
   const seen = new Set<string>();
   let skipped = 0;
   const walk = (nodes: unknown, folders: readonly string[]): void => {
-    if (!Array.isArray(nodes)) return;
+    if (!Array.isArray(nodes) || folders.length >= 128) return;
     for (const node of nodes as (ChromiumNode | null)[]) {
       const name = typeof node?.name === 'string' ? node.name : '';
       if (node?.type === 'folder') {
-        walk(node.children, [...folders, name]);
+        if (folders.length >= 127) continue;
+        const segments = [...folders, name.trim() || t('bookmarks.newFolder')];
+        importedFolders.push({
+          title: segments.join(' / '),
+          path: segments,
+          createdAt: webkitTimeToUnixMs(node.date_added),
+        });
+        walk(node.children, segments);
       } else if (node?.type === 'url') {
         const url = typeof node.url === 'string' ? node.url : '';
         if (!canBookmark(url) || seen.has(url)) {
@@ -127,13 +142,14 @@ export function parseChromiumBookmarks(data: unknown): ParsedBookmarks {
           title: name,
           url,
           folder: folderTitle(folders),
+          folderPath: folders.filter((segment) => segment.trim()),
           createdAt: webkitTimeToUnixMs(node.date_added),
         });
       }
     }
   };
   for (const root of CHROMIUM_ROOTS) walk((roots as Record<string, ChromiumNode | undefined>)[root]?.children, []);
-  return { bookmarks, skipped };
+  return { bookmarks, folders: importedFolders, skipped };
 }
 
 // Profiles of installed Chromium browsers that contain `fileName` (e.g. `Bookmarks`, `History`).
@@ -174,7 +190,7 @@ function profileNames(root: string): Record<string, string> {
 
 export async function importChromiumBookmarks(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
   const parsed = parseChromiumBookmarks(JSON.parse(await fs.promises.readFile(file, 'utf8')));
-  const added = store.importBookmarks(parsed.bookmarks);
+  const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
 
@@ -184,7 +200,7 @@ export async function importBookmarkFile(store: BookmarkStore, file: string): Pr
   const text = await readBookmarkFile(file);
   const parsed = text.trimStart().startsWith('<')
     ? await parseBookmarkHtml(text)
-    : { ...parseChromiumBookmarks(JSON.parse(text)), folders: [] };
+    : parseChromiumBookmarks(JSON.parse(text));
   const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
@@ -347,14 +363,25 @@ export function parseFirefoxBookmarks(rows: readonly FirefoxBookmarkRow[]): Pars
     else children.set(String(row.parent), [row]);
   }
   const bookmarks: ImportedBookmark[] = [];
+  const importedFolders: ImportedBookmarkFolder[] = [];
   const seen = new Set<string>();
   let skipped = 0;
+  const visited = new Set<string>();
   const walk = (id: string, folders: readonly string[]): void => {
+    if (visited.has(id) || folders.length >= 128) return;
+    visited.add(id);
     for (const row of children.get(id) ?? []) {
       const title = typeof row.title === 'string' ? row.title : '';
       const type = Number(row.type);
       if (type === FIREFOX_FOLDER) {
-        walk(String(row.id), [...folders, title]);
+        if (folders.length >= 127) continue;
+        const segments = [...folders, title.trim() || t('bookmarks.newFolder')];
+        importedFolders.push({
+          title: segments.join(' / '),
+          path: segments,
+          createdAt: firefoxTimeToUnixMs(row.dateAdded),
+        });
+        walk(String(row.id), segments);
       } else if (type === FIREFOX_BOOKMARK) {
         const url = typeof row.url === 'string' ? row.url : '';
         if (!canBookmark(url) || seen.has(url)) {
@@ -362,7 +389,13 @@ export function parseFirefoxBookmarks(rows: readonly FirefoxBookmarkRow[]): Pars
           continue;
         }
         seen.add(url);
-        bookmarks.push({ title, url, folder: folderTitle(folders), createdAt: firefoxTimeToUnixMs(row.dateAdded) });
+        bookmarks.push({
+          title,
+          url,
+          folder: folderTitle(folders),
+          folderPath: folders.filter((segment) => segment.trim()),
+          createdAt: firefoxTimeToUnixMs(row.dateAdded),
+        });
       }
     }
   };
@@ -370,12 +403,12 @@ export function parseFirefoxBookmarks(rows: readonly FirefoxBookmarkRow[]): Pars
     const root = rows.find((row) => row.guid === guid);
     if (root) walk(String(root.id), []);
   }
-  return { bookmarks, skipped };
+  return { bookmarks, folders: importedFolders, skipped };
 }
 
 export async function importFirefoxBookmarks(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
   const parsed = await querySqliteCopy(file, FIREFOX_BOOKMARKS_QUERY, (rows) => parseFirefoxBookmarks([...rows]));
-  const added = store.importBookmarks(parsed.bookmarks);
+  const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
 

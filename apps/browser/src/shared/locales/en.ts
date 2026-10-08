@@ -1115,6 +1115,14 @@ export const en = {
 
   'bookmarksPage.title': 'Bookmarks',
 
+  'bookmarks.parentFolder': 'Parent folder',
+  'bookmarks.selectAll': 'Select all (up to 1,000)',
+  'bookmarks.selected': '{count} selected',
+  'bookmarks.moveSelected': 'Move selected',
+  'bookmarks.deleteSelected': 'Delete selected',
+  'bookmarks.confirmDeleteSelected': 'Delete the selected bookmarks?',
+  'bookmarks.selectBookmark': 'Select {title}',
+  'bookmarks.address': 'Address',
   'bookmarks.newFolder': 'New folder',
   'bookmarks.menuEmpty': 'Empty',
   'bookmarks.menuNone': 'No Bookmarks Yet',

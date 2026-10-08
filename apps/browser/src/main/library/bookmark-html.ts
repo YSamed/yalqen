@@ -5,6 +5,7 @@ import { t } from '../../shared/i18n.js';
 import { escapeHtml } from '../pages/html.js';
 import {
   bookmarksByFolder,
+  bookmarkFoldersByParent,
   canBookmark,
   type Bookmark,
   type BookmarkFolder,
@@ -77,12 +78,16 @@ export async function parseBookmarkHtml(html: string): Promise<ParsedHtmlBookmar
       } else if (context && node.tagName === 'h3') {
         const title = textContent(node) || t('bookmarks.newFolder');
         context.pending = title;
-        const fullTitle = [...context.segments, title].join(' / ');
-        if (!folderTitles.has(fullTitle)) {
-          folderTitles.add(fullTitle);
+        const path = [...context.segments, title];
+        if (path.length >= MAX_DEPTH) throw new RangeError(t('browserImport.bookmarksTooLarge'));
+        const fullTitle = path.join(' / ');
+        const key = JSON.stringify(path);
+        if (!folderTitles.has(key)) {
+          folderTitles.add(key);
           result.folders.push({
             title: fullTitle,
             createdAt: secondsToMs(node.attrs.find((attr) => attr.name === 'add_date')?.value),
+            path,
           });
         }
         continue;
@@ -95,6 +100,7 @@ export async function parseBookmarkHtml(html: string): Promise<ParsedHtmlBookmar
             title: textContent(node),
             url,
             folder: context.segments.join(' / ') || null,
+            folderPath: [...context.segments],
             createdAt: secondsToMs(node.attrs.find((attr) => attr.name === 'add_date')?.value),
           });
         }
@@ -122,12 +128,18 @@ export function exportBookmarkHtml(folders: readonly BookmarkFolder[], bookmarks
     '<H1>Bookmarks</H1>',
     '<DL><p>',
   ];
-  for (const folder of folders) {
+  const children = bookmarkFoldersByParent(folders);
+  const seen = new Set<string>();
+  const folderLines = (folder: BookmarkFolder, depth: number) => {
+    if (seen.has(folder.id) || depth > MAX_DEPTH) return;
+    seen.add(folder.id);
     lines.push(`    <DT><H3 ADD_DATE="${date(folder.createdAt)}">${escapeHtml(folder.title)}</H3>`, '    <DL><p>');
+    for (const child of children.get(folder.id) ?? []) folderLines(child, depth + 1);
     for (const bookmark of groups.get(folder.id) ?? [])
       if (canBookmark(bookmark.url)) lines.push(`    ${link(bookmark)}`);
     lines.push('    </DL><p>');
-  }
+  };
+  for (const folder of children.get(null) ?? []) folderLines(folder, 1);
   const folderIds = new Set(folders.map((folder) => folder.id));
   for (const bookmark of bookmarks) {
     if ((bookmark.folderId === null || !folderIds.has(bookmark.folderId)) && canBookmark(bookmark.url))

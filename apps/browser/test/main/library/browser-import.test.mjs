@@ -60,7 +60,7 @@ function touch(file, content = '{}') {
   fs.writeFileSync(file, content);
 }
 
-test('nested folders are flattened and root children stay at the top level, across all three roots', () => {
+test('nested folders retain paths and root children stay at the top level, across all three roots', () => {
   const { bookmarks: list, skipped } = parseChromiumBookmarks(
     chromium(
       [
@@ -83,13 +83,14 @@ test('nested folders are flattened and root children stay at the top level, acro
       ['Bar', 'https://bar.example/', null],
       ['Mail', 'https://mail.example/', 'Work'],
       ['Spec', 'https://spec.example/', 'Work / Docs / Old'],
-      ['Unnamed', 'https://unnamed.example/', null],
+      ['Unnamed', 'https://unnamed.example/', 'Yeni klasör'],
       ['Other', 'https://other.example/', null],
       ['Mobile', 'https://mobile.example/', 'Phone'],
     ],
   );
   assert.deepEqual(parseChromiumBookmarks({ roots: { other: folder('Other', url('O', 'https://o.example/')) } }), {
-    bookmarks: [{ title: 'O', url: 'https://o.example/', folder: null, createdAt: NEW_YEAR }],
+    bookmarks: [{ title: 'O', url: 'https://o.example/', folder: null, folderPath: [], createdAt: NEW_YEAR }],
+    folders: [],
     skipped: 0,
   });
 });
@@ -521,7 +522,7 @@ const FIREFOX_ROOT_ROWS = [
   bookmarkRow(6, 2, 1, 'mobile', { guid: 'mobile______' }),
 ];
 
-test('Firefox bookmark rows skip the built-in roots and tags and flatten nested folders', () => {
+test('Firefox bookmark rows skip the built-in roots and tags and retain nested folder paths', () => {
   const rows = [
     ...FIREFOX_ROOT_ROWS,
     bookmarkRow(10, 1, 3, 'Bar', { url: 'https://bar.example/', dateAdded: NEW_YEAR_FIREFOX }),
@@ -552,6 +553,13 @@ test('Firefox bookmark rows skip the built-in roots and tags and flatten nested 
     ],
     skipped: 2,
   };
+  for (const bookmark of expected.bookmarks) bookmark.folderPath = bookmark.folder ? bookmark.folder.split(' / ') : [];
+  expected.folders = [
+    { title: 'Work', path: ['Work'], createdAt: null },
+    { title: 'Work / Docs', path: ['Work', 'Docs'], createdAt: null },
+    { title: 'Work / Docs / Old', path: ['Work', 'Docs', 'Old'], createdAt: null },
+    { title: 'Phone', path: ['Phone'], createdAt: null },
+  ];
   assert.deepEqual(parseFirefoxBookmarks(rows), expected);
   const bigints = rows.map((row) => ({
     ...row,
@@ -560,7 +568,7 @@ test('Firefox bookmark rows skip the built-in roots and tags and flatten nested 
     parent: BigInt(row.parent),
   }));
   assert.deepEqual(parseFirefoxBookmarks(bigints), expected);
-  assert.deepEqual(parseFirefoxBookmarks([]), { bookmarks: [], skipped: 0 });
+  assert.deepEqual(parseFirefoxBookmarks([]), { bookmarks: [], folders: [], skipped: 0 });
 });
 
 const firefoxVisit = (url, last_visit_date = NEW_YEAR_FIREFOX, title = 'Sayfa') => ({ url, title, last_visit_date });
@@ -661,7 +669,7 @@ test('Firefox bookmarks and history are read from a temporary copy of places.sql
     const bookmarkStore = new BookmarkStore(path.join(dir, 'yalqen'));
     const historyStore = new HistoryStore(path.join(dir, 'yalqen'));
 
-    assert.deepEqual(await importFirefoxBookmarks(bookmarkStore, source), { bookmarks: 4, folders: 2, skipped: 2 });
+    assert.deepEqual(await importFirefoxBookmarks(bookmarkStore, source), { bookmarks: 4, folders: 3, skipped: 2 });
     const folders = new Map(bookmarkStore.folders().map(({ id, title }) => [id, title]));
     assert.deepEqual(
       bookmarkStore
@@ -670,7 +678,7 @@ test('Firefox bookmarks and history are read from a temporary copy of places.sql
       [
         ['Getting Started', 'https://www.mozilla.org/firefox/central/', undefined, NEW_YEAR],
         ['Posta', 'https://mail.example/', 'İş', NEW_YEAR],
-        ['Şartname', 'https://spec.example/', 'İş / Belgeler', NEW_YEAR],
+        ['Şartname', 'https://spec.example/', 'Belgeler', NEW_YEAR],
         ['Telefon', 'https://mobile.example/', undefined, NEW_YEAR],
       ],
     );
@@ -715,7 +723,7 @@ test('places.sqlite is read while Firefox has it open with recent writes still i
 
     const bookmarkStore = new BookmarkStore(path.join(dir, 'yalqen'));
     const historyStore = new HistoryStore(path.join(dir, 'yalqen'));
-    assert.deepEqual(await importFirefoxBookmarks(bookmarkStore, source), { bookmarks: 5, folders: 2, skipped: 2 });
+    assert.deepEqual(await importFirefoxBookmarks(bookmarkStore, source), { bookmarks: 5, folders: 3, skipped: 2 });
     assert.equal(bookmarkStore.find('https://recent.example/').title, 'Yeni');
     assert.deepEqual(await importFirefoxHistory(historyStore, source), { visits: 5, skipped: 0 });
     assert.equal(historyStore.list()[0].url, 'https://recent.example/');

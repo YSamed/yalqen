@@ -19,6 +19,7 @@ export interface BookmarkFolder {
   id: string;
   title: string;
   createdAt: number;
+  parentId: string | null;
 }
 
 export interface ImportedBookmark {
@@ -26,21 +27,25 @@ export interface ImportedBookmark {
   url: string;
   folder: string | null;
   createdAt: number | null;
+  folderPath?: readonly string[];
 }
 
 export interface ImportedBookmarkFolder {
   title: string;
   createdAt: number | null;
+  path?: readonly string[];
 }
 
 interface SavedBookmarks {
-  version: 1;
+  version: 1 | 2;
   folders: BookmarkFolder[];
   bookmarks: Bookmark[];
 }
 
 const MAX_TITLE = 200;
 const MENU_TITLE = 60;
+const MAX_FOLDER_DEPTH = 127;
+const MAX_BULK_BOOKMARKS = 1000;
 
 export function canBookmark(url: string): boolean {
   try {
@@ -68,12 +73,36 @@ export class BookmarkStore {
     this.json = new JsonFile(this.file, 'bookmarks');
     try {
       const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as SavedBookmarks;
-      if (data.version !== 1) return;
-      this.folderList = (Array.isArray(data.folders) ? data.folders : []).filter(
-        (folder) =>
-          typeof folder?.id === 'string' && typeof folder.title === 'string' && Number.isFinite(folder.createdAt),
-      );
+      if (data.version !== 1 && data.version !== 2) return;
+      const seenFolders = new Set<string>();
+      this.folderList = (Array.isArray(data.folders) ? data.folders : [])
+        .filter(
+          (folder) =>
+            typeof folder?.id === 'string' &&
+            folder.id.length > 0 &&
+            !seenFolders.has(folder.id) &&
+            typeof folder.title === 'string' &&
+            Number.isFinite(folder.createdAt) &&
+            !!seenFolders.add(folder.id),
+        )
+        .map((folder) => ({ ...folder, parentId: typeof folder.parentId === 'string' ? folder.parentId : null }));
       const folderIds = new Set(this.folderList.map((folder) => folder.id));
+      for (const folder of this.folderList) {
+        if (!folderIds.has(folder.parentId ?? '') || folder.parentId === folder.id) folder.parentId = null;
+      }
+      const byId = new Map(this.folderList.map((folder) => [folder.id, folder]));
+      for (const folder of this.folderList) {
+        const ancestors = new Set([folder.id]);
+        let parent = folder.parentId;
+        while (parent) {
+          if (ancestors.has(parent) || ancestors.size >= MAX_FOLDER_DEPTH) {
+            folder.parentId = null;
+            break;
+          }
+          ancestors.add(parent);
+          parent = byId.get(parent)?.parentId ?? null;
+        }
+      }
       this.bookmarkList = (Array.isArray(data.bookmarks) ? data.bookmarks : [])
         .filter(
           (bookmark) =>
@@ -159,6 +188,44 @@ export class BookmarkStore {
     this.save();
   }
 
+  edit(id: string, title: string, url: string): boolean {
+    const bookmark = this.bookmarkList.find((item) => item.id === id);
+    if (!bookmark || !canBookmark(url) || this.bookmarkList.some((item) => item.id !== id && item.url === url))
+      return false;
+    bookmark.title = cleanTitle(title, url);
+    bookmark.url = url;
+    this.save();
+    return true;
+  }
+
+  moveMany(ids: readonly string[], folderId: string | null): boolean {
+    if (
+      !ids.length ||
+      ids.length > MAX_BULK_BOOKMARKS ||
+      (folderId !== null && !this.folderList.some((folder) => folder.id === folderId))
+    )
+      return false;
+    const chosen = new Set(ids);
+    let changed = false;
+    for (const bookmark of this.bookmarkList)
+      if (chosen.has(bookmark.id) && bookmark.folderId !== folderId) {
+        bookmark.folderId = folderId;
+        changed = true;
+      }
+    if (changed) this.save();
+    return changed;
+  }
+
+  removeMany(ids: readonly string[]): boolean {
+    if (!ids.length || ids.length > MAX_BULK_BOOKMARKS) return false;
+    const chosen = new Set(ids);
+    const before = this.bookmarkList.length;
+    this.bookmarkList = this.bookmarkList.filter((bookmark) => !chosen.has(bookmark.id));
+    if (before === this.bookmarkList.length) return false;
+    this.save();
+    return true;
+  }
+
   move(id: string, folderId: string | null): void {
     const bookmark = this.bookmarkList.find((item) => item.id === id);
     if (!bookmark) return;
@@ -166,11 +233,13 @@ export class BookmarkStore {
     this.save();
   }
 
-  addFolder(title: string): BookmarkFolder {
+  addFolder(title: string, parentId: string | null = null): BookmarkFolder | null {
+    if (!this.validParent(null, parentId)) return null;
     const folder: BookmarkFolder = {
       id: randomUUID(),
       title: cleanTitle(title, t('bookmarks.newFolder')),
       createdAt: Date.now(),
+      parentId,
     };
     this.folderList.push(folder);
     this.save();
@@ -184,13 +253,46 @@ export class BookmarkStore {
     this.save();
   }
 
+  private validParent(id: string | null, parentId: string | null): boolean {
+    if (parentId === null) return true;
+    const byId = new Map(this.folderList.map((folder) => [folder.id, folder]));
+    if (!byId.has(parentId)) return false;
+    const seen = new Set<string>();
+    let parent: string | null = parentId;
+    while (parent) {
+      if (parent === id || seen.has(parent) || seen.size >= MAX_FOLDER_DEPTH - 1) return false;
+      seen.add(parent);
+      parent = byId.get(parent)?.parentId ?? null;
+    }
+    // Moving an entire branch must leave room for its deepest descendant.
+    if (id) {
+      const paths = bookmarkFolderPaths(this.folderList);
+      for (const folder of this.folderList) {
+        const path = paths.get(folder.id) ?? [];
+        const position = path.findIndex((item) => item.id === id);
+        if (position >= 0 && seen.size + path.length - position > MAX_FOLDER_DEPTH) return false;
+      }
+    }
+    return true;
+  }
+
+  moveFolder(id: string, parentId: string | null): boolean {
+    const folder = this.folderList.find((item) => item.id === id);
+    if (!folder || !this.validParent(id, parentId) || folder.parentId === parentId) return false;
+    folder.parentId = parentId;
+    this.save();
+    return true;
+  }
+
   removeFolder(id: string): void {
+    const parentId = this.folderList.find((folder) => folder.id === id)?.parentId ?? null;
     const before = this.folderList.length;
     this.folderList = this.folderList.filter((folder) => folder.id !== id);
     if (this.folderList.length === before) return;
     for (const bookmark of this.bookmarkList) {
-      if (bookmark.folderId === id) bookmark.folderId = null;
+      if (bookmark.folderId === id) bookmark.folderId = parentId;
     }
+    for (const folder of this.folderList) if (folder.parentId === id) folder.parentId = parentId;
     this.save();
   }
 
@@ -201,27 +303,32 @@ export class BookmarkStore {
   ): { bookmarks: number; folders: number } {
     const urls = new Set(this.bookmarkList.map((bookmark) => bookmark.url));
     const folderIds = new Map<string, string>();
-    for (const folder of this.folderList) if (!folderIds.has(folder.title)) folderIds.set(folder.title, folder.id);
+    for (const folder of this.folderList) {
+      const key = JSON.stringify([folder.parentId, folder.title]);
+      if (!folderIds.has(key)) folderIds.set(key, folder.id);
+    }
     const before = { bookmarks: this.bookmarkList.length, folders: this.folderList.length };
     const now = Date.now();
-    const ensureFolder = (name: string, createdAt = now): string => {
-      const title = cleanTitle(name, t('bookmarks.newFolder'));
-      let id = folderIds.get(title);
-      if (!id) {
-        id = randomUUID();
-        folderIds.set(title, id);
-        this.folderList.push({ id, title, createdAt });
+    const ensureFolder = (segments: readonly string[], createdAt = now): string | null => {
+      let parentId: string | null = null;
+      for (const [index, name] of segments.slice(0, MAX_FOLDER_DEPTH).entries()) {
+        const title = cleanTitle(name, t('bookmarks.newFolder'));
+        const key = JSON.stringify([parentId, title]);
+        let id = folderIds.get(key);
+        if (!id) {
+          id = randomUUID();
+          folderIds.set(key, id);
+          this.folderList.push({ id, title, parentId, createdAt: index === segments.length - 1 ? createdAt : now });
+        }
+        parentId = id;
       }
-      return id;
+      return parentId;
     };
-    for (const folder of importedFolders) ensureFolder(folder.title, folder.createdAt ?? now);
+    for (const folder of importedFolders) ensureFolder(folder.path ?? [folder.title], folder.createdAt ?? now);
     for (const item of items) {
       if (!canBookmark(item.url) || urls.has(item.url)) continue;
       urls.add(item.url);
-      let folderId: string | null = null;
-      if (item.folder !== null) {
-        folderId = ensureFolder(item.folder);
-      }
+      const folderId = ensureFolder(item.folderPath ?? (item.folder !== null ? [item.folder] : []));
       this.bookmarkList.push({
         id: randomUUID(),
         title: cleanTitle(item.title, item.url),
@@ -245,8 +352,37 @@ export class BookmarkStore {
   private save(): void {
     this.urls = null;
     this.suggestionList = null;
-    this.json.schedule((): SavedBookmarks => ({ version: 1, folders: this.folderList, bookmarks: this.bookmarkList }));
+    this.json.schedule((): SavedBookmarks => ({ version: 2, folders: this.folderList, bookmarks: this.bookmarkList }));
   }
+}
+
+export function bookmarkFolderPaths(folders: readonly BookmarkFolder[]): Map<string, readonly BookmarkFolder[]> {
+  const byId = new Map(folders.map((folder) => [folder.id, folder]));
+  const paths = new Map<string, readonly BookmarkFolder[]>();
+  for (const folder of folders) {
+    const path: BookmarkFolder[] = [];
+    const seen = new Set<string>();
+    let current: BookmarkFolder | undefined = folder;
+    while (current && !seen.has(current.id) && path.length < MAX_FOLDER_DEPTH) {
+      seen.add(current.id);
+      path.push(current);
+      current = byId.get(current.parentId ?? '');
+    }
+    paths.set(folder.id, path.reverse());
+  }
+  return paths;
+}
+
+export function bookmarkFoldersByParent(folders: readonly BookmarkFolder[]): Map<string | null, BookmarkFolder[]> {
+  const ids = new Set(folders.map((folder) => folder.id));
+  const groups = new Map<string | null, BookmarkFolder[]>();
+  for (const folder of folders) {
+    const parent = ids.has(folder.parentId ?? '') ? folder.parentId : null;
+    const group = groups.get(parent);
+    if (group) group.push(folder);
+    else groups.set(parent, [folder]);
+  }
+  return groups;
 }
 
 export function bookmarksByFolder(bookmarks: readonly Bookmark[]): Map<string | null, Bookmark[]> {
@@ -264,14 +400,20 @@ export function runBookmarksCommand(store: BookmarkStore, command: string, param
   const title = params.get('title') ?? '';
   switch (command) {
     case 'new-folder':
-      store.addFolder(title);
-      return true;
+      return store.addFolder(title, params.get('parent') || null) !== null;
     case 'rename':
+      if (params.has('url')) return store.edit(id, title, params.get('url') ?? '');
       store.rename(id, title);
       return true;
     case 'move':
       store.move(id, params.get('folder') || null);
       return true;
+    case 'move-many':
+      return store.moveMany(params.getAll('id'), params.get('folder') || null);
+    case 'remove-many':
+      return store.removeMany(params.getAll('id'));
+    case 'move-folder':
+      return store.moveFolder(id, params.get('parent') || null);
     case 'remove':
       store.remove(id);
       return true;
@@ -308,13 +450,23 @@ export function bookmarksMenuTemplate(
     label: menuTitle(bookmark.title),
     click: () => actions.open(bookmark.url),
   });
-  const inFolders = folders.map((folder): MenuItemConstructorOptions => {
-    const children = groups.get(folder.id) ?? [];
+  const folderGroups = bookmarkFoldersByParent(folders);
+  const seen = new Set<string>();
+  const folderMenu = (folder: BookmarkFolder, depth = 0): MenuItemConstructorOptions => {
+    seen.add(folder.id);
+    const entries =
+      depth >= MAX_FOLDER_DEPTH
+        ? []
+        : (folderGroups.get(folder.id) ?? [])
+            .filter((child) => !seen.has(child.id))
+            .map((child) => folderMenu(child, depth + 1));
+    entries.push(...(groups.get(folder.id) ?? []).map(item));
     return {
       label: menuTitle(folder.title),
-      submenu: children.length > 0 ? children.map(item) : [{ label: t('bookmarks.menuEmpty'), enabled: false }],
+      submenu: entries.length ? entries : [{ label: t('bookmarks.menuEmpty'), enabled: false }],
     };
-  });
+  };
+  const inFolders = (folderGroups.get(null) ?? []).map((folder) => folderMenu(folder));
   const loose = (groups.get(null) ?? []).map(item);
   const entries = [...inFolders, ...loose];
   return [

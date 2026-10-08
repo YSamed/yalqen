@@ -144,6 +144,31 @@
         color: var(--text-muted);
         font-size: 13px;
       }
+      .bulk {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 20px 0;
+      }
+      .bulk label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .bulk output {
+        color: var(--text-muted);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      li > input[type='checkbox'] {
+        flex-shrink: 0;
+      }
+      .new-folder select {
+        max-width: 240px;
+      }
     </style>
   </head>
   <body>

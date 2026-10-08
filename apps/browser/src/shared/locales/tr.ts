@@ -1120,6 +1120,14 @@ export const tr: Record<MessageKey, string> = {
 
   'bookmarksPage.title': 'Yer imleri',
 
+  'bookmarks.parentFolder': 'Üst klasör',
+  'bookmarks.selectAll': 'Tümünü seç (en fazla 1.000)',
+  'bookmarks.selected': '{count} seçildi',
+  'bookmarks.moveSelected': 'Seçilenleri taşı',
+  'bookmarks.deleteSelected': 'Seçilenleri sil',
+  'bookmarks.confirmDeleteSelected': 'Seçilen yer imleri silinsin mi?',
+  'bookmarks.selectBookmark': '{title} yer imini seç',
+  'bookmarks.address': 'Adres',
   'bookmarks.newFolder': 'Yeni klasör',
   'bookmarks.menuEmpty': 'Boş',
   'bookmarks.menuNone': 'Henüz yer imi yok',
