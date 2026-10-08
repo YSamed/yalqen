@@ -148,6 +148,7 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     checkForUpdates: () => ipcRenderer.invoke(settingsChannel.checkForUpdates) as Promise<void>,
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
     chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
+    updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,
     requestRules: () => ipcRenderer.invoke(RequestRulesChannel.list) as Promise<RequestRule[]>,
     saveRequestRules: (rules: RequestRule[]) =>
       ipcRenderer.invoke(RequestRulesChannel.save, rules) as Promise<RequestRule[]>,

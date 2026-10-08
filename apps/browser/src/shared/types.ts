@@ -678,6 +678,7 @@ export interface SettingsValues {
   freezeBackgroundTabs: boolean;
   discardAfterMinutes: number;
   adBlocking: boolean;
+  threatProtection: boolean;
   adBlockExceptions: string[];
   thirdPartyCookieExceptions: string[];
   httpsOnly: boolean;
@@ -716,6 +717,15 @@ export type UpdateStatus =
   | { state: 'ready'; version: string }
   | { state: 'failed' };
 
+export interface ThreatListsView {
+  domains: number;
+  hashes: number;
+  domainUpdatedAt: number | null;
+  hashUpdatedAt: number | null;
+  updating: boolean;
+  failed: boolean;
+}
+
 export interface SettingsView {
   values: SettingsValues;
   downloadDirectory: string;
@@ -724,6 +734,7 @@ export interface SettingsView {
   customTemplateValid: boolean;
   version: string;
   update: UpdateStatus;
+  threatLists?: ThreatListsView;
 }
 
 export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
@@ -747,6 +758,7 @@ export const SettingsChannel = {
   checkForUpdates: 'yalqen-settings:check-for-updates',
   installUpdate: 'yalqen-settings:install-update',
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
+  updateThreatLists: 'yalqen-settings:update-threat-lists',
 } as const;
 
 export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
@@ -907,6 +919,7 @@ export interface SettingsApi {
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;
   chooseDownloadDirectory(): Promise<SettingsView>;
+  updateThreatLists(): Promise<SettingsView>;
   requestRules(): Promise<RequestRule[]>;
   saveRequestRules(rules: RequestRule[]): Promise<RequestRule[]>;
   sitePermissions(): Promise<SitePermissionsView>;

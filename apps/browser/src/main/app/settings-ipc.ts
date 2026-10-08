@@ -26,6 +26,7 @@ export interface SettingsIpcHost {
   requestRules: RequestRuleStore;
   permissions: PermissionStore;
   onRequestRulesSaved(): void;
+  updateThreatLists(): Promise<void>;
 }
 
 function sitePermissionsView(store: PermissionStore): SitePermissionsView {
@@ -53,6 +54,10 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
   handleSettingsCall(SettingsChannel.processUsage, () => processUsage());
   handleSettingsCall(SettingsChannel.checkForUpdates, () => host.updater.check());
   handleSettingsCall(SettingsChannel.installUpdate, () => host.updater.install());
+  handleSettingsCall(SettingsChannel.updateThreatLists, async () => {
+    await host.updateThreatLists();
+    return host.view();
+  });
   handleSettingsCall(SettingsChannel.chooseDownloadDirectory, async () => {
     const options: OpenDialogOptions = {
       title: t('settings.chooseDownloadDirectory'),

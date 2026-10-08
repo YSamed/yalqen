@@ -1,4 +1,24 @@
 export const en = {
+  'threats.protection': 'Phishing and malicious download protection',
+  'threats.protectionHint':
+    'Check addresses and downloaded files against local threat lists. Browsing addresses and file contents stay on your device.',
+  'threats.lists': 'Local threat lists',
+  'threats.update': 'Update lists',
+  'threats.updating': 'Updating…',
+  'threats.counts': '{domains} domains · {hashes} file hashes',
+  'threats.domainUpdated': 'Domains updated: {date}',
+  'threats.hashUpdated': 'File hashes updated: {date}',
+  'threats.notLoaded': 'Not downloaded yet',
+  'threats.updateFailed': 'Update failed. Previously downloaded lists remain active.',
+  'threats.coverage':
+    'Lists cover known threats only; an unlisted site or file is not guaranteed safe. CERT Polska updates every 5 minutes; file hashes update daily. Protection requires an initial download, then works offline.',
+  'threats.pageTitle': 'This website may be dangerous',
+  'threats.pageMessage':
+    '{host} is on the CERT Polska phishing list. It may steal your passwords or personal information.',
+  'threats.checkingFile': 'Checking local threat lists…',
+  'threats.blockedFile': 'Malicious file blocked',
+  'threats.fileMessage':
+    '{name} matches a known malicious file in {source}. Yalqen will not open it. The file remains in your download folder; you can delete it there.',
   'window.unsavedChanges': 'Leave this page?',
   'window.unsavedChangesDetail': 'Changes you made may not be saved.',
   'window.stay': 'Stay',

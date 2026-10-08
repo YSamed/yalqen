@@ -31,6 +31,7 @@ interface DownloadManagerOptions {
   askDownloadLocation: () => boolean;
   parentOf: (contents: WebContents) => BaseWindow | undefined;
   onStateChange: () => void;
+  checkFile?: (file: string) => Promise<string | null>;
 }
 
 export class DownloadManager {
@@ -68,9 +69,7 @@ export class DownloadManager {
       open: (id) =>
         this.withEntry(id, (entry) => {
           if (entry.state !== 'completed') return;
-          void shell.openPath(entry.savePath).then((error) => {
-            if (error) console.warn(`[downloads] could not open ${entry.filename}: ${error}`);
-          });
+          void this.openChecked(entry);
         }),
       show: (id) => this.withEntry(id, (entry) => shell.showItemInFolder(entry.savePath)),
       pause: (id) =>
@@ -101,7 +100,7 @@ export class DownloadManager {
         }),
       remove: (id) =>
         this.withEntry(id, (entry) => {
-          if (entry.state !== 'progressing' && entry.state !== 'paused') store.remove(id);
+          if (entry.state !== 'progressing' && entry.state !== 'paused' && entry.state !== 'checking') store.remove(id);
         }),
       showAll,
       openFolder: () => {
@@ -134,6 +133,40 @@ export class DownloadManager {
     const entry = this.options.store.get(id);
     if (entry) run(entry);
     this.changed();
+  }
+
+  private async openChecked(entry: DownloadEntry): Promise<void> {
+    // Recheck old downloads as lists change, and never launch before the check finishes.
+    if (this.options.checkFile && !(await this.checkCompleted(entry.id, entry.savePath))) return;
+    if (this.options.store.get(entry.id)?.state !== 'completed') return;
+    const error = await shell.openPath(entry.savePath);
+    if (error) console.warn(`[downloads] could not open ${entry.filename}: ${error}`);
+  }
+
+  private async checkCompleted(id: string, file: string): Promise<boolean> {
+    this.options.store.update(id, { state: 'checking' });
+    this.changed();
+    try {
+      const source = await this.options.checkFile!(file);
+      this.options.store.update(id, { state: source ? 'blocked' : 'completed' });
+      if (source) {
+        await this.dialogs.showMessageBox({
+          type: 'warning',
+          message: t('threats.blockedFile'),
+          detail: t('threats.fileMessage', { name: path.basename(file), source }),
+          buttons: [t('downloadManager.cancel')],
+          defaultId: 0,
+          cancelId: 0,
+        });
+      }
+      return !source;
+    } catch (error) {
+      console.warn('[downloads] file check failed:', error);
+      this.options.store.update(id, { state: 'interrupted' });
+      return false;
+    } finally {
+      this.changed();
+    }
   }
 
   private onWillDownload(isPrivate: boolean) {
@@ -255,12 +288,21 @@ export class DownloadManager {
     });
     item.once('done', (_done, state) => {
       this.items.delete(id);
-      this.reservedPaths.delete(savePath);
+      if (state !== 'completed' || !this.options.checkFile) this.reservedPaths.delete(savePath);
       store.update(id, {
-        state: state === 'completed' ? 'completed' : state === 'cancelled' ? 'cancelled' : 'interrupted',
+        state:
+          state === 'completed'
+            ? this.options.checkFile
+              ? 'checking'
+              : 'completed'
+            : state === 'cancelled'
+              ? 'cancelled'
+              : 'interrupted',
         receivedBytes: item.getReceivedBytes(),
         totalBytes: item.getTotalBytes(),
       });
+      if (state === 'completed' && this.options.checkFile)
+        void this.checkCompleted(id, savePath).finally(() => this.reservedPaths.delete(savePath));
       this.changed();
     });
     this.changed();

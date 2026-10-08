@@ -1,6 +1,26 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'threats.protection': 'Kimlik avı ve zararlı indirme koruması',
+  'threats.protectionHint':
+    'Adresler ve indirilen dosyalar yerel tehdit listeleriyle kontrol edilir. Gezilen adresler ve dosya içerikleri cihazınızda kalır.',
+  'threats.lists': 'Yerel tehdit listeleri',
+  'threats.update': 'Listeleri güncelle',
+  'threats.updating': 'Güncelleniyor…',
+  'threats.counts': '{domains} alan adı · {hashes} dosya özeti',
+  'threats.domainUpdated': 'Alan adları güncellendi: {date}',
+  'threats.hashUpdated': 'Dosya özetleri güncellendi: {date}',
+  'threats.notLoaded': 'Henüz indirilmedi',
+  'threats.updateFailed': 'Güncelleme başarısız. Önceden indirilen listeler etkin kalır.',
+  'threats.coverage':
+    'Listeler yalnızca bilinen tehditleri kapsar; listede olmayan site veya dosyanın güvenli olduğu garanti edilmez. CERT Polska beş dakikada bir, dosya özetleri günlük güncellenir. İlk indirmeden sonra koruma çevrimdışı da çalışır.',
+  'threats.pageTitle': 'Bu site tehlikeli olabilir',
+  'threats.pageMessage':
+    '{host}, CERT Polska kimlik avı listesinde. Parolalarınızı veya kişisel bilgilerinizi çalabilir.',
+  'threats.checkingFile': 'Yerel tehdit listeleri kontrol ediliyor…',
+  'threats.blockedFile': 'Zararlı dosya engellendi',
+  'threats.fileMessage':
+    '{name}, {source} listesindeki bilinen bir zararlı dosyayla eşleşiyor. Yalqen bu dosyayı açmayacak. Dosya indirme klasöründe kalır; oradan silebilirsiniz.',
   'window.unsavedChanges': 'Bu sayfadan ayrılmak istiyor musunuz?',
   'window.unsavedChangesDetail': 'Yaptığınız değişiklikler kaydedilmemiş olabilir.',
   'window.stay': 'Kal',

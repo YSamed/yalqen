@@ -41,6 +41,8 @@ import type { HeaderValue, PausedRequest } from '../devtools/request-rules.js';
 import { newTraceparent } from '../agent-bridge/tracing.js';
 import { isSameVisit } from '../library/history.js';
 import { ERR_ABORTED, errorPageScript, isCertificateError } from '../pages/error-page.js';
+import { PROCEED_THREAT_URL, type ThreatGuard } from '../privacy/threat-guard.js';
+import { t } from '../../shared/i18n.js';
 import {
   internalNavigation,
   isAllowedFrom,
@@ -129,6 +131,7 @@ interface TabManagerOptions {
   agentScope: (tab: { url: string; isPrivate: boolean }) => boolean;
   agentTracing: () => boolean;
   confirmUnload: (tab: Tab) => boolean;
+  threatGuard?: ThreatGuard;
 }
 
 export type DetachedTab = Tab;
@@ -1403,6 +1406,7 @@ export class TabManager {
     });
     listen('devtools-closed', () => this.freezer.maybeFreeze(tab));
     listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
+      if (isMainFrame) this.options.threatGuard?.navigating(contents, url);
       if (!isMainFrame || isSameDocument) return;
       this.navigations.set(tab, (this.navigations.get(tab) ?? 0) + 1);
       const userAgent = signInUserAgent(url, process.platform) ?? contents.session.getUserAgent();
@@ -1479,7 +1483,18 @@ export class TabManager {
     listen('did-fail-load', (_event, code, name, url, isMainFrame) => {
       if (!isMainFrame || code === ERR_ABORTED) return;
       const upgrade = tab.upgrade;
-      if (upgrade && withoutHash(url) === withoutHash(upgrade.https)) {
+      const threat = code === -20 ? this.options.threatGuard?.warning(contents, url) : null;
+      if (threat) {
+        failure = errorPageScript(
+          this.options.pageTheme,
+          code,
+          'CERT Polska',
+          url,
+          `${PROCEED_THREAT_URL}${threat.token}`,
+          false,
+          { title: t('threats.pageTitle'), message: t('threats.pageMessage', { host: new URL(url).hostname }) },
+        );
+      } else if (upgrade && withoutHash(url) === withoutHash(upgrade.https)) {
         const token = this.options.httpsOnlyWarning(upgrade.https, upgrade.http);
         failure = errorPageScript(this.options.pageTheme, code, name, url, `${PROCEED_HTTP_URL}${token}`, true);
       } else {
@@ -1514,6 +1529,11 @@ export class TabManager {
 
   private runInternalNavigation(tab: Tab, contents: WebContents, navigation: InternalNavigation): void {
     switch (navigation.type) {
+      case 'proceed-threat': {
+        const url = this.options.threatGuard?.proceed(contents, navigation.token, contents.getURL());
+        if (url) void contents.loadURL(url);
+        return;
+      }
       case 'proceed-http': {
         const http = this.options.onProceedHttp(navigation.token, contents.getURL());
         if (!http) return;

@@ -15,6 +15,8 @@ import {
 } from '../shared/types.js';
 import { AdBlocker } from './privacy/adblock.js';
 import { SiteProtections } from './privacy/site-protections.js';
+import { LocalThreatLists } from './privacy/threat-lists.js';
+import { ThreatGuard } from './privacy/threat-guard.js';
 import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
 import type { BridgeHost } from './agent-bridge/tools.js';
@@ -115,6 +117,13 @@ function startBrowser(): void {
   const sessions = openBrowsingSessions();
   const { daily, privateBrowsing, developer } = sessions;
   const settings = new SettingsStore(userData, getLocale());
+  const threatLists = new LocalThreatLists(
+    userData,
+    () => settings.get().threatProtection,
+    () => broadcastSettings(settingsView()),
+  );
+  const threatGuard = new ThreatGuard(threatLists);
+  developer.webRequest.onBeforeRequest((details, callback) => callback({ cancel: threatGuard.blocked(details) }));
   const siteProtections = new SiteProtections(
     () => settings.get(),
     (patch) => updateSettings(patch),
@@ -226,6 +235,7 @@ function startBrowser(): void {
     askDownloadLocation: () => settings.get().askDownloadLocation,
     parentOf: (contents) => windowOf(contents)?.window,
     onStateChange: pushState,
+    checkFile: (file) => threatLists.checkFile(file),
   });
   const downloadsChanged = () => downloadManager.changed();
 
@@ -329,8 +339,11 @@ function startBrowser(): void {
   });
 
   handleCertificateErrors(certificates, eachSession(sessions));
-  const adBlocker = new AdBlocker([daily, privateBrowsing], path.join(userData, 'adblock-engine.bin'), (session, url) =>
-    siteProtections.isAllowed('adBlocking', url, session === privateBrowsing),
+  const adBlocker = new AdBlocker(
+    [daily, privateBrowsing],
+    path.join(userData, 'adblock-engine.bin'),
+    (session, url) => siteProtections.isAllowed('adBlocking', url, session === privateBrowsing),
+    (details) => threatGuard.blocked(details),
   );
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () => resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
@@ -355,6 +368,7 @@ function startBrowser(): void {
       customTemplateValid: isValidSearchTemplate(values.customSearchTemplate),
       version: app.getVersion(),
       update: updater.status(),
+      threatLists: threatLists.view(),
     };
   };
   const updater = new Updater({
@@ -373,6 +387,7 @@ function startBrowser(): void {
     const previous = settings.get();
     const next = settings.update(patch);
     if (next === previous) return;
+    if (next.threatProtection && !previous.threatProtection) void threatLists.update();
     if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
     if (next.pageLanguage !== previous.pageLanguage) applyPageLanguage(sessions, next.pageLanguage);
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
@@ -424,6 +439,7 @@ function startBrowser(): void {
     extensionPopup,
     certificates,
     httpsOnly,
+    threatGuard,
     closedTabs,
     pageTheme: fs.readFileSync(rendererPath('tokens.css'), 'utf8'),
     permissionsFor,
@@ -727,6 +743,7 @@ function startBrowser(): void {
   };
   registerSettingsIpc({
     view: settingsView,
+    updateThreatLists: () => threatLists.update(true),
     update: updateSettings,
     clearData,
     updater,
@@ -771,6 +788,7 @@ function startBrowser(): void {
     usage.stop();
     downloadManager.destroy();
     adBlocker.destroy();
+    threatLists.stop();
     commandBar.destroy();
     findBar.destroy();
     extensionPopup.close();
@@ -803,6 +821,7 @@ function startBrowser(): void {
   // Content scripts only reach pages that load after their extension, so restored tabs wait for it.
   const openInitialWindows = () => {
     started = true;
+    if (!bench) threatLists.start();
     const saved = store.load();
     const restoring = settings.get().startupBehavior === 'restore' || saved?.resume === true;
     const savedWindows = saved?.windows ?? [];

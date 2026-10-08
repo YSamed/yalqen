@@ -1,6 +1,7 @@
 import { HISTORY_URL, INTERNAL_SCHEME, NEW_TAB_URL, type CommandPage } from '../../shared/types.js';
 import { PROCEED_URL } from '../privacy/certificates.js';
 import { PROCEED_HTTP_URL } from '../privacy/https-only.js';
+import { PROCEED_THREAT_URL } from '../privacy/threat-guard.js';
 import type { RepoPromptAction } from '../app/repo-prompt.js';
 
 const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
@@ -20,6 +21,7 @@ export type UpdateCardAction = 'install' | 'close';
 
 export type InternalNavigation =
   | { type: 'proceed-http'; token: string }
+  | { type: 'proceed-threat'; token: string }
   | { type: 'proceed-certificate'; token: string }
   | { type: 'page-command'; page: CommandPage; name: string; params: URLSearchParams }
   | { type: 'history-delete'; id: string }
@@ -52,6 +54,8 @@ const param = (url: string, name: string) => new URL(url).searchParams.get(name)
 export function internalNavigation(url: string): InternalNavigation | null {
   if (!url.startsWith(`${INTERNAL_SCHEME}://`)) return null;
   if (url.startsWith(PROCEED_HTTP_URL)) return { type: 'proceed-http', token: url.slice(PROCEED_HTTP_URL.length) };
+  if (url.startsWith(PROCEED_THREAT_URL))
+    return { type: 'proceed-threat', token: url.slice(PROCEED_THREAT_URL.length) };
   if (url.startsWith(PROCEED_URL)) return { type: 'proceed-certificate', token: url.slice(PROCEED_URL.length) };
   if (url.startsWith(`${HISTORY_URL}delete?`)) return { type: 'history-delete', id: param(url, 'id') };
   if (url === `${HISTORY_URL}clear`) return { type: 'history-clear' };
@@ -84,6 +88,7 @@ export function internalNavigation(url: string): InternalNavigation | null {
 export function isAllowedFrom(navigation: InternalNavigation, currentUrl: string): boolean {
   switch (navigation.type) {
     case 'proceed-http':
+    case 'proceed-threat':
     case 'proceed-certificate':
       return true;
     case 'page-command':

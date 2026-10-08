@@ -40,6 +40,7 @@ const DEFAULTS: Settings = {
   freezeBackgroundTabs: true,
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   adBlocking: true,
+  threatProtection: true,
   adBlockExceptions: [],
   thirdPartyCookieExceptions: [],
   httpsOnly: false,
@@ -100,6 +101,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs,
     discardAfterMinutes,
     adBlocking,
+    threatProtection,
     adBlockExceptions,
     thirdPartyCookieExceptions,
     httpsOnly,
@@ -154,6 +156,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     freezeBackgroundTabs: typeof freezeBackgroundTabs === 'boolean' ? freezeBackgroundTabs : base.freezeBackgroundTabs,
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
+    threatProtection: typeof threatProtection === 'boolean' ? threatProtection : base.threatProtection,
     adBlockExceptions: Array.isArray(adBlockExceptions)
       ? sanitizeProtectionExceptions(adBlockExceptions)
       : base.adBlockExceptions,

@@ -126,6 +126,7 @@ export interface AppContext {
   extensionPopup: ExtensionPopup;
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
+  threatGuard: import('../privacy/threat-guard.js').ThreatGuard;
   closedTabs: SavedTab[];
   pageTheme: string;
   permissionsFor(isPrivate: boolean): PermissionStore;
@@ -389,6 +390,7 @@ export class YalqenWindow {
       upgradeHttp: (url) => app.httpsOnly.upgrade(url),
       httpsOnlyWarning: (https, http) => app.httpsOnly.warn(https, http),
       onProceedHttp: (token, currentUrl) => app.httpsOnly.proceed(token, currentUrl),
+      threatGuard: app.threatGuard,
       confirmHttpRedirect: async (url) => {
         const { response } = await dialog.showMessageBox(this.window, {
           type: 'warning',

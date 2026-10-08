@@ -1,5 +1,5 @@
 import type { ElectronBlocker } from '@ghostery/adblocker-electron';
-import { ipcMain, powerMonitor, type Session } from 'electron';
+import { ipcMain, powerMonitor, type OnBeforeRequestListenerDetails, type Session } from 'electron';
 import { applyAdBlockExceptions } from './adblock-exceptions.js';
 
 const CACHE_REFRESH_DELAY_MS = 30_000;
@@ -27,16 +27,19 @@ export class AdBlocker {
     private readonly sessions: readonly Session[],
     private readonly cacheFile: string,
     private readonly allowed: (session: Session, url: string) => boolean = () => false,
+    private readonly blocked: (details: OnBeforeRequestListenerDetails) => boolean = () => false,
   ) {}
 
   setEnabled(enabled: boolean): void {
     if (this.destroyed) return;
     this.wanted = enabled;
+    this.applyRequestGate();
     if (!enabled && this.refreshTimer) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
     if (this.blocker) this.apply(this.blocker);
+    else if (!enabled) this.applyRequestGate();
     else if (enabled) this.loading ??= this.load();
     if (enabled && this.stale) this.scheduleRefresh();
   }
@@ -62,6 +65,7 @@ export class AdBlocker {
       if (this.wanted && stale) this.scheduleRefresh();
     } catch (error) {
       console.warn('[adblock] filters could not be loaded:', error);
+      this.applyRequestGate();
     } finally {
       this.loading = null;
     }
@@ -101,7 +105,6 @@ export class AdBlocker {
 
   private apply(blocker: ElectronBlocker): void {
     const changing = this.sessions.filter((session) => blocker.isBlockingEnabled(session) !== this.wanted);
-    if (changing.length === 0) return;
     for (const session of changing) {
       if (this.wanted) {
         ipcMain.removeHandler(COSMETIC_FILTERS_CHANNEL);
@@ -111,11 +114,24 @@ export class AdBlocker {
         blocker.disableBlockingInSession(session);
       }
     }
+    this.applyRequestGate();
     if (!this.wanted) {
       ipcMain.removeHandler(COSMETIC_FILTERS_CHANNEL);
       ipcMain.removeHandler(MUTATION_OBSERVER_CHANNEL);
       ipcMain.handle(COSMETIC_FILTERS_CHANNEL, () => undefined);
       ipcMain.handle(MUTATION_OBSERVER_CHANNEL, () => false);
+    }
+  }
+
+  private applyRequestGate(): void {
+    // Electron keeps only one listener per webRequest event. Compose both protections,
+    // including after filter refresh or when ad blocking is switched off.
+    for (const session of this.sessions) {
+      session.webRequest.onBeforeRequest((details, callback) => {
+        if (this.blocked(details)) callback({ cancel: true });
+        else if (this.wanted && this.blocker) this.blocker.onBeforeRequest(details, callback);
+        else callback({});
+      });
     }
   }
 }

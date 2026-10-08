@@ -5,7 +5,7 @@ import { escapeHtml } from './html.js';
 
 export const ERR_ABORTED = -3;
 
-interface ErrorText {
+export interface ErrorText {
   title: string;
   message: string;
 }
@@ -61,8 +61,9 @@ export function errorPageHtml(
   url: string,
   proceedUrl: string | null = null,
   httpsOnly = false,
+  text?: ErrorText,
 ): string {
-  const { title, message } = httpsOnly ? describeHttpsOnly(url) : describeError(code, url);
+  const { title, message } = text ?? (httpsOnly ? describeHttpsOnly(url) : describeError(code, url));
   const proceedLabel = escapeHtml(httpsOnly ? t('errorPage.continueHttp') : t('errorPage.continueAnyway'));
   return `<head><meta charset="utf-8"><title>${escapeHtml(hostOf(url) ?? url)}</title><style>
 ${theme}
@@ -96,10 +97,11 @@ export function errorPageScript(
   url: string,
   proceedUrl: string | null = null,
   httpsOnly = false,
+  text?: ErrorText,
 ): string {
   return `(() => {
   if (location.protocol !== 'chrome-error:') return;
-  document.documentElement.innerHTML = ${JSON.stringify(errorPageHtml(theme, code, name, url, proceedUrl, httpsOnly))};
+  document.documentElement.innerHTML = ${JSON.stringify(errorPageHtml(theme, code, name, url, proceedUrl, httpsOnly, text))};
   const on = (id, listener) => document.getElementById(id)?.addEventListener('click', listener);
   on('retry', () => location.replace(${JSON.stringify(url)}));
   on('back', () => (history.length > 1 ? history.back() : location.replace(${JSON.stringify(NEW_TAB_URL)})));

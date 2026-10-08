@@ -6,7 +6,7 @@ import downloadManager from '../../../dist/main/library/download-manager.js';
 const { DownloadManager } = downloadManager;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
-function fixture(t, { askBefore = true, askLocation = false, responses = [], paths = [] } = {}) {
+function fixture(t, { askBefore = true, askLocation = false, responses = [], paths = [], checkFile } = {}) {
   const session = new EventEmitter();
   session.downloadURL = (url) => {
     session.retried = url;
@@ -42,6 +42,7 @@ function fixture(t, { askBefore = true, askLocation = false, responses = [], pat
       askDownloadLocation: () => askLocation,
       parentOf: () => undefined,
       onStateChange: () => {},
+      checkFile,
     },
     dialogs,
   );
@@ -149,4 +150,40 @@ test('retry retains the selected folder and name without requesting approval aga
   assert.equal(retry.savePath, '/chosen/custom.pdf');
   assert.equal(f.saves.length, 1);
   assert.equal(f.entries.size, 1);
+});
+
+test('completed downloads remain unavailable until verification and known malicious files cannot open', async (t) => {
+  let finish;
+  const f = fixture(t, {
+    askBefore: false,
+    checkFile: () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  });
+  const item = f.start('fixture.bin');
+  const id = [...f.entries.keys()][0];
+  item.emit('done', {}, 'completed');
+  assert.equal(f.entries.get(id).state, 'checking');
+  f.manager.actions(() => {}).remove(id);
+  assert.equal(f.entries.has(id), true);
+  finish('test threat source');
+  await tick();
+  assert.equal(f.entries.get(id).state, 'blocked');
+  assert.match(f.prompts[0].detail, /test threat source/);
+  f.manager.actions(() => {}).open(id);
+  assert.equal(f.entries.get(id).state, 'blocked');
+});
+
+test('verification failures never mark a file completed', async (t) => {
+  const f = fixture(t, {
+    askBefore: false,
+    checkFile: async () => {
+      throw new Error('file unavailable');
+    },
+  });
+  const item = f.start();
+  item.emit('done', {}, 'completed');
+  await tick();
+  assert.equal([...f.entries.values()][0].state, 'interrupted');
 });

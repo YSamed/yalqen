@@ -90,7 +90,7 @@
         {:else if pane === 'appearance'}
           <AppearancePane values={view.values} {update} />
         {:else if pane === 'privacy'}
-          <PrivacyPane values={view.values} {update} />
+          <PrivacyPane values={view.values} threatLists={view.threatLists} {update} />
           <SitePermissions />
         {:else if pane === 'passwords'}
           <Passwords />

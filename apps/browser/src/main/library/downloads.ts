@@ -5,7 +5,7 @@ import { getLocale, t } from '../../shared/i18n.js';
 import type { DownloadsSummary } from '../../shared/types.js';
 import { JsonFile } from '../storage/json-file.js';
 
-type DownloadState = 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted';
+type DownloadState = 'progressing' | 'paused' | 'checking' | 'blocked' | 'completed' | 'cancelled' | 'interrupted';
 
 export interface DownloadEntry {
   id: string;
@@ -21,7 +21,15 @@ export interface DownloadEntry {
 
 const MAX_ENTRIES = 200;
 const MENU_ENTRIES = 8;
-const STATES = new Set<string>(['progressing', 'paused', 'completed', 'cancelled', 'interrupted']);
+const STATES = new Set<string>([
+  'progressing',
+  'paused',
+  'checking',
+  'blocked',
+  'completed',
+  'cancelled',
+  'interrupted',
+]);
 
 export function uniquePath(directory: string, filename: string, taken: (file: string) => boolean): string {
   const name = path.basename(filename).replace(/^\.+/, '') || t('downloads.defaultFilename');
@@ -66,6 +74,10 @@ export function downloadStatus(entry: DownloadEntry): string {
       return t('downloads.paused', { size });
     case 'completed':
       return t('downloads.completed', { size: formatBytes(entry.totalBytes || entry.receivedBytes) });
+    case 'checking':
+      return t('threats.checkingFile');
+    case 'blocked':
+      return t('threats.blockedFile');
     case 'cancelled':
       return t('downloads.cancelled');
     case 'interrupted':
@@ -74,7 +86,7 @@ export function downloadStatus(entry: DownloadEntry): string {
 }
 
 export function isActive(entry: DownloadEntry): boolean {
-  return entry.state === 'progressing' || entry.state === 'paused';
+  return entry.state === 'progressing' || entry.state === 'paused' || entry.state === 'checking';
 }
 
 export function downloadsSummary(entries: readonly DownloadEntry[]): Omit<DownloadsSummary, 'started'> {
@@ -206,6 +218,13 @@ export function downloadCommands(entry: DownloadEntry): [keyof DownloadActions &
     case 'completed':
       return [
         ['open', t('downloads.open')],
+        ['show', t('downloads.showInFolder')],
+        ['remove', t('downloads.removeFromList')],
+      ];
+    case 'checking':
+      return [];
+    case 'blocked':
+      return [
         ['show', t('downloads.showInFolder')],
         ['remove', t('downloads.removeFromList')],
       ];

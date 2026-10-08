@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ClearDataRange, SettingsValues } from '../../shared/types';
+  import type { ClearDataRange, SettingsValues, ThreatListsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
@@ -8,8 +8,15 @@
   import SettingRow from './SettingRow.svelte';
   import SiteProtectionExceptions from './SiteProtectionExceptions.svelte';
 
-  let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
-    $props();
+  let {
+    values,
+    update,
+    threatLists,
+  }: {
+    values: SettingsValues;
+    update: (patch: Partial<SettingsValues>) => Promise<void>;
+    threatLists?: ThreatListsView;
+  } = $props();
 
   const api = window.yalqenSettings;
   const dnsOptions = [
@@ -56,6 +63,46 @@
 </script>
 
 <h2>{t('settings.protection')}</h2>
+<SettingRow title={t('threats.protection')} hint={t('threats.protectionHint')}>
+  <Switch
+    label={t('threats.protection')}
+    checked={values.threatProtection}
+    onchange={(checked) => update({ threatProtection: checked })}
+  />
+</SettingRow>
+{#if threatLists}
+  <SettingRow title={t('threats.lists')}>
+    <Button
+      variant="tonal"
+      disabled={!values.threatProtection || threatLists.updating}
+      onclick={() => api.updateThreatLists()}
+      >{threatLists.updating ? t('threats.updating') : t('threats.update')}</Button
+    >
+  </SettingRow>
+  <p aria-live="polite">
+    {t('threats.counts', { domains: threatLists.domains, hashes: threatLists.hashes })}<br />
+    {t('threats.domainUpdated', {
+      date: threatLists.domainUpdatedAt
+        ? new Date(threatLists.domainUpdatedAt).toLocaleString()
+        : t('threats.notLoaded'),
+    })}<br />
+    {t('threats.hashUpdated', {
+      date: threatLists.hashUpdatedAt ? new Date(threatLists.hashUpdatedAt).toLocaleString() : t('threats.notLoaded'),
+    })}
+    {#if threatLists.failed}<br />{t('threats.updateFailed')}{/if}
+  </p>
+  <p>
+    {t('threats.coverage')}<br />
+    <a href="https://cert.pl/lista-ostrzezen/" target="_blank" rel="noreferrer">CERT Polska</a> ·
+    <a href="https://github.com/Neo23x0/signature-base" target="_blank" rel="noreferrer"
+      >Signature-Base · Florian Roth / Nextron Systems</a
+    >
+    ·
+    <a href="https://raw.githubusercontent.com/Neo23x0/signature-base/master/LICENSE" target="_blank" rel="noreferrer"
+      >DRL 1.1</a
+    >
+  </p>
+{/if}
 <SettingRow title={t('settings.adBlocker')} hint={t('settings.adBlockerHint')}>
   <Switch
     label={t('settings.adBlocker')}
