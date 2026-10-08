@@ -74,6 +74,8 @@ import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } fr
 import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { READING_LIST_URL } from '../../shared/reading-list.js';
+import { tabGroupName, type TabGroup } from '../../shared/tab-groups.js';
+import { WORKSPACES_URL } from '../../shared/workspaces.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
 import { TabTranslation } from './tab-translation.js';
@@ -148,6 +150,7 @@ export class TabManager {
   private readonly tabs: Tab[] = [];
   private activeId: TabId | null = null;
   private readonly openedPinned = new Map<TabId, TabId | null>();
+  private readonly collapsedGroups = new Set<string>();
   private readonly placement = new PagePlacement();
   private readonly autoReloader = new AutoReloader(() => this.tabs);
   private readonly freezer: TabFreezer;
@@ -190,13 +193,17 @@ export class TabManager {
     return this.tabs.length;
   }
 
-  state(): Pick<BrowserState, 'tabs' | 'listOrder' | 'activeTabId' | 'selectedTabIds' | 'device' | 'zoom'> {
+  state(): Pick<
+    BrowserState,
+    'tabs' | 'listOrder' | 'activeTabId' | 'selectedTabIds' | 'tabGroups' | 'device' | 'zoom'
+  > {
     const contents = liveContents(this.active());
     return {
       tabs: this.tabs.map((tab) => this.snapshot(tab)),
       listOrder: tabListOrder(this.tabs, this.openedPinned).map((tab) => tab.id),
       activeTabId: this.activeId,
       selectedTabIds: this.selectedTabIds,
+      tabGroups: this.groupView(),
       device: this.placement.deviceFrame(this.active()),
       zoom: contents ? contents.getZoomFactor() : 1,
     };
@@ -273,6 +280,7 @@ export class TabManager {
   open(url = NEW_TAB_URL, { activate = true, isPrivate = this.options.privateWindow } = {}): TabId {
     const upgraded = this.options.upgradeHttp(url);
     const tab = this.createRecord({ url: upgraded ?? url }, isPrivate);
+    tab.group = this.active()?.group ?? null;
     if (upgraded) tab.upgrade = { https: upgraded, http: url };
     this.insertAfterActive(tab);
     if (activate) {
@@ -287,6 +295,7 @@ export class TabManager {
   activate(id: TabId): void {
     const next = this.find(id);
     if (!next) return;
+    if (next.group) this.collapsedGroups.delete(next.group);
     this.selected.clear();
     this.selectionAnchor = id;
 
@@ -376,6 +385,60 @@ export class TabManager {
     this.changed();
   }
 
+  groupView(): TabGroup[] {
+    const counts = new Map<string, number>();
+    for (const tab of this.tabs) if (tab.group) counts.set(tab.group, (counts.get(tab.group) ?? 0) + 1);
+    return Array.from(counts, ([name, count]) => ({ name, count, collapsed: this.collapsedGroups.has(name) }));
+  }
+
+  setSelectedGroup(value: unknown): boolean {
+    const name = value === null ? null : tabGroupName(value);
+    if (value !== null && !name) return false;
+    if (name && !this.tabs.some((tab) => tab.group === name) && this.groupView().length >= 50) return false;
+    const ids = this.selected.size ? this.selected : new Set(this.activeId ? [this.activeId] : []);
+    let changed = false;
+    for (const tab of this.tabs)
+      if (ids.has(tab.id)) {
+        tab.group = name;
+        changed = true;
+      }
+    if (!changed) return false;
+    if (name) this.collapsedGroups.delete(name);
+    this.changed(true);
+    return true;
+  }
+
+  renameGroup(value: unknown, nextValue: unknown): boolean {
+    const name = tabGroupName(value),
+      next = tabGroupName(nextValue);
+    if (
+      !name ||
+      !next ||
+      !this.tabs.some((tab) => tab.group === name) ||
+      (name !== next && this.tabs.some((tab) => tab.group === next))
+    )
+      return false;
+    for (const tab of this.tabs) if (tab.group === name) tab.group = next;
+    if (this.collapsedGroups.delete(name)) this.collapsedGroups.add(next);
+    this.changed(true);
+    return true;
+  }
+
+  toggleGroup(value: unknown): void {
+    const name = tabGroupName(value);
+    if (!name || !this.tabs.some((tab) => tab.group === name)) return;
+    if (!this.collapsedGroups.delete(name)) this.collapsedGroups.add(name);
+    this.changed(true);
+  }
+
+  removeGroup(value: unknown): void {
+    const name = tabGroupName(value);
+    if (!name) return;
+    for (const tab of this.tabs) if (tab.group === name) tab.group = null;
+    this.collapsedGroups.delete(name);
+    this.changed(true);
+  }
+
   toggleSelectedPin(): void {
     const selected = this.tabs.filter((tab) => this.selected.has(tab.id));
     const pin = !selected.every((tab) => tab.pinnedUrl);
@@ -401,6 +464,7 @@ export class TabManager {
         url: source.url,
         title: source.title,
         faviconUrl: source.faviconUrl,
+        group: source.group,
         history: structuredClone(captureHistory(source)),
       },
       source.isPrivate,
@@ -704,6 +768,10 @@ export class TabManager {
   }
   openReadingList(): void {
     this.openSingle(READING_LIST_URL);
+  }
+
+  openWorkspaces(): void {
+    this.openSingle(WORKSPACES_URL);
   }
 
   openSettings(pane?: string): void {
@@ -1149,6 +1217,11 @@ export class TabManager {
   }
 
   restore(session: SavedWindow, url?: string): void {
+    if (Array.isArray(session.collapsedGroups))
+      for (const name of session.collapsedGroups.slice(0, 50)) {
+        const valid = tabGroupName(name);
+        if (valid) this.collapsedGroups.add(valid);
+      }
     for (const saved of session.tabs) {
       this.tabs.push(this.createRecord(saved));
     }
@@ -1165,6 +1238,9 @@ export class TabManager {
     return {
       activeTabId: kept.some((tab) => tab.id === this.activeId) ? this.activeId : (kept[0]?.id ?? null),
       tabs: kept.map(savedTab),
+      ...(this.collapsedGroups.size && {
+        collapsedGroups: Array.from(this.collapsedGroups).filter((name) => kept.some((tab) => tab.group === name)),
+      }),
     };
   }
 
@@ -1744,6 +1820,7 @@ export class TabManager {
       frozen: tab.frozen,
       loading: tab.loading,
       pinned: tab.pinnedUrl !== null,
+      group: tab.group,
       isPrivate: tab.isPrivate,
       bookmarked: this.options.isBookmarked(tab.url),
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),

@@ -8,6 +8,8 @@
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import IconButton from '../ui/IconButton.svelte';
+  import TabGroupControls from './TabGroupControls.svelte';
+  import type { TabGroup } from '../../shared/tab-groups';
 
   let {
     tabs,
@@ -15,6 +17,7 @@
     developer,
     activeTabId,
     selectedTabIds,
+    groups,
     collapsed,
     fading,
     side,
@@ -31,6 +34,7 @@
     developer: boolean;
     activeTabId: TabId | null;
     selectedTabIds: TabId[];
+    groups: TabGroup[];
     collapsed: boolean;
     fading: boolean;
     side: PanelSide;
@@ -85,15 +89,27 @@
   }
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
-  const listed = $derived(tabs.filter((tab) => !tab.pinned));
+  const tabsById = $derived(new Map(tabs.map((tab) => [tab.id, tab])));
+  const listed = $derived(
+    listOrder.map((id) => tabsById.get(id)).filter((tab): tab is TabSnapshot => !!tab && !tab.pinned),
+  );
   const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
-  const tabsById = $derived(new Map(tabs.map((tab) => [tab.id, tab])));
   const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
   const entries = $derived(
     listOrder
       .map((id) => tabsById.get(id))
       .filter((tab): tab is TabSnapshot => tab !== undefined && (!showPinned || !collapsed || !tab.pinned)),
+  );
+  const sections = $derived(
+    [
+      { key: 'ungrouped', group: null, entries: entries.filter((tab) => !tab.group) },
+      ...groups.map((group) => ({
+        key: 'group:' + group.name,
+        group,
+        entries: entries.filter((tab) => tab.group === group.name),
+      })),
+    ].filter((section) => section.entries.length > 0),
   );
   const profiles: { id: ProfileKind; name: string }[] = $derived([
     { id: 'personal', name: profileName ?? t('tabPanel.profilePersonal') },
@@ -471,41 +487,58 @@
           <span class="divider" aria-hidden="true"></span>
         {/if}
 
-        {#if entries.length > 0}
-          <ol class="rows">
-            {#each entries as tab (tab.id)}
-              {@const index = listedIndex.get(tab.id) ?? -1}
-              <li
-                class="row"
-                class:private={tab.isPrivate}
-                class:active={tab.id === activeTabId}
-                class:selected={selected.has(tab.id)}
-                class:discarded={!tab.live}
-                class:lifted={index >= 0 && tab.id === dragId}
-                class:returning={index >= 0 && tab.id === returningId}
-                class:drop-before={index >= 0 && draggingListed && dropIndex === index}
-                class:drop-after={index >= 0 &&
-                  draggingListed &&
-                  dropIndex === index + 1 &&
-                  index === listed.length - 1}
-                data-drag-index={index >= 0 ? index : undefined}
-                animate:reorder
-                style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
-                onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  send({ type: 'open-tab-menu', id: tab.id });
-                }}
+        {#each sections as section (section.key)}
+          {#if section.group}
+            <button
+              class="group-heading"
+              title={section.group.name}
+              aria-label={`${section.group.name} (${section.group.count})`}
+              aria-expanded={!section.group.collapsed}
+              onclick={() => send({ type: 'toggle-tab-group', name: section.group!.name })}
+            >
+              <span>{collapsed ? section.group.name.slice(0, 1) : section.group.name}</span><small
+                >{section.group.count}</small
               >
-                {#if collapsed}
-                  {@render compactTab(tab)}
-                {:else}
-                  {@render tabRow(tab)}
-                {/if}
-              </li>
-            {/each}
-          </ol>
-        {/if}
+            </button>
+          {/if}
+          {#if !section.group?.collapsed}
+            <ol class="rows">
+              {#each section.entries as tab (tab.id)}
+                {@const index = listedIndex.get(tab.id) ?? -1}
+                <li
+                  class="row"
+                  class:private={tab.isPrivate}
+                  class:active={tab.id === activeTabId}
+                  class:selected={selected.has(tab.id)}
+                  class:discarded={!tab.live}
+                  class:lifted={index >= 0 && tab.id === dragId}
+                  class:returning={index >= 0 && tab.id === returningId}
+                  class:drop-before={index >= 0 && draggingListed && dropIndex === index}
+                  class:drop-after={index >= 0 &&
+                    draggingListed &&
+                    dropIndex === index + 1 &&
+                    tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
+                  data-drag-index={index >= 0 ? index : undefined}
+                  animate:reorder
+                  style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
+                  onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
+                  oncontextmenu={(e) => {
+                    e.preventDefault();
+                    send({ type: 'open-tab-menu', id: tab.id });
+                  }}
+                >
+                  {#if collapsed}
+                    {@render compactTab(tab)}
+                  {:else}
+                    {@render tabRow(tab)}
+                  {/if}
+                </li>
+              {/each}
+            </ol>
+          {/if}
+        {/each}
+
+        {#if !collapsed}<TabGroupControls {groups} />{/if}
 
         {#if collapsed}
           <div class="new-tab-position">
@@ -573,6 +606,36 @@
 </aside>
 
 <style>
+  .group-heading {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    justify-content: space-between;
+    border: 0;
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text-muted);
+    padding: 6px;
+    font-size: 12px;
+    margin: 6px 0 3px;
+  }
+  .group-heading span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .group-heading small {
+    font-size: 10px;
+  }
+  .collapsed .group-heading {
+    width: 34px;
+    justify-content: center;
+    padding: 4px;
+  }
+  .collapsed .group-heading small {
+    display: none;
+  }
   .panel {
     position: relative;
     display: flex;

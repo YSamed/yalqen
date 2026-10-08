@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { tabGroupName } from '../../shared/tab-groups.js';
 import path from 'node:path';
 import type { NavigationEntry } from 'electron';
 import { JsonFile } from '../storage/json-file.js';
@@ -59,6 +60,7 @@ function sanitize(value: unknown): SavedTab | null {
     title: tab.title.slice(0, 4096),
     faviconUrl: validUrl(tab.faviconUrl) ? tab.faviconUrl : null,
     pinnedUrl: null,
+    ...(tabGroupName(tab.group) && { group: tabGroupName(tab.group) }),
     closedAt: tab.closedAt,
     history: history(tab.history),
   };

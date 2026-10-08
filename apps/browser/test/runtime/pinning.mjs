@@ -114,6 +114,10 @@ app
       } else if (action.type === 'select-tab') manager.selectTab(action.id, action.mode);
       else if (action.type === 'clear-tab-selection') manager.clearSelection();
       else if (action.type === 'close-selected-tabs') void manager.closeSelected();
+      else if (action.type === 'set-tab-group') manager.setSelectedGroup(action.name);
+      else if (action.type === 'rename-tab-group') manager.renameGroup(action.name, action.next);
+      else if (action.type === 'toggle-tab-group') manager.toggleGroup(action.name);
+      else if (action.type === 'remove-tab-group') manager.removeGroup(action.name);
     });
     await window.loadFile(path.resolve('dist/renderer/index.html'));
     await eventually("document.querySelectorAll('aside button.select').length === 8");
@@ -163,6 +167,39 @@ app
     persisted.saveNow({ version: 2, windows: [manager.toSavedWindow()] });
     const restored = new persistence.SessionStore(profile).load();
     assert.equal(restored.windows[0].tabs.filter((tab) => tab.pinnedUrl).length, 8);
+    collapsed = false;
+    changed();
+    await eventually(
+      "!document.querySelector('aside').classList.contains('collapsed') && !!document.querySelector('details.groups')",
+    );
+    await window.webContents.executeJavaScript(
+      "document.querySelector('aside button.select[title=\"https://c.example/\"]').dispatchEvent(new MouseEvent('click',{bubbles:true,metaKey:true}));document.querySelector('details.groups').open=true",
+    );
+    await eventually("document.querySelectorAll('aside button.select[aria-pressed=true]').length===2");
+    await window.webContents.executeJavaScript(
+      "(()=>{const input=document.querySelector('details.groups input');input.value='Research';input.dispatchEvent(new Event('input',{bubbles:true}));input.form.requestSubmit()})()",
+    );
+    await eventually("document.querySelector('.group-heading')?.textContent.includes('Research')");
+    assert.deepEqual(
+      manager.tabs.filter((tab) => tab.group === 'Research').map((tab) => tab.id),
+      ['a', 'c'],
+    );
+    await window.webContents.executeJavaScript("document.querySelector('.group-heading').click()");
+    await eventually("document.querySelectorAll('aside .row').length===6");
+    assert.deepEqual(manager.toSavedWindow().collapsedGroups, ['Research']);
+    await window.webContents.executeJavaScript(
+      "(()=>{const input=document.querySelector('details.groups input[name=name]');input.value='Renamed';input.form.requestSubmit()})()",
+    );
+    await eventually("document.querySelector('.group-heading')?.textContent.includes('Renamed')");
+    await window.webContents.executeJavaScript("document.querySelector('.group-heading').click()");
+    await eventually("document.querySelectorAll('aside .row').length===8");
+    await window.webContents.executeJavaScript("document.querySelector('details.groups button[type=button]').click()");
+    await eventually("document.querySelectorAll('.group-heading').length===0");
+    assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, 8);
+    assert.equal(manager.count, 8);
+    console.log(
+      'PASS: production sidebar creates a group from selected pins, collapses/expands and renames it, persists collapse state and ungroups without closing tabs or losing pins',
+    );
     console.log(
       'PASS: eight successive production sidebar pin actions remain visible in expanded and collapsed/expanded-only modes, including background tabs, and persist without a two-pin limit',
     );

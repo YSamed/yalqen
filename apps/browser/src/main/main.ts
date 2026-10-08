@@ -72,6 +72,9 @@ import { StorageOrigins, SiteStorageManager } from './privacy/site-storage.js';
 import { installSiteStorageHandlers, observeStorageOrigins } from './privacy/site-storage-handlers.js';
 import { ReadingListStore, saveReadingPage } from './library/reading-list.js';
 import { installReadingListHandlers, broadcastReadingList } from './library/reading-list-handlers.js';
+import { WorkspaceStore } from './library/workspaces.js';
+import { installWorkspaceHandlers } from './library/workspace-handlers.js';
+import { WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
@@ -161,6 +164,7 @@ function startBrowser(): void {
   const downloads = new DownloadStore(userData);
   const bookmarks = new BookmarkStore(userData);
   const readingList = new ReadingListStore(userData);
+  const workspaces = new WorkspaceStore(userData);
   const store = new SessionStore(userData);
   const defaultZoom = () => settings.get().defaultZoom;
   const zoom = new ZoomStore(userData, defaultZoom);
@@ -189,6 +193,22 @@ function startBrowser(): void {
     changed: readingListChanged,
   });
   const storageOrigins = new StorageOrigins(userData);
+  installWorkspaceHandlers({
+    store: workspaces,
+    owned: (contents) => windows.some((window) => window.tabs.hasContents(contents)),
+    writable: (contents) =>
+      contents.session === daily &&
+      windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
+    snapshot: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.tabs.toSavedWindow() ?? null,
+    open: (saved) => {
+      openWindow({ saved });
+    },
+    changed: () => {
+      for (const contents of webContents.getAllWebContents())
+        if (!contents.isDestroyed() && contents.getURL().startsWith(WORKSPACES_URL))
+          contents.send(WorkspaceChannel.changed);
+    },
+  });
   const siteStorage = new SiteStorageManager(daily, storageOrigins, () => history.list().map((entry) => entry.url));
   observeStorageOrigins(daily, storageOrigins, (contents) =>
     windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
@@ -617,6 +637,7 @@ function startBrowser(): void {
     downloads: rendererPath('downloads.html'),
     bookmarks: rendererPath('bookmarks.html'),
     readingList: rendererPath('reading-list.html'),
+    workspaces: rendererPath('workspaces.html'),
     settings: rendererPath('settings.html'),
   });
   for (const [browsing, isPrivate] of [

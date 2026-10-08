@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{workspaces.title}}</title>
+    <style>
+      __YALQEN_STYLES_SLOT__
+    </style>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        font: 14px/1.5 system-ui;
+      }
+      main {
+        max-width: 850px;
+        margin: auto;
+        padding: 40px 24px 80px;
+      }
+      h1 {
+        font-size: 30px;
+        margin: 0 0 12px;
+      }
+      p {
+        color: var(--text-muted);
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        margin: 24px 0;
+      }
+      input {
+        min-width: 0;
+        flex: 1;
+      }
+      ol {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        padding: 16px 0;
+        border-bottom: 1px solid var(--page-divider);
+      }
+      li form {
+        margin: 8px 0;
+        flex-wrap: wrap;
+      }
+      button {
+        white-space: nowrap;
+      }
+      .error {
+        color: var(--danger);
+      }
+      strong {
+        overflow-wrap: anywhere;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+    <script src="/workspaces.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>{{workspaces.title}}</h1>
+      <p>{{workspaces.intro}}</p>
+      <form id="save">
+        <input
+          class="field lg"
+          name="name"
+          required
+          maxlength="80"
+          aria-label="{{workspaces.name}}"
+          placeholder="{{workspaces.name}}"
+        /><button class="btn tonal">{{workspaces.save}}</button>
+      </form>
+      <p data-readonly hidden>{{workspaces.readOnly}}</p>
+      <p role="alert" class="error" hidden>{{workspaces.failed}}</p>
+      <p data-empty hidden>{{workspaces.empty}}</p>
+      <ol></ol>
+      <template
+        ><li>
+          <strong></strong>
+          <p class="meta"></p>
+          <form>
+            <input class="field" name="name" required maxlength="80" aria-label="{{workspaces.name}}" /><button
+              class="btn tonal"
+            >
+              {{workspaces.rename}}</button
+            ><button class="btn" type="button" data-open>{{workspaces.open}}</button
+            ><button class="btn" type="button" data-remove data-confirm="{{workspaces.confirmRemove}}">
+              {{workspaces.remove}}
+            </button>
+          </form>
+        </li></template
+      >
+    </main>
+  </body>
+</html>

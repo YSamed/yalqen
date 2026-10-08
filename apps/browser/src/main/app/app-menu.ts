@@ -100,6 +100,7 @@ export function installAppMenu(host: AppMenuHost): void {
       showBookmarks: inWindow((window) => window.tabs.openBookmarks()),
       saveReadingPage: inWindow((window) => host.saveReadingPage(window)),
       showReadingList: inWindow((window) => window.tabs.openReadingList()),
+      showWorkspaces: inWindow((window) => window.tabs.openWorkspaces()),
       print: () => current()?.print(),
       savePdf: () => void current()?.savePageAsPdf(),
       savePage: () => void current()?.savePageOffline(),

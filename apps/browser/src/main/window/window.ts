@@ -1457,6 +1457,18 @@ export class YalqenWindow {
       case 'close-selected-tabs':
         void tabs.closeSelected();
         break;
+      case 'set-tab-group':
+        if (!tabs.setSelectedGroup(action.name)) this.notice.show([t('tabGroups.failed')]);
+        break;
+      case 'rename-tab-group':
+        if (!tabs.renameGroup(action.name, action.next)) this.notice.show([t('tabGroups.failed')]);
+        break;
+      case 'toggle-tab-group':
+        tabs.toggleGroup(action.name);
+        break;
+      case 'remove-tab-group':
+        tabs.removeGroup(action.name);
+        break;
       case 'close-tab':
         tabs.close(action.id);
         break;

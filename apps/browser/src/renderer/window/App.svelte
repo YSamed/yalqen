@@ -310,6 +310,7 @@
         {developer}
         {activeTabId}
         selectedTabIds={browser.selectedTabIds}
+        groups={browser.tabGroups ?? []}
         collapsed={contentCollapsed}
         fading={contentFading}
         {side}

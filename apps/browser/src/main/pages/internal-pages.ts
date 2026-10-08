@@ -32,6 +32,7 @@ interface InternalPageFiles {
   downloads: string;
   bookmarks: string;
   readingList?: string;
+  workspaces?: string;
   settings: string;
 }
 
@@ -47,6 +48,7 @@ interface InternalPages {
   downloads: DownloadsPageAssets;
   bookmarks: BookmarksPageAssets;
   readingList?: { template: string; script: string };
+  workspaces?: { template: string; script: string };
   settings: { template: string; asset: (name: string) => Buffer<ArrayBuffer> | null };
 }
 
@@ -77,6 +79,9 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
     bookmarks: { template: readPage(files.bookmarks), script: readScript(files.bookmarks, 'bookmarks.js') },
     readingList: files.readingList
       ? { template: readPage(files.readingList), script: readScript(files.readingList, 'reading-list.js') }
+      : undefined,
+    workspaces: files.workspaces
+      ? { template: readPage(files.workspaces), script: readScript(files.workspaces, 'workspaces.js') }
       : undefined,
     settings: {
       template: localizePage(fs.readFileSync(files.settings, 'utf8')),
@@ -124,6 +129,15 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         return url.pathname === '/'
           ? htmlResponse(
               pages.readingList.template,
+              "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+            )
+          : notFound();
+      case 'workspaces':
+        if (!pages.workspaces) return notFound();
+        if (url.pathname === '/workspaces.js') return scriptResponse(pages.workspaces.script);
+        return url.pathname === '/'
+          ? htmlResponse(
+              pages.workspaces.template,
               "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'",
             )
           : notFound();

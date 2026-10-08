@@ -2,6 +2,26 @@ import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
   'readingList.title': 'Okuma listesi',
+  'tabGroups.manage': 'Sekme grupları',
+  'tabGroups.failed': '1–80 karakterlik benzersiz bir grup adı kullanın. Bir pencerede en fazla 50 grup olabilir.',
+  'tabGroups.selectionHint': 'Seçili sekmelere, seçim yoksa etkin sekmeye uygulanır.',
+  'tabGroups.name': 'Grup adı',
+  'tabGroups.create': 'Grup oluştur',
+  'tabGroups.assign': 'Gruba taşı',
+  'tabGroups.ungroup': 'Gruptan çıkar',
+  'tabGroups.rename': 'Adını değiştir',
+  'workspaces.title': 'Tarayıcı çalışma alanları',
+  'workspaces.intro':
+    'Grupları ve pinleriyle en fazla 200 normal web sekmesini kaydedin. Formlar ve gizli/geliştirici sekmeleri kaydedilmez. Çalışma alanı yeni pencerede açılır. En fazla 50 çalışma alanı; adlar benzersiz olmalıdır.',
+  'workspaces.name': 'Çalışma alanı adı',
+  'workspaces.save': 'Bu pencereyi kaydet',
+  'workspaces.open': 'Yeni pencerede aç',
+  'workspaces.rename': 'Adını değiştir',
+  'workspaces.remove': 'Kaldır',
+  'workspaces.confirmRemove': 'Kayıtlı çalışma alanı kaldırılsın mı? Açık sekmeler korunur.',
+  'workspaces.readOnly': 'Çalışma alanlarını değiştirmek ve açmak için normal bir tarayıcı penceresi kullanın.',
+  'workspaces.failed': 'İşlem tamamlanamadı. Adı, web sekmelerini ve sınırları kontrol edin.',
+  'workspaces.empty': 'Henüz kayıtlı çalışma alanı yok.',
   'readingList.savePage': 'Sayfayı okuma listesine kaydet',
   'readingList.intro':
     'Normal bir web sekmesini daha sonra okumak için Yer imleri menüsünden kaydedin. Bu liste bağlantıları saklar; ayrıca çevrimdışı kopya kaydetmediyseniz sayfalar internet bağlantısı gerektirir.',

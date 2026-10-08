@@ -43,6 +43,7 @@ interface MenuActions {
   toggleBookmark(): void;
   showBookmarks(): void;
   saveReadingPage(): void;
+  showWorkspaces(): void;
   showReadingList(): void;
   print(): void;
   savePdf(): void;
@@ -156,6 +157,8 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.nextTab'), accelerator: 'Ctrl+Tab', click: actions.selectNextTab },
         { label: t('menu.previousTab'), accelerator: 'Ctrl+Shift+Tab', click: actions.selectPreviousTab },
         { label: t('menu.moveTabToNewWindow'), click: actions.moveTabToNewWindow },
+        { type: 'separator' },
+        { label: t('workspaces.title'), click: actions.showWorkspaces },
         ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({
           label: i === 8 ? t('menu.lastTab') : t('menu.tabNumber', { number: i + 1 }),
           accelerator: `CmdOrCtrl+${i + 1}`,

@@ -35,6 +35,7 @@ export interface TabSnapshot {
   frozen: boolean;
   loading: boolean;
   pinned: boolean;
+  group?: string | null;
   security: SecurityState;
   isPrivate: boolean;
   bookmarked: boolean;
@@ -111,6 +112,7 @@ export interface BrowserState {
   developer: boolean;
   activeTabId: TabId | null;
   selectedTabIds: TabId[];
+  tabGroups?: import('./tab-groups').TabGroup[];
   pageFullScreen: boolean;
   windowFullScreen: boolean;
   addressPlaceholder: string;
@@ -371,6 +373,10 @@ export type UiAction =
   | { type: 'select-tab'; id: TabId; mode: 'toggle' | 'range' }
   | { type: 'clear-tab-selection' }
   | { type: 'close-selected-tabs' }
+  | { type: 'set-tab-group'; name: string | null }
+  | { type: 'rename-tab-group'; name: string; next: string }
+  | { type: 'toggle-tab-group'; name: string }
+  | { type: 'remove-tab-group'; name: string }
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }

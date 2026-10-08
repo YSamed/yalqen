@@ -39,6 +39,7 @@ import { setupWebStorePage } from './web-store.js';
 import { setupAutofill } from './autofill.js';
 import { SiteStorageChannel } from '../shared/site-storage.js';
 import { READING_LIST_URL, ReadingListChannel, type ReadingListApi } from '../shared/reading-list.js';
+import { WORKSPACES_URL, WorkspaceChannel, type WorkspaceApi } from '../shared/workspaces.js';
 
 setupAutofill();
 
@@ -53,6 +54,17 @@ if (location.href.startsWith(READING_LIST_URL) && window === window.top) {
 }
 
 const THRESHOLD = 90;
+if (location.href.startsWith(WORKSPACES_URL) && window === window.top) {
+  const api: WorkspaceApi = {
+    list: () => ipcRenderer.invoke(WorkspaceChannel.list),
+    save: (name) => ipcRenderer.invoke(WorkspaceChannel.save, name),
+    open: (id) => ipcRenderer.invoke(WorkspaceChannel.open, id),
+    rename: (id, name) => ipcRenderer.invoke(WorkspaceChannel.rename, id, name),
+    remove: (id) => ipcRenderer.invoke(WorkspaceChannel.remove, id),
+    onChange: (listener) => subscribe(WorkspaceChannel.changed, listener),
+  };
+  contextBridge.exposeInMainWorld('yalqenWorkspaces', api);
+}
 const GAP_MS = 350;
 const COOLDOWN_MS = 650;
 const PENDING_CENTER_MS = 250;

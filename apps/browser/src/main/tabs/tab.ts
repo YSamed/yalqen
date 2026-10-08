@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { tabGroupName } from '../../shared/tab-groups.js';
 import type { WebContentsView } from 'electron';
 import { t } from '../../shared/i18n.js';
 import type { PageOverrides, TabId, TranslationStatus } from '../../shared/types.js';
@@ -14,6 +15,7 @@ export interface Tab {
   title: string;
   faviconUrl: string | null;
   pinnedUrl: string | null;
+  group: string | null;
   muted: boolean;
   isPrivate: boolean;
   detachListeners: (() => void) | null;
@@ -55,6 +57,7 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     title: saved.title ?? t('tabs.newTab'),
     faviconUrl: saved.faviconUrl ?? null,
     pinnedUrl: saved.pinnedUrl ?? (saved.keepAlive ? saved.url : null),
+    group: tabGroupName(saved.group),
     muted: false,
     isPrivate,
     detachListeners: null,
@@ -93,6 +96,7 @@ export function savedTab(tab: Tab): SavedTab {
     title: tab.title,
     faviconUrl: tab.faviconUrl,
     pinnedUrl: tab.pinnedUrl,
+    ...(tab.group && { group: tab.group }),
     history,
   };
 }

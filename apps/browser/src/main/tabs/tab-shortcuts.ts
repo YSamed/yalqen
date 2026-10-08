@@ -1,6 +1,7 @@
 interface Listable {
   id: string;
   pinnedUrl: string | null;
+  group?: string | null;
 }
 
 type OpenedPinned = ReadonlyMap<string, string | null>;
@@ -22,10 +23,15 @@ export function tabListOrder<T extends Listable>(tabs: readonly T[], opened: Ope
     if (group) group.push(tab);
     else byAnchor.set(anchor, [tab]);
   }
-  return [
+  const ordered = [
     ...(byAnchor.get(null) ?? []),
     ...unpinned.flatMap((tab) => [tab, ...(byAnchor.get(tab.id) ?? [])]),
     ...orphans,
+  ];
+  const groups = new Set(tabs.flatMap((tab) => (tab.group ? [tab.group] : [])));
+  return [
+    ...ordered.filter((tab) => !tab.group),
+    ...Array.from(groups).flatMap((name) => ordered.filter((tab) => tab.group === name)),
   ];
 }
 

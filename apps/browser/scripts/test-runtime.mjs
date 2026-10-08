@@ -11,6 +11,7 @@ for (const test of [
   'site-storage.mjs',
   'reader.mjs',
   'reading-list.mjs',
+  'workspaces.mjs',
   'extension-updates.mjs',
   'extension-access.mjs',
   'extension-access-settings.mjs',

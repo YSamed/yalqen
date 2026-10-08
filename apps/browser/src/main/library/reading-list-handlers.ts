@@ -3,10 +3,13 @@ import { READING_LIST_URL, ReadingListChannel } from '../../shared/reading-list.
 import type { ReadingListStore } from './reading-list.js';
 
 export function isReadingListFrame(event: IpcMainInvokeEvent): boolean {
+  return isLibraryFrame(event, 'reading-list');
+}
+export function isLibraryFrame(event: IpcMainInvokeEvent, host: string): boolean {
   if (event.senderFrame !== event.sender.mainFrame) return false;
   try {
     const url = new URL(event.senderFrame!.url);
-    return url.protocol === 'yalqen:' && url.host === 'reading-list' && url.pathname === '/';
+    return url.protocol === 'yalqen:' && url.host === host && url.pathname === '/';
   } catch {
     return false;
   }
