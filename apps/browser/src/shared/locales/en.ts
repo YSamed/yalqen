@@ -1,4 +1,10 @@
 export const en = {
+  'reader.title': 'Reader view',
+  'reader.toggle': 'Toggle reader view',
+  'reader.smaller': 'Smaller text',
+  'reader.larger': 'Larger text',
+  'reader.close': 'Return to page',
+  'reader.unavailable': 'No readable article was found on this page.',
   'siteStorage.title': 'Site data',
   'siteStorage.intro':
     'Sites are grouped with their subdomains. Clearing a site removes its stored data and cookies across its known addresses and may sign you out.',

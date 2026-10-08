@@ -9,6 +9,7 @@ for (const test of [
   'download-location.mjs',
   'site-protections.mjs',
   'site-storage.mjs',
+  'reader.mjs',
   'extension-updates.mjs',
   'extension-access.mjs',
   'extension-access-settings.mjs',

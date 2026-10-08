@@ -1,6 +1,12 @@
 import type { MessageKey } from './en.js';
 
 export const tr: Record<MessageKey, string> = {
+  'reader.title': 'Okuma görünümü',
+  'reader.toggle': 'Okuma görünümünü aç / kapat',
+  'reader.smaller': 'Metni küçült',
+  'reader.larger': 'Metni büyüt',
+  'reader.close': 'Sayfaya dön',
+  'reader.unavailable': 'Bu sayfada okunabilir bir makale bulunamadı.',
   'siteStorage.title': 'Site verileri',
   'siteStorage.intro':
     'Siteler alt alan adlarıyla birlikte gruplanır. Bir siteyi temizlemek bilinen adreslerindeki kayıtlı verileri ve çerezleri siler, oturumunuzu kapatabilir.',

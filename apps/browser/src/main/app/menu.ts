@@ -27,6 +27,7 @@ interface MenuActions {
   home(): void;
   reload(): void;
   hardReload(): void;
+  toggleReader(): void;
   zoom(direction: 1 | -1 | 0): void;
   togglePanel(): void;
   toggleSidebar(): void;
@@ -165,6 +166,7 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('toolbar.home'), accelerator: 'Alt+Home', click: actions.home },
         { label: t('menu.reload'), accelerator: 'CmdOrCtrl+R', click: actions.reload },
         { label: t('menu.hardReload'), accelerator: 'CmdOrCtrl+Shift+R', click: actions.hardReload },
+        { label: t('reader.toggle'), accelerator: 'CmdOrCtrl+Alt+R', click: actions.toggleReader },
         { label: t('menu.toggleCache'), click: () => actions.devCommand('toggle-cache') },
         {
           label: t('menu.autoReload'),

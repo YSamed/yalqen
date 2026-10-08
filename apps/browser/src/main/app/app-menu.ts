@@ -1,4 +1,6 @@
-import { BaseWindow, Menu } from 'electron';
+import { BaseWindow, Menu, dialog } from 'electron';
+import { toggleReader } from '../pages/reader.js';
+import { t } from '../../shared/i18n.js';
 import { NEW_TAB_URL, type DeviceId } from '../../shared/types.js';
 import { DEVICES } from '../devtools/devices.js';
 import type { WindowOptions, YalqenWindow } from '../window/window.js';
@@ -49,6 +51,22 @@ export function installAppMenu(host: AppMenuHost): void {
       home: inWindow((window) => window.goHome()),
       reload: () => current()?.tabs.reload(),
       hardReload: () => current()?.tabs.reloadIgnoringCache(),
+      toggleReader: () => {
+        const window = current(),
+          contents = window?.tabs.activeContents();
+        if (!window || !contents) return;
+        const url = contents.getURL();
+        void toggleReader(contents, () => window.tabs.activeContents() === contents).then((opened) => {
+          if (
+            opened === false &&
+            !contents.isDestroyed() &&
+            !window.window.isDestroyed() &&
+            window.tabs.activeContents() === contents &&
+            contents.getURL() === url
+          )
+            void dialog.showMessageBox(window.window, { type: 'info', message: t('reader.unavailable') });
+        });
+      },
       zoom: (direction) => current()?.tabs.zoom(direction),
       togglePanel: () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed }),
       toggleSidebar: () => updateSettings({ sidebarVisible: !settings.get().sidebarVisible }),

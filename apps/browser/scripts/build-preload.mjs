@@ -32,7 +32,7 @@ for (const name of PRELOADS) {
 }
 
 // Page scripts run inside local development pages through the debugger, as the body of one function.
-const PAGE_SCRIPTS = { 'component-inspector': 'YalqenComponentInspector' };
+const PAGE_SCRIPTS = { 'component-inspector': 'YalqenComponentInspector', reader: 'YalqenReader' };
 fs.rmSync(path.join(project, 'dist/page-scripts'), { recursive: true, force: true });
 for (const [name, global] of Object.entries(PAGE_SCRIPTS)) {
   await build({
