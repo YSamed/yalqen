@@ -129,6 +129,8 @@ export interface AppContext {
   persistentProfiles: import('../app/profile-controller.js').ProfileController;
   threatGuard: import('../privacy/threat-guard.js').ThreatGuard;
   closedTabs: SavedTab[];
+  onClosedTabsChange(): void;
+  clearClosedTabs(): void;
   pageTheme: string;
   permissionsFor(isPrivate: boolean): PermissionStore;
   zoomFor(isPrivate: boolean): ZoomStore;
@@ -303,6 +305,7 @@ export class YalqenWindow {
       pagePreload: preloadPath('page-preload'),
       pageTheme: app.pageTheme,
       closed: app.closedTabs,
+      onClosedChanged: () => app.onClosedTabsChange(),
       privateWindow: this.isPrivate,
       session: app.daily,
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
@@ -366,7 +369,10 @@ export class YalqenWindow {
       onVisitTitle: (id, title) => app.history.setTitle(id, title),
       onVisitFavicon: (id, faviconUrl) => app.history.setFavicon(id, faviconUrl),
       onHistoryDelete: (id) => app.history.remove(id),
-      onHistoryClear: () => app.history.clear(),
+      onHistoryClear: () => {
+        app.history.clear();
+        app.clearClosedTabs();
+      },
       isBookmarked: (url) => app.bookmarks.has(url),
       onPageCommand: (page, command, params) => {
         if (page === 'bookmarks') {

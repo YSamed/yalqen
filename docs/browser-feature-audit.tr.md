@@ -26,6 +26,8 @@ Bu rapor ilk incelemenin bulgularını korur. Sonraki düzeltmeler aşağıda iz
 
 - **Tamamlandı — adlandırılmış kalıcı profiller:** Ayarlar → Genel ve profil menüsünden oluşturma, yeniden adlandırma, açma, açılış varsayılanı seçme ve kapalı profili onayla silme eklendi. Mevcut profil eski veri dizinini korur. Yeni profiller ayrı Electron örneklerinde ve ayrı `userData`/`sessionData` dizinlerinde açılır; çerezler, geçmiş, yer imleri, şifreli parolalar, uzantılar ve ayarlar ayrıdır. Aynı profili tekrar açma mevcut örneği odaklar. Paylaşılan SQLite kayıt defteri işlemleri süreçler arasında sıralar; açık/geçerli/ilk profil silinemez. Yeniden başlatma geçerli profil kimliğini korur. Gerçek Electron süreçlerinde iki profilin verilerinin yeniden başlatmada ayrılığı ve kilitleri, üretim ayar arayüzünde oluşturma/düzenleme/varsayılan/silme iptali/onayı ve yetkisiz sayfaların IPC reddi doğrulandı. Her profil kendi tarayıcı örneğinden çıkış yapar; profil dışındaki indirilen dosyalar silinmez.
 
+- **Tamamlandı — yeniden başlatma sonrası kapatılan sekmeler:** Her kalıcı profilin son 20 kapatılan sekmesi adresi, başlığı ve geri/ileri geçmişiyle diskte saklanır; yeniden açma listeden tüketir ve yeni sekme kimliği kullanır. Gizli/geliştirici sekmeleri kaydedilmez ve bu oturumlar kişisel kapatılan sekmeleri yeniden açamaz. Geçmişin tamamını veya zaman aralığını temizlemek ilgili kapatılan kayıtları da derhal siler. Bozuk/büyük kayıtlar ve uygun olmayan gezinme verileri süzülür. Ayrı Electron süreçlerinde yeniden başlatma, gerçek Chromium geri gezinmesi ve tüketilen kaydın sonraki açılışta bulunmaması doğrulandı.
+
 ## Yöntem ve kapsam
 
 - Açık Yalqen uygulamasında araç çubuğu, Genel, Gizlilik ve Uzantılar ekranları incelendi.

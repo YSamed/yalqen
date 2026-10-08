@@ -16,6 +16,7 @@ for (const test of [
   'threat-protection.mjs',
   'persistent-profiles.mjs',
   'profile-settings.mjs',
+  'closed-tabs.mjs',
 ]) {
   const result = spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
     stdio: 'inherit',

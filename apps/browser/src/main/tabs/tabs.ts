@@ -77,8 +77,8 @@ import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
 import { TabTranslation } from './tab-translation.js';
 import { stepZoom } from './zoom.js';
+import { MAX_CLOSED_TABS } from './closed-tabs.js';
 
-const MAX_CLOSED_TABS = 20;
 const STORAGE_WORLD_ID = 1001;
 // Past this the badge reads "99+", so further errors need not re-render the chrome.
 const MAX_CONSOLE_ERRORS = 99;
@@ -91,6 +91,7 @@ interface TabManagerOptions {
   pagePreload: string;
   pageTheme: string;
   closed: SavedTab[];
+  onClosedChanged?: () => void;
   privateWindow: boolean;
   session: Session;
   privateSession: Session;
@@ -506,8 +507,9 @@ export class TabManager {
     const [tab] = this.tabs.splice(index, 1);
 
     if (!tab.isPrivate) {
-      this.options.closed.push(savedTab(tab));
+      this.options.closed.push({ ...savedTab(tab), closedAt: Date.now() });
       if (this.options.closed.length > MAX_CLOSED_TABS) this.options.closed.shift();
+      this.options.onClosedChanged?.();
     }
     this.destroyView(tab);
     this.autoReloader.sync();
@@ -533,9 +535,11 @@ export class TabManager {
   }
 
   reopenClosed(): void {
+    if (this.options.privateWindow || this.activeIsPrivate) return;
     const saved = this.options.closed.pop();
     if (!saved) return;
-    const tab = this.createRecord(saved);
+    this.options.onClosedChanged?.();
+    const tab = this.createRecord({ ...saved, id: undefined });
     this.insertAfterActive(tab);
     this.activate(tab.id);
   }

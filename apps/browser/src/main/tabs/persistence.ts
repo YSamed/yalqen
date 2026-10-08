@@ -45,6 +45,7 @@ export interface SavedTab {
   faviconUrl: string | null;
   pinnedUrl?: string | null;
   keepAlive?: boolean;
+  closedAt?: number;
   history: SavedHistory | null;
 }
 

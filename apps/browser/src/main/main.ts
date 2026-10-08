@@ -68,7 +68,8 @@ import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
 import { RequestRuleStore } from './devtools/request-rules.js';
-import { SessionStore, pinnedOnly, type SavedSession, type SavedTab } from './tabs/persistence.js';
+import { SessionStore, pinnedOnly, type SavedSession } from './tabs/persistence.js';
+import { ClosedTabStore } from './tabs/closed-tabs.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './address-bar/search.js';
 import { SettingsStore } from './app/settings.js';
 import { ProfileRegistry, profileArguments, initializeProfile } from './app/profiles.js';
@@ -160,7 +161,8 @@ function startBrowser(): void {
   const httpsOnly = new HttpsOnly(() => settings.get().httpsOnly);
   app.configureHostResolver(hostResolverOptions(settings.get().secureDns));
   bench?.mark('stores-loaded');
-  const closedTabs: SavedTab[] = [];
+  const closedTabStore = new ClosedTabStore(userData);
+  const closedTabs = closedTabStore.tabs;
   let privatePermissions = new PermissionStore(null);
   let privateZoom = new ZoomStore(null, defaultZoom);
   const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
@@ -466,6 +468,8 @@ function startBrowser(): void {
     threatGuard,
     persistentProfiles,
     closedTabs,
+    onClosedTabsChange: () => closedTabStore.changed(),
+    clearClosedTabs: () => closedTabStore.clearSince(0),
     pageTheme: fs.readFileSync(rendererPath('tokens.css'), 'utf8'),
     permissionsFor,
     zoomFor: (isPrivate) => (isPrivate ? privateZoom : zoom),
@@ -755,7 +759,7 @@ function startBrowser(): void {
     const since = clearSince(request.range, Date.now());
     if (request.history) {
       history.clearSince(since);
-      closedTabs.length = 0;
+      closedTabStore.clearSince(since);
       reloadPages(HISTORY_URL);
       reloadPages(NEW_TAB_URL);
     }
@@ -829,6 +833,7 @@ function startBrowser(): void {
     zoom.saveNow();
     permissions.saveNow();
     passwords.saveNow();
+    closedTabStore.saveNow();
     requestRules.saveNow();
   });
   app.on('activate', () => {
