@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.38](https://github.com/YSamed/yalqen/compare/v0.3.37...v0.3.38) (2026-10-09)
+
+
+### Bug Fixes
+
+* restore discarded tabs and unify language setting ([#202](https://github.com/YSamed/yalqen/issues/202)) ([cd7eee7](https://github.com/YSamed/yalqen/commit/cd7eee7da04a448d0f046093a0ce7eb8c5ad390d))
+
 ## [0.3.37](https://github.com/YSamed/yalqen/compare/v0.3.36...v0.3.37) (2026-10-08)
 
 
