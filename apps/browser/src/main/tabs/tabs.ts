@@ -1354,7 +1354,8 @@ export class TabManager {
         });
       } else this.load(tab, view);
     };
-    if (/^https?:/.test(tab.url) && typeof view.webContents.debugger.isAttached === 'function') {
+    // Electron rejects a history restore on contents that already loaded a page, even about:blank.
+    if (!tab.history && /^https?:/.test(tab.url) && typeof view.webContents.debugger.isAttached === 'function') {
       // Network observation on an uninitialized renderer misses the first TLS
       // connection. Prepare its blank frame before mounting browser listeners,
       // so preparation never appears in history, visits or persisted tab state.

@@ -28,7 +28,6 @@ test('unknown or mistyped fields fall back', () => {
       secureDns: 'opendns',
       fontSize: 'huge',
       defaultZoom: 1.3,
-      pageLanguage: 'de',
       autoUpdate: 'no',
       usageCounting: 'yes',
       agentBridge: 'on',
@@ -63,7 +62,6 @@ test('unknown or mistyped fields fall back', () => {
       secureDns: 'automatic',
       fontSize: 'medium',
       defaultZoom: 1,
-      pageLanguage: 'tr',
       interfaceLanguage: 'system',
       pageTranslation: true,
       autoUpdate: true,
@@ -138,7 +136,6 @@ test('updates keep valid fields and persist', () => {
       secureDns: 'quad9',
       fontSize: 'large',
       defaultZoom: 1.25,
-      pageLanguage: 'en',
       interfaceLanguage: 'tr',
       askBeforeDownload: false,
     });
@@ -164,7 +161,6 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.secureDns, 'quad9');
     assert.equal(reloaded.fontSize, 'large');
     assert.equal(reloaded.defaultZoom, 1.25);
-    assert.equal(reloaded.pageLanguage, 'en');
     assert.equal(reloaded.interfaceLanguage, 'tr');
     assert.equal(reloaded.askBeforeDownload, false);
   } finally {

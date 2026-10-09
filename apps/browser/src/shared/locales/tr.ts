@@ -849,12 +849,11 @@ export const tr: Record<MessageKey, string> = {
   'settings.whenBrowserOpens': 'Tarayıcı açıldığında',
   'settings.startupHint': 'Yeni sekmeyle başla seçilirse, tarayıcı kapandığında açık sekmeler kaydedilmez.',
   'settings.language': 'Dil',
-  'settings.interfaceLanguage': 'Arayüz dili',
-  'settings.interfaceLanguageHint': 'Tarayıcının ve yapay zeka panelinin dili. Yeniden başlatınca geçerli olur.',
+  'settings.interfaceLanguage': 'Dil',
+  'settings.interfaceLanguageHint':
+    'Tarayıcının, yapay zeka panelinin ve sitelerin gönderdiği içeriğin dili. Yeniden başlatınca geçerli olur.',
   'settings.interfaceLanguageSystem': 'Sistem varsayılanı',
   'settings.restartNow': 'Şimdi yeniden başlat',
-  'settings.pageLanguage': 'Sayfa dili',
-  'settings.pageLanguageHint': 'Sitelerden önce bu dilde içerik istenir; yazım denetimi de bu sırayı izler.',
   'settings.pageTranslation': 'Sayfa çevirisi',
   'settings.pageTranslationHint':
     "Sayfa dili farklıysa çevir düğmesi görünür. Çevirirken sayfa metni Google Çeviri'ye gönderilir; yalnızca düğmeye bastığınızda.",

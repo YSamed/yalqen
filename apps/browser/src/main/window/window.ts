@@ -428,7 +428,7 @@ export class YalqenWindow {
       requestRules: () => app.requestRules.list(),
       translation: () => ({
         enabled: app.settings.get().pageTranslation,
-        language: app.settings.get().pageLanguage,
+        language: getLocale(),
       }),
       // Developer windows are private only to keep their session apart; they are meant for local work.
       agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate && !this.isDeveloper),
