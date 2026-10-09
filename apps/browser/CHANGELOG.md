@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.40](https://github.com/YSamed/yalqen/compare/v0.3.39...v0.3.40) (2026-10-09)
+
+
+### Features
+
+* apply chosen language to the electron locale ([#206](https://github.com/YSamed/yalqen/issues/206)) ([1313a82](https://github.com/YSamed/yalqen/commit/1313a827c79f3c31e5ac768e2414565a9088fac0))
+
 ## [0.3.39](https://github.com/YSamed/yalqen/compare/v0.3.38...v0.3.39) (2026-10-09)
 
 
