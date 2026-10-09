@@ -140,6 +140,10 @@ const profileRegistry = selectedProfile.registry!;
 const primary = selectedProfile.primary;
 const externalUrls = new ExternalUrlInbox(primary);
 
+// Chromium reads its locale switch once at startup, before the app is ready.
+const chosenLanguage = new SettingsStore(app.getPath('userData')).get().interfaceLanguage;
+if (chosenLanguage !== 'system') app.commandLine.appendSwitch('lang', chosenLanguage);
+
 function startBrowser(): void {
   const userData = app.getPath('userData');
   app.userAgentFallback = chromeUserAgent(app.userAgentFallback);
