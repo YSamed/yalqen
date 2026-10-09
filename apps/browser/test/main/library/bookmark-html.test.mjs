@@ -75,7 +75,7 @@ test('HTML exports round trip names, URLs, dates, loose bookmarks and empty fold
   const html = exportBookmarkHtml(folders, entries);
   assert.match(html, /NETSCAPE-Bookmark-file-1/);
   assert.match(html, /charset=UTF-8/);
-  assert.doesNotMatch(html, /<script>|<img|javascript:/);
+  assert.doesNotMatch(html, /<script|<img|javascript:/i);
   const result = await parseBookmarkHtml(html);
   assert.deepEqual(
     result.folders,
