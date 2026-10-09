@@ -4,7 +4,6 @@ import type {
   AgentActionPolicy,
   FontSizeSetting,
   InterfaceLanguage,
-  PageLanguage,
   PanelSide,
   PinnedDisplay,
   SecureDnsSetting,
@@ -51,7 +50,6 @@ const DEFAULTS: Settings = {
   secureDns: 'automatic',
   fontSize: 'medium',
   defaultZoom: 1,
-  pageLanguage: 'tr',
   interfaceLanguage: 'system',
   pageTranslation: true,
   autoUpdate: true,
@@ -114,7 +112,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     secureDns,
     fontSize,
     defaultZoom,
-    pageLanguage,
     interfaceLanguage,
     pageTranslation,
     autoUpdate,
@@ -180,7 +177,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
       typeof defaultZoom === 'number' && (DEFAULT_ZOOM_FACTORS as readonly number[]).includes(defaultZoom)
         ? defaultZoom
         : base.defaultZoom,
-    pageLanguage: pageLanguage === 'tr' || pageLanguage === 'en' ? (pageLanguage as PageLanguage) : base.pageLanguage,
     interfaceLanguage:
       interfaceLanguage === 'system' || interfaceLanguage === 'tr' || interfaceLanguage === 'en'
         ? (interfaceLanguage as InterfaceLanguage)
@@ -221,11 +217,10 @@ export class SettingsStore {
   private readonly json: JsonFile;
   private current: Settings;
 
-  // A fresh profile asks websites for the interface language.
-  constructor(directory: string, pageLanguage: PageLanguage = DEFAULTS.pageLanguage) {
+  constructor(directory: string) {
     this.file = path.join(directory, 'settings.json');
     this.json = new JsonFile(this.file, 'settings');
-    this.current = this.load({ ...DEFAULTS, pageLanguage });
+    this.current = this.load(DEFAULTS);
   }
 
   get(): Settings {

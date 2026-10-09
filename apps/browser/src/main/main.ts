@@ -145,7 +145,7 @@ function startBrowser(): void {
   app.userAgentFallback = chromeUserAgent(app.userAgentFallback);
   const sessions = openBrowsingSessions();
   const { daily, privateBrowsing, developer } = sessions;
-  const settings = new SettingsStore(userData, getLocale());
+  const settings = new SettingsStore(userData);
   const threatLists = new LocalThreatLists(
     userData,
     () => settings.get().threatProtection,
@@ -299,7 +299,7 @@ function startBrowser(): void {
     };
   };
 
-  applyPageLanguage(sessions, settings.get().pageLanguage);
+  applyPageLanguage(sessions, getLocale());
   applyCookieBlocking(sessions, settings.get().blockThirdPartyCookies, cookiesAllowed);
   installPermissionHandlers({
     sessions: [
@@ -501,7 +501,6 @@ function startBrowser(): void {
     if (next === previous) return;
     if (next.threatProtection && !previous.threatProtection) void threatLists.update();
     if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
-    if (next.pageLanguage !== previous.pageLanguage) applyPageLanguage(sessions, next.pageLanguage);
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
     nativeTheme.themeSource = next.theme;
     if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs)

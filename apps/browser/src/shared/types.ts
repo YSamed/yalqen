@@ -700,7 +700,6 @@ export interface SettingsValues {
   secureDns: SecureDnsSetting;
   fontSize: FontSizeSetting;
   defaultZoom: number;
-  pageLanguage: PageLanguage;
   interfaceLanguage: InterfaceLanguage;
   pageTranslation: boolean;
   autoUpdate: boolean;
