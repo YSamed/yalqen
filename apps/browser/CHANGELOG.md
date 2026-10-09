@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.39](https://github.com/YSamed/yalqen/compare/v0.3.38...v0.3.39) (2026-10-09)
+
+
+### Bug Fixes
+
+* resolve codeql alerts in browser test helpers ([#204](https://github.com/YSamed/yalqen/issues/204)) ([0913023](https://github.com/YSamed/yalqen/commit/091302347e290aa24f48fa287383f69e9861080e))
+
 ## [0.3.38](https://github.com/YSamed/yalqen/compare/v0.3.37...v0.3.38) (2026-10-09)
 
 
