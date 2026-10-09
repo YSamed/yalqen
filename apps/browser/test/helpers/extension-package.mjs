@@ -2,7 +2,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import store from '../../dist/main/extensions/chrome-web-store.js';
 
 export function storeIdentity() {
-  const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 1024 });
+  const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const key = publicKey.export({ type: 'spki', format: 'der' });
   return { key, id: store.extensionIdOfKey(key) };
 }
