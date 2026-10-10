@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.44](https://github.com/YSamed/yalqen/compare/v0.3.43...v0.3.44) (2026-10-10)
+
+
+### Bug Fixes
+
+* send color scheme hint on first page load ([#214](https://github.com/YSamed/yalqen/issues/214)) ([a778ef1](https://github.com/YSamed/yalqen/commit/a778ef18ff16bd7a783f8162e066104ab5f2eb99))
+
 ## [0.3.43](https://github.com/YSamed/yalqen/compare/v0.3.42...v0.3.43) (2026-10-10)
 
 
