@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.43](https://github.com/YSamed/yalqen/compare/v0.3.42...v0.3.43) (2026-10-10)
+
+
+### Features
+
+* cycle tab panel and unify panel shortcuts ([#213](https://github.com/YSamed/yalqen/issues/213)) ([08d62a3](https://github.com/YSamed/yalqen/commit/08d62a36d7bd4716bacb23ece1ba2ffb34d1e323))
+
 ## [0.3.42](https://github.com/YSamed/yalqen/compare/v0.3.41...v0.3.42) (2026-10-10)
 
 
