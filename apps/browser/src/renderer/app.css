@@ -44,9 +44,9 @@
   --window: transparent;
   --warn: #a34a06;
   --bg: transparent;
-  --chrome-base: rgb(250 247 243 / 0.38);
-  --surface: rgb(255 255 255 / 0.76);
-  --surface-strong: rgb(255 255 255 / 0.95);
+  --chrome-base: rgb(250 247 243 / 0.22);
+  --surface: rgb(255 255 255 / 0.55);
+  --surface-strong: rgb(255 255 255 / 0.82);
   /* Menus float over text, so a see-through glass fill would mix the two. */
   --surface-menu: #fbfaf8;
   --surface-hover: rgb(16 18 24 / 0.06);
@@ -64,9 +64,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root[data-material='glass'] {
-    --chrome-base: rgb(27 24 24 / 0.5);
-    --surface: rgb(255 255 255 / 0.12);
-    --surface-strong: rgb(255 255 255 / 0.18);
+    --chrome-base: rgb(27 24 24 / 0.32);
+    --surface: rgb(255 255 255 / 0.08);
+    --surface-strong: rgb(255 255 255 / 0.13);
     --surface-menu: #2a2c30;
     --surface-hover: rgb(255 255 255 / 0.07);
     --well: rgb(0 0 0 / 0.17);
@@ -108,7 +108,7 @@
     radial-gradient(60% 60% at 50% 50%, rgb(255 150 170 / 0.3), transparent 70%),
     radial-gradient(80% 70% at 0% 100%, rgb(150 160 255 / 0.55), transparent 70%),
     linear-gradient(160deg, #fbe9d7, #e6e4f6);
-  --chrome-base: rgb(255 255 255 / 0.18);
+  --chrome-base: rgb(255 255 255 / 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -118,7 +118,7 @@
       radial-gradient(60% 60% at 55% 45%, rgb(190 70 120 / 0.3), transparent 70%),
       radial-gradient(80% 70% at 0% 100%, rgb(96 76 220 / 0.6), transparent 70%),
       linear-gradient(160deg, #2a1d2e, #141228);
-    --chrome-base: rgb(16 14 20 / 0.28);
+    --chrome-base: rgb(16 14 20 / 0.18);
   }
 }
 
