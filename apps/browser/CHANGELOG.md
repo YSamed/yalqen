@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.42](https://github.com/YSamed/yalqen/compare/v0.3.41...v0.3.42) (2026-10-10)
+
+
+### Features
+
+* increase glass window transparency ([#210](https://github.com/YSamed/yalqen/issues/210)) ([3662296](https://github.com/YSamed/yalqen/commit/366229679824612fc2c36343de337a47de049055))
+
 ## [0.3.41](https://github.com/YSamed/yalqen/compare/v0.3.40...v0.3.41) (2026-10-10)
 
 
