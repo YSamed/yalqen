@@ -67,24 +67,23 @@ Yalqen klavye öncelikli çalışır. Aşağıda güncel sürümdeki macOS kısa
 | Telefon görünümünü aç/kapat           | ⌥⌘M     |
 | Cihazı döndür                         | ⇧⌥⌘M    |
 | Ajan için öğe seç                     | ⌥⌘P     |
-| Yapay zekâ panelini aç/kapat           | ⌥⌘A     |
 
 Telefon görünümü açıkken, yeniden boyutlandırma tutamacına odaklanıp ok tuşlarıyla çerçeveyi boyutlandırabilirsin. Daha büyük adımlar için ⇧ tuşunu basılı tut.
 
 ## Pencere ve uygulama
 
-| Eylem                          | Kısayol |
-| ------------------------------ | ------- |
-| Yeni pencere                   | ⌘N      |
-| Yeni gizli pencere             | ⇧⌘N     |
-| Pencereyi kapat                | ⇧⌘W     |
-| Sekme panelini daralt/genişlet | ⌘S      |
-| Üst menüyü göster/gizle        | ⇧⌘B     |
-| Yan menüyü göster/gizle        | ⇧⌘U     |
-| Ayarlar                        | ⌘,      |
-| Yalqen'i gizle                 | ⌘H      |
-| Diğerlerini gizle              | ⌥⌘H     |
-| Yalqen'den çık                 | ⌘Q      |
+| Eylem                                      | Kısayol |
+| ------------------------------------------ | ------- |
+| Yeni pencere                               | ⌘N      |
+| Yeni gizli pencere                         | ⇧⌘N     |
+| Pencereyi kapat                            | ⇧⌘W     |
+| Sekme panelini döngüle (geniş, dar, gizli) | ⇧⌘P     |
+| Üst menüyü göster/gizle                    | ⇧⌘B     |
+| Yapay zekâ panelini aç/kapat               | ⇧⌘A     |
+| Ayarlar                                    | ⌘,      |
+| Yalqen'i gizle                             | ⌘H      |
+| Diğerlerini gizle                          | ⌥⌘H     |
+| Yalqen'den çık                             | ⌘Q      |
 
 ## Yalnızca menüden erişilen eylemler
 

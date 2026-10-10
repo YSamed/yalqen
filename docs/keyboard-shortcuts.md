@@ -67,24 +67,23 @@ Yalqen is keyboard-first. These are the macOS shortcuts in the current build, gr
 | Toggle phone view           | ⌥⌘M      |
 | Rotate device               | ⇧⌥⌘M     |
 | Select element for agent    | ⌥⌘P      |
-| Show or hide AI panel       | ⌥⌘A      |
 
 While phone view is on, focus the resize handle of the responsive frame and use the arrow keys to resize it, or hold ⇧ for larger steps.
 
 ## Window and app
 
-| Action                       | Shortcut |
-| ---------------------------- | -------- |
-| New window                   | ⌘N       |
-| New private window           | ⇧⌘N      |
-| Close window                 | ⇧⌘W      |
-| Collapse or expand tab panel | ⌘S       |
-| Show or hide top bar         | ⇧⌘B      |
-| Show or hide sidebar         | ⇧⌘U      |
-| Settings                     | ⌘,       |
-| Hide Yalqen                  | ⌘H       |
-| Hide others                  | ⌥⌘H      |
-| Quit Yalqen                  | ⌘Q       |
+| Action                                        | Shortcut |
+| --------------------------------------------- | -------- |
+| New window                                    | ⌘N       |
+| New private window                            | ⇧⌘N      |
+| Close window                                  | ⇧⌘W      |
+| Cycle tab panel (expanded, collapsed, hidden) | ⇧⌘P      |
+| Show or hide top bar                          | ⇧⌘B      |
+| Show or hide AI panel                         | ⇧⌘A      |
+| Settings                                      | ⌘,       |
+| Hide Yalqen                                   | ⌘H       |
+| Hide others                                   | ⌥⌘H      |
+| Quit Yalqen                                   | ⌘Q       |
 
 ## Menu-only actions
 
