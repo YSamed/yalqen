@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.41](https://github.com/YSamed/yalqen/compare/v0.3.40...v0.3.41) (2026-10-10)
+
+
+### Bug Fixes
+
+* keep dock icon size stable in packaged app ([#209](https://github.com/YSamed/yalqen/issues/209)) ([cbcf968](https://github.com/YSamed/yalqen/commit/cbcf968c141690240038b7ca4f6643d7d92dc86e))
+
 ## [0.3.40](https://github.com/YSamed/yalqen/compare/v0.3.39...v0.3.40) (2026-10-09)
 
 
