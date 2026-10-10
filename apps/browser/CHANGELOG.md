@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.46](https://github.com/YSamed/yalqen/compare/v0.3.45...v0.3.46) (2026-10-10)
+
+
+### Bug Fixes
+
+* fit sidebar to pinned tabs and close window on cmd+w ([#220](https://github.com/YSamed/yalqen/issues/220)) ([d158d79](https://github.com/YSamed/yalqen/commit/d158d79c0326d847223d1316a245c321b312d740))
+
+## [0.3.45](https://github.com/YSamed/yalqen/compare/v0.3.44...v0.3.45) (2026-10-10)
+
+
+### Bug Fixes
+
+* fit sidebar to four pinned tabs and remove group controls ([#217](https://github.com/YSamed/yalqen/issues/217)) ([7f2b727](https://github.com/YSamed/yalqen/commit/7f2b727788ab5289524a4e745d770d11cf4f6e58))
+
 ## [0.3.44](https://github.com/YSamed/yalqen/compare/v0.3.43...v0.3.44) (2026-10-10)
 
 

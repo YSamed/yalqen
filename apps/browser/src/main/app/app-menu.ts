@@ -43,7 +43,7 @@ export function installAppMenu(host: AppMenuHost): void {
       newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
       closeTab: () => {
         const window = current();
-        if (window?.webApp && window.tabs.count === 1) {
+        if (window && window.tabs.count === 1) {
           window.close();
           return;
         }
