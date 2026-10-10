@@ -97,6 +97,7 @@ export const TOOLBAR_BUTTON_IDS = [
   'extensions',
   'profile',
   'settings',
+  'technologies',
   'screenshot',
   'downloads',
 ] as const;
@@ -407,6 +408,7 @@ export type UiAction =
   | { type: 'switch-profile'; profile: ProfileKind }
   | { type: 'open-downloads' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
+  | { type: 'open-technologies-menu'; anchor: AnchorRect }
   | { type: 'open-extension-store' }
   | { type: 'open-history' }
   | { type: 'toggle-translation' }

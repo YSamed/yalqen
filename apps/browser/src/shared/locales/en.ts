@@ -696,6 +696,8 @@ export const en = {
   'toolbar.extensions': 'Extensions',
   'toolbar.profile': 'Profile',
   'toolbar.settings': 'Settings',
+  'toolbar.technologies': 'Technologies',
+  'siteInfo.noTechnologies': 'No technologies detected',
   'toolbar.settingsTitle': 'Settings (⌘,)',
   'toolbar.downloadsActive': 'Downloads, {count} in progress',
   'toolbar.downloads': 'Downloads',
@@ -1451,6 +1453,7 @@ export const en = {
   'agentActions.requestFailed': 'failed',
   'siteInfo.blockAds': 'Block ads on this site',
   'siteInfo.blockThirdPartyCookies': 'Block third-party cookies on this site',
+  'siteInfo.technologies': 'Technologies ({count})',
   'settings.siteExceptions': 'Site exceptions',
   'settings.siteExceptionsHint':
     'Use the site menu next to the address to allow ads or third-party cookies for a site. Private tab choices last until all private tabs close. Reload existing pages after removing an exception.',

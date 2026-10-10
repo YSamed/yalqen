@@ -51,7 +51,17 @@ test('unknown or mistyped fields fall back', () => {
       sidebarVisible: true,
       toolbarVisible: true,
       toolbarTabs: true,
-      toolbarButtons: ['home', 'bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
+      toolbarButtons: [
+        'home',
+        'bookmarks',
+        'history',
+        'extensions',
+        'profile',
+        'settings',
+        'technologies',
+        'screenshot',
+        'downloads',
+      ],
       freezeBackgroundTabs: true,
       discardAfterMinutes: 30,
       adBlocking: true,
@@ -93,7 +103,7 @@ test('toolbar buttons are deduplicated, filtered and always keep settings', () =
     'settings',
   ]);
   assert.deepEqual(sanitizeSettings({ toolbarButtons: [] }).toolbarButtons, ['settings']);
-  assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 8);
+  assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 9);
 });
 
 test('download settings persist absolute folders and reject invalid paths', () => {

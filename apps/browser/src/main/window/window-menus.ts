@@ -7,6 +7,7 @@ import type { CertificateExceptions } from '../privacy/certificates.js';
 import { permissionOrigin, type PermissionStore } from '../privacy/permissions.js';
 import { cookieUrl, cookiesForHost } from '../privacy/site-data.js';
 import { siteInfoTemplate } from '../privacy/site-info.js';
+import { detectTechnologies } from '../privacy/site-technologies.js';
 import type { TabManager } from '../tabs/tabs.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
 import type { SettingsValues } from '../../shared/types.js';
@@ -146,15 +147,16 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
   const origin = permissionOrigin(tab.url);
   const store = host.permissions(tab.isPrivate);
   const browsing = host.session(tab.isPrivate);
-  const [cookies, storage] = origin
+  const [cookies, storage, signals] = origin
     ? await Promise.all([
         browsing.cookies.get({}).then(
           (all) => cookiesForHost(all, new URL(origin).hostname),
           () => [],
         ),
         tabs.measureActiveStorage(),
+        tabs.readActiveTechnologies(),
       ])
-    : [[], null];
+    : [[], null, null];
   if (tabs.activeTabId !== tab.id || tabs.snapshotFor()?.url !== tab.url) return null;
   return siteInfoTemplate(
     {
@@ -175,6 +177,12 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
           : undefined,
       permissions: origin ? store.list(origin) : [],
       data: origin ? { cookies: cookies.length, storage } : undefined,
+      technologies: origin
+        ? detectTechnologies(
+            signals,
+            cookies.map((cookie) => cookie.name),
+          )
+        : [],
     },
     {
       showCertificateDetails: host.showCertificateDetails
@@ -202,4 +210,27 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
       clearSiteData: host.clearSiteData,
     },
   );
+}
+
+export async function technologiesMenu(host: {
+  tabs: TabManager;
+  session(isPrivate: boolean): Session;
+}): Promise<MenuItemConstructorOptions[] | null> {
+  const { tabs } = host;
+  const tab = tabs.snapshotFor();
+  const origin = tab ? permissionOrigin(tab.url) : null;
+  if (!tab || !origin) return null;
+  const [all, signals] = await Promise.all([
+    host
+      .session(tab.isPrivate)
+      .cookies.get({})
+      .catch(() => []),
+    tabs.readActiveTechnologies(),
+  ]);
+  if (tabs.activeTabId !== tab.id || tabs.snapshotFor()?.url !== tab.url) return null;
+  const cookieNames = cookiesForHost(all, new URL(origin).hostname).map((cookie) => cookie.name);
+  const names = detectTechnologies(signals, cookieNames);
+  return names.length > 0
+    ? names.map((label) => ({ label, enabled: false }))
+    : [{ label: t('siteInfo.noTechnologies'), enabled: false }];
 }

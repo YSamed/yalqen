@@ -703,6 +703,8 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.extensions': 'Uzantılar',
   'toolbar.profile': 'Profil',
   'toolbar.settings': 'Ayarlar',
+  'toolbar.technologies': 'Teknolojiler',
+  'siteInfo.noTechnologies': 'Teknoloji bulunamadı',
   'toolbar.settingsTitle': 'Ayarlar (⌘,)',
   'toolbar.downloadsActive': 'İndirilenler, {count} indirme sürüyor',
   'toolbar.downloads': 'İndirilenler',
@@ -1460,6 +1462,7 @@ export const tr: Record<MessageKey, string> = {
   'agentActions.requestFailed': 'başarısız',
   'siteInfo.blockAds': 'Bu sitede reklamları engelle',
   'siteInfo.blockThirdPartyCookies': 'Bu sitede üçüncü taraf çerezlerini engelle',
+  'siteInfo.technologies': 'Teknolojiler ({count})',
   'settings.siteExceptions': 'Site istisnaları',
   'settings.siteExceptionsHint':
     'Bir sitede reklamlara veya üçüncü taraf çerezlerine izin vermek için adresin yanındaki site menüsünü kullanın. Gizli sekme seçimleri tüm gizli sekmeler kapanana kadar geçerlidir. Bir istisnayı kaldırdıktan sonra açık sayfaları yenileyin.',

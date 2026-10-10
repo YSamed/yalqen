@@ -102,3 +102,23 @@ test('site protection checkboxes show effective state and disable globally inact
   choices[0].click({ checked: true });
   assert.deepEqual(changes, [['adBlocking', true]]);
 });
+
+test('detected technologies appear as a disabled submenu', () => {
+  const items = siteInfoTemplate(
+    { url: 'https://a.test/', security: 'secure', permissions: [], technologies: ['jQuery', 'WordPress'] },
+    {},
+  );
+  const submenu = items.at(-1);
+  assert.equal(submenu.label, 'Teknolojiler (2)');
+  assert.deepEqual(
+    submenu.submenu.map((item) => [item.label, item.enabled]),
+    [
+      ['jQuery', false],
+      ['WordPress', false],
+    ],
+  );
+  assert.equal(
+    siteInfoTemplate({ url: 'https://a.test/', security: 'secure', permissions: [], technologies: [] }, {}).length,
+    2,
+  );
+});

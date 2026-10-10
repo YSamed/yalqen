@@ -63,6 +63,7 @@
     extensions: { label: t('settings.paneExtensions'), icon: 'extensions' },
     profile: { label: t('settings.profile'), icon: 'profile' },
     settings: { label: t('settings.toolbarSettings'), icon: 'settings' },
+    technologies: { label: t('toolbar.technologies'), icon: 'technologies' },
     screenshot: { label: t('toolbar.fullPageScreenshot'), icon: 'screenshot' },
     downloads: { label: t('settings.downloads'), icon: 'download' },
   };

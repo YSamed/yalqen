@@ -54,6 +54,7 @@ import {
 import { PROCEED_URL } from '../privacy/certificates.js';
 import { PROCEED_HTTP_URL } from '../privacy/https-only.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from '../privacy/site-data.js';
+import { TECHNOLOGY_SCRIPT, parseTechnologySignals, type TechnologySignals } from '../privacy/site-technologies.js';
 import { securityState } from '../privacy/site-info.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
@@ -969,6 +970,14 @@ export class TabManager {
       .then(parseStorageUsage, () => null);
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
     return Promise.race([measured, timeout]);
+  }
+
+  async readActiveTechnologies(timeoutMs = 500): Promise<TechnologySignals | null> {
+    const contents = this.activeContents();
+    if (!contents) return null;
+    const read = contents.executeJavaScript(TECHNOLOGY_SCRIPT).then(parseTechnologySignals, () => null);
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    return Promise.race([read, timeout]);
   }
 
   refreshRequestRules(): void {
