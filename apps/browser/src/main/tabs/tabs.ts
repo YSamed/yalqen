@@ -1524,6 +1524,7 @@ export class TabManager {
     const contents = view.webContents;
     listen('did-navigate', (_event, url) => {
       tab.edited = false;
+      tab.interacted = false;
       view.setBackgroundColor(url === NEW_TAB_URL ? '#00000000' : '#ffffff');
       const factor = this.options.zoomFor(url, tab.isPrivate);
       if (Math.abs(contents.getZoomFactor() - factor) > 0.001) contents.setZoomFactor(factor);
@@ -1543,7 +1544,8 @@ export class TabManager {
   private listenForWindowRequests(tab: Tab, contents: WebContents, listen: Listen): void {
     listen('will-prevent-unload', (event) => {
       if (event.defaultPrevented) return;
-      if (this.options.confirmUnload(tab)) event.preventDefault();
+      // Like Chromium, a page the user never touched cannot hold the window or the app open.
+      if (!tab.interacted || this.options.confirmUnload(tab)) event.preventDefault();
     });
     listen('will-navigate', (event) => {
       if (this.routeAppNavigation(tab, event.url)) {
@@ -1563,7 +1565,10 @@ export class TabManager {
       void contents.loadURL(upgraded);
     });
     listen('input-event', (_event, input) => {
-      if (isActivation(input.type)) tab.activatedAt = Date.now();
+      if (isActivation(input.type)) {
+        tab.activatedAt = Date.now();
+        tab.interacted = true;
+      }
       if (input.type === 'char') tab.edited = true;
     });
     contents.setWindowOpenHandler(({ url }) => {

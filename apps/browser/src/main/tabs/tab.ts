@@ -24,6 +24,7 @@ export interface Tab {
   activatedAt: number;
   inactiveSince: number;
   edited: boolean;
+  interacted: boolean;
   blockedPopups: string[];
   consoleErrors: number;
   overrides: PageOverrides;
@@ -66,6 +67,7 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     activatedAt: 0,
     inactiveSince: Date.now(),
     edited: false,
+    interacted: false,
     blockedPopups: [],
     consoleErrors: 0,
     overrides: NO_OVERRIDES,
