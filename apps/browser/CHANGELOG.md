@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.45](https://github.com/YSamed/yalqen/compare/v0.3.44...v0.3.45) (2026-10-10)
+
+
+### Bug Fixes
+
+* fit sidebar to four pinned tabs and remove group controls ([#217](https://github.com/YSamed/yalqen/issues/217)) ([7f2b727](https://github.com/YSamed/yalqen/commit/7f2b727788ab5289524a4e745d770d11cf4f6e58))
+
 ## [0.3.44](https://github.com/YSamed/yalqen/compare/v0.3.43...v0.3.44) (2026-10-10)
 
 
