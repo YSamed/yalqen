@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.49](https://github.com/YSamed/yalqen/compare/v0.3.48...v0.3.49) (2026-10-10)
+
+
+### Features
+
+* add built-in site technology detection and toolbar button ([#225](https://github.com/YSamed/yalqen/issues/225)) ([db50d5f](https://github.com/YSamed/yalqen/commit/db50d5fb9f620ccb4c16a68c652a0434d54faa31))
+
 ## [0.3.48](https://github.com/YSamed/yalqen/compare/v0.3.47...v0.3.48) (2026-10-10)
 
 
