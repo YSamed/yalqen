@@ -29,8 +29,7 @@ interface MenuActions {
   hardReload(): void;
   toggleReader(): void;
   zoom(direction: 1 | -1 | 0): void;
-  togglePanel(): void;
-  toggleSidebar(): void;
+  cyclePanel(): void;
   toggleAgentPanel(): void;
   toggleToolbar(): void;
   toggleDevTools(): void;
@@ -205,10 +204,9 @@ export function buildMenu(actions: MenuActions): Menu {
           click: () => actions.zoom(1),
         },
         { label: t('menu.zoomOut'), accelerator: 'CmdOrCtrl+-', click: () => actions.zoom(-1) },
-        { label: t('menu.togglePanel'), accelerator: 'CmdOrCtrl+Shift+Y', click: actions.togglePanel },
+        { label: t('menu.cyclePanel'), accelerator: 'CmdOrCtrl+Shift+P', click: actions.cyclePanel },
         { label: t('menu.toggleToolbar'), accelerator: 'CmdOrCtrl+Shift+B', click: actions.toggleToolbar },
-        { label: t('menu.toggleSidebar'), accelerator: 'CmdOrCtrl+Shift+U', click: actions.toggleSidebar },
-        { label: t('agentPanel.toggle'), accelerator: 'CmdOrCtrl+Alt+A', click: actions.toggleAgentPanel },
+        { label: t('agentPanel.toggle'), accelerator: 'CmdOrCtrl+Shift+A', click: actions.toggleAgentPanel },
         { type: 'separator' },
         { label: t('menu.viewSource'), accelerator: 'Alt+CmdOrCtrl+U', click: actions.viewSource },
         { label: t('menu.developerTools'), accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },
