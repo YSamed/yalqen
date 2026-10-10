@@ -8,7 +8,6 @@
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import IconButton from '../ui/IconButton.svelte';
-  import TabGroupControls from './TabGroupControls.svelte';
   import type { TabGroup } from '../../shared/tab-groups';
 
   let {
@@ -537,8 +536,6 @@
             </ol>
           {/if}
         {/each}
-
-        {#if !collapsed}<TabGroupControls {groups} />{/if}
 
         {#if collapsed}
           <div class="new-tab-position">

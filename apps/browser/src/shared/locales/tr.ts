@@ -17,14 +17,7 @@ export const tr: Record<MessageKey, string> = {
   'webApps.unavailable':
     'Bu sayfada desteklenen web uygulaması manifesti yok. Normal, güvenilir bir HTTPS sayfasından veya yerel test sitesinden kurulum yapın.',
   'webApps.failed': 'Web uygulaması değişikliği kaydedilemedi. Bir profilde en fazla 50 uygulama olabilir.',
-  'tabGroups.manage': 'Sekme grupları',
   'tabGroups.failed': '1–80 karakterlik benzersiz bir grup adı kullanın. Bir pencerede en fazla 50 grup olabilir.',
-  'tabGroups.selectionHint': 'Seçili sekmelere, seçim yoksa etkin sekmeye uygulanır.',
-  'tabGroups.name': 'Grup adı',
-  'tabGroups.create': 'Grup oluştur',
-  'tabGroups.assign': 'Gruba taşı',
-  'tabGroups.ungroup': 'Gruptan çıkar',
-  'tabGroups.rename': 'Adını değiştir',
   'workspaces.title': 'Tarayıcı çalışma alanları',
   'workspaces.intro':
     'Grupları ve pinleriyle en fazla 200 normal web sekmesini kaydedin. Formlar ve gizli/geliştirici sekmeleri kaydedilmez. Çalışma alanı yeni pencerede açılır. En fazla 50 çalışma alanı; adlar benzersiz olmalıdır.',

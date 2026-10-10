@@ -14,14 +14,7 @@ export const en = {
   'webApps.unavailable':
     'This page does not have a supported web app manifest. Install from a normal, trusted HTTPS page or a local test site.',
   'webApps.failed': 'Could not save the web app change. A profile can have up to 50 installed apps.',
-  'tabGroups.manage': 'Tab groups',
   'tabGroups.failed': 'Use a unique group name of 1–80 characters. A window can have up to 50 groups.',
-  'tabGroups.selectionHint': 'Applies to selected tabs, or the active tab when none are selected.',
-  'tabGroups.name': 'Group name',
-  'tabGroups.create': 'Create group',
-  'tabGroups.assign': 'Move to group',
-  'tabGroups.ungroup': 'Ungroup',
-  'tabGroups.rename': 'Rename',
   'workspaces.title': 'Browsing workspaces',
   'workspaces.intro':
     'Save up to 200 normal web tabs with their groups and pins. Forms and private/developer tabs are excluded. Opening a workspace creates a new window. Up to 50 workspaces; names must be unique.',

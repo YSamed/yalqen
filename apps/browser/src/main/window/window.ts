@@ -200,7 +200,7 @@ export class YalqenWindow {
   private pageArea: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   private readonly preconnector: Preconnector;
   private layout: ChromeLayout = {
-    panelWidth: 180,
+    panelWidth: 170,
     panelSlide: 0,
     panelSide: 'left',
     chromeHeight: 44,
