@@ -1,5 +1,6 @@
 import type { Session } from 'electron';
 import { getDomain } from 'tldts';
+import { withColorSchemeHint } from './color-scheme-hint.js';
 import { rewriteSignInHeaders, signInRequestHeaders } from './sign-in-headers.js';
 
 export function siteOf(url: string, domains?: Map<string, string>): string | null {
@@ -49,6 +50,7 @@ export function setThirdPartyCookieBlocking(
   session: Session,
   enabled: boolean,
   allowed: (url: string) => boolean = () => false,
+  darkColors: () => boolean = () => false,
 ): void {
   if (blocking.has(session) === enabled) return;
   const { webRequest } = session;
@@ -82,11 +84,13 @@ export function setThirdPartyCookieBlocking(
     const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
     const request = page ? siteOf(details.url, domains) : null;
     const signIn = signInRequestHeaders(details.url, details.requestHeaders, process.platform);
+    const isDocument = details.resourceType === 'mainFrame' || details.resourceType === 'subFrame';
+    const rewritten = signIn ?? (isDocument ? withColorSchemeHint(details.requestHeaders, darkColors()) : null);
     if (!page || allowed(page.url) || request === null || request === page.site) {
-      callback(signIn ? { requestHeaders: signIn } : {});
+      callback(rewritten ? { requestHeaders: rewritten } : {});
       return;
     }
-    const requestHeaders = { ...(signIn ?? details.requestHeaders) };
+    const requestHeaders = { ...(rewritten ?? details.requestHeaders) };
     const sent = new Set<string>();
     for (const key of Object.keys(requestHeaders)) {
       if (key.toLowerCase() !== 'cookie') continue;

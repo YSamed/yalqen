@@ -127,7 +127,9 @@ test('cached classification follows page navigation, schemes and unavailable con
   assert.deepEqual(f.request('https://cdn.example.com/a.js'), { requestHeaders: { Accept: '*/*' } });
   assert.deepEqual(f.request('file://cdn.example.com/a.js'), {});
   assert.deepEqual(f.request('not a URL'), {});
-  assert.deepEqual(f.request('https://example.com/', { resourceType: 'mainFrame' }), {});
+  assert.deepEqual(f.request('https://example.com/', { resourceType: 'mainFrame' }), {
+    requestHeaders: { 'Sec-CH-Prefers-Color-Scheme': '"light"', Accept: '*/*', Cookie: 'old=1' },
+  });
   f.navigate('yalqen://newtab/');
   assert.deepEqual(f.request('https://tracker.net/c.js'), { requestHeaders: { Accept: '*/*' } });
   f.navigate('');
@@ -210,4 +212,29 @@ test('a page exception preserves third-party cookies and follows changes without
   allowed = true;
   f.navigate('https://other.test/');
   assert.deepEqual(f.request('https://tracker.net/p'), { requestHeaders: { Accept: '*/*' } });
+});
+
+test('document requests carry the color scheme hint, other requests do not', () => {
+  const listeners = {};
+  const session = {
+    webRequest: new Proxy({}, { get: (_, name) => (listener) => (listeners[name] = listener) }),
+    cookies: { remove: async () => {} },
+  };
+  cookies.setThirdPartyCookieBlocking(
+    session,
+    true,
+    () => false,
+    () => true,
+  );
+  const send = (resourceType, requestHeaders) => {
+    let response;
+    listeners.onBeforeSendHeaders({ id: 1, url: 'https://www.google.com/', resourceType, requestHeaders }, (v) => {
+      response = v;
+    });
+    return response;
+  };
+  assert.deepEqual(send('mainFrame', { Accept: '*/*', 'sec-ch-prefers-color-scheme': '"light"' }), {
+    requestHeaders: { Accept: '*/*', 'Sec-CH-Prefers-Color-Scheme': '"dark"' },
+  });
+  assert.deepEqual(send('script', { Accept: '*/*' }), {});
 });

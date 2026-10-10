@@ -1,4 +1,4 @@
-import { session, type Session } from 'electron';
+import { nativeTheme, session, type Session } from 'electron';
 import type { PageLanguage } from '../../shared/types.js';
 import { rewriteSignInHeaders } from '../privacy/sign-in-headers.js';
 import { setThirdPartyCookieBlocking } from '../privacy/third-party-cookies.js';
@@ -36,8 +36,9 @@ export function applyCookieBlocking(
   enabled: boolean,
   allowed: (url: string, isPrivate: boolean) => boolean = () => false,
 ): void {
-  setThirdPartyCookieBlocking(daily, enabled, (url) => allowed(url, false));
-  setThirdPartyCookieBlocking(privateBrowsing, enabled, (url) => allowed(url, true));
+  const darkColors = () => nativeTheme.shouldUseDarkColors;
+  setThirdPartyCookieBlocking(daily, enabled, (url) => allowed(url, false), darkColors);
+  setThirdPartyCookieBlocking(privateBrowsing, enabled, (url) => allowed(url, true), darkColors);
   setThirdPartyCookieBlocking(developer, false);
 }
 
