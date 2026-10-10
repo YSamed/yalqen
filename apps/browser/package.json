@@ -4,7 +4,7 @@
   "version": "0.3.40",
   "private": true,
   "license": "MIT",
-  "description": "A fast, privacy-minded web browser for macOS",
+  "description": "A fast, privacy-minded web browser",
   "homepage": "https://yalqen.com/",
   "repository": "https://github.com/YSamed/yalqen",
   "main": "dist/main/main.js",
@@ -25,7 +25,8 @@
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
     "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
-    "package:mac": "npm run build && electron-builder --mac"
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:linux": "npm run build && electron-builder --linux"
   },
   "devDependencies": {
     "@electron/osx-sign": "^1.3.3",
@@ -114,6 +115,16 @@
         "NSLocationUsageDescription": "Websites can see your location when you allow it.",
         "NSLocationWhenInUseUsageDescription": "Websites can see your location when you allow it."
       },
+      "artifactName": "Yalqen-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Productivity",
+      "icon": "resources/icon-512.png",
+      "mimeTypes": [
+        "x-scheme-handler/http",
+        "x-scheme-handler/https"
+      ],
       "artifactName": "Yalqen-${version}-${arch}.${ext}"
     },
     "electronLanguages": [

@@ -235,8 +235,8 @@ export class YalqenWindow {
       minHeight: 400,
       title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
-      titleBarStyle: 'hiddenInset',
-      transparent: glassAvailable,
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+      transparent: process.platform === 'darwin' ? glassAvailable : false,
       show: false,
     });
 
@@ -412,10 +412,17 @@ export class YalqenWindow {
       onProceedHttp: (token, currentUrl) => app.httpsOnly.proceed(token, currentUrl),
       threatGuard: app.threatGuard,
       confirmHttpRedirect: async (url) => {
+        let host;
+        try {
+          host = new URL(url).host;
+        } catch {
+          // If URL is invalid, treat as unsafe and go back
+          return true;
+        }
         const { response } = await dialog.showMessageBox(this.window, {
           type: 'warning',
           message: t('window.httpRedirectMessage'),
-          detail: t('window.httpRedirectDetail', { host: new URL(url).host }),
+          detail: t('window.httpRedirectDetail', { host }),
           buttons: [t('window.goBack'), t('window.continueWithHttp')],
           defaultId: 0,
           cancelId: 0,
@@ -573,8 +580,16 @@ export class YalqenWindow {
   };
 
   updateProfileName(): void {
+    let host = '';
+    if (this.webApp) {
+      try {
+        host = new URL(this.webApp.startUrl).host;
+      } catch {
+        host = '';
+      }
+    }
     this.window.setTitle(
-      `${this.webApp ? `${this.webApp.name} · ${new URL(this.webApp.startUrl).host}` : this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${this.app.persistentProfiles.currentName()}`,
+      `${this.webApp ? `${this.webApp.name} · ${host}` : this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${this.app.persistentProfiles.currentName()}`,
     );
   }
 
@@ -1556,7 +1571,13 @@ export class YalqenWindow {
         const origin = permissionOrigin(tabs.activeUrl);
         const blocked = tabs.blockedPopups();
         if (!origin || blocked.length === 0) break;
-        const template = blockedPopupsTemplate(new URL(origin).host, blocked, {
+        let host;
+        try {
+          host = new URL(origin).host;
+        } catch {
+          host = origin; // fallback to origin string if URL parsing fails
+        }
+        const template = blockedPopupsTemplate(host, blocked, {
           open: (url) => tabs.openBlockedPopup(url),
           allowSite: () => {
             app.permissionsFor(tabs.activeIsPrivate).set(origin, ['popups'], 'allow');
