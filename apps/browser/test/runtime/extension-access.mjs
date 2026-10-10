@@ -112,6 +112,9 @@ app
     await draft.executeJavaScript(
       'window.onbeforeunload=()=>"unsaved"; document.querySelector("input").value="keep this draft"',
     );
+    draft.sendInputEvent({ type: 'mouseDown', x: 5, y: 5, button: 'left', clickCount: 1 });
+    draft.sendInputEvent({ type: 'mouseUp', x: 5, y: 5, button: 'left', clickCount: 1 });
+    await eventually(() => tabManager.tabs.find((tab) => tab.view.webContents === draft).interacted);
     assert.ok(await controller.setAccess(source, { mode: 'sites', sites: ['http://localhost'] }, window, () => true));
     assert.equal(manager.accessFor(source).mode, 'all');
     assert.equal(await draft.executeJavaScript('document.querySelector("input").value'), 'keep this draft');
