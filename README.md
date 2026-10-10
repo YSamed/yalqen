@@ -5,7 +5,7 @@
   </picture>
 
   <p>
-    <strong>A keyboard-first Chromium browser built for developers on macOS.</strong><br>
+    <strong>A keyboard-first Chromium browser built for developers.</strong><br>
     Vertical tabs, a fast command bar, built-in ad and tracker blocking,<br>and developer tools without the usual browser chrome.
   </p>
 
