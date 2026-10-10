@@ -1046,7 +1046,7 @@ if (!primary) {
 } else {
   app.whenReady().then(() => {
     bench?.mark('app-ready');
-    app.dock?.setIcon(appIcon);
+    if (!app.isPackaged) app.dock?.setIcon(appIcon);
     startBrowser();
   });
 }
