@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.47](https://github.com/YSamed/yalqen/compare/v0.3.46...v0.3.47) (2026-10-10)
+
+
+### Bug Fixes
+
+* skip unload prompt for untouched pages on quit ([#222](https://github.com/YSamed/yalqen/issues/222)) ([713c899](https://github.com/YSamed/yalqen/commit/713c89915ffc1759a96bcb6e5572a63d2ce77020))
+
 ## [0.3.46](https://github.com/YSamed/yalqen/compare/v0.3.45...v0.3.46) (2026-10-10)
 
 
