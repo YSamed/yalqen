@@ -116,6 +116,16 @@
       },
       "artifactName": "Yalqen-${version}-${arch}.${ext}"
     },
+    "linux": {
+      "target": "AppImage",
+      "category": "Productivity",
+      "icon": "resources/icon-512.png",
+      "mimeTypes": [
+        "x-scheme-handler/http",
+        "x-scheme-handler/https"
+      ],
+      "artifactName": "Yalqen-${version}-${arch}.${ext}"
+    },
     "electronLanguages": [
       "tr",
       "en"
