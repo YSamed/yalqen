@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.48](https://github.com/YSamed/yalqen/compare/v0.3.47...v0.3.48) (2026-10-10)
+
+
+### Features
+
+* add transparency setting and keep pinned favicons opaque ([46bcdc0](https://github.com/YSamed/yalqen/commit/46bcdc0a2905b149b1482cb64fc51f65884c04fb))
+
 ## [0.3.47](https://github.com/YSamed/yalqen/compare/v0.3.46...v0.3.47) (2026-10-10)
 
 
