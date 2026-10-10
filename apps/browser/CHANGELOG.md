@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.45](https://github.com/YSamed/yalqen/compare/v0.3.44...v0.3.45) (2026-10-10)
+
+
+### Bug Fixes
+
+* fit sidebar to four pinned tabs and remove group controls ([#217](https://github.com/YSamed/yalqen/issues/217)) ([7f2b727](https://github.com/YSamed/yalqen/commit/7f2b727788ab5289524a4e745d770d11cf4f6e58))
+
+## [0.3.44](https://github.com/YSamed/yalqen/compare/v0.3.43...v0.3.44) (2026-10-10)
+
+
+### Bug Fixes
+
+* send color scheme hint on first page load ([#214](https://github.com/YSamed/yalqen/issues/214)) ([a778ef1](https://github.com/YSamed/yalqen/commit/a778ef18ff16bd7a783f8162e066104ab5f2eb99))
+
 ## [0.3.43](https://github.com/YSamed/yalqen/compare/v0.3.42...v0.3.43) (2026-10-10)
 
 
