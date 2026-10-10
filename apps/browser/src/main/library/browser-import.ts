@@ -154,6 +154,7 @@ export function parseChromiumBookmarks(data: unknown): ParsedBookmarks {
 
 // Profiles of installed Chromium browsers that contain `fileName` (e.g. `Bookmarks`, `History`).
 export function chromiumProfiles(fileName: string, appSupport = APP_SUPPORT): ImportSource[] {
+  if (process.platform !== 'darwin') return [];
   return CHROMIUM_BROWSERS.flatMap(([browser, dir]) => {
     const root = path.join(appSupport, dir);
     let entries: string[];
@@ -189,7 +190,12 @@ function profileNames(root: string): Record<string, string> {
 }
 
 export async function importChromiumBookmarks(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
-  const parsed = parseChromiumBookmarks(JSON.parse(await fs.promises.readFile(file, 'utf8')));
+  let parsed: ParsedBookmarks;
+  try {
+    parsed = parseChromiumBookmarks(JSON.parse(await fs.promises.readFile(file, 'utf8')));
+  } catch {
+    parsed = { bookmarks: [], folders: [], skipped: 0 };
+  }
   const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
@@ -198,9 +204,16 @@ export async function importBookmarkFile(store: BookmarkStore, file: string): Pr
   if (isFirefoxPlaces(file)) return importFirefoxBookmarks(store, file);
   const { readBookmarkFile, parseBookmarkHtml } = await import('./bookmark-html.js');
   const text = await readBookmarkFile(file);
-  const parsed = text.trimStart().startsWith('<')
-    ? await parseBookmarkHtml(text)
-    : parseChromiumBookmarks(JSON.parse(text));
+  let parsed: ParsedBookmarks;
+  if (text.trimStart().startsWith('<')) {
+    parsed = await parseBookmarkHtml(text);
+  } else {
+    try {
+      parsed = parseChromiumBookmarks(JSON.parse(text));
+    } catch {
+      parsed = { bookmarks: [], folders: [], skipped: 0 };
+    }
+  }
   const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
