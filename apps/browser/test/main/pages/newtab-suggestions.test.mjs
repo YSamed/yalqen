@@ -43,6 +43,7 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
     showAnnouncement: () => false,
     showFeedback: () => false,
     showRepoPrompt: () => false,
+    opaque: () => false,
     suggestions: () => [],
     ...sources,
   });
@@ -83,6 +84,12 @@ test('the repo prompt is only rendered when it is due and never beside the welco
   assert.doesNotMatch(await body({}), /class="repo-prompt"/);
   assert.match(await body({ showRepoPrompt: () => true }), /yalqen:\/\/newtab\/repo\?action=star/);
   assert.doesNotMatch(await body({ showWelcome: () => true, showRepoPrompt: () => true }), /class="repo-prompt"/);
+});
+
+test('the new tab page is marked opaque only when windows launched without glass', async () => {
+  const body = async (sources) => (await serve(sources)(new Request('yalqen://newtab/'))).text();
+  assert.doesNotMatch(await body({}), /<html data-opaque /);
+  assert.match(await body({ opaque: () => true }), /<html data-opaque lang="tr">/);
 });
 
 test('the announcement shows beside the welcome and replaces the repo prompt', async () => {

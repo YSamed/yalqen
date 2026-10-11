@@ -68,6 +68,7 @@
 
   onMount(() => {
     const offOpen = window.yalqenCommand.onOpen((open) => {
+      document.documentElement.toggleAttribute('data-opaque', open.material === 'opaque');
       placeholder = open.placeholder;
       value = open.value ?? '';
       suggestions = [];
@@ -228,15 +229,7 @@
     }
   }
 
-  @media (prefers-reduced-transparency: reduce) {
-    .bar {
-      --search-field-bg: #fff;
-    }
-  }
-
-  @media (prefers-color-scheme: dark) and (prefers-reduced-transparency: reduce) {
-    .bar {
-      --search-field-bg: #1b1b1e;
-    }
+  :global([data-opaque]) .bar {
+    --search-field-bg: light-dark(#fff, #1b1b1e);
   }
 </style>

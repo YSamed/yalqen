@@ -29,6 +29,7 @@ export interface NewTabSources {
   showAnnouncement: () => boolean;
   showFeedback: () => boolean;
   showRepoPrompt: () => boolean;
+  opaque: () => boolean;
   suggestions: (query: string) => AddressSuggestion[];
 }
 
@@ -137,7 +138,8 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
             : '',
         ],
       ];
-      const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), assets.template);
+      const template = sources.opaque() ? assets.template.replace('<html ', '<html data-opaque ') : assets.template;
+      const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), template);
       return htmlResponse(body, NEW_TAB_CSP, false);
     }
     default:

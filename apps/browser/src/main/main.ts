@@ -110,7 +110,7 @@ import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
-import { YalqenWindow, type AppContext, type WindowOptions } from './window/window.js';
+import { YalqenWindow, glassAtLaunch, type AppContext, type WindowOptions } from './window/window.js';
 import { ZoomStore } from './tabs/zoom.js';
 
 const COMMAND_BAR_PREWARM_MS = 5000;
@@ -681,6 +681,7 @@ function startBrowser(): void {
       showAnnouncement: () => !isPrivate && settings.get().dismissedAnnouncement !== app.getVersion(),
       showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
+      opaque: () => !glassAtLaunch(settings),
       suggestions: (query) =>
         suggest(query, {
           tabs: [],

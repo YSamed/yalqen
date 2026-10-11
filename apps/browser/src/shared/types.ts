@@ -557,6 +557,7 @@ export interface CommandBarOpen {
   placeholder: string;
   mode: 'navigate' | 'new-tab';
   value?: string;
+  material: WindowMaterial;
 }
 
 export const NETWORK_PRESETS = ['offline', 'slow-3g', 'fast-3g', 'fast-4g'] as const;

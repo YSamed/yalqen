@@ -116,6 +116,11 @@ const MAX_AGENT_PROJECTS = 6;
 // Native glass cannot be removed from a live window, so every window follows the value read at launch.
 let startupTransparency: boolean | null = null;
 
+export function glassAtLaunch(settings: SettingsStore): boolean {
+  startupTransparency ??= settings.get().transparency;
+  return glassAvailable && startupTransparency;
+}
+
 export interface AppContext {
   icon: string;
   daily: Session;
@@ -232,8 +237,7 @@ export class YalqenWindow {
     private readonly app: AppContext,
     options: WindowOptions,
   ) {
-    startupTransparency ??= app.settings.get().transparency;
-    this.glassApplied = glassAvailable && startupTransparency;
+    this.glassApplied = glassAtLaunch(app.settings);
     this.isDeveloper = options.developer ?? false;
     this.isPrivate = this.isDeveloper || (options.isPrivate ?? false);
     this.webApp = this.isPrivate ? null : (options.webApp ?? null);
@@ -1267,6 +1271,7 @@ export class YalqenWindow {
       placeholder: this.app.searchEngine().placeholder,
       mode: 'navigate',
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
+      material: this.material(),
     });
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
