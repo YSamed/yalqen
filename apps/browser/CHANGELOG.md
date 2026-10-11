@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.60](https://github.com/YSamed/yalqen/compare/v0.3.59...v0.3.60) (2026-10-11)
+
+
+### Features
+
+* **autofill:** fill verification codes from open mail tabs ([#247](https://github.com/YSamed/yalqen/issues/247)) ([1f26530](https://github.com/YSamed/yalqen/commit/1f265309abbce579e4eee89e92d79053a37881ec))
+
 ## [0.3.59](https://github.com/YSamed/yalqen/compare/v0.3.58...v0.3.59) (2026-10-11)
 
 
