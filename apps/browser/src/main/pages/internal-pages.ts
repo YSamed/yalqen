@@ -12,7 +12,8 @@ import { serveNewTab, type NewTabAssets, type NewTabSources } from './new-tab-pa
 import { htmlResponse, notFound, scriptResponse } from './responses.js';
 import type { Bookmark, BookmarkFolder } from '../library/bookmarks.js';
 
-const SETTINGS_CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
+const SETTINGS_CSP =
+  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src https:; frame-ancestors 'none'";
 const STYLES_MARKER = '__YALQEN_STYLES_SLOT__';
 const ASSET_TYPES: Record<string, string> = {
   '.js': 'text/javascript; charset=utf-8',

@@ -29,7 +29,7 @@ async function eventually(predicate) {
   const start = Date.now();
   while (!(await window.webContents.executeJavaScript(predicate))) {
     if (Date.now() - start > 5000) {
-      console.error(await window.webContents.executeJavaScript("document.querySelector('#pane').innerText"));
+      console.error(await window.webContents.executeJavaScript("document.querySelector('#pane')?.innerText"));
       throw Error(`Timed out: ${predicate}`);
     }
     await new Promise((r) => setTimeout(r, 25));
@@ -37,7 +37,7 @@ async function eventually(predicate) {
 }
 // Buttons render disabled until the autofill view loads, and a click on a disabled button is dropped.
 async function button(label) {
-  const find = `Array.from(document.querySelector('#pane').querySelectorAll('button')).find(item=>item.textContent.trim()===${JSON.stringify(label)})`;
+  const find = `Array.from(document.querySelector('#pane')?.querySelectorAll('button') ?? []).find(item=>item.textContent.trim()===${JSON.stringify(label)})`;
   await eventually(`!!${find} && !${find}.disabled`);
   await window.webContents.executeJavaScript(`${find}.click()`);
 }
@@ -120,7 +120,7 @@ app
     });
     await window.loadURL('yalqen://settings/autofill');
     await eventually(
-      "Array.from(document.querySelector('#pane').querySelectorAll('button')).some(item=>item.textContent.trim()==='Add address')",
+      "Array.from(document.querySelector('#pane')?.querySelectorAll('button') ?? []).some(item=>item.textContent.trim()==='Add address')",
     );
     await button('Add address');
     await eventually("!!document.getElementById('autofill-givenName')");

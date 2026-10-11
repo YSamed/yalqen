@@ -12,6 +12,7 @@ import type { RequestRuleStore } from '../devtools/request-rules.js';
 import { isSitePermission, permissionOrigin, type PermissionStore } from '../privacy/permissions.js';
 import { isSystemDevice, openSystemSettings, systemAccessStatus } from '../privacy/system-access.js';
 import { sanitizeClearRequest } from '../library/clear-data.js';
+import { sanitizeIconDomains } from '../library/site-icons.js';
 import { makeDefaultBrowser } from './default-browser.js';
 import { processUsage } from './process-metrics.js';
 import { handleSettingsCall } from './settings-page.js';
@@ -28,6 +29,7 @@ export interface SettingsIpcHost {
   onRequestRulesSaved(): void;
   updateThreatLists(): Promise<void>;
   profiles: import('./profile-controller.js').ProfileController;
+  siteIcons?(domains: string[]): Record<string, string>;
 }
 
 function sitePermissionsView(store: PermissionStore): SitePermissionsView {
@@ -71,6 +73,10 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
     if (!canceled && filePaths[0]) host.update({ downloadDirectory: filePaths[0] });
     return host.view();
   });
+  handleSettingsCall(
+    SettingsChannel.siteIcons,
+    (_event, domains) => host.siteIcons?.(sanitizeIconDomains(domains)) ?? {},
+  );
   handleSettingsCall(SitePermissionsChannel.list, () => sitePermissionsView(host.permissions));
   handleSettingsCall(SitePermissionsChannel.set, (_event, origin, kind, decision) => {
     if (
