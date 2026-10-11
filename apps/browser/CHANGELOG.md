@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.52](https://github.com/YSamed/yalqen/compare/v0.3.51...v0.3.52) (2026-10-11)
+
+
+### Bug Fixes
+
+* speed up tab opening and stop threat-list refreshes from blocking ([#231](https://github.com/YSamed/yalqen/issues/231)) ([8824589](https://github.com/YSamed/yalqen/commit/88245897321a2ce3efceb2859d419219edf200b5))
+
 ## [0.3.51](https://github.com/YSamed/yalqen/compare/v0.3.50...v0.3.51) (2026-10-11)
 
 
