@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.57](https://github.com/YSamed/yalqen/compare/v0.3.56...v0.3.57) (2026-10-11)
+
+
+### Features
+
+* **settings:** visual pickers and a toolbar preview in Appearance ([#242](https://github.com/YSamed/yalqen/issues/242)) ([0148d06](https://github.com/YSamed/yalqen/commit/0148d060fa36acdb5d9e992fb6e8e2e65d694f66))
+
 ## [0.3.56](https://github.com/YSamed/yalqen/compare/v0.3.55...v0.3.56) (2026-10-11)
 
 
