@@ -106,7 +106,6 @@ import { ResponsiveScanManager, ResponsiveScanError, createResponsiveScanSession
 import { acquirePageWork, pageWorkBusy } from '../tabs/page-work.js';
 import { readingUrl } from '../../shared/reading-list.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
-import { CLOSED_TAB_PREVIEWS } from '../../shared/sidebar-widgets.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -608,11 +607,7 @@ export class YalqenWindow {
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
       sidebarVisible: this.webApp ? false : this.app.settings.get().sidebarVisible,
-      sidebarWidgets: this.webApp ? [] : this.app.settings.get().sidebarWidgets,
-      closedTabs:
-        !this.webApp && this.app.settings.get().sidebarWidgets.includes('closed-tabs')
-          ? this.tabs.closedPreview(CLOSED_TAB_PREVIEWS)
-          : [],
+      media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
       toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
       toolbarTabs: this.webApp ? false : this.app.settings.get().toolbarTabs,
       toolbarButtons: this.webApp ? ['settings', 'downloads'] : this.app.settings.get().toolbarButtons,
@@ -1521,11 +1516,8 @@ export class YalqenWindow {
       case 'toggle-media':
         tabs.toggleMedia(action.id);
         break;
-      case 'reopen-closed-tab':
-        tabs.reopenClosedById(action.id);
-        break;
-      case 'set-sidebar-widgets':
-        app.updateSettings({ sidebarWidgets: action.ids });
+      case 'seek-media':
+        tabs.seekMedia(action.id, action.seconds);
         break;
       case 'open-tab-menu':
         this.openTabMenu(action.id);

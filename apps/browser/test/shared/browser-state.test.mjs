@@ -50,8 +50,7 @@ const fixture = () => ({
   panelSide: 'left',
   pinnedDisplay: 'always',
   sidebarVisible: true,
-  sidebarWidgets: [],
-  closedTabs: [],
+  media: null,
   toolbarVisible: true,
   toolbarTabs: true,
   toolbarButtons: ['settings', 'downloads'],
@@ -193,8 +192,20 @@ test('all window fields and nested summaries remain current while tabs are reuse
   for (const [key, value] of [
     ['device', null],
     ['toolbarButtons', ['downloads', 'settings']],
-    ['sidebarWidgets', ['clock', 'media']],
-    ['closedTabs', [{ id: 'c', title: 'Closed', url: 'https://example.com/', faviconUrl: null }]],
+    [
+      'media',
+      {
+        tabId: 'a',
+        title: 'Song',
+        artist: 'Band',
+        artwork: null,
+        faviconUrl: null,
+        duration: 200,
+        position: 12,
+        playing: true,
+        updatedAt: 1,
+      },
+    ],
     ['listOrder', ['b', 'a']],
     ['selectedTabIds', ['a', 'b']],
   ]) {

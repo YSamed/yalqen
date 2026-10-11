@@ -8,7 +8,6 @@
     type SettingsValues,
     type ToolbarButtonId,
   } from '../../shared/types';
-  import { SIDEBAR_WIDGET_IDS, type SidebarWidgetId } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
   import Icon, { type IconName } from '../ui/Icon.svelte';
@@ -68,34 +67,6 @@
     screenshot: { label: t('toolbar.fullPageScreenshot'), icon: 'screenshot' },
     downloads: { label: t('settings.downloads'), icon: 'download' },
   };
-
-  const widgetLabels: Record<SidebarWidgetId, string> = {
-    media: t('widgets.media'),
-    clock: t('widgets.clock'),
-    focus: t('widgets.focus'),
-    'closed-tabs': t('widgets.closedTabs'),
-    downloads: t('widgets.downloads'),
-  };
-
-  const sidebarWidgets = $derived([
-    ...values.sidebarWidgets,
-    ...SIDEBAR_WIDGET_IDS.filter((id) => !values.sidebarWidgets.includes(id)),
-  ]);
-
-  function toggleSidebarWidget(id: SidebarWidgetId, visible: boolean): void {
-    void update({
-      sidebarWidgets: sidebarWidgets.filter((item) => (item === id ? visible : values.sidebarWidgets.includes(item))),
-    });
-  }
-
-  function moveSidebarWidget(id: SidebarWidgetId, step: -1 | 1): void {
-    const order = [...sidebarWidgets];
-    const index = order.indexOf(id);
-    const target = index + step;
-    if (target < 0 || target >= order.length) return;
-    [order[index], order[target]] = [order[target], order[index]];
-    void update({ sidebarWidgets: order.filter((item) => values.sidebarWidgets.includes(item)) });
-  }
 
   const toolbarButtons = $derived([
     ...values.toolbarButtons,
@@ -193,37 +164,13 @@
     onchange={(value) => update({ pinnedDisplay: value })}
   />
 </SettingRow>
-
-<h2>{t('settings.sidebarWidgets')}</h2>
-<p class="section-hint">{t('settings.sidebarWidgetsHint')}</p>
-<ul class="buttons" aria-label={t('settings.sidebarWidgets')}>
-  {#each sidebarWidgets as id, index (id)}
-    <li class="row">
-      <label class="check">
-        <input
-          type="checkbox"
-          checked={values.sidebarWidgets.includes(id)}
-          onchange={(event) => toggleSidebarWidget(id, event.currentTarget.checked)}
-        />
-        <span class="label">{widgetLabels[id]}</span>
-      </label>
-      <span class="move">
-        <IconButton
-          icon="up"
-          label={t('settings.moveWidgetEarlier', { label: widgetLabels[id] })}
-          disabled={index === 0}
-          onclick={() => moveSidebarWidget(id, -1)}
-        />
-        <IconButton
-          icon="down"
-          label={t('settings.moveWidgetLater', { label: widgetLabels[id] })}
-          disabled={index === sidebarWidgets.length - 1}
-          onclick={() => moveSidebarWidget(id, 1)}
-        />
-      </span>
-    </li>
-  {/each}
-</ul>
+<SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
+  <Switch
+    label={t('settings.mediaPlayer')}
+    checked={values.sidebarWidgets.includes('media')}
+    onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
+  />
+</SettingRow>
 
 <h2>{t('settings.toolbar')}</h2>
 <SettingRow title={t('settings.toolbarVisibility')} hint={t('settings.toolbarHint')}>
@@ -304,11 +251,5 @@
   .move {
     display: flex;
     gap: 2px;
-  }
-
-  .section-hint {
-    margin: -4px 0 8px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
   }
 </style>

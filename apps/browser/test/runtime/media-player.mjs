@@ -6,7 +6,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
 
-const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-sidebar-widgets-'));
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-media-player-'));
 app.setPath('userData', profile);
 const deadline = setTimeout(() => app.exit(1), 30_000);
 const { IpcChannel } = types;
@@ -53,8 +53,7 @@ let state = {
   panelSide: 'left',
   pinnedDisplay: 'always',
   sidebarVisible: true,
-  sidebarWidgets: ['media', 'clock', 'focus', 'closed-tabs', 'downloads'],
-  closedTabs: [{ id: 'closed-1', title: 'Closed page', url: 'https://closed.example/', faviconUrl: null }],
+  media: null,
   toolbarVisible: true,
   toolbarTabs: true,
   toolbarButtons: ['settings'],
@@ -82,10 +81,6 @@ const push = (patch) => {
   state = { ...state, ...patch };
   window.webContents.send(IpcChannel.state, JSON.stringify(state));
 };
-const widgetIds = () =>
-  window.webContents.executeJavaScript(
-    "[...document.querySelectorAll('.widgets .widget')].map((node) => node.classList[1].slice('widget-'.length))",
-  );
 async function eventually(predicate) {
   const start = Date.now();
   while (!(await window.webContents.executeJavaScript(predicate))) {
@@ -112,54 +107,66 @@ app
     ipcMain.handle(IpcChannel.getState, () => state);
     ipcMain.on(IpcChannel.action, (_event, action) => {
       actions.push(action);
-      if (action.type === 'set-sidebar-widgets') push({ sidebarWidgets: action.ids });
     });
     await window.loadFile(path.resolve('dist/renderer/index.html'));
 
-    // Downloads stays hidden while nothing downloads; the rest follow the saved order.
-    await eventually("document.querySelectorAll('.widgets .widget').length === 4");
-    assert.deepEqual(await widgetIds(), ['media', 'clock', 'focus', 'closed-tabs']);
+    const song = {
+      tabId: 'b',
+      title: 'Midnight City',
+      artist: 'M83',
+      artwork: null,
+      faviconUrl: null,
+      duration: 240,
+      position: 60,
+      playing: true,
+      updatedAt: Date.now(),
+    };
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.equal(await window.webContents.executeJavaScript("!!document.querySelector('.player')"), false);
 
-    await click('.widget-media .round.primary');
-    assert.deepEqual(actions.at(-1), { type: 'toggle-media', id: 'b' });
-    // A paused tab keeps its card until it closes.
-    push({ tabs: [tab('a'), tab('b', { title: 'Midnight City' })] });
-    await eventually("document.querySelector('.widget-media .round.primary')?.getAttribute('aria-label') === 'Play'");
-    push({ tabs: [tab('a')], listOrder: ['a'] });
-    await eventually("!document.querySelector('.widget-media')");
-
-    await click('.widget-closed-tabs .closed button');
-    assert.deepEqual(actions.at(-1), { type: 'reopen-closed-tab', id: 'closed-1' });
-
-    await click('.widget-focus .round.primary');
-    await eventually(
-      "document.querySelector('.widget-focus .round.primary').getAttribute('aria-label') === 'Pause focus'",
+    push({ media: song });
+    await eventually("document.querySelector('.player .title')?.textContent === 'Midnight City'");
+    assert.equal(
+      await window.webContents.executeJavaScript("document.querySelector('.player .artist .name').textContent"),
+      'M83',
+    );
+    assert.equal(
+      await window.webContents.executeJavaScript("document.querySelector('.player .times span').textContent"),
+      '1:00',
     );
 
-    // Dropping the focus timer on the top half of the clock moves it above the clock.
+    await click('.player .play');
+    assert.deepEqual(actions.at(-1), { type: 'toggle-media', id: 'b' });
+    await click('.player .skip');
+    assert.deepEqual(actions.at(-1), { type: 'seek-media', id: 'b', seconds: -10 });
+    await click('.player .skip:last-child');
+    assert.deepEqual(actions.at(-1), { type: 'seek-media', id: 'b', seconds: 10 });
+    await click('.player .info');
+    assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
+
+    // Clicking three quarters along the bar seeks to 3:00, two minutes past 1:00.
     await window.webContents.executeJavaScript(`(() => {
-      const data = new DataTransfer();
-      const source = document.querySelector('.widget-focus');
-      const target = document.querySelector('.widget-clock');
-      const rect = target.getBoundingClientRect();
-      const at = { bubbles: true, cancelable: true, dataTransfer: data, clientX: rect.x + 10, clientY: rect.y + 4 };
-      source.dispatchEvent(new DragEvent('dragstart', at));
-      target.dispatchEvent(new DragEvent('dragover', at));
-      target.dispatchEvent(new DragEvent('drop', at));
-      source.dispatchEvent(new DragEvent('dragend', at));
+      const track = document.querySelector('.player .track');
+      const rect = track.getBoundingClientRect();
+      track.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rect.left + rect.width * 0.75, clientY: rect.top + 2 }));
     })()`);
-    assert.deepEqual(actions.at(-1), {
-      type: 'set-sidebar-widgets',
-      ids: ['media', 'focus', 'clock', 'closed-tabs', 'downloads'],
-    });
-    await eventually("document.querySelector('.widgets .widget').classList.contains('widget-focus')");
+    const seek = actions.at(-1);
+    assert.equal(seek.type, 'seek-media');
+    assert.ok(Math.abs(seek.seconds - 120) <= 1, `seek by ${seek.seconds}`);
 
-    push({ downloads: { active: 1, progress: 0.4, started: 1 } });
-    await eventually("!!document.querySelector('.widget-downloads')");
+    push({ media: { ...song, playing: false, updatedAt: Date.now() } });
+    await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Play'");
 
-    // The narrow sidebar has no room for widgets.
+    // Live streams have no length, so the bar and times go away while the controls stay.
+    push({ media: { ...song, duration: null, position: null, updatedAt: Date.now() } });
+    await eventually("!document.querySelector('.player .track') && !!document.querySelector('.player .play')");
+
+    // The narrow sidebar has no room for the player.
     push({ panelCollapsed: true });
-    await eventually("!document.querySelector('.widgets')");
+    await eventually("!document.querySelector('.player')");
+    push({ panelCollapsed: false, media: null });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.equal(await window.webContents.executeJavaScript("!!document.querySelector('.player')"), false);
 
     clearTimeout(deadline);
     app.exit(0);

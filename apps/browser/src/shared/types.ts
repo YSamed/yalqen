@@ -121,9 +121,8 @@ export interface BrowserState {
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
   sidebarVisible: boolean;
-  sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
-  // Filled only while the closed-tabs widget is shown.
-  closedTabs: import('./sidebar-widgets').ClosedTabPreview[];
+  // Filled only while the sidebar media player is on and a tab has played sound.
+  media: import('./sidebar-widgets').MediaInfo | null;
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   toolbarButtons: ToolbarButtonId[];
@@ -386,8 +385,7 @@ export type UiAction =
   | { type: 'toggle-pin'; id: TabId }
   | { type: 'toggle-mute'; id: TabId }
   | { type: 'toggle-media'; id: TabId }
-  | { type: 'reopen-closed-tab'; id: string }
-  | { type: 'set-sidebar-widgets'; ids: import('./sidebar-widgets').SidebarWidgetId[] }
+  | { type: 'seek-media'; id: TabId; seconds: number }
   | { type: 'open-tab-menu'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }

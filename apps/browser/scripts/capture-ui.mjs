@@ -195,7 +195,7 @@ const tab = (index) => ({
 const state = {
   tabs: [0, 1, 2, 3, 4].map(tab), listOrder: ['tab-0', 'tab-1', 'tab-2', 'tab-3', 'tab-4'], developer: false,
   activeTabId: 'tab-0', pageFullScreen: false, windowFullScreen: false, addressPlaceholder: 'Search or type an address',
-  panelCollapsed: false, panelSide: 'left', pinnedDisplay: 'list', sidebarVisible: true, sidebarWidgets: [], closedTabs: [], toolbarVisible: true, toolbarTabs: true,
+  panelCollapsed: false, panelSide: 'left', pinnedDisplay: 'list', sidebarVisible: true, media: null, toolbarVisible: true, toolbarTabs: true,
   toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'], material: ${JSON.stringify(material)}, device: null,
   zoom: 1, defaultZoom: 1, downloads: { active: 1, progress: 0.4, started: 1 }, extensions: false, profile: 'personal',
   agentPanelOpen: false, agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },

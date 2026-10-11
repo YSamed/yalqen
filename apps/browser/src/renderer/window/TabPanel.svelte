@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { DownloadsSummary, PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
-  import type { ClosedTabPreview, SidebarWidgetId } from '../../shared/sidebar-widgets';
+  import type { PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
   import { flip } from 'svelte/animate';
@@ -8,7 +8,7 @@
   import { devStates } from './format';
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
-  import SidebarWidgets from './SidebarWidgets.svelte';
+  import MediaPlayer from './MediaPlayer.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import type { TabGroup } from '../../shared/tab-groups';
 
@@ -29,9 +29,7 @@
     profile,
     profileName,
     pinnedDisplay,
-    widgets,
-    closedTabs,
-    downloads,
+    media,
   }: {
     tabs: TabSnapshot[];
     listOrder: TabId[];
@@ -49,9 +47,7 @@
     profile: ProfileKind;
     profileName?: string;
     pinnedDisplay: PinnedDisplay;
-    widgets: SidebarWidgetId[];
-    closedTabs: ClosedTabPreview[];
-    downloads: DownloadsSummary;
+    media: MediaInfo | null;
   } = $props();
 
   type DragGroup = 'pinned' | 'listed';
@@ -552,8 +548,8 @@
         {/if}
       </div>
 
-      {#if !collapsed && widgets.length > 0}
-        <SidebarWidgets {widgets} {tabs} {closedTabs} {downloads} />
+      {#if !collapsed && media}
+        <MediaPlayer {media} />
       {/if}
 
       <footer class="footer" class:compact={collapsed}>
@@ -1040,7 +1036,7 @@
     padding-top: 8px;
   }
 
-  :global(.widgets) + .footer {
+  :global(.player) + .footer {
     margin-top: 0;
   }
 

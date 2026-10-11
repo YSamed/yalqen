@@ -17,7 +17,7 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'top',
       pinnedDisplay: 'sometimes',
       sidebarVisible: 'no',
-      sidebarWidgets: 'clock',
+      sidebarWidgets: 'media',
       toolbarVisible: 0,
       toolbarTabs: 'no',
       freezeBackgroundTabs: 1,
@@ -50,7 +50,7 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'left',
       pinnedDisplay: 'always',
       sidebarVisible: true,
-      sidebarWidgets: [],
+      sidebarWidgets: ['media'],
       toolbarVisible: true,
       toolbarTabs: true,
       toolbarButtons: [
@@ -108,12 +108,10 @@ test('toolbar buttons are deduplicated, filtered and always keep settings', () =
   assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 9);
 });
 
-test('sidebar widgets keep their order and drop duplicates and unknown ids', () => {
-  assert.deepEqual(sanitizeSettings({ sidebarWidgets: ['focus', 'weather', 'clock', 'focus', 3] }).sidebarWidgets, [
-    'focus',
-    'clock',
-  ]);
-  assert.deepEqual(sanitizeSettings({}).sidebarWidgets, []);
+test('the sidebar media player is on by default and stays off once turned off', () => {
+  assert.deepEqual(sanitizeSettings({}).sidebarWidgets, ['media']);
+  assert.deepEqual(sanitizeSettings({ sidebarWidgets: [] }).sidebarWidgets, []);
+  assert.deepEqual(sanitizeSettings({ sidebarWidgets: ['clock', 'media', 'media', 3] }).sidebarWidgets, ['media']);
 });
 
 test('download settings persist absolute folders and reject invalid paths', () => {

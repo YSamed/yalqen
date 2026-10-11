@@ -38,7 +38,7 @@ const DEFAULTS: Settings = {
   panelSide: 'left',
   pinnedDisplay: 'always',
   sidebarVisible: true,
-  sidebarWidgets: [],
+  sidebarWidgets: ['media'],
   toolbarVisible: true,
   toolbarTabs: true,
   toolbarButtons: [...TOOLBAR_BUTTON_IDS],

@@ -48,11 +48,7 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
       ),
     }),
     toolbarButtons: reuseArray(previous.toolbarButtons, next.toolbarButtons),
-    sidebarWidgets: reuseArray(previous.sidebarWidgets, next.sidebarWidgets),
-    closedTabs: reuseArray(
-      previous.closedTabs,
-      next.closedTabs.map((tab, index) => reuseFields(previous.closedTabs[index] ?? null, tab)!),
-    ),
+    media: reuseFields(previous.media, next.media),
     device: reuseFields(previous.device, next.device),
     downloads: reuseFields(previous.downloads, next.downloads)!,
     agentSession: reuseFields(previous.agentSession, next.agentSession)!,
