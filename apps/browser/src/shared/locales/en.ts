@@ -1497,7 +1497,6 @@ export const en = {
   'widgets.downloading': '{count} downloading',
   'widgets.downloading.one': '{count} downloading',
   'widgets.openDownloads': 'Show downloads',
-  'widgets.hide': 'Hide {name}',
   'widgets.reorder': 'Drag to reorder',
   'settings.sidebarWidgets': 'Sidebar widgets',
   'settings.sidebarWidgetsHint': 'Shown under the tab list in the wide sidebar. Drag them there to reorder.',

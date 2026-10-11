@@ -157,13 +157,6 @@ app
     push({ downloads: { active: 1, progress: 0.4, started: 1 } });
     await eventually("!!document.querySelector('.widget-downloads')");
 
-    await click('.widget-clock .hide');
-    assert.deepEqual(actions.at(-1), {
-      type: 'set-sidebar-widgets',
-      ids: ['media', 'focus', 'closed-tabs', 'downloads'],
-    });
-    await eventually("!document.querySelector('.widget-clock')");
-
     // The narrow sidebar has no room for widgets.
     push({ panelCollapsed: true });
     await eventually("!document.querySelector('.widgets')");

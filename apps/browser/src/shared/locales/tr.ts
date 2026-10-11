@@ -1507,7 +1507,6 @@ export const tr: Record<MessageKey, string> = {
   'widgets.downloading': '{count} indirme sürüyor',
   'widgets.downloading.one': '{count} indirme sürüyor',
   'widgets.openDownloads': 'İndirmeleri göster',
-  'widgets.hide': '{name} widget’ını gizle',
   'widgets.reorder': 'Sıralamak için sürükleyin',
   'settings.sidebarWidgets': "Kenar çubuğu widget'ları",
   'settings.sidebarWidgetsHint':
