@@ -68,6 +68,7 @@ import { installPasswordHandlers, safeStorageCipher } from './privacy/password-h
 import { PasswordStore } from './privacy/passwords.js';
 import { AutofillStore } from './privacy/autofill.js';
 import { installAutofillHandlers } from './privacy/autofill-handlers.js';
+import { installOneTimeCodeHandlers } from './privacy/one-time-code-handlers.js';
 import { StorageOrigins, SiteStorageManager } from './privacy/site-storage.js';
 import { installSiteStorageHandlers, observeStorageOrigins } from './privacy/site-storage-handlers.js';
 import { ReadingListStore, saveReadingPage } from './library/reading-list.js';
@@ -334,6 +335,21 @@ function startBrowser(): void {
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.activeContents() === contents),
     parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
     changed: () => broadcastAutofill(autofill.view()),
+  });
+  installOneTimeCodeHandlers({
+    allowed: (contents) =>
+      contents.session === daily &&
+      !certificates.hasException(contents.getURL()) &&
+      windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.activeContents() === contents),
+    mailTabs: () =>
+      webContents
+        .getAllWebContents()
+        .filter(
+          (contents) =>
+            contents.session === daily &&
+            windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
+        ),
+    parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
   });
 
   const bookmarksChanged = () => {

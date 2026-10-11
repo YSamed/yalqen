@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron';
 import { PageChannel } from '../shared/types.js';
 import { autofillField, autofillValues, type AutofillAvailability, type AutofillData } from '../shared/autofill.js';
+import { isOneTimeCodeField, type OneTimeCodeAvailability } from '../shared/one-time-code.js';
 
 type Control = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 function control(value: unknown): value is Control {
@@ -65,6 +66,21 @@ function setValue(input: Control, value: string): void {
   input.dispatchEvent(new Event('input', { bubbles: true }));
   input.dispatchEvent(new Event('change', { bubbles: true }));
 }
+function codeField(input: Control): input is HTMLInputElement {
+  return input instanceof HTMLInputElement && editable(input) && isOneTimeCodeField(input);
+}
+// Codes split across one box per character are filled box by box from the focused one.
+function codeBoxes(input: HTMLInputElement, length: number): HTMLInputElement[] {
+  if (input.maxLength !== 1) return [input];
+  for (let root = input.parentElement, depth = 0; root && depth < 4; root = root.parentElement, depth++) {
+    const boxes = Array.from(root.querySelectorAll('input')).filter(
+      (box) => box.maxLength === 1 && editable(box) && box.type !== 'email',
+    );
+    const start = boxes.indexOf(input);
+    if (start >= 0 && boxes.length - start >= length) return boxes.slice(start, start + length);
+  }
+  return [];
+}
 
 export function setupAutofill(): void {
   if (window !== window.top || !['https:', 'http:'].includes(location.protocol)) return;
@@ -72,7 +88,8 @@ export function setupAutofill(): void {
     button: HTMLButtonElement | null = null,
     target: Control | null = null;
   let generation = 0,
-    picking = false;
+    picking = false,
+    mode: 'record' | 'code' = 'record';
   const hide = () => {
     if (host) host.style.setProperty('display', 'none', 'important');
   };
@@ -109,6 +126,30 @@ export function setupAutofill(): void {
         'all: initial; box-sizing: border-box; width: 28px; height: 28px; border: 1px solid GrayText; border-radius: 6px; background: Canvas; color: CanvasText; font: 16px system-ui; text-align: center; cursor: pointer; outline: revert;';
       button.addEventListener('click', async (event) => {
         if (!event.isTrusted || picking || !target) return;
+        if (mode === 'code') {
+          const input = target,
+            run = generation,
+            url = location.href;
+          if (!codeField(input)) return;
+          picking = true;
+          button!.disabled = true;
+          try {
+            const code = (await ipcRenderer.invoke(PageChannel.chooseOneTimeCode)) as string | null;
+            if (typeof code !== 'string' || !/^\d{4,8}$/.test(code)) return;
+            if (generation !== run || location.href !== url || !codeField(input)) return;
+            const boxes = codeBoxes(input, code.length);
+            if (boxes.length === 1) {
+              if (input.maxLength < 0 || input.maxLength >= code.length) setValue(input, code);
+            } else boxes.forEach((box, index) => setValue(box, code[index]));
+          } catch {
+            /* A dismissed menu or navigation leaves the field as it was. */
+          } finally {
+            picking = false;
+            if (button) button.disabled = false;
+            position();
+          }
+          return;
+        }
         const input = target,
           description = autofillField(input.autocomplete),
           run = generation,
@@ -180,6 +221,20 @@ export function setupAutofill(): void {
       if (host && event.target === host) return;
       const run = ++generation;
       const input = event.target;
+      if (control(input) && !autofillField(input.autocomplete) && codeField(input)) {
+        try {
+          const code = (await ipcRenderer.invoke(PageChannel.oneTimeCodeAvailable)) as OneTimeCodeAvailability;
+          if (run !== generation || !codeField(input) || !code.available) {
+            if (run === generation) hide();
+            return;
+          }
+          mode = 'code';
+          show(input, code.label);
+        } catch {
+          hide();
+        }
+        return;
+      }
       if (!control(input) || !editable(input) || !autofillField(input.autocomplete)) {
         target = null;
         hide();
@@ -192,6 +247,7 @@ export function setupAutofill(): void {
           if (run === generation) hide();
           return;
         }
+        mode = 'record';
         show(input, description.kind === 'card' ? available.cardLabel : available.addressLabel);
       } catch {
         hide();

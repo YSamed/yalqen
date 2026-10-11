@@ -18,6 +18,7 @@ for (const test of [
   'login-selection.mjs',
   'autofill.mjs',
   'autofill-settings.mjs',
+  'one-time-code.mjs',
   'bookmark-transfer.mjs',
   'bulk-tabs.mjs',
   'tab-selection.mjs',

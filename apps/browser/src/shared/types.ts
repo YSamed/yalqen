@@ -429,6 +429,8 @@ export const PageChannel = {
   chooseSavedLogin: 'yalqen:choose-saved-login',
   autofillAvailable: 'yalqen:autofill-available',
   chooseAutofill: 'yalqen:choose-autofill',
+  oneTimeCodeAvailable: 'yalqen:one-time-code-available',
+  chooseOneTimeCode: 'yalqen:choose-one-time-code',
 } as const;
 
 export interface SubmittedCredential {
