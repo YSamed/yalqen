@@ -6,10 +6,12 @@ import path from 'node:path';
 import { test } from 'node:test';
 import lists from '../../../dist/main/privacy/threat-lists.js';
 import guard from '../../../dist/main/privacy/threat-guard.js';
+import threatDomains from '../../../dist/main/privacy/threat-domains.js';
 
 const { LocalThreatLists, parseThreatDomains, parseThreatHashes, threatDomain, DOMAIN_FEED, HASH_FEED, HASH_SOURCE } =
   lists;
 const { ThreatGuard } = guard;
+const { DomainList, loadThreatDomains, normalizeThreatDomains } = threatDomains;
 function fixture(t, fetcher, enabled = () => true) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-threats-'));
   const service = new LocalThreatLists(dir, enabled, () => {}, fetcher);
@@ -119,6 +121,47 @@ test('a successful update replaces removed domains and enforces response size li
   await service.update(true);
   assert.equal(service.view().failed, true);
   assert.equal(service.domain('https://new.example/'), 'new.example');
+});
+
+test('the sorted domain list answers like a set and the cached list loads without reparsing', () => {
+  const feed = 'z.example\nBAD.example\nşüpheli.example\n# comment\nmid.example\nbad.example\n';
+  const { text, starts } = normalizeThreatDomains(feed);
+  const list = new DomainList(text, starts);
+  const set = parseThreatDomains(feed);
+  assert.equal(list.size, set.size);
+  for (const domain of [...set, 'a.example', 'zz.example', 'bad.exampl', 'example', ''])
+    assert.equal(list.has(domain), set.has(domain), domain);
+  const cached = loadThreatDomains(text);
+  assert.equal(cached.text, text);
+  assert.deepEqual([...cached.starts], [...starts]);
+  assert.equal(new DomainList().has('bad.example'), false);
+  assert.throws(() => loadThreatDomains('bad.example\n*'), 'an older raw cache is still validated');
+});
+
+test('refreshes ask whether the feed changed and keep the list when it did not', async (t) => {
+  const requests = [];
+  const { dir, service } = fixture(t, async (url, options) => {
+    requests.push({ url, headers: options.headers });
+    if (options.headers?.['If-None-Match'] === `"${url}"`) return new Response(null, { status: 304 });
+    return new Response(url === DOMAIN_FEED ? 'bad.example' : `${'a'.repeat(64)};file`, {
+      headers: { etag: `"${url}"` },
+    });
+  });
+  await service.update(true);
+  assert.ok(
+    requests.every(({ headers }) => headers === undefined),
+    'the first download is unconditional',
+  );
+  const file = path.join(dir, 'threat-lists/domains.txt');
+  const cached = fs.readFileSync(file, 'utf8');
+  fs.utimesSync(file, new Date(0), new Date(0));
+  await service.update(true);
+  for (const { url, headers } of requests.slice(2)) assert.deepEqual(headers, { 'If-None-Match': `"${url}"` });
+  assert.equal(requests.length, 4);
+  assert.equal(service.view().failed, false);
+  assert.equal(service.domain('https://bad.example/'), 'bad.example');
+  assert.equal(fs.readFileSync(file, 'utf8'), cached);
+  assert.ok(fs.statSync(file).mtimeMs > 0, 'an unchanged feed still counts as fresh');
 });
 
 test('file verification streams bytes and matches all supported hash algorithms without uploading', async (t) => {
