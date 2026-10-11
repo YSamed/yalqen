@@ -6,6 +6,7 @@ import { app, BrowserWindow, session } from 'electron';
 import stores from '../../dist/main/privacy/autofill.js';
 import handlers from '../../dist/main/privacy/autofill-handlers.js';
 import passwords from '../../dist/main/privacy/password-handlers.js';
+import passwordStores from '../../dist/main/privacy/passwords.js';
 import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
 import settingsPage from '../../dist/main/app/settings-page.js';
@@ -59,6 +60,15 @@ app
         auths++;
         return authenticated;
       },
+    });
+    // Addresses and cards share a settings pane with passwords, as in the app.
+    const passwordStore = new passwordStores.PasswordStore(root, passwords.safeStorageCipher);
+    passwords.installPasswordHandlers({
+      store: passwordStore,
+      savesPasswords: () => false,
+      parentOf: (contents) => windows.find((w) => w.webContents === contents),
+      isSettingsFrame: settingsPage.isSettingsFrame,
+      onChange: () => settingsPage.broadcastPasswords(passwordStore.view()),
     });
     const preferences = new settings.SettingsStore(root),
       view = () => ({
