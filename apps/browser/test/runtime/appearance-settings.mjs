@@ -10,6 +10,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-appearance-ui-'));
 app.setPath('userData', root);
 internal.registerInternalScheme();
 const rendererErrors = [];
+const clears = [];
 let window;
 const deadline = setTimeout(() => app.exit(1), 30000);
 process.on('uncaughtException', (error) => {
@@ -45,7 +46,9 @@ app
       profiles: { view: () => ({ currentId: 'default', profiles: [] }) },
       update: (patch) => preferences.update(patch),
       updateThreatLists: async () => {},
-      clearData: async () => {},
+      clearData: async (request) => {
+        clears.push(request);
+      },
       updater: {},
       relaunch() {},
       permissions: {},
@@ -119,16 +122,36 @@ app
     await run(`document.querySelector('#pane [data-id=settings]').click()`);
     assert.ok(preferences.get().toolbarButtons.includes('settings'));
 
+    // Clearing browsing data happens in a dialog opened from the Privacy pane.
+    await window.loadURL('yalqen://settings/privacy');
+    const clearButton = `Array.from(document.querySelectorAll('#pane button')).find(item=>item.textContent.trim()==='Clear…')`;
+    await eventually(`!!${clearButton}`);
+    assert.equal(await run(`document.querySelector('#pane dialog').open`), false);
+    await run(`${clearButton}.click()`);
+    await eventually(`document.querySelector('#pane dialog').open`);
+    await run(
+      `Array.from(document.querySelectorAll('#pane dialog button')).find(item=>item.textContent.trim()==='Clear data').click()`,
+    );
+    await eventually(`!!document.querySelector('#pane dialog [role=status]')`);
+    assert.deepEqual(clears, [{ range: 'hour', history: true, downloads: false, siteData: false, cache: false }]);
+    await run(
+      `Array.from(document.querySelectorAll('#pane dialog button')).find(item=>item.textContent.trim()==='Close').click()`,
+    );
+    await eventually(`!document.querySelector('#pane dialog').open`);
+    assert.equal(await run(`document.querySelector('#pane details').open`), false);
+    assert.equal(await run(`!!document.querySelector('#pane details #secure-dns')`), true);
+
+    assert.deepEqual(rendererErrors, []);
+
     // Searching opens the Advanced group when a setting inside it matches.
     assert.equal(await run(`document.querySelector('#pane details').open`), false);
     await run(
-      `(() => {const input=document.querySelector('input[type=search], .search input');input.value='zoom';input.dispatchEvent(new Event('input',{bubbles:true}))})()`,
+      `(() => {const input=document.querySelector('input[type=search], .search input');input.value='DNS';input.dispatchEvent(new Event('input',{bubbles:true}))})()`,
     );
     await eventually(`[...document.querySelectorAll('#pane details')].some(item=>item.open&&!item.hidden)`);
 
-    assert.deepEqual(rendererErrors, []);
     console.log(
-      'PASS: appearance settings pick theme and sidebar layout from cards, edit toolbar buttons from the preview and open Advanced for matching searches',
+      'PASS: appearance settings pick theme and sidebar layout from cards, edit toolbar buttons from the preview and open Advanced for matching searches, and clear browsing data from a dialog',
     );
   })
   .then(() => app.quit())

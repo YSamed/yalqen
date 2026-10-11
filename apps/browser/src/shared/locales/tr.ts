@@ -183,7 +183,6 @@ export const tr: Record<MessageKey, string> = {
   'settings.startupUrlsHint': 'Her satıra bir HTTP/HTTPS adresi; en fazla 20 sayfa. Sabitlenmiş sekmeler korunur.',
   'settings.homePage': 'Ana sayfa',
   'settings.homePageHint': 'Yeni sekme açmak için boş bırakın. Alt+Home da kullanılabilir.',
-  'settings.showHomeButton': 'Ana sayfa düğmesini göster',
   'settings.pageUrlError': 'Kullanıcı bilgisi içermeyen HTTP/HTTPS adresleri girin (en fazla 20 açılış sayfası).',
 
   'menu.savePage': 'Sayfayı farklı kaydet…',
@@ -821,7 +820,6 @@ export const tr: Record<MessageKey, string> = {
   'settings.clearDownloads': 'İndirme listesi',
   'settings.clearSiteData': 'Çerezler ve site verileri',
   'settings.clearCache': 'Önbellek',
-  'settings.defaultBrowserYes': 'Yalqen varsayılan tarayıcınız',
   'settings.defaultBrowserNo': 'Yalqen varsayılan tarayıcı değil',
   'settings.clearing': 'Temizleniyor…',
   'settings.clearData': 'Verileri temizle',
@@ -835,7 +833,6 @@ export const tr: Record<MessageKey, string> = {
   'settings.searchUrlHint': 'Aranan metin %s yerine yazılır. Geçerli bir adres girilene kadar Google kullanılır.',
   'settings.searchUrlPlaceholder': 'https://ornek.com/search?q=%s',
   'settings.searchUrlError': 'Adres http(s) ile başlamalı ve %s içermeli.',
-  'settings.defaultBrowser': 'Varsayılan tarayıcı',
   'settings.defaultBrowserHint': 'Diğer uygulamalardaki bağlantılar varsayılan tarayıcıda açılır.',
   'settings.makeDefault': 'Varsayılan yap',
   'settings.startup': 'Açılış',
@@ -917,6 +914,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.clearBrowsingDataHint':
     'Geçmiş ve indirme listesi seçilen aralıktan silinir. Çerezler, site verileri ve önbellek her zaman tümüyle silinir.',
   'settings.timeRange': 'Zaman aralığı',
+  'settings.clearBrowsingDataRowHint': 'Geçmişi, indirilenleri, çerezleri veya önbelleği silin.',
+  'settings.clearDataEllipsis': 'Temizle…',
+  'settings.close': 'Kapat',
   'settings.cleared': 'Temizlendi.',
   'settings.memory': 'Bellek',
   'settings.freezeBackgroundTabs': 'Arka plan sekmelerini dondur',

@@ -3,6 +3,7 @@
   import { DEFAULT_ZOOM_FACTORS, type SettingsValues } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
+  import AdvancedGroup from './AdvancedGroup.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
@@ -167,8 +168,7 @@
   />
 </SettingRow>
 
-<details class="advanced">
-  <summary>{t('settings.advanced')}</summary>
+<AdvancedGroup>
   <SettingRow title={t('settings.transparency')} hint={t('settings.transparencyHint')}>
     <Switch
       label={t('settings.transparency')}
@@ -195,7 +195,7 @@
       onchange={(value) => update({ defaultZoom: value })}
     />
   </SettingRow>
-</details>
+</AdvancedGroup>
 
 <style>
   svg {
@@ -250,46 +250,5 @@
   .page {
     fill: var(--surface);
     stroke: var(--border);
-  }
-
-  .advanced {
-    margin-top: 26px;
-    border-top: 1px solid var(--border);
-  }
-
-  .advanced summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 44px;
-    color: var(--text-muted);
-    font-weight: 500;
-    cursor: pointer;
-    list-style: none;
-  }
-
-  .advanced summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .advanced summary::after {
-    content: '';
-    width: 7px;
-    height: 7px;
-    margin-right: 4px;
-    border-right: 1.5px solid currentColor;
-    border-bottom: 1.5px solid currentColor;
-    transform: rotate(45deg);
-    transition: transform 0.15s;
-  }
-
-  .advanced[open] summary::after {
-    transform: rotate(-135deg);
-  }
-
-  .advanced summary:focus-visible {
-    outline: 2px solid var(--focus, var(--accent));
-    outline-offset: 2px;
-    border-radius: 4px;
   }
 </style>

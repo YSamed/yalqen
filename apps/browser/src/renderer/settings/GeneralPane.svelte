@@ -112,6 +112,16 @@
   }
 </script>
 
+{#if !view.defaultBrowser}
+  <div class="banner" role="note">
+    <span class="label">
+      <span>{t('settings.defaultBrowserNo')}</span>
+      <span class="hint">{t('settings.defaultBrowserHint')}</span>
+    </span>
+    <Button variant="primary" onclick={makeDefault}>{t('settings.makeDefault')}</Button>
+  </div>
+{/if}
+
 <h2>{t('settings.search')}</h2>
 <SettingRow title={t('settings.searchEngine')} hint={t('settings.searchEngineHint')} labelFor="engine">
   <Select
@@ -140,16 +150,6 @@
     {/if}
   </SettingRow>
 {/if}
-
-<h2>{t('settings.defaultBrowser')}</h2>
-<SettingRow
-  title={view.defaultBrowser ? t('settings.defaultBrowserYes') : t('settings.defaultBrowserNo')}
-  hint={t('settings.defaultBrowserHint')}
->
-  {#if !view.defaultBrowser}
-    <Button variant="primary" onclick={makeDefault}>{t('settings.makeDefault')}</Button>
-  {/if}
-</SettingRow>
 
 <h2>{t('settings.startup')}</h2>
 <SettingRow title={t('settings.whenBrowserOpens')} hint={t('settings.startupHint')}>
@@ -194,18 +194,6 @@
   />
   {#if homeInvalid}<span class="error" role="alert">{t('settings.pageUrlError')}</span>{/if}
 </SettingRow>
-<SettingRow title={t('settings.showHomeButton')}>
-  <Switch
-    label={t('settings.showHomeButton')}
-    checked={values.toolbarButtons.includes('home')}
-    onchange={(shown) =>
-      update({
-        toolbarButtons: shown
-          ? ['home', ...values.toolbarButtons.filter((id) => id !== 'home')]
-          : values.toolbarButtons.filter((id) => id !== 'home'),
-      })}
-  />
-</SettingRow>
 
 <h2>{t('settings.downloads')}</h2>
 <SettingRow title={t('settings.downloadDirectory')} hint={view.downloadDirectory}>
@@ -217,6 +205,13 @@
       >{t('settings.resetDownloadDirectory')}</Button
     >
   {/if}
+</SettingRow>
+<SettingRow title={t('settings.askBeforeDownload')} hint={t('settings.askBeforeDownloadHint')}>
+  <Switch
+    label={t('settings.askBeforeDownload')}
+    checked={values.askBeforeDownload}
+    onchange={(checked) => update({ askBeforeDownload: checked })}
+  />
 </SettingRow>
 <SettingRow title={t('settings.askDownloadLocation')} hint={t('settings.askDownloadLocationHint')}>
   <Switch
@@ -281,9 +276,29 @@
   />
 </SettingRow>
 
+<SettingRow title={t('settings.usageCounting')} hint={t('settings.usageCountingHint')}>
+  <Switch
+    label={t('settings.usageCounting')}
+    checked={values.usageCounting}
+    onchange={(checked) => update({ usageCounting: checked })}
+  />
+</SettingRow>
+
 <Profiles />
 
 <style>
+  .banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin: 6px 0 4px;
+    padding: 14px 16px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
   #startup-urls {
     width: 100%;
     min-height: 88px;
