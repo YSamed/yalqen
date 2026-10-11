@@ -55,6 +55,7 @@ import { registerExtensionsIpc } from './extensions/extensions-ipc.js';
 import { registerWebStoreApi } from './extensions/web-store-api.js';
 import { loadInternalPages, registerInternalScheme, serveInternalPages } from './pages/internal-pages.js';
 import { HistoryStore } from './library/history.js';
+import { siteIcons } from './library/site-icons.js';
 import { RepoPrompt } from './app/repo-prompt.js';
 import { HttpsOnly, hostResolverOptions } from './privacy/https-only.js';
 import { chromeUserAgent } from './app/page-preferences.js';
@@ -916,6 +917,7 @@ function startBrowser(): void {
     },
     requestRules,
     permissions,
+    siteIcons: (domains) => siteIcons(history.list(), domains),
     onRequestRulesSaved: () => eachWindow((window) => window.tabs.refreshRequestRules()),
   });
 

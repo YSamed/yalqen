@@ -14,9 +14,7 @@
   import PerformancePane from './PerformancePane.svelte';
   import PrivacyPane from './PrivacyPane.svelte';
   import RequestRules from './RequestRules.svelte';
-  import SitePermissions from './SitePermissions.svelte';
-  import SiteProtectionExceptions from './SiteProtectionExceptions.svelte';
-  import SiteStorage from './SiteStorage.svelte';
+  import Sites from './Sites.svelte';
 
   const api = window.yalqenSettings;
 
@@ -133,9 +131,7 @@
   {:else if id === 'privacy'}
     <PrivacyPane values={view.values} threatLists={view.threatLists} {update} />
   {:else if id === 'sites'}
-    <SitePermissions />
-    <SiteProtectionExceptions values={view.values} {update} />
-    <SiteStorage />
+    <Sites values={view.values} {update} />
   {:else if id === 'passwords'}
     <Passwords />
     <Autofill />

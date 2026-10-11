@@ -77,7 +77,7 @@ async function embedded(window, url) {
 }
 async function button(domain) {
   await settingsWindow.webContents.executeJavaScript(
-    `Array.from(document.querySelectorAll('section[aria-label="Site data"] li')).find(li=>li.querySelector('strong')?.textContent===${JSON.stringify(domain)}).querySelector('button').click()`,
+    `document.querySelector('li[data-domain=${JSON.stringify(domain)}] [data-action=clear-data]').click()`,
   );
 }
 process.on('uncaughtException', (error) => {
@@ -173,7 +173,7 @@ app
     await settingsWindow.loadURL('yalqen://settings/sites');
     await eventually(() =>
       settingsWindow.webContents.executeJavaScript(
-        "document.querySelectorAll('section[aria-label=\"Site data\"] li strong').length===2 && document.querySelector('section[aria-label=\"Site data\"]').getAttribute('aria-busy')==='false'",
+        "document.querySelectorAll('.sites-section li[data-domain]').length===2 && document.querySelector('.sites-section').getAttribute('aria-busy')==='false'",
       ),
     );
     const view = await settingsWindow.webContents.executeJavaScript("window.yalqenSettings.siteStorage('',0)");
@@ -199,7 +199,7 @@ app
     await eventually(() => confirmations === 1);
     await eventually(() =>
       settingsWindow.webContents.executeJavaScript(
-        "document.querySelector('section[aria-label=\"Site data\"]').getAttribute('aria-busy')==='false'",
+        "document.querySelector('.sites-section').getAttribute('aria-busy')==='false'",
       ),
     );
     assert.ok((await stored(aWindow, a)).databases.includes('kept'));
@@ -210,7 +210,7 @@ app
     await eventually(() => confirmations === 2);
     await eventually(() =>
       settingsWindow.webContents.executeJavaScript(
-        "document.querySelector('section[aria-label=\"Site data\"]').getAttribute('aria-busy')==='false'",
+        "document.querySelector('.sites-section').getAttribute('aria-busy')==='false'",
       ),
     );
     assert.deepEqual(await stored(aWindow, a), { local: null, databases: [], caches: [], workers: 0 });

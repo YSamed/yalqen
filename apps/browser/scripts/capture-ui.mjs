@@ -168,6 +168,13 @@ const permissions = {
   sites: [{ origin: 'https://meet.example.com', permissions: [{ kind: 'camera', decision: 'allow' }, { kind: 'microphone', decision: 'allow' }] }],
   system: { camera: 'granted', microphone: 'denied', screen: 'not-determined' },
 };
+const storage = [
+  { domain: 'example.com', origins: 2, cookies: 12, databaseBytes: 2516582 },
+  { domain: 'github.com', origins: 3, cookies: 41, databaseBytes: 18874368 },
+  { domain: 'localhost', origins: 1, cookies: 2, databaseBytes: 348160 },
+  { domain: 'wikipedia.org', origins: 2, cookies: 4, databaseBytes: 1048576 },
+];
+const icons = { 'github.com': 'https://github.githubassets.com/favicons/favicon.svg', 'wikipedia.org': 'https://www.wikipedia.org/static/favicon/wikipedia.ico' };
 contextBridge.exposeInMainWorld('yalqenSettings', {
   get: async () => view, update: async () => view, onChange: none, clearData: async () => {}, makeDefault: async () => view,
   processUsage: async () => ({ totalMB: 512, groups: [], pages: [] }), checkForUpdates: async () => {}, installUpdate: async () => {},
@@ -181,6 +188,9 @@ contextBridge.exposeInMainWorld('yalqenSettings', {
   onAgentBridgeChange: none,
   sitePermissions: async () => permissions, setSitePermission: async () => permissions,
   forgetSitePermissions: async () => permissions, openSystemSettings: async () => {},
+  siteStorage: async (query) => ({ sites: storage.filter((site) => site.domain.includes(query)), total: storage.length, offset: 0, more: false, limited: false }),
+  clearSiteStorage: async () => false,
+  siteIcons: async (domains) => Object.fromEntries(domains.filter((domain) => icons[domain]).map((domain) => [domain, icons[domain]])),
 });`,
     window: (material) => `
 const { contextBridge } = require('electron');

@@ -799,6 +799,7 @@ export const SettingsChannel = {
   updateThreatLists: 'yalqen-settings:update-threat-lists',
   profiles: 'yalqen-settings:profiles',
   profileAction: 'yalqen-settings:profile-action',
+  siteIcons: 'yalqen-settings:site-icons',
 } as const;
 
 export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
@@ -1007,6 +1008,7 @@ export interface SettingsApi {
     decision: PermissionDecision | null,
   ): Promise<SitePermissionsView>;
   forgetSitePermissions(origin: string): Promise<SitePermissionsView>;
+  siteIcons(domains: string[]): Promise<Record<string, string>>;
   openSystemSettings(device: SystemDevice): Promise<void>;
   extensions(): Promise<ExtensionInfo[]>;
   checkExtensionUpdates(): Promise<string | null>;
