@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.55](https://github.com/YSamed/yalqen/compare/v0.3.54...v0.3.55) (2026-10-11)
+
+
+### Features
+
+* make sidebar widgets a compact panel of single-line rows ([#237](https://github.com/YSamed/yalqen/issues/237)) ([fac6992](https://github.com/YSamed/yalqen/commit/fac6992a2efd1c0c410d4c2d32caa4a74b4825c2))
+
 ## [0.3.54](https://github.com/YSamed/yalqen/compare/v0.3.53...v0.3.54) (2026-10-11)
 
 
