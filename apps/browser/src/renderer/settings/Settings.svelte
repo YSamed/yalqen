@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { SettingsValues, SettingsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
+  import { accentHex } from '../../shared/accent';
   import type { IconName } from '../ui/Icon.svelte';
   import Button from '../ui/Button.svelte';
   import SearchField from '../ui/SearchField.svelte';
@@ -39,6 +40,10 @@
   let results = $state<HTMLElement>();
   let anyMatch = $state(true);
   const searching = $derived(query.trim() !== '');
+
+  $effect(() => {
+    if (view) document.documentElement.style.setProperty('--accent', accentHex(view.values.accentColor));
+  });
 
   $effect(() => {
     const path = pane === 'general' ? '/' : `/${pane}`;

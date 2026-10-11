@@ -84,6 +84,9 @@ test('unknown or mistyped fields fall back', () => {
       askDownloadLocation: false,
       downloadDirectory: null,
       welcomeCompleted: false,
+      invitationSeen: false,
+      displayName: '',
+      accentColor: 'orange',
       dismissedAnnouncement: '',
       dismissedFeedback: '',
       dismissedUpdate: '',
@@ -208,4 +211,13 @@ test('agent origins keep unique http and https origins only', () => {
     }).agentOrigins,
     ['https://app.ngrok.app', 'http://192.168.1.5:3000'],
   );
+});
+
+test('the invitation name is trimmed, single-spaced and capped, and the accent stays in the palette', () => {
+  const values = sanitizeSettings({ displayName: '  Ada \n  Lovelace\u0007 ', accentColor: 'ocean' });
+  assert.equal(values.displayName, 'Ada Lovelace');
+  assert.equal(values.accentColor, 'ocean');
+  assert.equal(sanitizeSettings({ displayName: 'x'.repeat(80) }).displayName.length, 40);
+  assert.equal(sanitizeSettings({ accentColor: '#ff0000' }).accentColor, 'orange');
+  assert.equal(sanitizeSettings({ invitationSeen: 'yes' }).invitationSeen, false);
 });

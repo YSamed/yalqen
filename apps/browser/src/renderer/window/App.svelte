@@ -3,6 +3,7 @@
   import { t } from '../../shared/i18n';
   import type { BrowserState } from '../../shared/types';
   import { reuseBrowserState } from '../../shared/browser-state';
+  import { accentHex, DEFAULT_ACCENT } from '../../shared/accent';
   import { isNewTab } from './format';
   import DeviceControls from './DeviceControls.svelte';
   import TabPanel from './TabPanel.svelte';
@@ -55,6 +56,7 @@
     toolbarTabs: true,
     toolbarButtons: [],
     material: 'opaque',
+    accent: accentHex(DEFAULT_ACCENT),
     device: null,
     zoom: 1,
     defaultZoom: 1,
@@ -246,6 +248,7 @@
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = material;
+    document.documentElement.style.setProperty('--accent', browser.accent);
     document.documentElement.toggleAttribute('data-fullscreen', windowFullScreen);
   });
 

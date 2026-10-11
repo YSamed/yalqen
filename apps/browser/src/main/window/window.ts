@@ -33,6 +33,7 @@ import type { BookmarkStore } from '../library/bookmarks.js';
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
 import type { CommandBar, CommandBarHost } from '../address-bar/command-bar.js';
+import type { WelcomeCard } from './welcome-card.js';
 import { contextMenuTemplate } from './context-menu.js';
 import {
   autoReloadSeconds,
@@ -106,6 +107,7 @@ import { ResponsiveScanManager, ResponsiveScanError, createResponsiveScanSession
 import { acquirePageWork, pageWorkBusy } from '../tabs/page-work.js';
 import { readingUrl } from '../../shared/reading-list.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
+import { accentHex } from '../../shared/accent.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -131,6 +133,7 @@ export interface AppContext {
   siteProtections: SiteProtections;
   commandBar: CommandBar;
   findBar: FindBar;
+  welcome: WelcomeCard;
   history: HistoryStore;
   repoPrompt: RepoPrompt;
   dismissAnnouncement: () => void;
@@ -365,6 +368,7 @@ export class YalqenWindow {
         }
         this.findBar.keepOnTop(this.window);
         this.commandBar.keepOnTop(this.window);
+        app.welcome.keepOnTop(this.window);
         this.pushState();
         app.onWindowChange(persist);
       },
@@ -612,6 +616,7 @@ export class YalqenWindow {
       toolbarTabs: this.webApp ? false : this.app.settings.get().toolbarTabs,
       toolbarButtons: this.webApp ? ['settings', 'downloads'] : this.app.settings.get().toolbarButtons,
       material: this.material(),
+      accent: accentHex(this.app.settings.get().accentColor),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
@@ -1273,6 +1278,7 @@ export class YalqenWindow {
       mode: 'navigate',
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
       material: this.material(),
+      accent: accentHex(this.app.settings.get().accentColor),
     });
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
