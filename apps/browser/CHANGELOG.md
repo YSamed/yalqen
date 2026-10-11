@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.56](https://github.com/YSamed/yalqen/compare/v0.3.55...v0.3.56) (2026-10-11)
+
+
+### Features
+
+* make the sidebar media player minimal ([#241](https://github.com/YSamed/yalqen/issues/241)) ([f659dfe](https://github.com/YSamed/yalqen/commit/f659dfe971311fa58dc5917318c3b1b0fbb49a95))
+* replace sidebar widgets with a cover-art media player ([#239](https://github.com/YSamed/yalqen/issues/239)) ([1fc1955](https://github.com/YSamed/yalqen/commit/1fc195585a5516c8fefe7f63b0ce04c5d58cb51f))
+
 ## [0.3.55](https://github.com/YSamed/yalqen/compare/v0.3.54...v0.3.55) (2026-10-11)
 
 
