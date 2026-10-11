@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.58](https://github.com/YSamed/yalqen/compare/v0.3.57...v0.3.58) (2026-10-11)
+
+
+### Features
+
+* **settings:** simplify General and Privacy ([#244](https://github.com/YSamed/yalqen/issues/244)) ([eb67b5a](https://github.com/YSamed/yalqen/commit/eb67b5a92dda9ebfe98f157d0958d063b69e08a1))
+
 ## [0.3.57](https://github.com/YSamed/yalqen/compare/v0.3.56...v0.3.57) (2026-10-11)
 
 
