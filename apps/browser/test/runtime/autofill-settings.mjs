@@ -34,10 +34,11 @@ async function eventually(predicate) {
     await new Promise((r) => setTimeout(r, 25));
   }
 }
+// Buttons render disabled until the autofill view loads, and a click on a disabled button is dropped.
 async function button(label) {
-  await window.webContents.executeJavaScript(
-    `Array.from(document.querySelector('#pane').querySelectorAll('button')).find(item=>item.textContent.trim()===${JSON.stringify(label)}).click()`,
-  );
+  const find = `Array.from(document.querySelector('#pane').querySelectorAll('button')).find(item=>item.textContent.trim()===${JSON.stringify(label)})`;
+  await eventually(`!!${find} && !${find}.disabled`);
+  await window.webContents.executeJavaScript(`${find}.click()`);
 }
 async function form(values) {
   await window.webContents.executeJavaScript(
