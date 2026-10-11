@@ -59,7 +59,7 @@ app
       [session.fromPartition('private-certificate'), true],
       [session.fromPartition('invalid-certificate'), false],
     ]) {
-      if (trusted) browsing.setCertificateVerifyProc((_request, callback) => callback(0));
+      details.rememberCertificates(browsing, trusted ? () => 0 : undefined);
       const window = new BaseWindow({ show: false });
       windows.push(window);
       const visited = [];
@@ -92,13 +92,16 @@ app
       if (browsing === session.defaultSession) manager.navigate(`${url}?queued`);
       await eventually(() => !manager.snapshotFor(id).loading && manager.activeContents()?.getURL().startsWith(url));
       const contents = manager.activeContents();
-      const tracker = manager.certificateTrackers.get(contents);
       const chain = await manager.certificateChain();
-      assert.equal(contents.debugger.isAttached(), false, 'temporary network observation must end after capture');
+      assert.equal(contents.debugger.isAttached(), false, 'reading the certificate must not need the debugger');
       assert.ok(contents.navigationHistory.getAllEntries().every((entry) => entry.url !== 'about:blank'));
       assert.ok(visited.every((address) => address !== 'about:blank'));
       if (browsing === session.defaultSession) assert.equal(contents.getURL(), `${url}?queued`);
-      assert.deepEqual(await tracker.read(), chain, 'the viewer can reopen without another connection or debugger');
+      assert.deepEqual(
+        await manager.certificateChain(),
+        chain,
+        'the viewer can reopen without another connection or debugger',
+      );
       assert.ok(chain?.length);
       assert.equal(chain[0].fingerprint, expected.fingerprint256);
       assert.equal(chain[0].serial, expected.serialNumber);
@@ -123,7 +126,6 @@ app
       assert.equal(stalePrompts, 0);
       await contents.loadURL('data:text/html,local');
       assert.equal(await manager.certificateChain(), null);
-      tracker.stop();
     }
     assert.equal(details.parseCertificateChain(['not-a-certificate']), null);
     assert.equal(details.parseCertificateChain(Array(17).fill('')), null);

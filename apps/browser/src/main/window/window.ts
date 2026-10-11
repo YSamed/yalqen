@@ -1680,7 +1680,7 @@ export class YalqenWindow {
         const id = this.tabs.activeTabId;
         const url = this.tabs.activeUrl;
         const current = () => this.tabs.activeTabId === id && this.tabs.activeUrl === url;
-        void this.tabs.certificateChain().then((chain) => showCertificateDetails(this.window, url, chain, current));
+        void showCertificateDetails(this.window, url, this.tabs.certificateChain(), current);
       },
       clearSiteData: () => this.runDevCommand('clear-site-data'),
     });

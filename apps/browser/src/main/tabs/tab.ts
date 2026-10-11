@@ -40,8 +40,6 @@ export interface Tab {
   openerId: TabId | null;
   agent: TabRuntime | null;
   agentReadAt: number | null;
-  certificateLoading: boolean;
-  preparing: boolean;
 }
 
 export interface RecentPage {
@@ -83,15 +81,12 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     openerId: null,
     agent: null,
     agentReadAt: null,
-    certificateLoading: false,
-    preparing: false,
   };
 }
 
 export function savedTab(tab: Tab): SavedTab {
   const navigation = tab.view?.webContents.navigationHistory;
-  const history =
-    navigation && !tab.preparing ? captureSavedHistory(navigation) : tab.history && trimHistory(tab.history);
+  const history = navigation ? captureSavedHistory(navigation) : tab.history && trimHistory(tab.history);
   return {
     id: tab.id,
     url: tab.url,
@@ -110,7 +105,7 @@ export function liveContents(tab: Tab | undefined): Electron.WebContents | null 
 
 export function captureHistory(tab: Tab): SavedHistory | null {
   const history = tab.view?.webContents.navigationHistory;
-  if (!history || tab.preparing) return tab.history;
+  if (!history) return tab.history;
   const entries = history.getAllEntries();
   return entries.length > 0 ? { entries, index: history.getActiveIndex() } : tab.history;
 }

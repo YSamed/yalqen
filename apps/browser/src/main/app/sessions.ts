@@ -1,5 +1,6 @@
 import { nativeTheme, session, type Session } from 'electron';
 import type { PageLanguage } from '../../shared/types.js';
+import { forgetCertificates, rememberCertificates } from '../privacy/certificate-details.js';
 import { rewriteSignInHeaders } from '../privacy/sign-in-headers.js';
 import { setThirdPartyCookieBlocking } from '../privacy/third-party-cookies.js';
 import { acceptLanguages, spellCheckerLanguages } from './page-preferences.js';
@@ -16,7 +17,10 @@ export function openBrowsingSessions(): BrowsingSessions {
     privateBrowsing: session.fromPartition('private'),
     developer: session.fromPartition('developer'),
   };
-  for (const browsing of eachSession(sessions)) rewriteSignInHeaders(browsing);
+  for (const browsing of eachSession(sessions)) {
+    rewriteSignInHeaders(browsing);
+    rememberCertificates(browsing);
+  }
   return sessions;
 }
 
@@ -47,4 +51,5 @@ export function forgetSessionData(browsing: Session): void {
   void browsing.clearCache();
   void browsing.clearAuthCache();
   void browsing.closeAllConnections();
+  forgetCertificates(browsing);
 }

@@ -1,8 +1,10 @@
 import { X509Certificate } from 'node:crypto';
-import { dialog, clipboard, type BaseWindow, type WebContents } from 'electron';
+import { dialog, clipboard, type BaseWindow, type Certificate, type Session } from 'electron';
 import { t } from '../../shared/i18n.js';
-import { attachDebugger, withDebugger } from '../devtools/page-debugger.js';
-import { OBSERVED_NETWORK_ENABLE } from '../devtools/page-overrides.js';
+
+// Electron's verify callback takes -3 to keep Chromium's own verdict.
+const USE_CHROMIUM_RESULT = -3;
+type CertificateVerifyRequest = Electron.Request;
 
 export interface CertificateDetails {
   subject: string;
@@ -39,117 +41,55 @@ export function parseCertificateChain(value: unknown): CertificateDetails[] | nu
     return null;
   }
 }
-export async function readCertificateChain(contents: WebContents): Promise<CertificateDetails[] | null> {
-  if (contents.isDestroyed()) return null;
-  const url = contents.getURL();
-  let navigated = false;
-  const navigation = ({ isMainFrame, isSameDocument }: { isMainFrame: boolean; isSameDocument: boolean }) => {
-    if (isMainFrame && !isSameDocument) navigated = true;
-  };
-  contents.on('did-start-navigation', navigation);
-  try {
-    const origin = new URL(url);
-    if (origin.protocol !== 'https:') return null;
-    const result = (await withDebugger(contents, () =>
-      contents.debugger.sendCommand('Network.getCertificate', { origin: origin.origin }),
-    )) as {
-      tableNames?: unknown;
-    };
+// Chromium verifies a server certificate once and caches the verdict, so the chain is kept from
+// that verification. Observing every page load through the debugger would slow each one down.
+const MAX_REMEMBERED_HOSTS = 512;
+const MAX_CHAIN_LENGTH = 16;
+const remembered = new WeakMap<Session, Map<string, Certificate>>();
 
-    if (navigated || contents.isDestroyed() || contents.getURL() !== url) return null;
-    return parseCertificateChain(result.tableNames);
+export function rememberCertificates(
+  session: Session,
+  verify: (request: CertificateVerifyRequest) => number = () => USE_CHROMIUM_RESULT,
+): void {
+  const certificates = new Map<string, Certificate>();
+  remembered.set(session, certificates);
+  session.setCertificateVerifyProc((request, callback) => {
+    const certificate = request.validatedCertificate ?? request.certificate;
+    if (certificate) {
+      certificates.delete(request.hostname);
+      if (certificates.size >= MAX_REMEMBERED_HOSTS) certificates.delete(certificates.keys().next().value!);
+      certificates.set(request.hostname, certificate);
+    }
+    callback(verify(request));
+  });
+}
+
+export function forgetCertificates(session: Session): void {
+  remembered.get(session)?.clear();
+}
+
+export function certificateChainFor(session: Session, url: string): CertificateDetails[] | null {
+  let hostname: string;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return null;
+    hostname = parsed.hostname.replace(/^\[(.*)\]$/, '$1');
   } catch {
     return null;
-  } finally {
-    if (!contents.isDestroyed()) contents.removeListener('did-start-navigation', navigation);
   }
+  const encoded: string[] = [];
+  const seen = new Set<string>();
+  for (
+    let certificate: Certificate | undefined = remembered.get(session)?.get(hostname);
+    certificate && encoded.length < MAX_CHAIN_LENGTH && !seen.has(certificate.fingerprint);
+    certificate = certificate.issuerCert
+  ) {
+    seen.add(certificate.fingerprint);
+    encoded.push(certificate.data.replace(/-----(BEGIN|END) CERTIFICATE-----|\s/g, ''));
+  }
+  return encoded.length ? parseCertificateChain(encoded) : null;
 }
 
-// Chromium only keeps certificate data while Network observation is enabled. Observe
-// each navigation temporarily, retain the public chain, then let the normal tab policy
-// release the debugger so background pages can freeze again.
-export class CertificateTracker {
-  private revision = 0;
-  private chain: CertificateDetails[] | null = null;
-  private enabled: Promise<unknown> | null = null;
-  private pending: Promise<void> | null = null;
-  constructor(
-    private readonly contents: WebContents,
-    private readonly tracking: (active: boolean) => void,
-  ) {
-    contents.on('did-start-navigation', this.navigation);
-    contents.on('did-finish-load', this.finish);
-    contents.on('did-fail-load', this.fail);
-  }
-  begin(url: string): void {
-    this.revision++;
-    this.chain = null;
-    this.enabled = null;
-    if (!/^https?:/.test(url)) {
-      this.tracking(false);
-      return;
-    }
-    try {
-      attachDebugger(this.contents);
-      this.tracking(true);
-      this.enabled = this.contents.debugger
-        .sendCommand('Network.enable', OBSERVED_NETWORK_ENABLE.params)
-        .catch(() => null);
-    } catch {
-      this.tracking(false);
-    }
-  }
-  private navigation = ({
-    url,
-    isMainFrame,
-    isSameDocument,
-  }: {
-    url: string;
-    isMainFrame: boolean;
-    isSameDocument: boolean;
-  }) => {
-    if (isMainFrame && !isSameDocument) this.begin(url);
-  };
-  private finish = () => {
-    const revision = this.revision;
-    if (!this.enabled) return;
-    const capture = async () => {
-      await this.enabled;
-      const chain = await readCertificateChain(this.contents);
-      if (revision !== this.revision) return;
-      this.chain = chain;
-      this.enabled = null;
-      this.tracking(false);
-    };
-    this.pending = capture().catch(() => {
-      if (revision === this.revision) {
-        this.enabled = null;
-        this.tracking(false);
-      }
-    });
-  };
-  private fail = (_event: unknown, code: number, _description: string, _url: string, main: boolean) => {
-    if (main && code !== -3) {
-      this.revision++;
-      this.enabled = null;
-      this.chain = null;
-      this.tracking(false);
-    }
-  };
-  async read(): Promise<CertificateDetails[] | null> {
-    await this.pending;
-    return this.chain;
-  }
-  stop(): void {
-    this.revision++;
-    this.contents.removeListener('did-start-navigation', this.navigation);
-    this.contents.removeListener('did-finish-load', this.finish);
-    this.contents.removeListener('did-fail-load', this.fail);
-    this.chain = null;
-    this.enabled = null;
-    this.tracking(false);
-  }
-}
 export function certificateText(chain: readonly CertificateDetails[]): string {
   return chain
     .map(
