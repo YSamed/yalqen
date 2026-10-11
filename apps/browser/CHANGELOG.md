@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.50](https://github.com/YSamed/yalqen/compare/v0.3.49...v0.3.50) (2026-10-11)
+
+
+### Features
+
+* refine solid window palette to neutral near-black and clean light ([#227](https://github.com/YSamed/yalqen/issues/227)) ([2baca7c](https://github.com/YSamed/yalqen/commit/2baca7ce1b1ee95b6bc9e43f0a7fa18e8aab528b))
+
 ## [0.3.49](https://github.com/YSamed/yalqen/compare/v0.3.48...v0.3.49) (2026-10-10)
 
 
