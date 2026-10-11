@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.54](https://github.com/YSamed/yalqen/compare/v0.3.53...v0.3.54) (2026-10-11)
+
+
+### Features
+
+* add optional sidebar widgets with drag-and-drop ordering ([#235](https://github.com/YSamed/yalqen/issues/235)) ([28852f1](https://github.com/YSamed/yalqen/commit/28852f15d263f0abb346ba645aed7dbeef351aa3))
+
 ## [0.3.53](https://github.com/YSamed/yalqen/compare/v0.3.52...v0.3.53) (2026-10-11)
 
 
