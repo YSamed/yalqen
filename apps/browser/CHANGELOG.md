@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.59](https://github.com/YSamed/yalqen/compare/v0.3.58...v0.3.59) (2026-10-11)
+
+
+### Features
+
+* **settings:** merge site permissions, exceptions and data into one list ([#246](https://github.com/YSamed/yalqen/issues/246)) ([5100c7c](https://github.com/YSamed/yalqen/commit/5100c7cb3b6d10f368bc3e453173bd6b479807df))
+
 ## [0.3.58](https://github.com/YSamed/yalqen/compare/v0.3.57...v0.3.58) (2026-10-11)
 
 
