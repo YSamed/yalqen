@@ -1490,8 +1490,6 @@ export const tr: Record<MessageKey, string> = {
   'widgets.play': 'Oynat',
   'widgets.pause': 'Duraklat',
   'widgets.showTab': '{title} sekmesine git',
-  'widgets.back': '10 saniye geri',
-  'widgets.forward': '10 saniye ileri',
   'widgets.elapsed': '{elapsed} / {duration}',
   'settings.mediaPlayer': 'Kenar çubuğunda medya oynatıcı',
   'settings.mediaPlayerHint': 'Bir sekmede çalanı kapak görseli ve kontrollerle sekme listesinin altında gösterir.',

@@ -1480,8 +1480,6 @@ export const en = {
   'widgets.play': 'Play',
   'widgets.pause': 'Pause',
   'widgets.showTab': 'Go to {title}',
-  'widgets.back': 'Back 10 seconds',
-  'widgets.forward': 'Forward 10 seconds',
   'widgets.elapsed': '{elapsed} of {duration}',
   'settings.mediaPlayer': 'Media player in sidebar',
   'settings.mediaPlayerHint': 'Shows what a tab is playing, with cover art and controls, under the tab list.',
