@@ -170,7 +170,7 @@ app
       if (level === 'error') rendererErrors.push(message);
     });
     stage = 'settings load';
-    await settingsWindow.loadURL('yalqen://settings/privacy');
+    await settingsWindow.loadURL('yalqen://settings/sites');
     await eventually(() =>
       settingsWindow.webContents.executeJavaScript(
         "document.querySelectorAll('section[aria-label=\"Site data\"] li strong').length===2 && document.querySelector('section[aria-label=\"Site data\"]').getAttribute('aria-busy')==='false'",
@@ -252,7 +252,7 @@ app
       null,
     );
     assert.equal(confirmations, before);
-    await settingsWindow.loadURL('yalqen://settings/privacy');
+    await settingsWindow.loadURL('yalqen://settings/sites');
     await eventually(() => settingsWindow.webContents.executeJavaScript('!!window.yalqenSettings'));
     await aWindow.loadURL('about:blank');
     await bWindow.loadURL('about:blank');

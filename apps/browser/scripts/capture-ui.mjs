@@ -307,11 +307,13 @@ contextBridge.exposeInMainWorld('yalqen', {
       { name: 'bookmarks', url: 'yalqen://bookmarks/' },
       { name: 'downloads', url: 'yalqen://downloads/' },
       { name: 'error', file: errorPage },
-      ...['general', 'appearance', 'privacy', 'passwords', 'performance', 'extensions', 'developer'].map((pane) => ({
-        name: `settings-${pane}`,
-        url: pane === 'general' ? 'yalqen://settings/' : `yalqen://settings/${pane}`,
-        preload: 'settings.cjs',
-      })),
+      ...['general', 'appearance', 'privacy', 'sites', 'passwords', 'performance', 'extensions', 'developer'].map(
+        (pane) => ({
+          name: `settings-${pane}`,
+          url: pane === 'general' ? 'yalqen://settings/' : `yalqen://settings/${pane}`,
+          preload: 'settings.cjs',
+        }),
+      ),
     ];
 
     for (const scheme of ['light', 'dark']) {

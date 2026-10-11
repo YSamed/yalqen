@@ -131,12 +131,29 @@
     onchange={(value) => update({ defaultZoom: value })}
   />
 </SettingRow>
-<h2>{t('settings.menus')}</h2>
-<SettingRow title={t('settings.sidebar')}>
+
+<h2>{t('settings.tabPanel')}</h2>
+<SettingRow title={t('settings.sidebarVisibility')}>
   <Switch
     label={t('settings.sidebarVisibility')}
     checked={values.sidebarVisible}
     onchange={(checked) => update({ sidebarVisible: checked })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.panelAppearance')}>
+  <SegmentedControl
+    label={t('settings.panelAppearanceLabel')}
+    options={panelOptions}
+    value={values.panelCollapsed}
+    onchange={(value) => update({ panelCollapsed: value })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.position')}>
+  <SegmentedControl
+    label={t('settings.panelPosition')}
+    options={sideOptions}
+    value={values.panelSide}
+    onchange={(value) => update({ panelSide: value })}
   />
 </SettingRow>
 <SettingRow title={t('settings.pinnedTabs')}>
@@ -147,7 +164,9 @@
     onchange={(value) => update({ pinnedDisplay: value })}
   />
 </SettingRow>
-<SettingRow title={t('settings.toolbar')} hint={t('settings.toolbarHint')}>
+
+<h2>{t('settings.toolbar')}</h2>
+<SettingRow title={t('settings.toolbarVisibility')} hint={t('settings.toolbarHint')}>
   <Switch
     label={t('settings.toolbarVisibility')}
     checked={values.toolbarVisible}
@@ -200,24 +219,6 @@
     </li>
   {/each}
 </ul>
-
-<h2>{t('settings.tabPanel')}</h2>
-<SettingRow title={t('settings.panelAppearance')}>
-  <SegmentedControl
-    label={t('settings.panelAppearanceLabel')}
-    options={panelOptions}
-    value={values.panelCollapsed}
-    onchange={(value) => update({ panelCollapsed: value })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.position')}>
-  <SegmentedControl
-    label={t('settings.panelPosition')}
-    options={sideOptions}
-    value={values.panelSide}
-    onchange={(value) => update({ panelSide: value })}
-  />
-</SettingRow>
 
 <style>
   .check {

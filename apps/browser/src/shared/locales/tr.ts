@@ -56,7 +56,7 @@ export const tr: Record<MessageKey, string> = {
   'siteStorage.intro':
     'Siteler alt alan adlarıyla birlikte gruplanır. Bir siteyi temizlemek bilinen adreslerindeki kayıtlı verileri ve çerezleri siler, oturumunuzu kapatabilir.',
   'siteStorage.measureHint':
-    'Veritabanı/önbellek kullanımı yerel/oturum depolamasını ve ağ önbelleğini içermez. Liste bu profilin çerezlerinden, kayıtlı veritabanlarından ve görülen adreslerinden oluşur. Geçmişi olmayan eski, yalnızca yerel depolama kullanan siteler görünmeyebilir; Tümünü temizle listelenmeyen verileri de siler.',
+    'Kullanım yalnızca veritabanlarını ve önbelleği sayar. Tümünü temizle, listede olmayan sitelerin verilerini de siler.',
   'siteStorage.search': 'Sitelerde ara',
   'siteStorage.refresh': 'Yenile',
   'siteStorage.clear': 'Verileri temizle',
@@ -790,6 +790,10 @@ export const tr: Record<MessageKey, string> = {
   'settings.panePerformance': 'Performans',
   'settings.paneExtensions': 'Uzantılar',
   'settings.paneDeveloper': 'Geliştirici',
+  'settings.paneSites': 'Siteler',
+  'settings.panePasswordsAutofill': 'Şifreler ve otomatik doldurma',
+  'settings.searchSettings': 'Ayarlarda ara',
+  'settings.searchEmpty': 'Aramanızla eşleşen ayar yok.',
   'settings.panelWide': 'Geniş',
   'settings.panelNarrow': 'Dar',
   'settings.left': 'Sol',
@@ -866,7 +870,6 @@ export const tr: Record<MessageKey, string> = {
   'settings.fontSizeHint': 'Sitenin kendi boyutu yoksa kullanılır. Yeni açılan sekmelerde geçerli olur.',
   'settings.pageZoom': 'Sayfa yakınlaştırma',
   'settings.pageZoomHint': 'Kendi yakınlaştırması kaydedilmemiş sayfalara uygulanır.',
-  'settings.menus': 'Menüler',
   'settings.sidebar': 'Yan menü',
   'settings.transparency': 'Şeffaflık',
   'settings.transparencyHint': 'Kapatınca pencere açık veya koyu modda düz renk olur. Yeniden başlatınca geçerli olur.',
@@ -906,7 +909,7 @@ export const tr: Record<MessageKey, string> = {
   'settings.askDownloadLocationHint': 'İndirme başlamadan önce dosya adı ve klasör seçin.',
   'settings.usageCounting': 'Aktif kurulumların sayılmasına yardımcı ol',
   'settings.usageCountingHint':
-    'Varsayılan olarak kapalıdır. Son 30 gündeki aktif kurulumları saymak için yalqen.com’a günde bir kez yalnızca rastgele bir kurulum kimliği gönderir. Gezinme geçmişi veya hesap bilgisi gönderilmez. İstediğiniz zaman kapatabilirsiniz.',
+    'Aktif kurulumları saymak için yalqen.com’a günde bir kez yalnızca rastgele bir kurulum kimliği gönderir. Gezinme geçmişi veya hesap bilgisi gönderilmez.',
   'settings.askBeforeDownloadHint': 'Bir site dosya indirmeye başlamadan önce onayınızı ister.',
   'settings.secureDns': 'Güvenli DNS',
   'settings.secureDnsHint':
@@ -923,7 +926,7 @@ export const tr: Record<MessageKey, string> = {
     'Sekme değişince eski sekmedeki kod ve animasyonlar durur. Ses çalan ve sabitlenen sekmeler dondurulmaz.',
   'settings.discardUnusedTabs': 'Kullanılmayan sekmeleri bellekten çıkar',
   'settings.discardUnusedTabsHint':
-    'Bu süre boyunca açılmayan sekmeler belleği boşaltır; sistem belleği azalınca en eski arka plan sekmeleri daha erken boşaltılır. Tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı yazılan sekmelere dokunulmaz.',
+    'Bu süre boyunca açılmayan sekmeler belleği boşaltır ve tıklayınca yeniden yüklenir. Ses çalan, sabitlenen ve içine yazı yazılan sekmeler korunur.',
 
   'menu.settings': 'Ayarlar…',
   'menu.about': 'Yalqen Hakkında',
@@ -1465,7 +1468,7 @@ export const tr: Record<MessageKey, string> = {
   'siteInfo.technologies': 'Teknolojiler ({count})',
   'settings.siteExceptions': 'Site istisnaları',
   'settings.siteExceptionsHint':
-    'Bir sitede reklamlara veya üçüncü taraf çerezlerine izin vermek için adresin yanındaki site menüsünü kullanın. Gizli sekme seçimleri tüm gizli sekmeler kapanana kadar geçerlidir. Bir istisnayı kaldırdıktan sonra açık sayfaları yenileyin.',
+    'Bir sitede reklamlara veya üçüncü taraf çerezlerine adresin yanındaki site menüsünden izin verin.',
   'settings.adBlockExceptions': 'Reklamlara izin verilen siteler',
   'settings.cookieExceptions': 'Üçüncü taraf çerezlerine izin verilen siteler',
   'settings.noSiteExceptions': 'Kayıtlı istisna yok.',

@@ -5,8 +5,6 @@
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import SettingRow from './SettingRow.svelte';
-  import SiteProtectionExceptions from './SiteProtectionExceptions.svelte';
-  import SiteStorage from './SiteStorage.svelte';
 
   let {
     values,
@@ -142,14 +140,6 @@
     onchange={(checked) => update({ usageCounting: checked })}
   />
 </SettingRow>
-<SettingRow title={t('settings.pageTranslation')} hint={t('settings.pageTranslationHint')}>
-  <Switch
-    label={t('settings.pageTranslation')}
-    checked={values.pageTranslation}
-    onchange={(checked) => update({ pageTranslation: checked })}
-  />
-</SettingRow>
-<SiteProtectionExceptions {values} {update} />
 <h2>{t('settings.browsingData')}</h2>
 <SettingRow title={t('settings.clearBrowsingData')} hint={t('settings.clearBrowsingDataHint')} stacked>
   <div class="clear">
@@ -173,8 +163,6 @@
     </div>
   </div>
 </SettingRow>
-
-<SiteStorage />
 
 <style>
   .check {

@@ -1619,7 +1619,7 @@ export class YalqenWindow {
                     void dialog.showMessageBox(this.window, { type: 'error', message: t(`profiles.${error}`) });
                 });
               },
-              manage: () => tabs.openSettings(),
+              manage: () => tabs.openSettings('#profiles'),
             },
           ),
         );

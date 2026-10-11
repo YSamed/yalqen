@@ -112,7 +112,6 @@
   }
 </script>
 
-<Profiles />
 <h2>{t('settings.search')}</h2>
 <SettingRow title={t('settings.searchEngine')} hint={t('settings.searchEngineHint')} labelFor="engine">
   <Select
@@ -243,6 +242,13 @@
     <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
   {/if}
 </SettingRow>
+<SettingRow title={t('settings.pageTranslation')} hint={t('settings.pageTranslationHint')}>
+  <Switch
+    label={t('settings.pageTranslation')}
+    checked={values.pageTranslation}
+    onchange={(checked) => update({ pageTranslation: checked })}
+  />
+</SettingRow>
 
 <h2>{t('settings.updates')}</h2>
 <div class="row">
@@ -274,6 +280,8 @@
     onchange={(checked) => update({ autoUpdate: checked })}
   />
 </SettingRow>
+
+<Profiles />
 
 <style>
   #startup-urls {

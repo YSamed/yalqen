@@ -53,7 +53,7 @@ export const en = {
   'siteStorage.intro':
     'Sites are grouped with their subdomains. Clearing a site removes its stored data and cookies across its known addresses and may sign you out.',
   'siteStorage.measureHint':
-    'Database/cache usage excludes local/session storage and network cache. Sites come from this profile’s cookies, stored databases, and observed addresses. Older local-storage-only sites without history may be missing; Clear all also removes unlisted data.',
+    "Usage counts databases and cache only. Clear all also removes data for sites that aren't listed.",
   'siteStorage.search': 'Search sites',
   'siteStorage.refresh': 'Refresh',
   'siteStorage.clear': 'Clear data',
@@ -783,6 +783,10 @@ export const en = {
   'settings.panePerformance': 'Performance',
   'settings.paneExtensions': 'Extensions',
   'settings.paneDeveloper': 'Developer',
+  'settings.paneSites': 'Sites',
+  'settings.panePasswordsAutofill': 'Passwords and autofill',
+  'settings.searchSettings': 'Search settings',
+  'settings.searchEmpty': 'No settings match your search.',
   'settings.panelWide': 'Wide',
   'settings.panelNarrow': 'Narrow',
   'settings.left': 'Left',
@@ -859,7 +863,6 @@ export const en = {
   'settings.fontSizeHint': "Used when a site doesn't set its own size. Applies to newly opened tabs.",
   'settings.pageZoom': 'Page zoom',
   'settings.pageZoomHint': 'Applies to pages without a saved zoom level.',
-  'settings.menus': 'Toolbar and sidebar',
   'settings.sidebar': 'Sidebar',
   'settings.transparency': 'Transparency',
   'settings.transparencyHint': 'Turn off to use a solid window in light or dark mode. Takes effect after a restart.',
@@ -898,7 +901,7 @@ export const en = {
   'settings.askDownloadLocationHint': 'Choose a file name and folder before each download starts.',
   'settings.usageCounting': 'Help count active installations',
   'settings.usageCountingHint':
-    'Off by default. Sends only a random installation ID to yalqen.com once per day to count active installations over 30 days. No browsing history or account information is sent. You can turn it off at any time.',
+    'Sends only a random installation ID to yalqen.com once a day to count active installations. No browsing history or account information is sent.',
   'settings.askBeforeDownloadHint': 'Asks for your confirmation before a site starts downloading a file.',
   'settings.secureDns': 'Secure DNS',
   'settings.secureDnsHint':
@@ -915,7 +918,7 @@ export const en = {
     "When you switch tabs, code and animations in the tab you left stop. Tabs playing audio and pinned tabs aren't frozen.",
   'settings.discardUnusedTabs': 'Unload unused tabs',
   'settings.discardUnusedTabsHint':
-    "Tabs you haven't viewed for this long free up their memory; when system memory runs low, the oldest background tabs are unloaded sooner. They reload when you click them. Tabs playing audio, pinned tabs, and tabs with text you've typed are left alone.",
+    "Tabs you haven't viewed for this long free their memory and reload when you click them. Tabs playing audio, pinned tabs and tabs with typed text are kept.",
 
   'menu.settings': 'Settings…',
   'menu.about': 'About Yalqen',
@@ -1455,8 +1458,7 @@ export const en = {
   'siteInfo.blockThirdPartyCookies': 'Block third-party cookies on this site',
   'siteInfo.technologies': 'Technologies ({count})',
   'settings.siteExceptions': 'Site exceptions',
-  'settings.siteExceptionsHint':
-    'Use the site menu next to the address to allow ads or third-party cookies for a site. Private tab choices last until all private tabs close. Reload existing pages after removing an exception.',
+  'settings.siteExceptionsHint': 'Allow ads or third-party cookies for a site from the site menu next to the address.',
   'settings.adBlockExceptions': 'Ads allowed',
   'settings.cookieExceptions': 'Third-party cookies allowed',
   'settings.noSiteExceptions': 'No saved exceptions.',

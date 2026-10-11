@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { ProfilesResult, ProfilesView, SettingsApi } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
@@ -41,6 +41,8 @@
   }
   onMount(() => {
     void load();
+    if (location.hash === '#profiles')
+      void tick().then(() => document.getElementById('persistent-profiles-title')?.scrollIntoView());
     return api.onChange(() => {
       void load();
     });
