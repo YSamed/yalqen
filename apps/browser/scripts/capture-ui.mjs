@@ -267,6 +267,9 @@ contextBridge.exposeInMainWorld('yalqen', {
       ],
     }),
     showWelcome: () => false,
+    readyUpdate: () => null,
+    showAnnouncement: () => false,
+    showFeedback: () => false,
     showRepoPrompt: () => false,
     suggestions: () => [],
   };

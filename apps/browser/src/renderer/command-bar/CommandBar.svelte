@@ -236,7 +236,7 @@
 
   @media (prefers-color-scheme: dark) and (prefers-reduced-transparency: reduce) {
     .bar {
-      --search-field-bg: #26282c;
+      --search-field-bg: #1b1b1e;
     }
   }
 </style>

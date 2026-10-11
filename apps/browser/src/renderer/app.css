@@ -2,18 +2,18 @@
 @import './public/controls.css';
 
 :root {
-  --surface-strong: #f6f7f8;
+  --surface-strong: #f7f7f8;
   --surface-menu: var(--surface-strong);
-  --well: #dcdfe3;
+  --well: #e2e2e6;
   --focus: var(--accent);
   --on-accent: #ffffff;
   --profile-developer: #7c6cf2;
-  --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 1px 3px rgb(16 18 24 / 0.08);
+  --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 2px rgb(16 18 24 / 0.06);
   --window: var(--bg);
   --chrome-base: var(--bg);
-  --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.06), 0 2px 10px rgb(16 18 24 / 0.05);
+  --page-shadow: 0 0 0 0.5px rgb(16 18 24 / 0.09), 0 4px 16px rgb(16 18 24 / 0.06);
   --page-divider: rgb(16 18 24 / 0.06);
-  --page-empty: #f3f4f6;
+  --page-empty: #f6f6f7;
   --badge: var(--bg);
   --rim: none;
 
@@ -30,12 +30,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-material='glass']) {
-    --surface-strong: #2d2f34;
-    --well: #1e2023;
-    --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1px 3px rgb(0 0 0 / 0.3);
-    --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 2px 10px rgb(0 0 0 / 0.3);
+    --surface-strong: #232327;
+    --well: #141416;
+    --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 1px 3px rgb(0 0 0 / 0.4);
+    --page-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.09), 0 4px 16px rgb(0 0 0 / 0.5);
     --page-divider: rgb(255 255 255 / 0.06);
-    --page-empty: #1b1c1f;
+    --page-empty: #0e0e10;
     color-scheme: dark;
   }
 }

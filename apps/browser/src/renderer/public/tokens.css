@@ -1,12 +1,12 @@
 :root {
-  --bg: light-dark(#e6e8eb, #141517);
-  --surface: light-dark(#ffffff, #26282c);
+  --bg: light-dark(#eeeef0, #0a0a0b);
+  --surface: light-dark(#ffffff, #1b1b1e);
   --surface-hover: light-dark(rgb(16 18 24 / 0.05), rgb(255 255 255 / 0.06));
-  --border: light-dark(#d2d5da, #2f3136);
-  --text: light-dark(#1a1b1e, #eceef1);
-  --text-muted: light-dark(#6b6e75, #9a9ea6);
+  --border: light-dark(#dadade, #28282c);
+  --text: light-dark(#1a1b1e, #f3f3f4);
+  --text-muted: light-dark(#62646b, #9c9da3);
   --accent: #f28c28;
   --warn: light-dark(#a34a06, #f0a35c);
   --success: light-dark(#1d7542, #63c98f);
-  --page: light-dark(#ffffff, #1f2124);
+  --page: light-dark(#ffffff, #111113);
 }
