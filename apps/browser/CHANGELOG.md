@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.53](https://github.com/YSamed/yalqen/compare/v0.3.52...v0.3.53) (2026-10-11)
+
+
+### Features
+
+* **settings:** reorganize panes and add settings search ([#233](https://github.com/YSamed/yalqen/issues/233)) ([9676a17](https://github.com/YSamed/yalqen/commit/9676a170affda6d9b7061df5f43e66536853c459))
+
 ## [0.3.52](https://github.com/YSamed/yalqen/compare/v0.3.51...v0.3.52) (2026-10-11)
 
 
