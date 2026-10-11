@@ -13,6 +13,7 @@ import type {
 } from '../../shared/types.js';
 import { DEFAULT_ZOOM_FACTORS, REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../../shared/types.js';
 import { webPageUrl, sanitizeStartupUrls } from '../../shared/startup-pages.js';
+import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { JsonFile } from '../storage/json-file.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
 import { FONT_SIZES } from './page-preferences.js';
@@ -37,6 +38,7 @@ const DEFAULTS: Settings = {
   panelSide: 'left',
   pinnedDisplay: 'always',
   sidebarVisible: true,
+  sidebarWidgets: [],
   toolbarVisible: true,
   toolbarTabs: true,
   toolbarButtons: [...TOOLBAR_BUTTON_IDS],
@@ -100,6 +102,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     panelSide,
     pinnedDisplay,
     sidebarVisible,
+    sidebarWidgets,
     toolbarVisible,
     toolbarTabs,
     toolbarButtons,
@@ -157,6 +160,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? (pinnedDisplay as PinnedDisplay)
         : base.pinnedDisplay,
     sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
+    sidebarWidgets: sanitizeSidebarWidgets(sidebarWidgets, base.sidebarWidgets),
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     toolbarTabs: typeof toolbarTabs === 'boolean' ? toolbarTabs : base.toolbarTabs,
     toolbarButtons: sanitizeToolbarButtons(toolbarButtons, base.toolbarButtons),

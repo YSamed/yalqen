@@ -75,6 +75,7 @@ import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } fr
 import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { READING_LIST_URL } from '../../shared/reading-list.js';
+import type { ClosedTabPreview } from '../../shared/sidebar-widgets.js';
 import { tabGroupName, type TabGroup } from '../../shared/tab-groups.js';
 import { WORKSPACES_URL } from '../../shared/workspaces.js';
 import { webAppContains } from '../../shared/web-apps.js';
@@ -86,6 +87,18 @@ import { stepZoom } from './zoom.js';
 import { MAX_CLOSED_TABS } from './closed-tabs.js';
 
 const STORAGE_WORLD_ID = 1001;
+const MEDIA_WORLD_ID = 1030;
+// Pauses whatever is playing, or resumes the media that was playing last.
+const MEDIA_TOGGLE_SCRIPT = `(() => {
+  const media = [...document.querySelectorAll('video, audio')];
+  const playing = media.filter((item) => !item.paused);
+  if (playing.length > 0) {
+    for (const item of playing) item.pause();
+    return;
+  }
+  const last = media.find((item) => item.currentTime > 0 && !item.ended) ?? media[0];
+  void last?.play().catch(() => {});
+})()`;
 // Past this the badge reads "99+", so further errors need not re-render the chrome.
 const MAX_CONSOLE_ERRORS = 99;
 const MAX_PINCH_ZOOM = 3;
@@ -613,6 +626,33 @@ export class TabManager {
     const tab = this.createRecord({ ...saved, id: undefined });
     this.insertAfterActive(tab);
     this.activate(tab.id);
+  }
+
+  reopenClosedById(id: string): void {
+    if (this.options.privateWindow || this.activeIsPrivate) return;
+    const index = this.options.closed.findIndex((saved) => saved.id === id);
+    if (index < 0) return;
+    const [saved] = this.options.closed.splice(index, 1);
+    this.options.onClosedChanged?.();
+    const tab = this.createRecord({ ...saved, id: undefined });
+    this.insertAfterActive(tab);
+    this.activate(tab.id);
+  }
+
+  closedPreview(limit: number): ClosedTabPreview[] {
+    if (this.options.privateWindow) return [];
+    return this.options.closed
+      .slice(-limit)
+      .reverse()
+      .map(({ id, title, url, faviconUrl }) => ({ id, title, url, faviconUrl }));
+  }
+
+  toggleMedia(id: TabId): void {
+    const contents = this.find(id)?.view?.webContents;
+    if (!contents || contents.isDestroyed()) return;
+    void contents
+      .executeJavaScriptInIsolatedWorld(MEDIA_WORLD_ID, [{ code: MEDIA_TOGGLE_SCRIPT }], true)
+      .catch(() => {});
   }
 
   move(id: TabId, toIndex: number): void {

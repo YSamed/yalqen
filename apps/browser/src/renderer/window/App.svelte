@@ -50,6 +50,8 @@
     panelSide: 'left',
     pinnedDisplay: 'always',
     sidebarVisible: true,
+    sidebarWidgets: [],
+    closedTabs: [],
     toolbarVisible: true,
     toolbarTabs: true,
     toolbarButtons: [],
@@ -327,6 +329,9 @@
         {profile}
         profileName={browser.profileName}
         {pinnedDisplay}
+        widgets={browser.sidebarWidgets}
+        closedTabs={browser.closedTabs}
+        {downloads}
       />
     {/if}
     {#if toolbarVisible}

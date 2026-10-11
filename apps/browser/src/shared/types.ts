@@ -121,6 +121,9 @@ export interface BrowserState {
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
   sidebarVisible: boolean;
+  sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
+  // Filled only while the closed-tabs widget is shown.
+  closedTabs: import('./sidebar-widgets').ClosedTabPreview[];
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   toolbarButtons: ToolbarButtonId[];
@@ -382,6 +385,9 @@ export type UiAction =
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }
   | { type: 'toggle-mute'; id: TabId }
+  | { type: 'toggle-media'; id: TabId }
+  | { type: 'reopen-closed-tab'; id: string }
+  | { type: 'set-sidebar-widgets'; ids: import('./sidebar-widgets').SidebarWidgetId[] }
   | { type: 'open-tab-menu'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }
@@ -690,6 +696,7 @@ export interface SettingsValues {
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
   sidebarVisible: boolean;
+  sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   toolbarButtons: ToolbarButtonId[];

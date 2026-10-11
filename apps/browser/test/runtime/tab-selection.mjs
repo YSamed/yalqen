@@ -56,6 +56,8 @@ app
       panelSide: 'left',
       pinnedDisplay: 'always',
       sidebarVisible: true,
+      sidebarWidgets: [],
+      closedTabs: [],
       toolbarVisible: true,
       toolbarTabs: true,
       toolbarButtons: ['settings'],

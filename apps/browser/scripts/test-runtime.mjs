@@ -21,6 +21,7 @@ for (const test of [
   'bookmark-transfer.mjs',
   'bulk-tabs.mjs',
   'tab-selection.mjs',
+  'sidebar-widgets.mjs',
   'pinning.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
