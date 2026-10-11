@@ -60,6 +60,11 @@
 </script>
 
 <section class="player" aria-label={t('widgets.media')} in:appear>
+  {#if artwork}
+    {#key artwork}
+      <span class="tint" style:background-image="url({JSON.stringify(artwork)})" aria-hidden="true"></span>
+    {/key}
+  {/if}
   <button
     class="info"
     aria-label={t('widgets.showTab', { title: media.title })}
@@ -84,7 +89,10 @@
     </span>
     <span class="text">
       <span class="title" title={media.title}>{media.title}</span>
-      <span class="artist">{media.artist}</span>
+      <span class="artist">
+        {#if media.playing}<span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>{/if}
+        <span class="name">{media.artist}</span>
+      </span>
     </span>
   </button>
   <button
@@ -93,7 +101,7 @@
     onclick={() => send({ type: 'toggle-media', id: media.tabId })}
   >
     {#if media.playing}
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
         ><rect x="3.5" y="2.5" width="3.2" height="11" rx="1" /><rect
           x="9.3"
           y="2.5"
@@ -103,7 +111,7 @@
         /></svg
       >
     {:else}
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
         ><path d="M5 2.9v10.2c0 .6.6.9 1.1.6l8-5.1a.7.7 0 0 0 0-1.2l-8-5.1C5.6 2 5 2.3 5 2.9z" /></svg
       >
     {/if}
@@ -130,14 +138,16 @@
 <style>
   .player {
     position: relative;
+    isolation: isolate;
     display: flex;
     flex: none;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     margin-top: auto;
     margin-bottom: 4px;
-    padding: 6px 6px 8px;
-    border-radius: 12px;
+    padding: 7px 7px 10px;
+    overflow: hidden;
+    border-radius: 14px;
     color: var(--text);
     background: var(--surface);
     box-shadow: var(--shadow);
@@ -145,6 +155,19 @@
 
   :global([data-material='glass']) .player {
     box-shadow: var(--shadow), var(--rim);
+  }
+
+  /* A soft wash of the cover's colours behind the row. */
+  .tint {
+    position: absolute;
+    z-index: -1;
+    inset: -30px;
+    background-position: center;
+    background-size: cover;
+    filter: blur(30px) saturate(1.8);
+    opacity: 0.22;
+    pointer-events: none;
+    animation: reveal 500ms var(--ease-out);
   }
 
   button {
@@ -166,9 +189,9 @@
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
     min-width: 0;
-    border-radius: 8px;
+    border-radius: 9px;
     text-align: start;
   }
 
@@ -176,11 +199,19 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     overflow: hidden;
-    border-radius: 7px;
+    border-radius: 8px;
     background: var(--surface-strong);
+    box-shadow:
+      0 3px 10px rgb(0 0 0 / 22%),
+      inset 0 0 0 0.5px rgb(255 255 255 / 12%);
+    transition: transform 180ms var(--ease-out);
+  }
+
+  .info:hover .cover {
+    transform: scale(1.05);
   }
 
   .cover img {
@@ -197,7 +228,7 @@
 
   .letter {
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
   }
 
@@ -205,12 +236,12 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
     min-width: 0;
   }
 
   .title,
-  .artist {
+  .name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -218,39 +249,72 @@
 
   .title {
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: -0.005em;
   }
 
   .artist {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
     color: var(--text-muted);
     font-size: var(--font-size-small);
+  }
+
+  .bars {
+    display: flex;
+    flex: none;
+    align-items: flex-end;
+    gap: 1.5px;
+    height: 8px;
+  }
+
+  .bars i {
+    width: 2px;
+    height: 100%;
+    border-radius: 1px;
+    background: var(--accent);
+    transform-origin: bottom;
+    animation: bar 900ms ease-in-out infinite alternate;
+  }
+
+  .bars i:nth-child(2) {
+    animation-delay: -300ms;
+    animation-duration: 700ms;
+  }
+
+  .bars i:nth-child(3) {
+    animation-delay: -600ms;
+    animation-duration: 1100ms;
   }
 
   .play {
     display: grid;
     flex: none;
     place-items: center;
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    transition:
-      background var(--transition),
-      transform 120ms var(--ease-out);
+    color: var(--surface);
+    background: var(--text);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+    transition: transform 140ms var(--ease-out);
   }
 
   .play:hover {
-    background: var(--surface-hover);
+    transform: scale(1.07);
   }
 
   .play:active {
-    transform: scale(0.9);
+    transform: scale(0.92);
   }
 
   .track {
     position: absolute;
-    right: 10px;
-    bottom: 2px;
-    left: 10px;
+    right: 12px;
+    bottom: 3px;
+    left: 12px;
     display: flex;
     align-items: center;
     height: 6px;
@@ -263,7 +327,7 @@
     height: 2px;
     overflow: hidden;
     border-radius: 1px;
-    background: var(--surface-strong);
+    background: color-mix(in srgb, var(--text) 12%, transparent);
     transition: height 120ms var(--ease-out);
   }
 
@@ -276,11 +340,31 @@
     position: absolute;
     inset: 0 auto 0 0;
     border-radius: inherit;
-    background: var(--text-muted);
+    background: var(--accent);
     transition: width 1s linear;
   }
 
+  @keyframes bar {
+    from {
+      transform: scaleY(0.3);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .bars i,
+    .tint {
+      animation: none;
+    }
+
     .fill {
       transition: none;
     }

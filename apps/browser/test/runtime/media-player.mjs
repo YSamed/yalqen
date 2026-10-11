@@ -127,7 +127,7 @@ app
     push({ media: song });
     await eventually("document.querySelector('.player .title')?.textContent === 'Midnight City'");
     assert.equal(
-      await window.webContents.executeJavaScript("document.querySelector('.player .artist').textContent"),
+      await window.webContents.executeJavaScript("document.querySelector('.player .artist .name').textContent"),
       'M83',
     );
     assert.equal(
