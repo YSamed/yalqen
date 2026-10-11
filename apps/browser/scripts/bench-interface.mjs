@@ -107,6 +107,8 @@ ipcRenderer.on('bench:state', (_event, state) => {
     panelCollapsed: false,
     panelSide: 'left',
     sidebarVisible: true,
+    sidebarWidgets: [],
+    closedTabs: [],
     toolbarVisible: true,
     toolbarTabs: !values['active-only'],
     toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'],
