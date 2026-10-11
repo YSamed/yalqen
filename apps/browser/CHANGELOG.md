@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.51](https://github.com/YSamed/yalqen/compare/v0.3.50...v0.3.51) (2026-10-11)
+
+
+### Features
+
+* follow the transparency setting in the command bar and new tab page ([#229](https://github.com/YSamed/yalqen/issues/229)) ([7154839](https://github.com/YSamed/yalqen/commit/7154839e311acf142e6d7a8638968b2c4785d7c2))
+
 ## [0.3.50](https://github.com/YSamed/yalqen/compare/v0.3.49...v0.3.50) (2026-10-11)
 
 
