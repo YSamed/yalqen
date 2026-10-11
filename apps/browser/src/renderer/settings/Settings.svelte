@@ -72,6 +72,8 @@
         }
         const visible = headingMatches || matches(child);
         child.hidden = !visible;
+        // Settings folded under Advanced open up when they match, or the result would look empty.
+        if (visible && child instanceof HTMLDetailsElement) child.open = true;
         if (visible) sectionFound = true;
       }
       closeGroup();

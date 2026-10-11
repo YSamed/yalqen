@@ -26,6 +26,7 @@ for (const test of [
   'threat-protection.mjs',
   'persistent-profiles.mjs',
   'profile-settings.mjs',
+  'appearance-settings.mjs',
   'closed-tabs.mjs',
   'page-files.mjs',
   'password-tools.mjs',
