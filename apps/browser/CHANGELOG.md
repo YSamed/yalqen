@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.63](https://github.com/YSamed/yalqen/compare/v0.3.62...v0.3.63) (2026-10-12)
+
+
+### Performance
+
+* show the first window sooner and cut agent chat streaming cost ([#255](https://github.com/YSamed/yalqen/issues/255)) ([3bcef6b](https://github.com/YSamed/yalqen/commit/3bcef6b6331761dd0188c02153978c300b70dacd))
+
 ## [0.3.62](https://github.com/YSamed/yalqen/compare/v0.3.61...v0.3.62) (2026-10-12)
 
 
