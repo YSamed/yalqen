@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.61](https://github.com/YSamed/yalqen/compare/v0.3.60...v0.3.61) (2026-10-12)
+
+
+### Features
+
+* **welcome:** thank-you invitation card and accent color ([#250](https://github.com/YSamed/yalqen/issues/250)) ([af792ba](https://github.com/YSamed/yalqen/commit/af792ba4b6a4822baeb36900ac825e8f51c82a1a))
+
+
+### Bug Fixes
+
+* **media:** make the sidebar player's play, pause and seek reliable ([#251](https://github.com/YSamed/yalqen/issues/251)) ([8a84489](https://github.com/YSamed/yalqen/commit/8a84489ba3e35dcfed88460e7d0cd571f2ef27fe))
+
 ## [0.3.60](https://github.com/YSamed/yalqen/compare/v0.3.59...v0.3.60) (2026-10-11)
 
 
