@@ -275,16 +275,14 @@
           {#if active}
             <div class="pill">
               {#if tab.security !== 'local'}
-                <Button
+                <IconButton
                   size="sm"
-                  icon={tab.security === 'secure' ? 'lock' : tab.security === 'dangerous' ? 'warning' : 'info'}
+                  icon="lock"
                   class={['site', tab.security]}
+                  label={tab.security === 'secure' ? t('toolbar.siteInfoSecure') : t('toolbar.siteInfoNotSecure')}
                   title={t('toolbar.siteInfo')}
-                  aria-label={tab.security === 'secure' ? t('toolbar.siteInfoSecure') : t('toolbar.siteInfoNotSecure')}
                   onclick={() => send({ type: 'open-site-info' })}
-                >
-                  {#if tab.security === 'insecure' || tab.security === 'dangerous'}{t('toolbar.notSecure')}{/if}
-                </Button>
+                />
               {/if}
               {#if developer}
                 <span class="private-badge developer" title={t('toolbar.developerWindow')}>
@@ -677,7 +675,6 @@
 
   .chip :global(.site.dangerous) {
     color: #d93025;
-    font-weight: 600;
   }
 
   .tab-group :global(.star[aria-pressed='true'] path) {

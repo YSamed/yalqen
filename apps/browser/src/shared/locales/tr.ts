@@ -723,7 +723,6 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.siteInfo': 'Site bilgisi',
   'toolbar.siteInfoSecure': 'Bağlantı güvenli, site bilgisi',
   'toolbar.siteInfoNotSecure': 'Güvenli değil, site bilgisi',
-  'toolbar.notSecure': 'Güvenli değil',
   'toolbar.developerWindow':
     'Geliştirici penceresi: temiz oturum, reklam ve üçüncü taraf çerez engeli kapalı, pencereler kapanınca silinir',
   'toolbar.privateTab': 'Gizli sekme: geçmiş kaydedilmez, çerezler sekmeler kapanınca silinir',

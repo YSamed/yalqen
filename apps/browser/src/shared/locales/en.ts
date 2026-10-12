@@ -716,7 +716,6 @@ export const en = {
   'toolbar.siteInfo': 'Site information',
   'toolbar.siteInfoSecure': 'Connection is secure, site information',
   'toolbar.siteInfoNotSecure': 'Not secure, site information',
-  'toolbar.notSecure': 'Not secure',
   'toolbar.developerWindow':
     'Developer window: clean session, deleted when the windows close; ad blocking and third-party cookie blocking off',
   'toolbar.privateTab': "Private tab: history isn't saved, cookies are deleted when the tabs close",
