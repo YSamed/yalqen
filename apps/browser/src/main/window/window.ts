@@ -1519,6 +1519,9 @@ export class YalqenWindow {
       case 'seek-media':
         tabs.seekMedia(action.id, action.seconds);
         break;
+      case 'skip-media':
+        tabs.skipMedia(action.id, action.direction);
+        break;
       case 'open-tab-menu':
         this.openTabMenu(action.id);
         break;

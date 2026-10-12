@@ -112,23 +112,32 @@ app
     const song = {
       tabId: 'b',
       title: 'Midnight City',
-      artist: 'M83',
-      artwork: null,
-      faviconUrl: null,
       duration: 240,
       position: 60,
       playing: true,
+      canPrevious: false,
+      canNext: false,
       updatedAt: Date.now(),
     };
+    const drag = (types, from, to = from) =>
+      window.webContents.executeJavaScript(`(() => {
+        const track = document.querySelector('.player .track');
+        const rect = document.querySelector('.player .pill').getBoundingClientRect();
+        const at = (type, fraction) =>
+          track.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX: rect.left + rect.width * fraction, clientY: rect.top + 2 }));
+        const [from, to] = ${JSON.stringify([from, to])};
+        for (const type of ${JSON.stringify(types)}) at(type, type === 'pointerdown' ? from : to);
+      })()`);
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(await window.webContents.executeJavaScript("!!document.querySelector('.player')"), false);
 
     push({ media: song });
     await eventually("document.querySelector('.player .title')?.textContent === 'Midnight City'");
     assert.equal(
-      await window.webContents.executeJavaScript("document.querySelector('.player .artist .name').textContent"),
-      'M83',
+      await window.webContents.executeJavaScript("document.querySelector('.player .time').textContent.trim()"),
+      '1:00',
     );
+    assert.equal(await window.webContents.executeJavaScript("!!document.querySelector('.player .actions')"), false);
     assert.equal(
       await window.webContents.executeJavaScript(
         "document.querySelector('.player .track').getAttribute('aria-valuenow')",
@@ -142,27 +151,18 @@ app
     await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Play'");
     push({ media: { ...song, updatedAt: Date.now() } });
     await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Pause'");
-    await click('.player .info');
+
+    // A press on the pill that does not move opens the tab and seeks nowhere.
+    const seeksBefore = actions.filter((action) => action.type === 'seek-media').length;
+    await drag(['pointerdown', 'pointerup'], 0.5);
     assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
 
-    // Dragging from a quarter to three quarters along the bar previews the time, then seeks once to
+    // Dragging from a quarter to three quarters along the pill previews the time, then seeks once to
     // 3:00, two minutes past 1:00.
-    const seeksBefore = actions.filter((action) => action.type === 'seek-media').length;
-    await window.webContents.executeJavaScript(`(() => {
-      const track = document.querySelector('.player .track');
-      const rect = track.getBoundingClientRect();
-      const at = (type, fraction) =>
-        track.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX: rect.left + rect.width * fraction, clientY: rect.top + 2 }));
-      at('pointerdown', 0.25);
-      at('pointermove', 0.75);
-    })()`);
+    await drag(['pointerdown', 'pointermove'], 0.25, 0.75);
     await eventually("document.querySelector('.player .time')?.textContent.trim() === '3:00 / 4:00'");
     assert.equal(actions.filter((action) => action.type === 'seek-media').length, seeksBefore);
-    await window.webContents.executeJavaScript(`(() => {
-      const track = document.querySelector('.player .track');
-      const rect = track.getBoundingClientRect();
-      track.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 1, clientX: rect.left + rect.width * 0.75, clientY: rect.top + 2 }));
-    })()`);
+    await drag(['pointerup'], 0.75);
     const seek = actions.at(-1);
     assert.equal(seek.type, 'seek-media');
     assert.ok(Math.abs(seek.seconds - 120) <= 1, `seek by ${seek.seconds}`);
@@ -171,9 +171,17 @@ app
     push({ media: { ...song, playing: false, updatedAt: Date.now() } });
     await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Play'");
 
-    // Live streams have no length, so the bar goes away while the button stays.
+    // The track buttons appear only for the actions the page handles.
+    push({ media: { ...song, canNext: true, updatedAt: Date.now() } });
+    await eventually("document.querySelectorAll('.player .actions button').length === 1");
+    await click('.player .actions button');
+    assert.deepEqual(actions.at(-1), { type: 'skip-media', id: 'b', direction: 'next' });
+
+    // Live streams have no length, so the pill only opens the tab while the button stays.
     push({ media: { ...song, duration: null, position: null, updatedAt: Date.now() } });
-    await eventually("!document.querySelector('.player .track') && !!document.querySelector('.player .play')");
+    await eventually("!document.querySelector('.player .fill') && !!document.querySelector('.player .play')");
+    await click('.player button.track');
+    assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
 
     // The narrow sidebar has no room for the player.
     push({ panelCollapsed: true });

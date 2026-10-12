@@ -37,6 +37,7 @@ import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
 import { setupAutofill } from './autofill.js';
+import { setupMediaSession } from './media-session.js';
 import { SiteStorageChannel } from '../shared/site-storage.js';
 import { READING_LIST_URL, ReadingListChannel, type ReadingListApi } from '../shared/reading-list.js';
 import { WORKSPACES_URL, WorkspaceChannel, type WorkspaceApi } from '../shared/workspaces.js';
@@ -516,6 +517,7 @@ async function fillLogin(target?: HTMLInputElement): Promise<void> {
 }
 
 if (window === window.top && (location.protocol === 'https:' || location.protocol === 'http:')) {
+  setupMediaSession();
   let fillTimer = 0;
   const scheduleFill = () => {
     if (fillTimer) return;

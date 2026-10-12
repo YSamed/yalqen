@@ -1,3 +1,5 @@
+import { MediaSessionEvent, type MediaSkip } from '../../shared/sidebar-widgets.js';
+
 export const MEDIA_WORLD_ID = 1030;
 
 // Finds the page's media elements, including those inside open shadow roots, and picks the one
@@ -27,10 +29,15 @@ const FIND_MEDIA = `
 // Reads the page's Media Session metadata and the element that plays or played last.
 export const MEDIA_READ_SCRIPT = `(() => {${FIND_MEDIA}
   const meta = navigator.mediaSession?.metadata ?? null;
+  // The preload's hook answers the query before dispatchEvent returns.
+  let actions = '';
+  const answer = (event) => (actions = String(event.detail));
+  window.addEventListener('${MediaSessionEvent.actions}', answer);
+  window.dispatchEvent(new CustomEvent('${MediaSessionEvent.query}'));
+  window.removeEventListener('${MediaSessionEvent.actions}', answer);
   return {
+    actions,
     title: meta?.title ?? '',
-    artist: meta?.artist ?? '',
-    artwork: [...(meta?.artwork ?? [])].map((image) => ({ src: image.src, sizes: image.sizes ?? '' })),
     duration: main ? main.duration : null,
     position: main ? main.currentTime : null,
     paused: main ? main.paused : true,
@@ -59,17 +66,22 @@ export function mediaSeekScript(seconds: number): string {
 })()`;
 }
 
+const SKIP_ACTION = { previous: 'previoustrack', next: 'nexttrack' } as const;
+
+export function mediaSkipScript(direction: MediaSkip): string {
+  return `window.dispatchEvent(new CustomEvent('${MediaSessionEvent.run}', { detail: '${SKIP_ACTION[direction]}' }))`;
+}
+
 export interface PageMedia {
   title: string;
-  artist: string;
-  artwork: string | null;
   duration: number | null;
   position: number | null;
   paused: boolean;
+  canPrevious: boolean;
+  canNext: boolean;
 }
 
 const MAX_TEXT = 300;
-const MAX_ARTWORK_URL = 4096;
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim().slice(0, MAX_TEXT) : '';
@@ -79,45 +91,17 @@ function seconds(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-function artworkUrl(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length > MAX_ARTWORK_URL) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
-function area(sizes: unknown): number {
-  if (typeof sizes !== 'string') return 0;
-  return Math.max(
-    0,
-    ...sizes.split(/\s+/).map((size) => {
-      const [width, height] = size.toLowerCase().split('x').map(Number);
-      return Number.isFinite(width) && Number.isFinite(height) ? width * height : 0;
-    }),
-  );
-}
-
-// Page script output is untrusted: keep short text, finite times and the largest web artwork.
+// Page script output is untrusted: keep short text and finite times.
 export function parsePageMedia(raw: unknown): PageMedia | null {
   if (!raw || typeof raw !== 'object') return null;
   const value = raw as Record<string, unknown>;
-  const artwork = (Array.isArray(value.artwork) ? value.artwork : [])
-    .slice(0, 16)
-    .map((image) => {
-      const item = image && typeof image === 'object' ? (image as Record<string, unknown>) : {};
-      return { src: artworkUrl(item.src), area: area(item.sizes) };
-    })
-    .filter((image): image is { src: string; area: number } => image.src !== null)
-    .sort((a, b) => b.area - a.area)[0];
+  const actions = text(value.actions).split(',');
   return {
     title: text(value.title),
-    artist: text(value.artist),
-    artwork: artwork?.src ?? null,
     duration: seconds(value.duration),
     position: seconds(value.position),
     paused: value.paused !== false,
+    canPrevious: actions.includes(SKIP_ACTION.previous),
+    canNext: actions.includes(SKIP_ACTION.next),
   };
 }

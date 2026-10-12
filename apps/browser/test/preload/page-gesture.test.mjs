@@ -25,6 +25,7 @@ function gesturePage() {
     require: () => ({
       ipcRenderer: { send: (...args) => sent.push(args), on() {}, sendSync() {} },
       contextBridge: { exposeInMainWorld() {} },
+      webFrame: { executeJavaScript: async () => {} },
     }),
     location: { href: 'https://example.com/' },
     window,

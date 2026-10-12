@@ -384,6 +384,7 @@ export type UiAction =
   | { type: 'toggle-mute'; id: TabId }
   | { type: 'toggle-media'; id: TabId }
   | { type: 'seek-media'; id: TabId; seconds: number }
+  | { type: 'skip-media'; id: TabId; direction: import('./sidebar-widgets').MediaSkip }
   | { type: 'open-tab-menu'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
   | { type: 'navigate'; input: string }

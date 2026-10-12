@@ -5,17 +5,26 @@ export type SidebarWidgetId = (typeof SIDEBAR_WIDGET_IDS)[number];
 export interface MediaInfo {
   tabId: string;
   title: string;
-  artist: string;
-  // Cover art from the page's Media Session; the favicon stands in without it.
-  artwork: string | null;
-  faviconUrl: string | null;
   // Seconds; null when the page reports no finite length (live streams).
   duration: number | null;
   position: number | null;
   playing: boolean;
+  // Whether the page registered a Media Session handler for the previous and the next track.
+  canPrevious: boolean;
+  canNext: boolean;
   // When position was read, so the renderer can advance it without asking again.
   updatedAt: number;
 }
+
+export type MediaSkip = 'previous' | 'next';
+
+// Media Session handlers live in the page's own JavaScript world, which the browser's media scripts
+// cannot call into, so the page preload's hook and those scripts talk through these DOM events.
+export const MediaSessionEvent = {
+  query: 'yalqen-media-query',
+  actions: 'yalqen-media-actions',
+  run: 'yalqen-media-run',
+} as const;
 
 const IDS = new Set<string>(SIDEBAR_WIDGET_IDS);
 

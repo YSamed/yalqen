@@ -73,12 +73,13 @@ import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } fr
 import { playwrightTest } from '../agent-bridge/playwright.js';
 import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
 import { READING_LIST_URL } from '../../shared/reading-list.js';
-import type { MediaInfo } from '../../shared/sidebar-widgets.js';
+import type { MediaInfo, MediaSkip } from '../../shared/sidebar-widgets.js';
 import {
   MEDIA_READ_SCRIPT,
   MEDIA_TOGGLE_SCRIPT,
   MEDIA_WORLD_ID,
   mediaSeekScript,
+  mediaSkipScript,
   parsePageMedia,
   type PageMedia,
 } from './media.js';
@@ -629,6 +630,10 @@ export class TabManager {
     this.runMedia(id, mediaSeekScript(Math.max(-3600, Math.min(3600, Math.round(seconds)))));
   }
 
+  skipMedia(id: TabId, direction: MediaSkip): void {
+    if (direction === 'previous' || direction === 'next') this.runMedia(id, mediaSkipScript(direction));
+  }
+
   // The sidebar player follows the tab that played sound last, until it closes or loses its media.
   mediaState(): MediaInfo | null {
     const tab = this.media ? this.find(this.media.tabId) : undefined;
@@ -640,13 +645,12 @@ export class TabManager {
     return {
       tabId: tab.id,
       title: info?.title || tab.title || host,
-      artist: info?.artist || host,
-      artwork: info?.artwork ?? null,
-      faviconUrl: tab.faviconUrl,
       duration: info?.duration ?? null,
       position: info?.position ?? null,
       // Chromium keeps a tab audible for a moment after it pauses, so a found element's own state wins.
       playing: info && info.position !== null ? !info.paused : audible,
+      canPrevious: info?.canPrevious ?? false,
+      canNext: info?.canNext ?? false,
       updatedAt: this.media.updatedAt,
     };
   }

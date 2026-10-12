@@ -24,6 +24,7 @@ for (const test of [
   'tab-selection.mjs',
   'media-player.mjs',
   'media-controls.mjs',
+  'media-skip.mjs',
   'pinning.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
