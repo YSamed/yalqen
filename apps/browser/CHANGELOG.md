@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.64](https://github.com/YSamed/yalqen/compare/v0.3.63...v0.3.64) (2026-10-12)
+
+
+### Features
+
+* **toolbar:** show connection security by lock color only ([#257](https://github.com/YSamed/yalqen/issues/257)) ([4d3c1de](https://github.com/YSamed/yalqen/commit/4d3c1de83ee89a7691630fd95583d13315ba97b9))
+
 ## [0.3.63](https://github.com/YSamed/yalqen/compare/v0.3.62...v0.3.63) (2026-10-12)
 
 
