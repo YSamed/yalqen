@@ -650,24 +650,29 @@ export class TabManager {
       faviconUrl: tab.faviconUrl,
       duration: info?.duration ?? null,
       position: info?.position ?? null,
-      playing: info ? !info.paused || audible : audible,
+      // Chromium keeps a tab audible for a moment after it pauses, so a found element's own state wins.
+      playing: info && info.position !== null ? !info.paused : audible,
       updatedAt: this.media.updatedAt,
     };
   }
 
+  // A paused background tab gets frozen once it falls silent, and a frozen page runs no script,
+  // so the player wakes it before pressing play or seeking.
   private runMedia(id: TabId, code: string): void {
-    const contents = liveContents(this.find(id));
-    if (!contents) return;
-    void contents
-      .executeJavaScriptInIsolatedWorld(MEDIA_WORLD_ID, [{ code }], true)
-      .then(() => setTimeout(() => this.refreshMedia(id), 150))
+    const tab = this.find(id);
+    const contents = liveContents(tab);
+    if (!tab || !contents) return;
+    void this.freezer
+      .unfreeze(tab)
+      .then(() => contents.executeJavaScriptInIsolatedWorld(MEDIA_WORLD_ID, [{ code }], true))
+      .then(() => setTimeout(() => void this.refreshMedia(id), 150))
       .catch(() => {});
   }
 
-  private refreshMedia(id: TabId): void {
+  private refreshMedia(id: TabId): Promise<void> {
     const contents = liveContents(this.find(id));
-    if (!contents || this.media?.tabId !== id) return;
-    void contents
+    if (!contents || this.media?.tabId !== id) return Promise.resolve();
+    return contents
       .executeJavaScriptInIsolatedWorld(MEDIA_WORLD_ID, [{ code: MEDIA_READ_SCRIPT }], false)
       .then((raw) => {
         if (this.media?.tabId !== id) return;
@@ -1623,7 +1628,7 @@ export class TabManager {
     listen('page-title-updated', (_event, title) => {
       if (tab.url === contents.getURL()) this.options.onVisitTitle(tab.visitId, title);
       // Players retitle the page per track, which is the cue to re-read the metadata.
-      if (this.media?.tabId === tab.id) this.refreshMedia(tab.id);
+      if (this.media?.tabId === tab.id) void this.refreshMedia(tab.id);
       if (tab.title === title) return;
       tab.title = title;
       this.changed('lazy');
@@ -1648,9 +1653,10 @@ export class TabManager {
       this.changed();
     });
     listen('audio-state-changed', ({ audible }) => {
-      if (!audible) this.freezer.maybeFreeze(tab);
       if (audible) this.media = { tabId: tab.id, info: null, updatedAt: Date.now() };
-      if (this.media?.tabId === tab.id) this.refreshMedia(tab.id);
+      const read = this.media?.tabId === tab.id ? this.refreshMedia(tab.id) : Promise.resolve();
+      // The player reads the paused state before the tab freezes, or it would keep showing it as playing.
+      if (!audible) void read.then(() => this.freezer.maybeFreeze(tab));
       this.changed();
     });
     listen('devtools-closed', () => this.freezer.maybeFreeze(tab));

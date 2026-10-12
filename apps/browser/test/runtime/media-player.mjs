@@ -137,20 +137,37 @@ app
       '60',
     );
 
+    // The button flips at once, before the page answers.
     await click('.player .play');
     assert.deepEqual(actions.at(-1), { type: 'toggle-media', id: 'b' });
+    await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Play'");
+    push({ media: { ...song, updatedAt: Date.now() } });
+    await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Pause'");
     await click('.player .info');
     assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
 
-    // Clicking three quarters along the bar seeks to 3:00, two minutes past 1:00.
+    // Dragging from a quarter to three quarters along the bar previews the time, then seeks once to
+    // 3:00, two minutes past 1:00.
+    const seeksBefore = actions.filter((action) => action.type === 'seek-media').length;
     await window.webContents.executeJavaScript(`(() => {
       const track = document.querySelector('.player .track');
       const rect = track.getBoundingClientRect();
-      track.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: rect.left + rect.width * 0.75, clientY: rect.top + 2 }));
+      const at = (type, fraction) =>
+        track.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX: rect.left + rect.width * fraction, clientY: rect.top + 2 }));
+      at('pointerdown', 0.25);
+      at('pointermove', 0.75);
+    })()`);
+    await eventually("document.querySelector('.player .time')?.textContent.trim() === '3:00 / 4:00'");
+    assert.equal(actions.filter((action) => action.type === 'seek-media').length, seeksBefore);
+    await window.webContents.executeJavaScript(`(() => {
+      const track = document.querySelector('.player .track');
+      const rect = track.getBoundingClientRect();
+      track.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerId: 1, clientX: rect.left + rect.width * 0.75, clientY: rect.top + 2 }));
     })()`);
     const seek = actions.at(-1);
     assert.equal(seek.type, 'seek-media');
     assert.ok(Math.abs(seek.seconds - 120) <= 1, `seek by ${seek.seconds}`);
+    await eventually("document.querySelector('.player .track').getAttribute('aria-valuenow') === '180'");
 
     push({ media: { ...song, playing: false, updatedAt: Date.now() } });
     await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Play'");

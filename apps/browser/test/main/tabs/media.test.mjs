@@ -40,5 +40,5 @@ test('page media drops untrusted shapes and non-finite times', () => {
 });
 
 test('the seek script embeds only the given number', () => {
-  assert.match(mediaSeekScript(-10), /element\.currentTime \+ -10\)/);
+  assert.match(mediaSeekScript(-10), /main\.currentTime \+ -10\)/);
 });

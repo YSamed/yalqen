@@ -13,20 +13,50 @@
   const artwork = $derived(media.artwork && !broken[media.artwork] ? media.artwork : null);
   const favicon = $derived(media.faviconUrl && !broken[media.faviconUrl] ? media.faviconUrl : null);
 
+  // A press shows its result right away; the page's own answer replaces it once it arrives.
+  let pressed = $state<{ playing: boolean; since: number } | null>(null);
+  const playing = $derived(pressed && pressed.since >= media.updatedAt ? pressed.playing : media.playing);
+  $effect(() => {
+    if (!pressed) return;
+    // A page that never answers (it lost its media) falls back to what the browser last reported.
+    const timer = window.setTimeout(() => (pressed = null), 2000);
+    return () => window.clearTimeout(timer);
+  });
+
+  function toggle(): void {
+    pressed = { playing: !playing, since: Date.now() };
+    send({ type: 'toggle-media', id: media.tabId });
+  }
+
   // The page reports its position only on changes, so the bar advances locally in between.
   let now = $state(Date.now());
   $effect(() => {
-    if (!media.playing || media.duration === null) return;
+    if (!playing || media.duration === null) return;
     now = Date.now();
     const interval = window.setInterval(() => (now = Date.now()), 1000);
     return () => window.clearInterval(interval);
   });
   const position = $derived.by(() => {
     if (media.position === null || media.duration === null) return null;
-    const elapsed = media.playing ? Math.max(0, now - media.updatedAt) / 1000 : 0;
+    const elapsed = playing ? Math.max(0, now - media.updatedAt) / 1000 : 0;
     return Math.min(media.duration, media.position + elapsed);
   });
-  const progress = $derived(position === null || !media.duration ? 0 : position / media.duration);
+
+  // While the pointer is on the bar it previews where a press would land; dragging moves the fill.
+  let hover = $state<number | null>(null);
+  let dragging = $state(false);
+  let target = $state<{ seconds: number; since: number } | null>(null);
+  $effect(() => {
+    if (!target) return;
+    const timer = window.setTimeout(() => (target = null), 2000);
+    return () => window.clearTimeout(timer);
+  });
+  const shown = $derived(target && target.since >= media.updatedAt ? target.seconds : position);
+  const progress = $derived.by(() => {
+    if (!media.duration) return 0;
+    if (dragging && hover !== null) return hover;
+    return shown === null ? 0 : shown / media.duration;
+  });
 
   function clock(seconds: number): string {
     const total = Math.max(0, Math.floor(seconds));
@@ -37,19 +67,45 @@
   }
 
   function seek(seconds: number): void {
-    if (seconds !== 0) send({ type: 'seek-media', id: media.tabId, seconds });
+    if (seconds === 0 || position === null || media.duration === null) return;
+    target = { seconds: Math.min(media.duration, Math.max(0, position + seconds)), since: Date.now() };
+    send({ type: 'seek-media', id: media.tabId, seconds });
   }
 
-  function seekTo(event: MouseEvent): void {
-    if (position === null || media.duration === null) return;
+  function fractionAt(event: PointerEvent): number {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    seek(Math.round(fraction * media.duration - position));
+    return rect.width > 0 ? Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)) : 0;
+  }
+
+  function pointerDown(event: PointerEvent): void {
+    if (event.button !== 0 || position === null || media.duration === null) return;
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    dragging = true;
+    hover = fractionAt(event);
+  }
+
+  function pointerMove(event: PointerEvent): void {
+    hover = fractionAt(event);
+  }
+
+  function pointerUp(event: PointerEvent): void {
+    if (!dragging) return;
+    dragging = false;
+    const fraction = fractionAt(event);
+    if (position !== null && media.duration !== null) seek(Math.round(fraction * media.duration - position));
+  }
+
+  function pointerLeave(): void {
+    if (!dragging) hover = null;
   }
 
   function seekByKey(event: KeyboardEvent): void {
     if (event.key === 'ArrowLeft') seek(-5);
     else if (event.key === 'ArrowRight') seek(5);
+    else if (event.key === 'Home' && position !== null) seek(-Math.round(position));
+    else if (event.key === 'End' && position !== null && media.duration !== null)
+      seek(Math.floor(media.duration - position));
+    else if (event.key === ' ' || event.key === 'k') toggle();
     else return;
     event.preventDefault();
   }
@@ -90,17 +146,18 @@
     <span class="text">
       <span class="title" title={media.title}>{media.title}</span>
       <span class="artist">
-        {#if media.playing}<span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>{/if}
-        <span class="name">{media.artist}</span>
+        {#if playing && hover === null}<span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>{/if}
+        <!-- While the pointer is on the bar the artist line reads out the time it points at. -->
+        {#if hover !== null && media.duration !== null}
+          <span class="name time">{clock(hover * media.duration)} / {clock(media.duration)}</span>
+        {:else}
+          <span class="name">{media.artist}</span>
+        {/if}
       </span>
     </span>
   </button>
-  <button
-    class="play"
-    aria-label={media.playing ? t('widgets.pause') : t('widgets.play')}
-    onclick={() => send({ type: 'toggle-media', id: media.tabId })}
-  >
-    {#if media.playing}
+  <button class="play" aria-label={playing ? t('widgets.pause') : t('widgets.play')} onclick={toggle}>
+    {#if playing}
       <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"
         ><rect x="3.5" y="2.5" width="3.2" height="11" rx="1" /><rect
           x="9.3"
@@ -120,17 +177,22 @@
   {#if position !== null && media.duration !== null}
     <div
       class="track"
+      class:active={hover !== null}
       role="slider"
       tabindex="0"
       aria-label={t('widgets.media')}
       aria-valuemin={0}
       aria-valuemax={Math.round(media.duration)}
-      aria-valuenow={Math.round(position)}
-      aria-valuetext={t('widgets.elapsed', { elapsed: clock(position), duration: clock(media.duration) })}
-      onclick={seekTo}
+      aria-valuenow={Math.round(shown ?? position)}
+      aria-valuetext={t('widgets.elapsed', { elapsed: clock(shown ?? position), duration: clock(media.duration) })}
+      onpointerdown={pointerDown}
+      onpointermove={pointerMove}
+      onpointerup={pointerUp}
+      onpointercancel={() => ((dragging = false), (hover = null))}
+      onpointerleave={pointerLeave}
       onkeydown={seekByKey}
     >
-      <span class="rail"><span class="fill" style:width="{progress * 100}%"></span></span>
+      <span class="rail"><span class="fill" class:instant={dragging} style:width="{progress * 100}%"></span></span>
     </div>
   {/if}
 </section>
@@ -310,15 +372,17 @@
     transform: scale(0.92);
   }
 
+  /* Taller than the rail it draws, so the thin bar is easy to hit and drag. */
   .track {
     position: absolute;
     right: 12px;
-    bottom: 3px;
+    bottom: 0;
     left: 12px;
     display: flex;
     align-items: center;
-    height: 6px;
+    height: 12px;
     cursor: pointer;
+    touch-action: none;
   }
 
   .rail {
@@ -331,7 +395,8 @@
     transition: height 120ms var(--ease-out);
   }
 
-  .track:hover .rail {
+  .track.active .rail,
+  .track:focus-visible .rail {
     height: 4px;
     border-radius: 2px;
   }
@@ -342,6 +407,16 @@
     border-radius: inherit;
     background: var(--accent);
     transition: width 1s linear;
+  }
+
+  .fill.instant {
+    transition: none;
+  }
+
+  .time {
+    flex: none;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
   }
 
   @keyframes bar {

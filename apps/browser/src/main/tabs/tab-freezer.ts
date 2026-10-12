@@ -24,15 +24,16 @@ export class TabFreezer {
     this.host.changed();
   }
 
-  unfreeze(tab: Tab): void {
-    if (!tab.frozen) return;
+  // Resolves once the page runs again, for callers that must execute script in it right away.
+  unfreeze(tab: Tab): Promise<void> {
+    if (!tab.frozen) return Promise.resolve();
     tab.frozen = false;
-    this.setLifecycleState(tab, 'active');
+    return this.setLifecycleState(tab, 'active');
   }
 
-  private setLifecycleState(tab: Tab, state: 'frozen' | 'active'): void {
+  private setLifecycleState(tab: Tab, state: 'frozen' | 'active'): Promise<void> {
     const contents = tab.view?.webContents;
-    if (!contents || contents.isDestroyed()) return;
+    if (!contents || contents.isDestroyed()) return Promise.resolve();
     const failed = (error: unknown) => {
       console.warn(`[freeze] ${state} failed for ${tab.url}: ${(error as Error).message}`);
       if (state === 'frozen' && tab.frozen && tab.view?.webContents === contents) {
@@ -44,9 +45,9 @@ export class TabFreezer {
       attachDebugger(contents);
     } catch (error) {
       failed(error);
-      return;
+      return Promise.resolve();
     }
-    contents.debugger
+    return contents.debugger
       .sendCommand('Page.setWebLifecycleState', { state })
       .then(() => {
         const settled = tab.frozen === (state === 'frozen');

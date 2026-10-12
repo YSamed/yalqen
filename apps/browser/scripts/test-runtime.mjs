@@ -23,6 +23,7 @@ for (const test of [
   'bulk-tabs.mjs',
   'tab-selection.mjs',
   'media-player.mjs',
+  'media-controls.mjs',
   'pinning.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
