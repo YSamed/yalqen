@@ -15,6 +15,13 @@ function reuseArray<T>(previous: T[], next: T[]): T[] {
   return previous.length === next.length && next.every((item, index) => item === previous[index]) ? previous : next;
 }
 
+function reuseItems<T extends object>(previous: T[], next: T[]): T[] {
+  return reuseArray(
+    previous,
+    next.map((item, index) => reuseFields(previous[index] ?? null, item)!),
+  );
+}
+
 function reuseTab(previous: TabSnapshot | undefined, next: TabSnapshot): TabSnapshot {
   if (!previous || previous === next) return next;
   const overrides = reuseFields(previous.overrides, next.overrides)!;
@@ -41,12 +48,7 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     tabs: reuseArray(previous.tabs, tabs),
     listOrder: reuseArray(previous.listOrder, next.listOrder),
     selectedTabIds: reuseArray(previous.selectedTabIds, next.selectedTabIds),
-    ...(next.tabGroups && {
-      tabGroups: reuseArray(
-        previous.tabGroups ?? [],
-        next.tabGroups.map((group, index) => reuseFields(previous.tabGroups?.[index] ?? null, group)!),
-      ),
-    }),
+    ...(next.tabGroups && { tabGroups: reuseItems(previous.tabGroups ?? [], next.tabGroups) }),
     toolbarButtons: reuseArray(previous.toolbarButtons, next.toolbarButtons),
     media: reuseFields(previous.media, next.media),
     device: reuseFields(previous.device, next.device),
@@ -54,10 +56,10 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     agentSession: reuseFields(previous.agentSession, next.agentSession)!,
     agentChat: reuseFields(previous.agentChat, next.agentChat)!,
     projectRun: reuseFields(previous.projectRun, next.projectRun)!,
-    agentElements: reuseArray(
-      previous.agentElements,
-      next.agentElements.map((element, index) => reuseFields(previous.agentElements[index] ?? null, element)!),
-    ),
+    agentProviders: reuseArray(previous.agentProviders, next.agentProviders),
+    agentElements: reuseItems(previous.agentElements, next.agentElements),
+    agentProjects: reuseItems(previous.agentProjects, next.agentProjects),
+    agentBackgroundChats: reuseItems(previous.agentBackgroundChats, next.agentBackgroundChats),
   };
   return sameFields(previous, candidate) ? previous : candidate;
 }

@@ -3,11 +3,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { app, dialog, type BaseWindow, type WebContents } from 'electron';
-import { parse, serialize, type DefaultTreeAdapterMap } from 'parse5';
+import type { DefaultTreeAdapterMap } from 'parse5';
 import { t } from '../../shared/i18n.js';
 import { pageFileName } from '../devtools/page-export.js';
 
-function relocateResources(html: string, folder: string): string {
+async function relocateResources(html: string, folder: string): Promise<string> {
+  const { parse, serialize } = await import('parse5');
   const document = parse(html);
   const visit = (node: DefaultTreeAdapterMap['node']) => {
     if ('attrs' in node) {
@@ -43,7 +44,7 @@ export async function writeOfflinePage(
       const info = await fs.stat(resources).catch(() => null);
       if (info?.isDirectory()) {
         const folder = `yalqen-resources-${randomUUID()}`;
-        await fs.writeFile(page, relocateResources(await fs.readFile(page, 'utf8'), folder));
+        await fs.writeFile(page, await relocateResources(await fs.readFile(page, 'utf8'), folder));
         resourceDirectory = path.join(path.dirname(file), folder);
         await fs.rename(resources, resourceDirectory);
       }

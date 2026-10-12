@@ -37,6 +37,7 @@ const USAGE = `Usage: npm run bench -- [options]
   --idle      idle window of the title scenario, ms    (default: 15000)
   --pages     page list                                (default: bench/pages.txt)
   --out       JSONL output                             (default: bench/results/bench-<date>.jsonl)
+  --app-dir   app to launch, for a preserved baseline  (default: this checkout)
 
 Every run starts from a fresh temporary profile; the ad blocking engine is cached in bench/.cache.`;
 
@@ -54,6 +55,7 @@ function options() {
         type: 'string',
         default: path.join(project, `bench/results/bench-${new Date().toISOString().slice(0, 10)}.jsonl`),
       },
+      'app-dir': { type: 'string', default: project },
       help: { type: 'boolean', default: false },
     },
   });
@@ -83,6 +85,7 @@ function options() {
     idleMs: count('idle'),
     pages,
     out: path.resolve(values.out),
+    appDir: path.resolve(values['app-dir']),
   };
 }
 
@@ -119,10 +122,10 @@ function writeProfile(profile, { adBlocking, history, sessionUrls }) {
   if (adBlocking && fs.existsSync(engineCache)) fs.copyFileSync(engineCache, path.join(profile, 'adblock-engine.bin'));
 }
 
-function launch(env) {
+function launch(env, appDir) {
   return new Promise((resolve) => {
     const output = [];
-    const child = spawn(electron, [project], {
+    const child = spawn(electron, [appDir], {
       env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined, ...env, YALQEN_BENCH_SPAWNED_AT: String(Date.now()) },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -147,21 +150,24 @@ function readRecords(file, session) {
     .filter((record) => record.session === session);
 }
 
-async function run({ out, session, scenario, variant, runIndex, adBlocking, history, sessionUrls, plan }) {
+async function run({ out, session, scenario, variant, runIndex, adBlocking, history, sessionUrls, plan, appDir }) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-bench-'));
   try {
     writeProfile(profile, { adBlocking, history, sessionUrls });
-    const result = await launch({
-      YALQEN_BENCH: out,
-      YALQEN_BENCH_PROFILE: profile,
-      YALQEN_BENCH_SESSION: session,
-      YALQEN_BENCH_SCENARIO: scenario,
-      YALQEN_BENCH_VARIANT: variant,
-      YALQEN_BENCH_RUN: String(runIndex),
-      YALQEN_BENCH_URLS: JSON.stringify(plan.urls ?? []),
-      YALQEN_BENCH_IDLE_MS: String(plan.idleMs ?? 0),
-      YALQEN_BENCH_COMMAND_BAR: plan.commandBar ? '1' : '0',
-    });
+    const result = await launch(
+      {
+        YALQEN_BENCH: out,
+        YALQEN_BENCH_PROFILE: profile,
+        YALQEN_BENCH_SESSION: session,
+        YALQEN_BENCH_SCENARIO: scenario,
+        YALQEN_BENCH_VARIANT: variant,
+        YALQEN_BENCH_RUN: String(runIndex),
+        YALQEN_BENCH_URLS: JSON.stringify(plan.urls ?? []),
+        YALQEN_BENCH_IDLE_MS: String(plan.idleMs ?? 0),
+        YALQEN_BENCH_COMMAND_BAR: plan.commandBar ? '1' : '0',
+      },
+      appDir,
+    );
     const engine = path.join(profile, 'adblock-engine.bin');
     if (adBlocking && !fs.existsSync(engineCache) && fs.existsSync(engine)) {
       fs.mkdirSync(path.dirname(engineCache), { recursive: true });
@@ -329,6 +335,7 @@ async function main() {
       history: 0,
       sessionUrls: [],
       plan: {},
+      appDir: settings.appDir,
     });
     fs.rmSync(prime, { force: true });
   }
@@ -360,6 +367,7 @@ async function main() {
             adBlocking,
             history: settings.history,
             ...plans[scenario],
+            appDir: settings.appDir,
           });
         }
       }

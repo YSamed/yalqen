@@ -106,6 +106,7 @@ import { accentHex } from '../../shared/accent.js';
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
 const REVEAL_FALLBACK_MS = 1000;
+const WALLPAPER_PRELOAD_DELAY_MS = 3000;
 const MAX_PICKED_ELEMENTS = 5;
 const MAX_AGENT_PROJECTS = 6;
 
@@ -238,6 +239,21 @@ export class YalqenWindow {
     this.isDeveloper = options.developer ?? false;
     this.isPrivate = this.isDeveloper || (options.isPrivate ?? false);
     this.webApp = this.isPrivate ? null : (options.webApp ?? null);
+    this.ui = new WebContentsView({
+      webPreferences: {
+        preload: preloadPath('preload'),
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    this.uiContents = this.ui.webContents;
+    if (this.glassApplied) this.ui.setBackgroundColor('#00000000');
+    this.uiContents.on('will-navigate', (event) => event.preventDefault());
+    this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    // The first native window takes about 40 ms to create, so the interface loads meanwhile.
+    void this.uiContents.loadFile(rendererPath('index.html'), { query: { lang: getLocale() } });
+
     const from = options.from?.window.getBounds();
     this.window = new BaseWindow({
       width: from?.width ?? 1280,
@@ -251,20 +267,7 @@ export class YalqenWindow {
       transparent: this.glassApplied,
       show: false,
     });
-
-    this.ui = new WebContentsView({
-      webPreferences: {
-        preload: preloadPath('preload'),
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-    this.uiContents = this.ui.webContents;
     this.activeProjectId = this.addProject().id;
-    if (this.glassApplied) this.ui.setBackgroundColor('#00000000');
-    this.uiContents.on('will-navigate', (event) => event.preventDefault());
-    this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     this.window.contentView.addChildView(this.ui);
 
     this.preconnector = new Preconnector((origin) =>
@@ -468,7 +471,7 @@ export class YalqenWindow {
       this.applyLayout();
       if (this.window.isFullScreen() === fullScreen) return;
       fullScreen = !fullScreen;
-      if (fullScreen) void this.sendWallpaper();
+      if (fullScreen && this.glassApplied) void this.sendWallpaper();
       this.pushState();
     };
     this.window.on('resize', syncFullScreen);
@@ -481,7 +484,8 @@ export class YalqenWindow {
     this.uiContents.once('did-finish-load', () => {
       this.glassApplied = this.glassApplied && applyGlass(this.window);
       this.pushState();
-      void this.sendWallpaper();
+      // Only the full-screen glass backdrop draws the wallpaper, so its lookup waits for startup to settle.
+      if (this.glassApplied) setTimeout(() => void this.sendWallpaper(), WALLPAPER_PRELOAD_DELAY_MS);
     });
 
     this.window.on('close', (event) => {
@@ -528,7 +532,6 @@ export class YalqenWindow {
     else if (options.saved && options.saved.tabs.length > 0) this.tabs.restore(options.saved, options.url);
     else this.tabs.open(options.url);
 
-    void this.uiContents.loadFile(rendererPath('index.html'), { query: { lang: getLocale() } });
     app.onWindowFocus(this);
   }
 
@@ -774,9 +777,9 @@ export class YalqenWindow {
       onOutput: (target, output) => {
         if (isActive(target) && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);
       },
-      onChatUpdate: (target, snapshot) => {
+      onChatUpdate: (target, serialized) => {
         if (isActive(target) && !this.uiContents.isDestroyed())
-          this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(snapshot));
+          this.uiContents.send(IpcChannel.agentChatUpdate, serialized);
       },
       onUrl: (target, url) => {
         const id = this.tabs.open(url, { activate: false });

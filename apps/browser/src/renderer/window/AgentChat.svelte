@@ -23,6 +23,7 @@
   import AgentRewind from './AgentRewind.svelte';
   import AgentToolCard from './AgentToolCard.svelte';
   import ComposerSuggestions, { type ComposerSuggestion } from './ComposerSuggestions.svelte';
+  import { reuseChatSnapshot } from '../../shared/chat-snapshot';
   import { complete, findTrigger } from '../../shared/composer-trigger';
   import { FILE_EDIT_TOOLS } from '../../shared/file-change';
   import ElementChip from './ElementChip.svelte';
@@ -249,7 +250,7 @@
   function receive(next: AgentChatSnapshot): void {
     if (destroyed || (next.revision <= snapshot.revision && next.state.provider === snapshot.state.provider)) return;
     if (next.state.id !== snapshot.state.id) answers = {};
-    snapshot = next;
+    snapshot = reuseChatSnapshot(snapshot, next);
     loading = false;
   }
 

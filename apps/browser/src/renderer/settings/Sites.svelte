@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getDomain } from 'tldts';
   import { getLocale, t } from '../../shared/i18n';
   import type { SiteStorageEntry, SiteStorageView } from '../../shared/site-storage';
   import type {
@@ -75,7 +74,9 @@
   let error = $state(false);
 
   const term = $derived(query.trim().toLowerCase());
-  const domainOf = (host: string) => getDomain(host, { allowPrivateDomains: true }) ?? host;
+  // The public suffix list is three quarters of the settings script, so it loads with this pane only.
+  let getDomain = $state.raw<typeof import('tldts').getDomain | null>(null);
+  const domainOf = (host: string) => getDomain?.(host, { allowPrivateDomains: true }) ?? host;
   const hostOf = (origin: string) => new URL(origin).host;
   const hostnameOf = (origin: string) => new URL(origin).hostname;
 
@@ -108,7 +109,7 @@
       .filter((entry) => !configured.some((site) => site.domain === entry.domain))
       .map((entry): Site => ({ domain: entry.domain, permissions: [], exceptions: [], storage: entry })),
   );
-  const sites = $derived([...configured, ...others]);
+  const sites = $derived(getDomain ? [...configured, ...others] : []);
 
   $effect(() => {
     const missing = sites.map((site) => site.domain).filter((domain) => !(domain in icons));
@@ -195,6 +196,10 @@
   }
 
   onMount(() => {
+    void import('tldts').then(
+      (module) => (getDomain = module.getDomain),
+      () => (error = true),
+    );
     void refreshPermissions();
     void loadStorage();
     // Picks up switches flipped in System Settings while this page was in the background.
@@ -360,7 +365,7 @@
         </li>
       {/each}
     </ul>
-  {:else if storage || error}
+  {:else if getDomain && (storage || error)}
     <p class="hint empty">{t('siteStorage.empty')}</p>
   {/if}
 

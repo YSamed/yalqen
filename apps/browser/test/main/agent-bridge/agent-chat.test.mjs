@@ -83,7 +83,7 @@ function fixture(t, overrides = {}) {
       return { url: 'http://127.0.0.1:47823/mcp', token: 'chat-secret' };
     },
     onState: () => calls.states.push(chat.state()),
-    onUpdate: (snapshot) => calls.updates.push(snapshot),
+    onUpdate: (serialized) => calls.updates.push(JSON.parse(serialized)),
     loadClient: async () => ({
       query,
       executable: '/test/claude',

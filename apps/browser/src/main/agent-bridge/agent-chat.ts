@@ -95,7 +95,8 @@ export type SessionStore = Pick<
 interface AgentChatOptions {
   connect(): Promise<AgentConnection>;
   onState(): void;
-  onUpdate(snapshot: AgentChatSnapshot): void;
+  // Receives the snapshot as JSON, the form the interface takes it in.
+  onUpdate(serialized: string): void;
   loadClient?(): Promise<Client>;
   loadSessions?(): Promise<SessionStore>;
   preferences?: { get(): ChatPreferences; set(preferences: Partial<ChatPreferences>): void };
@@ -331,11 +332,11 @@ export class AgentChat {
     return { ...this.view };
   }
 
-  snapshot(): AgentChatSnapshot {
+  snapshot(messages = this.messages): AgentChatSnapshot {
     return structuredClone({
       state: this.state(),
       revision: this.revision,
-      messages: this.messages,
+      messages,
       queue: this.queue.map((entry) => entry.message),
       permissions: [...this.permissions.values()].map((permission) => permission.view),
     });
@@ -1112,14 +1113,21 @@ export class AgentChat {
     if (!this.disposed) this.updateTimer ??= setTimeout(() => this.publish(), 32);
   }
 
+  // A streamed reply publishes about 30 times a second, so the transcript is serialized once:
+  // its size shows when old messages must go, and the same text is what the interface receives.
   private publish(): void {
     if (this.updateTimer) clearTimeout(this.updateTimer);
     this.updateTimer = null;
     if (this.disposed) return;
-    let length = this.messages.reduce((total, message) => total + JSON.stringify(message).length, 0);
-    while (this.messages.length > MAX_MESSAGES || (length > MAX_HISTORY && this.messages.length > 2))
-      length -= JSON.stringify(this.messages.shift()!).length;
+    let messages = JSON.stringify(this.messages);
+    if (this.messages.length > MAX_MESSAGES || messages.length > MAX_HISTORY) {
+      let length = messages.length;
+      while (this.messages.length > MAX_MESSAGES || (length > MAX_HISTORY && this.messages.length > 2))
+        length -= JSON.stringify(this.messages.shift()!).length;
+      messages = JSON.stringify(this.messages);
+    }
     ++this.revision;
-    this.options.onUpdate(this.snapshot());
+    const { messages: _messages, ...rest } = this.snapshot([]);
+    this.options.onUpdate(`${JSON.stringify(rest).slice(0, -1)},"messages":${messages}}`);
   }
 }

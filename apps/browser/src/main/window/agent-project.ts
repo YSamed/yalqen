@@ -4,7 +4,6 @@ import path from 'node:path';
 import { app } from 'electron';
 import type {
   AgentBackgroundChat,
-  AgentChatSnapshot,
   AgentChatState,
   AgentProjectSummary,
   AgentProviderId,
@@ -23,7 +22,7 @@ interface AgentProjectOptions {
   preferences?: ChatPreferenceStore;
   onState(): void;
   onOutput(project: AgentProject, output: AgentTerminalOutput): void;
-  onChatUpdate(project: AgentProject, snapshot: AgentChatSnapshot): void;
+  onChatUpdate(project: AgentProject, serialized: string): void;
   onUrl(project: AgentProject, url: string): void;
 }
 
@@ -142,8 +141,8 @@ export class AgentProject {
         connect: () => this.options.connect(this),
         preferences: this.options.preferences,
         onState: this.options.onState,
-        onUpdate: (snapshot) => {
-          if (this.shownChat() === chat) this.options.onChatUpdate(this, snapshot);
+        onUpdate: (serialized) => {
+          if (this.shownChat() === chat) this.options.onChatUpdate(this, serialized);
         },
         workspace: async () => {
           const directory = path.join(app.getPath('userData'), 'agent-workspace');

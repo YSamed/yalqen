@@ -54,6 +54,7 @@ const fixture = () => ({
   toolbarTabs: true,
   toolbarButtons: ['settings', 'downloads'],
   material: 'opaque',
+  accent: '#0a84ff',
   device: {
     label: 'Phone',
     width: 300,
@@ -76,8 +77,13 @@ const fixture = () => ({
   agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
   agentChat: { id: null, directory: null, status: 'idle', model: null, error: null },
   projectRun: { directory: null, command: null, status: 'idle', url: null, exitCode: null },
+  agentProviders: ['claude', 'codex'],
   agentElements: [],
   agentTerminal: false,
+  agentProjects: [{ id: 'project-1', directory: '/work/site', busy: false, waiting: false }],
+  agentProjectId: 'project-1',
+  agentConversationId: 'conversation-1',
+  agentBackgroundChats: [{ id: 'chat-1', title: 'Fix the header', status: 'thinking' }],
 });
 const changed = (value) =>
   typeof value === 'boolean'
@@ -118,6 +124,27 @@ test('picked elements keep their identity until one changes', () => {
   const result = reuseBrowserState(previous, added);
   assert.deepEqual(result.agentElements, added.agentElements);
   assert.equal(result.agentElements[0], previous.agentElements[0]);
+});
+
+test('agent lists keep their identity until an entry changes', () => {
+  const previous = freeze(fixture());
+  const busy = structuredClone(previous);
+  busy.agentProjects[0].busy = true;
+  busy.agentProjects.push({ id: 'project-2', directory: null, busy: false, waiting: false });
+  const result = reuseBrowserState(previous, freeze(busy));
+  assert.deepEqual(result, busy);
+  assert.notEqual(result.agentProjects, previous.agentProjects);
+  assert.equal(result.agentProviders, previous.agentProviders);
+  assert.equal(result.agentBackgroundChats, previous.agentBackgroundChats);
+  assert.equal(result.agentBackgroundChats[0], previous.agentBackgroundChats[0]);
+
+  const finished = structuredClone(previous);
+  finished.agentBackgroundChats[0].status = 'ready';
+  finished.agentProviders = ['claude'];
+  const next = reuseBrowserState(previous, freeze(finished));
+  assert.deepEqual(next, finished);
+  assert.equal(next.agentProjects, previous.agentProjects);
+  assert.notEqual(next.agentBackgroundChats[0], previous.agentBackgroundChats[0]);
 });
 
 test('every tab field change reaches the renderer while other tabs remain stable', () => {
