@@ -69,6 +69,7 @@
   onMount(() => {
     const offOpen = window.yalqenCommand.onOpen((open) => {
       document.documentElement.toggleAttribute('data-opaque', open.material === 'opaque');
+      document.documentElement.style.setProperty('--accent', open.accent);
       placeholder = open.placeholder;
       value = open.value ?? '';
       suggestions = [];

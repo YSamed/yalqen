@@ -127,6 +127,7 @@ export interface BrowserState {
   toolbarTabs: boolean;
   toolbarButtons: ToolbarButtonId[];
   material: WindowMaterial;
+  accent: string;
   device: DeviceFrame | null;
   zoom: number;
   defaultZoom: number;
@@ -564,6 +565,7 @@ export interface CommandBarOpen {
   mode: 'navigate' | 'new-tab';
   value?: string;
   material: WindowMaterial;
+  accent: string;
 }
 
 export const NETWORK_PRESETS = ['offline', 'slow-3g', 'fast-3g', 'fast-4g'] as const;
@@ -665,6 +667,53 @@ export interface CommandBarApi {
   send(action: CommandBarAction): void;
 }
 
+export type WelcomeTabs = 'left' | 'top';
+
+// Browsers found on this Mac that the invitation can import from; `id` indexes the list main keeps.
+export interface WelcomeImportSource {
+  id: number;
+  browser: string;
+  profile: string;
+}
+
+export interface WelcomeOpen {
+  name: string;
+  accent: import('./accent').AccentColorId;
+  theme: ThemeSource;
+  tabs: WelcomeTabs;
+  material: WindowMaterial;
+  sources: WelcomeImportSource[];
+}
+
+export type WelcomeAction =
+  | { type: 'appearance'; accent?: import('./accent').AccentColorId; theme?: ThemeSource; tabs?: WelcomeTabs }
+  | { type: 'name'; name: string }
+  | { type: 'finish' };
+
+export interface WelcomeImportRequest {
+  source: number;
+  bookmarks: boolean;
+  history: boolean;
+}
+
+export interface WelcomeImportResult {
+  ok: boolean;
+  bookmarks: number;
+  visits: number;
+}
+
+export const WelcomeChannel = {
+  open: 'yalqen-welcome:open',
+  action: 'yalqen-welcome:action',
+  import: 'yalqen-welcome:import',
+} as const;
+
+export interface WelcomeApi {
+  onOpen(listener: (open: WelcomeOpen) => void): () => void;
+  send(action: WelcomeAction): void;
+  importFrom(request: WelcomeImportRequest): Promise<WelcomeImportResult>;
+}
+
 export interface FindResult {
   active: number;
   matches: number;
@@ -720,6 +769,10 @@ export interface SettingsValues {
   askDownloadLocation: boolean;
   downloadDirectory: string | null;
   welcomeCompleted: boolean;
+  // The thank-you invitation shown once on first launch, and once to people who installed before it existed.
+  invitationSeen: boolean;
+  displayName: string;
+  accentColor: import('./accent').AccentColorId;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
   dismissedUpdate: string;

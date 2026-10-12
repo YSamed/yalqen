@@ -4,7 +4,9 @@ import { app } from 'electron';
 // Compiled main modules live in dist/main/<domain>/, beside dist/preload and dist/renderer.
 const DIST = path.join(__dirname, '../..');
 
-export function preloadPath(name: 'preload' | 'page-preload' | 'command-preload' | 'find-preload'): string {
+export function preloadPath(
+  name: 'preload' | 'page-preload' | 'command-preload' | 'find-preload' | 'welcome-preload',
+): string {
   return path.join(DIST, 'preload', `${name}.js`);
 }
 

@@ -38,11 +38,17 @@ import { AgentTokenStore } from './agent-bridge/token-store.js';
 import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench/bench-driver.js';
 import { BookmarkStore, runBookmarksCommand } from './library/bookmarks.js';
 import {
+  chromiumProfiles,
+  firefoxProfiles,
   importBookmarkFile,
   importChromiumHistory,
   importFirefoxHistory,
   isFirefoxPlaces,
 } from './library/browser-import.js';
+import { WelcomeCard } from './window/welcome-card.js';
+import { appearancePatch, invitationSources, invitationTabs } from './app/invitation.js';
+import { setPageAccent } from './pages/responses.js';
+import { accentHex } from '../shared/accent.js';
 import { CertificateExceptions, handleCertificateErrors } from './privacy/certificates.js';
 import { clearSince } from './library/clear-data.js';
 import { CommandBar } from './address-bar/command-bar.js';
@@ -488,6 +494,11 @@ function startBrowser(): void {
     preload: preloadPath('find-preload'),
     page: rendererPath('find.html'),
   });
+  const welcome = new WelcomeCard({
+    preload: preloadPath('welcome-preload'),
+    page: rendererPath('welcome.html'),
+  });
+  setPageAccent(accentHex(settings.get().accentColor));
   nativeTheme.themeSource = settings.get().theme;
   let deviceId = DEFAULT_DEVICE_ID;
 
@@ -524,6 +535,7 @@ function startBrowser(): void {
     if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
     nativeTheme.themeSource = next.theme;
+    if (next.accentColor !== previous.accentColor) setPageAccent(accentHex(next.accentColor));
     if (next.freezeBackgroundTabs !== previous.freezeBackgroundTabs)
       eachWindow((window) => window.tabs.applyFreezeSetting());
     if (next.autoUpdate !== previous.autoUpdate) updater.schedule();
@@ -555,6 +567,7 @@ function startBrowser(): void {
     siteProtections,
     commandBar,
     findBar,
+    welcome,
     history,
     repoPrompt,
     dismissAnnouncement: () => settings.update({ dismissedAnnouncement: app.getVersion() }),
@@ -966,6 +979,7 @@ function startBrowser(): void {
     threatLists.stop();
     commandBar.destroy();
     findBar.destroy();
+    welcome.destroy();
     extensionPopup.close();
     extensions.stopUpdates();
     extensions.saveNow();
@@ -1031,6 +1045,50 @@ function startBrowser(): void {
     );
     if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
     else if (rest.length > 0) openExternal(rest);
+    showInvitation();
+  };
+
+  // Everyone sees the thank-you invitation once, including people who installed before it existed.
+  const showInvitation = () => {
+    const window = current;
+    if (bench || settings.get().invitationSeen || !window || window.isPrivate || window.isDeveloper || window.webApp)
+      return;
+    const sources = invitationSources([...chromiumProfiles('Bookmarks'), ...firefoxProfiles()]);
+    const values = settings.get();
+    welcome.show({
+      window: window.window,
+      open: {
+        name: values.displayName,
+        accent: values.accentColor,
+        theme: values.theme,
+        tabs: invitationTabs(values),
+        material: glassAtLaunch(settings) ? 'glass' : 'opaque',
+        sources: sources.map(({ id, browser, profile }) => ({ id, browser, profile })),
+      },
+      onAction: (action) => {
+        if (action.type === 'appearance') updateSettings(appearancePatch(action));
+        else if (action.type === 'name' && typeof action.name === 'string')
+          updateSettings({ displayName: action.name });
+      },
+      importFrom: async (request) => {
+        const source = sources.find((item) => item.id === request.source);
+        if (!source) return { ok: false, bookmarks: 0, visits: 0 };
+        try {
+          const bookmarks =
+            request.bookmarks === true ? (await context.importBookmarks(source.bookmarks)).bookmarks : 0;
+          const visits =
+            request.history === true && source.history ? (await context.importHistory(source.history)).visits : 0;
+          return { ok: true, bookmarks, visits };
+        } catch (error) {
+          console.warn('[invitation] could not import:', error);
+          return { ok: false, bookmarks: 0, visits: 0 };
+        }
+      },
+      onFinish: () => {
+        settings.update({ invitationSeen: true });
+        window.focus();
+      },
+    });
   };
   void extensions.loadAll().then(() => {
     bench?.mark('extensions-loaded');

@@ -14,6 +14,7 @@ import type {
 import { DEFAULT_ZOOM_FACTORS, REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../../shared/types.js';
 import { webPageUrl, sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
+import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
 import { JsonFile } from '../storage/json-file.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
 import { FONT_SIZES } from './page-preferences.js';
@@ -62,6 +63,9 @@ const DEFAULTS: Settings = {
   askDownloadLocation: false,
   downloadDirectory: null,
   welcomeCompleted: false,
+  invitationSeen: false,
+  displayName: '',
+  accentColor: DEFAULT_ACCENT,
   dismissedAnnouncement: '',
   dismissedFeedback: '',
   dismissedUpdate: '',
@@ -86,6 +90,15 @@ function sanitizeToolbarButtons(value: unknown, fallback: ToolbarButtonId[]): To
   if (!Array.isArray(value)) return fallback;
   const buttons = [...new Set(value)].filter((id): id is ToolbarButtonId => TOOLBAR_BUTTONS.has(id));
   return buttons.includes(REQUIRED_TOOLBAR_BUTTON) ? buttons : [...buttons, REQUIRED_TOOLBAR_BUTTON];
+}
+
+const MAX_DISPLAY_NAME = 40;
+
+function sanitizeDisplayName(value: string): string {
+  const name = [...value.replace(/\s+/g, ' ').trim()].filter(
+    (char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127,
+  );
+  return name.slice(0, MAX_DISPLAY_NAME).join('').trim();
 }
 
 export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Settings {
@@ -126,6 +139,9 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     askDownloadLocation,
     downloadDirectory,
     welcomeCompleted,
+    invitationSeen,
+    displayName,
+    accentColor,
     dismissedAnnouncement,
     dismissedFeedback,
     dismissedUpdate,
@@ -200,6 +216,9 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? downloadDirectory
         : base.downloadDirectory,
     welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
+    invitationSeen: typeof invitationSeen === 'boolean' ? invitationSeen : base.invitationSeen,
+    displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
+    accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
     dismissedAnnouncement:
       typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,
     dismissedFeedback: typeof dismissedFeedback === 'string' ? dismissedFeedback.slice(0, 64) : base.dismissedFeedback,

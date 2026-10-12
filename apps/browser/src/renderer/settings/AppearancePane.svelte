@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { DEFAULT_ZOOM_FACTORS, type SettingsValues } from '../../shared/types';
   import { t } from '../../shared/i18n';
+  import AccentPicker from '../ui/AccentPicker.svelte';
   import Button from '../ui/Button.svelte';
   import AdvancedGroup from './AdvancedGroup.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
@@ -132,6 +133,13 @@
   onchange={(value) => update({ theme: value })}
   preview={themePreview}
 />
+<SettingRow title={t('settings.accent')} hint={t('settings.accentHint')}>
+  <AccentPicker
+    label={t('settings.accent')}
+    value={values.accentColor}
+    onchange={(value) => update({ accentColor: value })}
+  />
+</SettingRow>
 
 <h2>{t('settings.tabPanel')}</h2>
 <ChoiceCards
