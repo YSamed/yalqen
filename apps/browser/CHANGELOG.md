@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.62](https://github.com/YSamed/yalqen/compare/v0.3.61...v0.3.62) (2026-10-12)
+
+
+### Features
+
+* redesign sidebar media player as capsule with track skip ([#253](https://github.com/YSamed/yalqen/issues/253)) ([0ef5aa6](https://github.com/YSamed/yalqen/commit/0ef5aa6ff88091242b4c7512c7afb36fbbea380a))
+
 ## [0.3.61](https://github.com/YSamed/yalqen/compare/v0.3.60...v0.3.61) (2026-10-12)
 
 
