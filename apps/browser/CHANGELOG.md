@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.67](https://github.com/YSamed/yalqen/compare/v0.3.66...v0.3.67) (2026-10-13)
+
+
+### Bug Fixes
+
+* **tabs:** restore tab dragging by activating tabs on click again ([#263](https://github.com/YSamed/yalqen/issues/263)) ([4221d03](https://github.com/YSamed/yalqen/commit/4221d030bd12a84dcaff4241a788988b17b7efeb))
+
 ## [0.3.66](https://github.com/YSamed/yalqen/compare/v0.3.65...v0.3.66) (2026-10-13)
 
 
