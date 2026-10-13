@@ -408,7 +408,6 @@
               class="select"
               class:private={tab.isPrivate}
               title={tab.isPrivate ? t('toolbar.privateTabTitle', { title: tab.title }) : tab.title}
-              onpointerdown={(e) => e.button === 0 && e.isPrimary && send({ type: 'activate-tab', id: tab.id })}
               onclick={() => send({ type: 'activate-tab', id: tab.id })}
               onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
             >

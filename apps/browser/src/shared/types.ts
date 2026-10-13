@@ -374,9 +374,7 @@ export interface AnchorRect {
 
 export type UiAction =
   | { type: 'new-tab'; url?: string }
-  // `pressed` comes from the pointer going down: the page takes focus on release, so a drag can still start.
-  | { type: 'activate-tab'; id: TabId; pressed?: boolean }
-  | { type: 'focus-page' }
+  | { type: 'activate-tab'; id: TabId }
   | { type: 'select-tab'; id: TabId; mode: 'toggle' | 'range' }
   | { type: 'clear-tab-selection' }
   | { type: 'close-selected-tabs' }

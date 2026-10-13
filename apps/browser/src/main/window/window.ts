@@ -1502,12 +1502,7 @@ export class YalqenWindow {
         tabs.open(action.url);
         break;
       case 'activate-tab':
-        tabs.activate(action.id, action.pressed !== true);
-        // The interface keeps the keyboard while the button is down, so Escape can still cancel a drag.
-        if (action.pressed) this.uiContents.focus();
-        break;
-      case 'focus-page':
-        tabs.focusActive();
+        tabs.activate(action.id);
         break;
       case 'select-tab':
         tabs.selectTab(action.id, action.mode);
