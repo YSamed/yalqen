@@ -69,6 +69,22 @@ Startup is unchanged within the noise of the runs.
 
 A settings update from the slider takes 0.6 ms (median of 60, 95th percentile 2.8 ms) from the settings page to the applied setting, so the window follows the slider while it moves. The window was captured with the desktop behind it at 0, 25, 60 and 100 in light and dark mode.
 
+## First frame of the window
+
+Added on 2026-10-13 after a report of a dark flash when a glass window opens. The window was shown as soon as the interface sent its layout, but a page in a hidden window does not draw, so the first frames showed the bare glass over the desktop: dark in light mode over a dark wallpaper, bright in dark mode. A recording of only the application's windows shows the empty glass for the first four to five frames.
+
+`YalqenWindow` now turns background throttling off for the interface when the first layout arrives, waits for the page's first paint entry or 200 ms, shows the window and turns throttling back on. The one-second fallback remains.
+
+Three alternating runs with 20 restored tabs, milliseconds from process start:
+
+| Event                             | Before        | After       |
+| --------------------------------- | ------------- | ----------- |
+| `window.show()`                   | 262–294       | 320–369     |
+| Interface first contentful paint  | 502–552       | 319–357     |
+| Paint relative to `window.show()` | 238–258 after | 1–12 before |
+
+The window is shown 46–62 ms after the layout instead of at once, and it is complete when it appears. The startup benchmark's `window-shown` mark moves later by the same amount; that shift is intended and is not a regression against the 367.5 ms of the [startup pass](startup-and-agent-chat.md). The runs took place while another app was full screen, so the system also switched Spaces; without that switch the earlier pass measured about 76 ms between the shown window and its first paint.
+
 ## Trade-offs
 
 - **A press cannot be cancelled.** Moving the pointer off a tab before releasing no longer avoids the switch. The same is reported for Chrome and Firefox; the switch is not destructive and pressing the previous tab reverses it. WCAG 2.5.2 lists activation on the down-event as a failure for web content and exempts what is needed to operate the user agent; the tab list is the browser's own interface. Closing a tab, the toolbar buttons and every other control still act on release.

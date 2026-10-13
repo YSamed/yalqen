@@ -106,6 +106,16 @@ import { accentHex } from '../../shared/accent.js';
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
 const REVEAL_FALLBACK_MS = 1000;
+const FIRST_PAINT_WAIT_MS = 200;
+// Resolves when the page has drawn, or after a short wait where a hidden page reports no paint.
+const FIRST_PAINT_SCRIPT = `new Promise((resolve) => {
+  if (performance.getEntriesByType('paint').length > 0) return resolve();
+  new PerformanceObserver((_list, observer) => {
+    observer.disconnect();
+    resolve();
+  }).observe({ type: 'paint', buffered: true });
+  setTimeout(resolve, ${FIRST_PAINT_WAIT_MS});
+})`;
 const WALLPAPER_PRELOAD_DELAY_MS = 3000;
 const MAX_PICKED_ELEMENTS = 5;
 const MAX_AGENT_PROJECTS = 6;
@@ -222,6 +232,7 @@ export class YalqenWindow {
   };
   private glassApplied: boolean;
   private revealed = false;
+  private revealPending = false;
   private htmlFullScreenTabId: string | null = null;
   private pushQueued = false;
   private lastPushedState = '';
@@ -1255,15 +1266,24 @@ export class YalqenWindow {
         this.applyLayout();
       }
     }
-    this.reveal();
+    this.revealWhenPainted();
   }
 
-  // The window stays hidden until the chrome reports its real layout, so the page never
-  // appears at the default bounds first and then jumps.
+  // The window stays hidden until the chrome has its real layout and has drawn it, so the page
+  // never jumps from the default bounds and the glass never shows empty first.
+  private revealWhenPainted(): void {
+    if (this.revealPending || this.revealed) return;
+    this.revealPending = true;
+    // A page in a hidden window does not draw; without throttling it does, until the window is shown.
+    this.uiContents.setBackgroundThrottling(false);
+    void this.uiContents.executeJavaScript(FIRST_PAINT_SCRIPT).then(this.reveal, this.reveal);
+  }
+
   private reveal = (): void => {
     if (this.revealed || this.window.isDestroyed()) return;
     this.revealed = true;
     this.window.show();
+    if (!this.uiContents.isDestroyed()) this.uiContents.setBackgroundThrottling(true);
   };
 
   openAddress(): void {

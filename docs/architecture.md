@@ -14,7 +14,7 @@ Yalqen is an Electron app in `apps/browser`. This page maps the source tree so a
 
 The main process pushes a complete `BrowserState` to each window interface as a JSON string, which crosses the context bridge without the deep copy an object would need. `src/shared/browser-state.ts` keeps unchanged tabs and arrays stable on arrival, and `App.svelte` splits the state into one signal per field, so a title or download update only re-renders what changed. The agent chat sends its transcript the same way, and `src/shared/chat-snapshot.ts` keeps the unchanged messages, so a streamed reply re-renders only its own text.
 
-`YalqenWindow` starts loading the window interface before it creates the native window, and the interface reports its layout before it renders the tab rows, because the window is shown when that layout arrives.
+`YalqenWindow` starts loading the window interface before it creates the native window, and the interface reports its layout before it renders the tab rows. The window is shown once the interface has drawn that layout: a page in a hidden window does not draw, so background throttling is off for the interface until then.
 
 ## Main process
 
