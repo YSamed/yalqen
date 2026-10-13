@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.65](https://github.com/YSamed/yalqen/compare/v0.3.64...v0.3.65) (2026-10-13)
+
+
+### Features
+
+* switch tabs on press and add an adjustable glass tint ([#259](https://github.com/YSamed/yalqen/issues/259)) ([28753a8](https://github.com/YSamed/yalqen/commit/28753a86abd2dec39f77ae70e9190d0ca7066e45))
+
 ## [0.3.64](https://github.com/YSamed/yalqen/compare/v0.3.63...v0.3.64) (2026-10-12)
 
 
