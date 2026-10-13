@@ -151,6 +151,8 @@ const externalUrls = new ExternalUrlInbox(primary);
 // Chromium reads its locale switch once at startup, before the app is ready.
 const chosenLanguage = new SettingsStore(app.getPath('userData')).get().interfaceLanguage;
 if (chosenLanguage !== 'system') app.commandLine.appendSwitch('lang', chosenLanguage);
+// Chromium keeps one renderer process warm, so a new tab or a new site does not wait for a launch.
+app.commandLine.appendSwitch('enable-features', 'SpareRendererForSitePerProcess');
 
 function startBrowser(): void {
   const userData = app.getPath('userData');

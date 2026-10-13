@@ -114,6 +114,7 @@ ipcRenderer.on('bench:state', (_event, state) => {
     toolbarTabs: !values['active-only'],
     toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'],
     material: 'opaque',
+    glassTint: 25,
     accent: '#0a84ff',
     device: null,
     zoom: 1,

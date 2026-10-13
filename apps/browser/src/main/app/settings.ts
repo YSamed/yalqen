@@ -10,7 +10,12 @@ import type {
   ThemeSource,
   ToolbarButtonId,
 } from '../../shared/types.js';
-import { DEFAULT_ZOOM_FACTORS, REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS } from '../../shared/types.js';
+import {
+  DEFAULT_GLASS_TINT,
+  DEFAULT_ZOOM_FACTORS,
+  REQUIRED_TOOLBAR_BUTTON,
+  TOOLBAR_BUTTON_IDS,
+} from '../../shared/types.js';
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
@@ -30,6 +35,7 @@ const DEFAULTS: Settings = {
   customSearchTemplate: null,
   theme: 'light',
   transparency: true,
+  glassTint: DEFAULT_GLASS_TINT,
   startupBehavior: 'restore',
   startupUrls: [],
   panelCollapsed: false,
@@ -101,6 +107,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     customSearchTemplate,
     theme,
     transparency,
+    glassTint,
     startupBehavior,
     startupUrls,
     panelCollapsed,
@@ -152,6 +159,10 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
     transparency: typeof transparency === 'boolean' ? transparency : base.transparency,
+    glassTint:
+      typeof glassTint === 'number' && Number.isFinite(glassTint)
+        ? Math.round(Math.min(100, Math.max(0, glassTint)))
+        : base.glassTint,
     startupBehavior:
       typeof startupBehavior === 'string' && STARTUP_BEHAVIORS.has(startupBehavior)
         ? (startupBehavior as Settings['startupBehavior'])

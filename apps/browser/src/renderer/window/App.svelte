@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { t } from '../../shared/i18n';
-  import type { BrowserState } from '../../shared/types';
+  import { DEFAULT_GLASS_TINT, type BrowserState } from '../../shared/types';
   import type { TabGroup } from '../../shared/tab-groups';
   import { reuseBrowserState } from '../../shared/browser-state';
   import { accentHex, DEFAULT_ACCENT } from '../../shared/accent';
@@ -58,6 +58,7 @@
     toolbarTabs: true,
     toolbarButtons: [],
     material: 'opaque',
+    glassTint: DEFAULT_GLASS_TINT,
     accent: accentHex(DEFAULT_ACCENT),
     device: null,
     zoom: 1,
@@ -264,6 +265,7 @@
   $effect(() => {
     document.documentElement.dataset.material = material;
     document.documentElement.style.setProperty('--accent', browser.accent);
+    document.documentElement.style.setProperty('--glass-tint', String(browser.glassTint / 100));
     document.documentElement.toggleAttribute('data-fullscreen', windowFullScreen);
   });
 

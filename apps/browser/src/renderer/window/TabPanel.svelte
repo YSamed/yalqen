@@ -85,10 +85,18 @@
   const send = window.yalqen.send;
   const selected = $derived(new Set(selectedTabIds));
 
+  // A tab switches when the button goes down, as in other browsers, not when it is released.
+  // The page takes focus on the click that follows, so the press can still become a drag.
+  function pressTab(event: PointerEvent, id: TabId): void {
+    if (event.button !== 0 || !event.isPrimary || event.shiftKey || event.metaKey || event.ctrlKey) return;
+    send({ type: 'activate-tab', id, pressed: true });
+  }
+
   function selectTab(event: MouseEvent, id: TabId): void {
     if (event.shiftKey) send({ type: 'select-tab', id, mode: 'range' });
     else if (event.metaKey || event.ctrlKey) send({ type: 'select-tab', id, mode: 'toggle' });
-    else send({ type: 'activate-tab', id });
+    else if (event.detail === 0 || id !== activeTabId) send({ type: 'activate-tab', id });
+    else send({ type: 'focus-page' });
   }
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
@@ -169,6 +177,12 @@
 
   function onPointerMove(event: PointerEvent): void {
     if (!press || press.cancelled || !event.isPrimary) return;
+    // The page of a tab activated by this press can take focus, so a blur does not end the drag.
+    // A move without the button means the release happened elsewhere, for example in another app.
+    if (event.buttons === 0) {
+      endDrag();
+      return;
+    }
     pointer = { x: event.clientX, y: event.clientY };
     if (!press.dragging) {
       if (Math.hypot(pointer.x - press.x, pointer.y - press.y) < DRAG_THRESHOLD) return;
@@ -357,6 +371,7 @@
     label={label(tab)}
     aria-current={tab.id === activeTabId ? 'page' : undefined}
     aria-pressed={selected.has(tab.id)}
+    onpointerdown={(e) => pressTab(e, tab.id)}
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
@@ -373,6 +388,7 @@
     label={tabLabel}
     tabindex={-1}
     aria-pressed={selected.has(tab.id)}
+    onpointerdown={(e) => pressTab(e, tab.id)}
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
@@ -399,6 +415,7 @@
     aria-label={tabLabel}
     aria-current={tab.id === activeTabId ? 'page' : undefined}
     aria-pressed={selected.has(tab.id)}
+    onpointerdown={(e) => pressTab(e, tab.id)}
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
@@ -426,7 +443,6 @@
   onpointerup={onPointerUp}
   onpointercancel={endDrag}
   onkeydown={onKeyDown}
-  onblur={endDrag}
 />
 
 <aside
@@ -474,6 +490,7 @@
                     label={label(tab)}
                     aria-current={tab.id === activeTabId ? 'page' : undefined}
                     aria-pressed={selected.has(tab.id)}
+                    onpointerdown={(e) => pressTab(e, tab.id)}
                     onclick={(e) => selectTab(e, tab.id)}
                     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
                   >

@@ -102,6 +102,9 @@ export type ToolbarButtonId = (typeof TOOLBAR_BUTTON_IDS)[number];
 export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
 
 export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
+
+// How strongly the glass window is tinted, in percent: 0 leaves the bare glass, 100 is almost solid.
+export const DEFAULT_GLASS_TINT = 25;
 export const DISCARD_AFTER_MINUTES = [0, 15, 30, 60, 120] as const;
 
 export interface BrowserState {
@@ -124,6 +127,7 @@ export interface BrowserState {
   toolbarTabs: boolean;
   toolbarButtons: ToolbarButtonId[];
   material: WindowMaterial;
+  glassTint: number;
   accent: string;
   device: DeviceFrame | null;
   zoom: number;
@@ -370,7 +374,9 @@ export interface AnchorRect {
 
 export type UiAction =
   | { type: 'new-tab'; url?: string }
-  | { type: 'activate-tab'; id: TabId }
+  // `pressed` comes from the pointer going down: the page takes focus on release, so a drag can still start.
+  | { type: 'activate-tab'; id: TabId; pressed?: boolean }
+  | { type: 'focus-page' }
   | { type: 'select-tab'; id: TabId; mode: 'toggle' | 'range' }
   | { type: 'clear-tab-selection' }
   | { type: 'close-selected-tabs' }
@@ -735,6 +741,7 @@ export interface SettingsValues {
   customSearchTemplate: string | null;
   theme: ThemeSource;
   transparency: boolean;
+  glassTint: number;
   startupBehavior: 'restore' | 'new-tab' | 'pages';
   startupUrls: string[];
   panelCollapsed: boolean;

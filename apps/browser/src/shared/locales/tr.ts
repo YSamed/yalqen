@@ -857,6 +857,8 @@ export const tr: Record<MessageKey, string> = {
   'settings.sidebar': 'Yan menü',
   'settings.transparency': 'Şeffaflık',
   'settings.transparencyHint': 'Kapatınca pencere açık veya koyu modda düz renk olur. Yeniden başlatınca geçerli olur.',
+  'settings.glassTint': 'Cam yoğunluğu',
+  'settings.glassTintHint': 'Pencerenin arkasını ne kadar örttüğünü belirler. Düşük değer daha şeffaftır.',
   'settings.pinnedTabs': 'Sabitlenmiş sekmeler',
   'settings.pinnedAlways': 'Her zaman',
   'settings.pinnedExpanded': 'Sadece geniş menüde',

@@ -40,6 +40,7 @@ test('unknown or mistyped fields fall back', () => {
       customSearchTemplate: null,
       theme: 'light',
       transparency: true,
+      glassTint: 25,
       startupBehavior: 'restore',
       startupUrls: [],
       panelCollapsed: false,
@@ -199,4 +200,14 @@ test('the invitation name is trimmed, single-spaced and capped, and the accent s
   assert.equal(sanitizeSettings({ displayName: 'x'.repeat(80) }).displayName.length, 40);
   assert.equal(sanitizeSettings({ accentColor: '#ff0000' }).accentColor, 'orange');
   assert.equal(sanitizeSettings({ invitationSeen: 'yes' }).invitationSeen, false);
+});
+
+test('the glass tint is a whole percentage between 0 and 100', () => {
+  assert.equal(sanitizeSettings({}).glassTint, 25);
+  assert.equal(sanitizeSettings({ glassTint: 0 }).glassTint, 0);
+  assert.equal(sanitizeSettings({ glassTint: 62.6 }).glassTint, 63);
+  assert.equal(sanitizeSettings({ glassTint: 180 }).glassTint, 100);
+  assert.equal(sanitizeSettings({ glassTint: -4 }).glassTint, 0);
+  for (const value of ['40', null, Number.NaN, Infinity])
+    assert.equal(sanitizeSettings({ glassTint: value }).glassTint, 25);
 });

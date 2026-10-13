@@ -301,7 +301,7 @@ export class TabManager {
     return tab.id;
   }
 
-  activate(id: TabId): void {
+  activate(id: TabId, focus = true): void {
     const next = this.find(id);
     if (!next) return;
     if (next.group) this.collapsedGroups.delete(next.group);
@@ -326,7 +326,7 @@ export class TabManager {
     this.placement.syncNewTabCenter(next);
     this.placement.place(next, view);
     this.options.window.contentView.addChildView(view);
-    if (next.url !== 'about:blank') view.webContents.focus();
+    if (focus && next.url !== 'about:blank') view.webContents.focus();
     this.changed(true);
   }
 

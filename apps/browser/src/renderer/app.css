@@ -44,7 +44,8 @@
   --window: transparent;
   --warn: #a34a06;
   --bg: transparent;
-  --chrome-base: rgb(250 247 243 / 0.22);
+  /* The interface sets --glass-tint from the setting; the factors keep 0.22 and 0.32 at its default. */
+  --chrome-base: rgb(250 247 243 / calc(var(--glass-tint, 0.25) * 0.88));
   --surface: rgb(255 255 255 / 0.55);
   --surface-strong: rgb(255 255 255 / 0.82);
   /* Menus float over text, so a see-through glass fill would mix the two. */
@@ -64,7 +65,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root[data-material='glass'] {
-    --chrome-base: rgb(27 24 24 / 0.32);
+    --chrome-base: rgb(27 24 24 / min(0.96, calc(var(--glass-tint, 0.25) * 1.28)));
     --surface: rgb(255 255 255 / 0.08);
     --surface-strong: rgb(255 255 255 / 0.13);
     --surface-menu: #2a2c30;

@@ -55,7 +55,7 @@ Tests in `apps/browser/test` mirror the source tree (`test/main/library/history.
 
 ## Shared styles
 
-`src/renderer/public/tokens.css` holds the colors shared by the window interface, the settings page, the internal `yalqen://` pages and error pages, with `light-dark()` choosing the light or dark value. `app.css` imports it, the main process inlines it with `controls.css` into internal pages through the `__YALQEN_STYLES_SLOT__` marker (their CSP allows only inline styles), and error pages receive it as their `theme`. A page keeps a local value only where it differs on purpose, such as the stronger dark border on the history, bookmarks and downloads pages, or the new tab's glass palette.
+`src/renderer/public/tokens.css` holds the colors shared by the window interface, the settings page, the internal `yalqen://` pages and error pages, with `light-dark()` choosing the light or dark value. `app.css` imports it, the main process inlines it with `controls.css` into internal pages through the `__YALQEN_STYLES_SLOT__` marker (their CSP allows only inline styles), and error pages receive it as their `theme`. A page keeps a local value only where it differs on purpose, such as the stronger dark border on the history, bookmarks and downloads pages, or the new tab's glass palette. On a glass window the interface sets `--glass-tint` from the Glass tint setting, and `--chrome-base` takes its alpha from it.
 
 After a styling change, `node scripts/capture-ui.mjs --out <dir>` records the computed colors, borders and shadows of every element on each surface in light and dark, and `--compare <before> <after>` lists what changed.
 

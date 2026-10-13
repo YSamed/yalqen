@@ -54,6 +54,7 @@ const fixture = () => ({
   toolbarTabs: true,
   toolbarButtons: ['settings', 'downloads'],
   material: 'opaque',
+  glassTint: 25,
   accent: '#0a84ff',
   device: {
     label: 'Phone',

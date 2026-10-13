@@ -850,6 +850,8 @@ export const en = {
   'settings.sidebar': 'Sidebar',
   'settings.transparency': 'Transparency',
   'settings.transparencyHint': 'Turn off to use a solid window in light or dark mode. Takes effect after a restart.',
+  'settings.glassTint': 'Glass tint',
+  'settings.glassTintHint': 'How much the window covers what is behind it. Lower is clearer.',
   'settings.pinnedTabs': 'Pinned tabs',
   'settings.pinnedAlways': 'Always',
   'settings.pinnedExpanded': 'Wide sidebar only',

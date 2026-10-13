@@ -169,6 +169,19 @@
       <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
     {/if}
   </SettingRow>
+  {#if startupTransparency}
+    <SettingRow title={t('settings.glassTint')} hint={t('settings.glassTintHint')} labelFor="glass-tint">
+      <input
+        id="glass-tint"
+        class="tint"
+        type="range"
+        min="0"
+        max="100"
+        value={values.glassTint}
+        oninput={(event) => update({ glassTint: event.currentTarget.valueAsNumber })}
+      />
+    </SettingRow>
+  {/if}
   <SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
     <Select
       id="default-zoom"
@@ -180,6 +193,12 @@
 </AdvancedGroup>
 
 <style>
+  .tint {
+    flex: none;
+    width: 180px;
+    accent-color: var(--accent);
+  }
+
   svg {
     --mock-light: #ffffff;
     --mock-light-side: #f1f1f3;
