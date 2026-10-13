@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.66](https://github.com/YSamed/yalqen/compare/v0.3.65...v0.3.66) (2026-10-13)
+
+
+### Bug Fixes
+
+* **window:** show the window after the interface has painted ([#261](https://github.com/YSamed/yalqen/issues/261)) ([81fb96d](https://github.com/YSamed/yalqen/commit/81fb96d3b1f35ed6b11dc85a1f3f72ea8389142b))
+
 ## [0.3.65](https://github.com/YSamed/yalqen/compare/v0.3.64...v0.3.65) (2026-10-13)
 
 
