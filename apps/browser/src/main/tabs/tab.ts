@@ -33,6 +33,8 @@ export interface Tab {
   translationRun: number;
   loading: boolean;
   frozen: boolean;
+  playingMedia: number;
+  soundAt: number;
   history: SavedHistory | null;
   emulation: Emulation | null;
   visitId: string | null;
@@ -73,6 +75,8 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     translationRun: 0,
     loading: false,
     frozen: false,
+    playingMedia: 0,
+    soundAt: 0,
     history: saved.history ?? null,
     emulation: null,
     visitId: null,

@@ -61,7 +61,7 @@ import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, opensInPlace, recordBlocked } from './popups.js';
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
 import { checkBeforeUnload } from './before-unload.js';
-import { TabFreezer } from './tab-freezer.js';
+import { keepsPlaying, TabFreezer } from './tab-freezer.js';
 import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger, rulesFor } from './tab-overrides.js';
 import { observeTab, unobserveTab } from './tab-agent.js';
 import { captureReference, captureSelection, highlightSelector, startPicking, type PickSession } from './tab-picker.js';
@@ -718,7 +718,7 @@ export class TabManager {
         active: tab.id === this.activeId,
         pinned: tab.pinnedUrl !== null,
         loading: tab.loading,
-        audible: contents.isCurrentlyAudible(),
+        audible: contents.isCurrentlyAudible() || keepsPlaying(tab),
         devToolsOpen: contents.isDevToolsOpened(),
         edited: tab.edited,
         inactiveSince: tab.inactiveSince,
@@ -1643,11 +1643,24 @@ export class TabManager {
       this.changed();
     });
     listen('audio-state-changed', ({ audible }) => {
+      tab.soundAt = Date.now();
       if (audible) this.media = { tabId: tab.id, info: null, updatedAt: Date.now() };
       const read = this.media?.tabId === tab.id ? this.refreshMedia(tab.id) : Promise.resolve();
       // The player reads the paused state before the tab freezes, or it would keep showing it as playing.
-      if (!audible) void read.then(() => this.freezer.maybeFreeze(tab));
+      if (!audible) void read.then(() => this.freezer.freezeAfterGap(tab));
       this.changed();
+    });
+    listen('media-started-playing', () => {
+      tab.playingMedia++;
+    });
+    listen('media-paused', () => {
+      tab.playingMedia = Math.max(0, tab.playingMedia - 1);
+      if (tab.soundAt) tab.soundAt = Date.now();
+      this.freezer.freezeAfterGap(tab);
+    });
+    listen('did-navigate', () => {
+      tab.playingMedia = 0;
+      tab.soundAt = 0;
     });
     listen('devtools-closed', () => this.freezer.maybeFreeze(tab));
     listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
@@ -1832,6 +1845,8 @@ export class TabManager {
     tab.view = null;
     tab.loading = false;
     tab.frozen = false;
+    tab.playingMedia = 0;
+    tab.soundAt = 0;
     tab.overrides = NO_OVERRIDES;
     tab.agent = null;
     this.translation.reset(tab);

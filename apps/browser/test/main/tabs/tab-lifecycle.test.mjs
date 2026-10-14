@@ -195,3 +195,47 @@ test('a queued renderer crash does not unload a tab that moved to another manage
   assert.deepEqual(f.changes, []);
   recipient.destroyAll();
 });
+
+function freezable(f) {
+  f.manager.options.freezeBackground = () => true;
+  const contents = f.view.webContents;
+  let audible = false;
+  contents.isCurrentlyAudible = () => audible;
+  contents.isDevToolsOpened = () => false;
+  contents.debugger.isAttached = () => true;
+  contents.debugger.sendCommand = async () => {};
+  contents.debugger.detach = () => {};
+  return (value) => {
+    audible = value;
+    contents.emit('audio-state-changed', { audible: value });
+  };
+}
+
+test('a background tab that made sound keeps playing through silence and freezes once its media stops', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
+  const f = fixture();
+  const sound = freezable(f);
+  f.view.webContents.emit('media-started-playing');
+  sound(true);
+  sound(false);
+  await nextTurn();
+  t.mock.timers.tick(5 * 60_000);
+  assert.equal(f.tab.frozen, false);
+  assert.equal(f.manager.discardCandidates()[0].audible, true);
+
+  f.view.webContents.emit('media-paused');
+  t.mock.timers.tick(10_000);
+  assert.equal(f.tab.frozen, false);
+  t.mock.timers.tick(30_000);
+  assert.equal(f.tab.frozen, true);
+  assert.equal(f.manager.discardCandidates()[0].audible, false);
+});
+
+test('a muted autoplay that never made sound still freezes in the background', () => {
+  const f = fixture();
+  freezable(f);
+  f.view.webContents.emit('media-started-playing');
+  assert.equal(f.manager.discardCandidates()[0].audible, false);
+  f.manager.freezer.maybeFreeze(f.tab);
+  assert.equal(f.tab.frozen, true);
+});
