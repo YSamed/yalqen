@@ -1643,7 +1643,8 @@ export class TabManager {
       this.changed();
     });
     listen('audio-state-changed', ({ audible }) => {
-      tab.soundAt = Date.now();
+      // The previous page's sound stops after the next one commits, which must not count as the new page's sound.
+      if (audible || tab.soundAt) tab.soundAt = Date.now();
       if (audible) this.media = { tabId: tab.id, info: null, updatedAt: Date.now() };
       const read = this.media?.tabId === tab.id ? this.refreshMedia(tab.id) : Promise.resolve();
       // The player reads the paused state before the tab freezes, or it would keep showing it as playing.

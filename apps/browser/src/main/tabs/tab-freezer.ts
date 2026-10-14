@@ -13,6 +13,7 @@ interface FreezeHost {
 const MEDIA_GAP_MS = 30_000;
 
 // Chromium reports a playing tab as silent during a quiet passage; a muted autoplay that never made sound can still freeze.
+// shortcut: a page that made sound once keeps later muted autoplays running too; track sound per player if feeds stay awake.
 export function keepsPlaying(tab: Tab): boolean {
   return tab.soundAt > 0 && (tab.playingMedia > 0 || Date.now() - tab.soundAt < MEDIA_GAP_MS);
 }

@@ -239,3 +239,11 @@ test('a muted autoplay that never made sound still freezes in the background', (
   f.manager.freezer.maybeFreeze(f.tab);
   assert.equal(f.tab.frozen, true);
 });
+
+test('a silence event left over from the previous page does not protect a page that never made sound', () => {
+  const f = fixture();
+  const sound = freezable(f);
+  f.view.webContents.emit('media-started-playing');
+  sound(false);
+  assert.equal(f.manager.discardCandidates()[0].audible, false);
+});
