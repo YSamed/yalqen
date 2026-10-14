@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.68](https://github.com/YSamed/yalqen/compare/v0.3.67...v0.3.68) (2026-10-14)
+
+
+### Bug Fixes
+
+* ignore the previous page's silence when protecting background media ([#272](https://github.com/YSamed/yalqen/issues/272)) ([ba37146](https://github.com/YSamed/yalqen/commit/ba37146d7313d5013e66260aab93dc1c3a5e5aed))
+* keep background media playing through quiet passages ([#270](https://github.com/YSamed/yalqen/issues/270)) ([9e325dd](https://github.com/YSamed/yalqen/commit/9e325dd50eecddc02032002d6eeb7ab9e4afcbb8))
+
 ## [0.3.67](https://github.com/YSamed/yalqen/compare/v0.3.66...v0.3.67) (2026-10-13)
 
 
