@@ -897,7 +897,7 @@ export const tr: Record<MessageKey, string> = {
   'settings.resetDownloadDirectory': 'Varsayılanı kullan',
   'settings.usageCounting': 'Aktif kurulumların sayılmasına yardımcı ol',
   'settings.usageCountingHint':
-    'Aktif kurulumları saymak için yalqen.com’a günde bir kez yalnızca rastgele bir kurulum kimliği gönderir. Gezinme geçmişi veya hesap bilgisi gönderilmez.',
+    'Aktif kurulumları saymak için yalqen.com’a günde bir kez yalnızca rastgele bir kurulum kimliği gönderir. Gezinme geçmişi veya hesap bilgisi gönderilmez. Bundan ayrı olarak Yalqen, her profil için bir kez, kimlik içermeyen boş bir istekle isimsiz bir sayacı bir artırır; bu ayar onu etkilemez.',
   'settings.askBeforeDownloadHint':
     'Her dosya inmeden önce sorar. İndirebilir, başka bir ad veya klasöre kaydedebilir ya da iptal edebilirsiniz.',
   'settings.secureDns': 'Güvenli DNS',
@@ -1480,6 +1480,11 @@ export const tr: Record<MessageKey, string> = {
   'accent.mint': 'Nane',
   'accent.gold': 'Altın',
   'accent.graphite': 'Grafit',
+  'letter.pageTitle': 'Sana bir mektup var',
+  'letter.text': "Yalqen'i kullandığın için teşekkür ederiz.",
+  'letter.open': 'Mührü kır',
+  'letter.hint': 'Sana bir mektup var. Açmak için mührü kır.',
+  'letter.close': 'Kapat',
   'welcome.pageTitle': "Yalqen'e hoş geldin",
   'welcome.progress': 'Davet adımları',
   'welcome.badge': 'Sana özel',

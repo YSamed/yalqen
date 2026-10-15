@@ -889,7 +889,7 @@ export const en = {
   'settings.resetDownloadDirectory': 'Use default',
   'settings.usageCounting': 'Help count active installations',
   'settings.usageCountingHint':
-    'Sends only a random installation ID to yalqen.com once a day to count active installations. No browsing history or account information is sent.',
+    'Sends only a random installation ID to yalqen.com once a day to count active installations. No browsing history or account information is sent. Separately, once per profile, Yalqen sends an empty request that adds one to an anonymous counter; this setting does not affect it.',
   'settings.askBeforeDownloadHint':
     'Asks before each file downloads. You can download, save under another name or folder, or cancel.',
   'settings.secureDns': 'Secure DNS',
@@ -1471,6 +1471,11 @@ export const en = {
   'accent.mint': 'Mint',
   'accent.gold': 'Gold',
   'accent.graphite': 'Graphite',
+  'letter.pageTitle': 'A letter for you',
+  'letter.text': 'Thank you for using Yalqen.',
+  'letter.open': 'Break the seal',
+  'letter.hint': 'A letter for you. Break the seal to open it.',
+  'letter.close': 'Close',
   'welcome.pageTitle': 'Welcome to Yalqen',
   'welcome.progress': 'Invitation steps',
   'welcome.badge': 'Just for you',

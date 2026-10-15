@@ -43,7 +43,7 @@ Homebrew kullanmıyorsanız Yalqen'den çıkıp uygulamayı Çöp Sepeti'ne taş
 
 ## Kullanım ölçümü
 
-Aktif kurulum ölçümü varsayılan olarak kapalıdır, **Ayarlar → Gizlilik** bölümünden açılabilir. Açıkken özel olmayan bir pencere açıkken UTC gününde en fazla bir kez yalnızca rastgele bir kurulum kimliği gönderilir. README'deki indirme sayısı tekrar indirmeleri de içerir; iki sayaç da tekil kişi saymaz. [Ölçümün ayrıntıları](usage-measurement.md).
+Aktif kurulum ölçümü varsayılan olarak kapalıdır, **Ayarlar → Gizlilik** bölümünden açılabilir. Açıkken özel olmayan bir pencere açıkken UTC gününde en fazla bir kez yalnızca rastgele bir kurulum kimliği gönderilir. Bundan ayrı olarak her profil, teşekkür mektubundan sonra bir kez kimlik içermeyen boş bir istek gönderir ve isimsiz bir sayacı bir artırır. README'deki indirme sayısı tekrar indirmeleri de içerir; bu sayaçların hiçbiri tekil kişi saymaz. [Ölçümün ayrıntıları](usage-measurement.md).
 
 ## Geliştirme
 

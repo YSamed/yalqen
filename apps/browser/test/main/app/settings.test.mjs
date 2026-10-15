@@ -68,6 +68,8 @@ test('unknown or mistyped fields fall back', () => {
       downloadDirectory: null,
       welcomeCompleted: false,
       invitationSeen: false,
+      letterSeen: false,
+      letterCounted: false,
       displayName: '',
       accentColor: 'orange',
       dismissedAnnouncement: '',
@@ -200,6 +202,8 @@ test('the invitation name is trimmed, single-spaced and capped, and the accent s
   assert.equal(sanitizeSettings({ displayName: 'x'.repeat(80) }).displayName.length, 40);
   assert.equal(sanitizeSettings({ accentColor: '#ff0000' }).accentColor, 'orange');
   assert.equal(sanitizeSettings({ invitationSeen: 'yes' }).invitationSeen, false);
+  assert.equal(sanitizeSettings({ letterSeen: 'yes' }).letterSeen, false);
+  assert.equal(sanitizeSettings({ letterCounted: 'yes' }).letterCounted, false);
 });
 
 test('the glass tint is a whole percentage between 0 and 100', () => {

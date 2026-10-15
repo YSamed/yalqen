@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export const USAGE_ENDPOINT = 'https://yalqen.com/api/usage';
+export const LETTER_ENDPOINT = 'https://yalqen.com/api/letter';
 export const USAGE_FIRST_DELAY_MS = 30_000;
 export const USAGE_INTERVAL_MS = 60 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -19,6 +20,30 @@ interface UsageOptions {
   active(): boolean;
   now?: () => number;
   send?: typeof fetch;
+}
+
+// Adds one to an anonymous counter of profiles that received the thank-you letter. The body is empty on
+// purpose: no identifier leaves the machine. Resolves true only once the server has counted it.
+export async function sendLetterCount(endpoint: string, send: typeof fetch = fetch): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  timeout.unref();
+  try {
+    if (new URL(endpoint).protocol !== 'https:') return false;
+    const response = await send(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Yalqen-Letter/1' },
+      body: '{}',
+      credentials: 'omit',
+      redirect: 'error',
+      signal: controller.signal,
+    });
+    return response.status === 204;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // A profile is counted at most once per UTC day. Nothing from tabs or browsing sessions is read.

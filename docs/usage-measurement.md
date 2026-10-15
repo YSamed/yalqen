@@ -1,10 +1,11 @@
 # Download and active-install measurements
 
-These counters describe two different things:
+These counters describe three different things:
 
 | Counter | Definition |
 | --- | --- |
 | DMG downloads | Sum of GitHub `download_count` for `.dmg` assets in every published stable release, with pagination. Excludes ZIPs, YAML, blockmaps, drafts and prereleases. Repeated downloads still count. |
+| Letter recipients (cumulative) | Profiles whose one-time anonymous count reached the server after the thank-you letter. Includes only builds with the letter and an internet connection; it only grows. |
 | Active installs (30d, opt-in) | Distinct participating profile IDs with an accepted heartbeat in the last rolling 30 days. Includes only builds supporting the counter, with the setting enabled and an internet connection. |
 
 Neither counter measures unique people. A person can use multiple Macs or profiles; deleting the profile creates another ID. Installation activity means an open non-private browser window when the daily heartbeat runs, not time spent browsing. The active count can be lower than total usage, and historical usage cannot be reconstructed from downloads or update checks. These are observed events, not authenticated accounts: the endpoint cannot prove that a caller is a real person or prevent a determined client from inventing IDs.
@@ -16,6 +17,12 @@ Neither counter measures unique people. A person can use multiple Macs or profil
 When enabled, the first check runs 30 seconds after startup or opt-in, then hourly while the app runs. A successful heartbeat marks that UTC day as sent in `usage.json`, so restarting or updating the app keeps the same ID and does not send again that day. Failed requests retry on a later hourly check. Disabling the setting aborts an in-flight request and stops the timer; a request already accepted by the server cannot be recalled.
 
 The request to `https://yalqen.com/api/usage` contains only `{ "installationId": "<random UUID>" }`. It uses no cookies, does not follow redirects and times out after ten seconds. It includes no browsing URLs, history, searches, account information, machine identifiers or application version. The random ID is a pseudonymous profile identifier, not proof of a person's identity.
+
+## Letter count
+
+Every profile sees the thank-you letter once (`letterSeen`). After it is closed, packaged builds send `POST https://yalqen.com/api/letter` with the body `{}` and the user agent `Yalqen-Letter/1`. The request carries no ID, uses no cookies, does not follow redirects and times out after ten seconds. Only an HTTP 204 sets `letterCounted`; otherwise the request is retried on a later launch, so a response lost after the server counted it can count that profile twice. The `usageCounting` setting does not affect this count. Development and benchmark builds and private-only sessions do not send it.
+
+The production site forwards each accepted request as one `letter-received` event to the separate "Yalqen App" website in the self-hosted Umami at `stats.yalqen.com`. The visitor's IP address and user agent are not passed on, so Umami sees only the site server. Preview deployments do not record. The total is not served publicly; read the event count in the Umami dashboard. A second or reset profile counts again, people who have not updated are absent, and the endpoint cannot prove that a caller is a real browser.
 
 ## Site service
 

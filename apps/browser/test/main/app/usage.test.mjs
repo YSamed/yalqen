@@ -5,7 +5,8 @@ import path from 'node:path';
 import { test } from 'node:test';
 import usageModule from '../../../dist/main/app/usage.js';
 
-const { UsageReporter, USAGE_ENDPOINT, USAGE_FIRST_DELAY_MS, USAGE_INTERVAL_MS } = usageModule;
+const { UsageReporter, USAGE_ENDPOINT, USAGE_FIRST_DELAY_MS, USAGE_INTERVAL_MS, LETTER_ENDPOINT, sendLetterCount } =
+  usageModule;
 
 function setup(t, overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-usage-'));
@@ -127,4 +128,26 @@ test('scheduled reports retry hourly and stop immediately on opt-out', async (t)
   state.nextDay();
   t.mock.timers.tick(USAGE_INTERVAL_MS);
   assert.equal(state.calls.length, 2);
+});
+
+test('the letter count sends an empty body and reports success only for 204', async () => {
+  const calls = [];
+  const send = (status) => async (url, init) => {
+    calls.push({ url, ...init });
+    return new Response(null, { status });
+  };
+  assert.equal(await sendLetterCount(LETTER_ENDPOINT, send(204)), true);
+  assert.equal(calls[0].url, 'https://yalqen.com/api/letter');
+  assert.equal(calls[0].body, '{}');
+  assert.equal(calls[0].credentials, 'omit');
+  assert.equal(calls[0].headers['User-Agent'], 'Yalqen-Letter/1');
+  assert.equal(await sendLetterCount(LETTER_ENDPOINT, send(404)), false);
+  assert.equal(
+    await sendLetterCount(LETTER_ENDPOINT, async () => {
+      throw new Error('offline');
+    }),
+    false,
+  );
+  assert.equal(await sendLetterCount('http://yalqen.com/api/letter', send(204)), false);
+  assert.equal(calls.length, 2);
 });

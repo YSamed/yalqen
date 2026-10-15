@@ -43,7 +43,7 @@ Without Homebrew, quit Yalqen and move it to the Trash. Its profile data lives i
 
 ## Usage counting
 
-Active-install counting is off by default and can be enabled in **Settings → Privacy**. When enabled, Yalqen sends only a random installation ID, at most once per UTC day while a non-private window is open. The README's download count includes repeat downloads, and neither counter measures individual people. See [how the counters work](usage-measurement.md).
+Active-install counting is off by default and can be enabled in **Settings → Privacy**. When enabled, Yalqen sends only a random installation ID, at most once per UTC day while a non-private window is open. Separately, each profile sends one empty request after the thank-you letter, which adds one to an anonymous counter with no ID. The README's download count includes repeat downloads, and none of these counters measures individual people. See [how the counters work](usage-measurement.md).
 
 ## Development
 

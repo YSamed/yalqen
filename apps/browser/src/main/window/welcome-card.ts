@@ -24,8 +24,8 @@ export interface WelcomeHost {
 
 const FAILED_IMPORT: WelcomeImportResult = { ok: false, bookmarks: 0, visits: 0 };
 
-// The thank-you invitation floats over one window as a card; the window stays visible behind it so
-// appearance choices show up live.
+// The thank-you letter and the invitation float over one window as a card; the window stays visible
+// behind it so appearance choices show up live.
 export class WelcomeCard {
   private view: WebContentsView | null = null;
   private host: WelcomeHost | null = null;
@@ -39,7 +39,7 @@ export class WelcomeCard {
     return this.host !== null;
   }
 
-  show(host: WelcomeHost): void {
+  show(host: WelcomeHost, page = this.options.page): void {
     if (this.host || host.window.isDestroyed()) return;
     const view = createOverlayView(this.options.preload);
     const contents = view.webContents;
@@ -49,7 +49,7 @@ export class WelcomeCard {
     host.window.on('resize', this.fit);
     host.window.once('closed', this.onWindowClosed);
     this.fit();
-    void contents.loadFile(this.options.page, { query: { lang: getLocale() } }).then(() => {
+    void contents.loadFile(page, { query: { lang: getLocale() } }).then(() => {
       if (this.view !== view || contents.isDestroyed()) return;
       contents.send(WelcomeChannel.open, host.open);
       contents.focus();

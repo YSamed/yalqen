@@ -768,6 +768,10 @@ export interface SettingsValues {
   welcomeCompleted: boolean;
   // The thank-you invitation shown once on first launch, and once to people who installed before it existed.
   invitationSeen: boolean;
+  // The sealed thank-you letter, shown once to every user, new or existing.
+  letterSeen: boolean;
+  // Whether the anonymous one-time letter count reached the server; retried on later launches until it does.
+  letterCounted: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
   dismissedAnnouncement: string;
