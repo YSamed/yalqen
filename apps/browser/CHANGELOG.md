@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.69](https://github.com/YSamed/yalqen/compare/v0.3.68...v0.3.69) (2026-10-15)
+
+
+### Bug Fixes
+
+* sign the mac app with the osx-sign 2 api ([#273](https://github.com/YSamed/yalqen/issues/273)) ([5032a6d](https://github.com/YSamed/yalqen/commit/5032a6dffa9f86ec285496a57b45c1f38614cba7))
+
 ## [0.3.68](https://github.com/YSamed/yalqen/compare/v0.3.67...v0.3.68) (2026-10-14)
 
 
