@@ -11,6 +11,9 @@ const { checkBeforeUnload } = unload;
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-unload-test-'));
 app.setPath('userData', profile);
+// Chromium allows a close when no beforeunload reply arrives within 500 ms. A hidden window's renderers run at
+// background priority and can miss that deadline on a busy runner, so they keep normal priority here.
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
 let window;
 const views = [];
 const deadline = setTimeout(() => app.exit(1), 30_000);
