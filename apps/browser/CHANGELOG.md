@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.70](https://github.com/YSamed/yalqen/compare/v0.3.69...v0.3.70) (2026-10-15)
+
+
+### Features
+
+* add sealed thank-you letter and anonymous letter count ([#276](https://github.com/YSamed/yalqen/issues/276)) ([52dd8bf](https://github.com/YSamed/yalqen/commit/52dd8bfc64b68042b5be58a5c620dac7abc7bdfe))
+
 ## [0.3.69](https://github.com/YSamed/yalqen/compare/v0.3.68...v0.3.69) (2026-10-15)
 
 
