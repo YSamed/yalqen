@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.71](https://github.com/YSamed/yalqen/compare/v0.3.70...v0.3.71) (2026-10-19)
+
+
+### Features
+
+* add initial linux appimage support ([93f13fa](https://github.com/YSamed/yalqen/commit/93f13fa8db73dc19e928c6021c05b30674bfbbf7))
+* add initial linux appimage support ([#208](https://github.com/YSamed/yalqen/issues/208)) ([93f13fa](https://github.com/YSamed/yalqen/commit/93f13fa8db73dc19e928c6021c05b30674bfbbf7))
+
+
+### Bug Fixes
+
+* update linux support and preserve chromium sandboxing ([29724bc](https://github.com/YSamed/yalqen/commit/29724bcfc305711a594f1da4a00489bff4dbf601))
+
 ## [0.3.70](https://github.com/YSamed/yalqen/compare/v0.3.69...v0.3.70) (2026-10-15)
 
 
