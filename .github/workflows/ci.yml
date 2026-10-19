@@ -32,3 +32,27 @@ jobs:
       - run: npm test
       - run: npm run test:runtime
       - run: npm run build
+
+  linux:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/browser
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/browser/package-lock.json
+      - name: Prepare the Linux runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64
+          # Allow Chromium's user-namespace sandbox on this disposable runner.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: npm ci
+      - run: npm run check
+      - run: npm run package:linux -- --publish never
+      - name: Verify the packaged Chromium sandbox
+        run: xvfb-run -a node scripts/test-linux-appimage.mjs release/Yalqen-*.AppImage

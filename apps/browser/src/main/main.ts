@@ -121,6 +121,12 @@ import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
 import { YalqenWindow, glassAtLaunch, type AppContext, type WindowOptions } from './window/window.js';
 import { ZoomStore } from './tabs/zoom.js';
 
+// AppImage launchers can silently add this flag when user namespaces are unavailable.
+if (process.platform === 'linux' && app.commandLine.hasSwitch('no-sandbox')) {
+  console.error('Yalqen requires the Chromium sandbox. Enable unprivileged user namespaces to run the AppImage.');
+  app.exit(1);
+}
+
 const COMMAND_BAR_PREWARM_MS = 5000;
 
 bench?.mark('modules-loaded');

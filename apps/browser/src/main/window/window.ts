@@ -274,7 +274,7 @@ export class YalqenWindow {
       minHeight: 400,
       title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
-      titleBarStyle: 'hiddenInset',
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       transparent: this.glassApplied,
       show: false,
     });
@@ -1869,6 +1869,7 @@ export class YalqenWindow {
   }
 
   private showWindowControls(): void {
+    if (process.platform !== 'darwin') return;
     this.window.setWindowButtonVisibility(this.app.settings.get().toolbarVisible || this.window.isFullScreen());
     if (!this.window.isFullScreen()) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
   }

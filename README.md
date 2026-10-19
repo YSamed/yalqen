@@ -5,7 +5,7 @@
   </picture>
 
   <p>
-    <strong>A keyboard-first Chromium browser built for developers on macOS.</strong><br>
+    <strong>A keyboard-first Chromium browser built for developers.</strong><br>
     Vertical tabs, a fast command bar, built-in ad and tracker blocking,<br>and developer tools without the usual browser chrome.
   </p>
 
@@ -51,6 +51,18 @@ Yalqen is for developers who want Chromium compatibility without a browser UI ge
 Yalqen currently focuses on macOS. We're looking for contributors to help develop Windows and Linux support, resolve platform-specific issues, and set up builds and testing on both platforms.
 
 Interested? [Open an issue](https://github.com/YSamed/yalqen/issues/new) with the platform you'd like to help with and how you can contribute. See the [contributing guide](.github/CONTRIBUTING.md) to get started.
+
+## Linux preview
+
+Build an experimental AppImage from source with Node.js 24:
+
+```bash
+cd apps/browser
+npm ci
+npm run package:linux
+```
+
+The AppImage is written to `apps/browser/release/`. Linux needs working unprivileged user namespaces for Chromium sandboxing; Yalqen refuses to start with `--no-sandbox`. Initial testing covers Ubuntu with GNOME Wayland. Linux packages are not yet published by the release workflow, and automatic updates are not verified on Linux.
 
 ## Install
 
