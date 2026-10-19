@@ -5,7 +5,7 @@
   </picture>
 
   <p>
-    <strong>macOS'ta geliştiriciler için klavye öncelikli Chromium tarayıcısı.</strong><br>
+    <strong>Geliştiriciler için klavye öncelikli Chromium tarayıcısı.</strong><br>
     Dikey sekmeler, hızlı komut çubuğu, yerleşik reklam ve izleyici engelleme<br>ve gereksiz arayüzden arınmış geliştirici araçları.
   </p>
 
@@ -48,13 +48,29 @@ Yalqen, tarayıcı arayüzü yoluna çıkmadan Chromium uyumluluğu isteyen geli
 
 Tüm [klavye kısayollarına](docs/keyboard-shortcuts.tr.md) göz atın. Yalqen ayrıca yedi yerleşik arama motoruyla gelir.
 
-## Windows ve Linux desteğine katkıda bulunun
+## Linux önizlemesini test edin, Windows desteğine katkıda bulunun
 
-Yalqen şu anda macOS'a odaklanıyor. Windows ve Linux desteğinin geliştirilmesine, platforma özgü sorunların çözülmesine ve her iki platformda derleme ve test süreçlerinin kurulmasına katkıda bulunacak geliştiriciler arıyoruz.
+Yalqen macOS'u destekliyor; artık deneysel bir Linux önizlemesi de var. Linux'u farklı dağıtımlarda ve masaüstü ortamlarında test ederek, platforma özgü sorunları bildirerek veya Windows desteğini geliştirerek katkıda bulunabilirsiniz.
 
 İlgileniyorsanız hangi platformda ve nasıl katkıda bulunabileceğinizi belirterek [bir issue açın](https://github.com/YSamed/yalqen/issues/new). Başlamak için [katkı rehberine](.github/CONTRIBUTING.md) göz atabilirsiniz.
 
+## Linux önizlemesi
+
+[Duyuruyu okuyun ve test sonuçlarınızı paylaşın](https://github.com/YSamed/yalqen/discussions/280).
+
+İlk Linux desteği, [@Sathyabalan6](https://github.com/Sathyabalan6) tarafından [#208](https://github.com/YSamed/yalqen/pull/208) ile eklendi. Linux üzerinde Node.js 24 kullanarak `main` dalındaki kaynak koddan deneysel bir AppImage oluşturabilirsiniz:
+
+```bash
+cd apps/browser
+npm ci
+npm run package:linux
+```
+
+AppImage, `apps/browser/release/` klasörüne yazılır. Chromium sandbox koruması için Linux'ta ayrıcalıksız kullanıcı ad alanlarının çalışıyor olması gerekir; Yalqen, `--no-sandbox` ile başlatılmayı reddeder. İlk testler Ubuntu ve GNOME Wayland üzerinde yapıldı. Linux paketleri henüz sürüm iş akışında yayımlanmıyor ve Linux'ta otomatik güncellemeler doğrulanmadı.
+
 ## Kurulum
+
+### macOS
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/cards/requirements-dark.tr.svg"><img src="assets/readme/cards/requirements-light.tr.svg" alt="Apple Silicon üzerinde macOS 13 veya üzeri gerekir, imzalı ve notarize, kendini günceller" height="56"></picture>
 

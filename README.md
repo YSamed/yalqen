@@ -46,15 +46,17 @@ Yalqen is for developers who want Chromium compatibility without a browser UI ge
 </p>
 
 
-## Help bring Yalqen to Windows and Linux
+## Help test Linux and bring Yalqen to Windows
 
-Yalqen currently focuses on macOS. We're looking for contributors to help develop Windows and Linux support, resolve platform-specific issues, and set up builds and testing on both platforms.
+Yalqen supports macOS and now has an experimental Linux preview. Help us test Linux on more distributions and desktop environments, report platform-specific issues, or contribute Windows support.
 
 Interested? [Open an issue](https://github.com/YSamed/yalqen/issues/new) with the platform you'd like to help with and how you can contribute. See the [contributing guide](.github/CONTRIBUTING.md) to get started.
 
 ## Linux preview
 
-Build an experimental AppImage from source with Node.js 24:
+[Read the announcement and share your test results](https://github.com/YSamed/yalqen/discussions/280).
+
+Initial Linux support is now available, thanks to [@Sathyabalan6](https://github.com/Sathyabalan6) in [#208](https://github.com/YSamed/yalqen/pull/208). Build an experimental AppImage from a checkout of `main` on Linux with Node.js 24:
 
 ```bash
 cd apps/browser
@@ -65,6 +67,8 @@ npm run package:linux
 The AppImage is written to `apps/browser/release/`. Linux needs working unprivileged user namespaces for Chromium sandboxing; Yalqen refuses to start with `--no-sandbox`. Initial testing covers Ubuntu with GNOME Wayland. Linux packages are not yet published by the release workflow, and automatic updates are not verified on Linux.
 
 ## Install
+
+### macOS
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/cards/requirements-dark.svg"><img src="assets/readme/cards/requirements-light.svg" alt="Requires macOS 13 or later on Apple Silicon, signed and notarized, updates itself" height="56"></picture>
 

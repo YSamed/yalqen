@@ -5,7 +5,7 @@
   </picture>
 
   <p>
-    <strong>面向 macOS 开发者的键盘优先 Chromium 浏览器。</strong><br>
+    <strong>面向开发者的键盘优先 Chromium 浏览器。</strong><br>
     垂直标签页、快速命令栏、内置广告和跟踪器拦截，以及没有多余界面的开发者工具。
   </p>
 
@@ -47,13 +47,29 @@ Yalqen 适合想要 Chromium 兼容性、又不想被浏览器界面干扰的开
 
 查看全部[键盘快捷键](docs/keyboard-shortcuts.md)。Yalqen 还内置了七个搜索引擎。
 
-## 帮助 Yalqen 支持 Windows 和 Linux
+## 帮助测试 Linux 并开发 Windows 支持
 
-Yalqen 目前专注于 macOS。我们正在寻找贡献者，帮助开发 Windows 和 Linux 支持、解决平台特定问题，并建立这两个平台的构建和测试流程。
+Yalqen 支持 macOS，现在也提供实验性的 Linux 预览版。欢迎在更多 Linux 发行版和桌面环境中测试、报告平台特定问题，或参与开发 Windows 支持。
 
 感兴趣？请[创建 issue](https://github.com/YSamed/yalqen/issues/new)，说明你希望参与的平台以及可以提供的帮助。开始前可查看[贡献指南](.github/CONTRIBUTING.md)。
 
+## Linux 预览版
+
+[阅读公告并分享测试结果](https://github.com/YSamed/yalqen/discussions/280)。
+
+感谢 [@Sathyabalan6](https://github.com/Sathyabalan6) 在 [#208](https://github.com/YSamed/yalqen/pull/208) 中贡献初步的 Linux 支持。在 Linux 上使用 Node.js 24，从 `main` 分支的源码构建实验性 AppImage：
+
+```bash
+cd apps/browser
+npm ci
+npm run package:linux
+```
+
+生成的 AppImage 位于 `apps/browser/release/`。Chromium 沙箱需要 Linux 允许使用非特权用户命名空间；Yalqen 会拒绝以 `--no-sandbox` 启动。目前已在 Ubuntu 和 GNOME Wayland 环境下进行初步测试。发布流程尚不提供 Linux 安装包，Linux 自动更新也尚未验证。
+
 ## 安装
+
+### macOS
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/cards/requirements-dark.zh-CN.svg"><img src="assets/readme/cards/requirements-light.zh-CN.svg" alt="需要搭载 Apple Silicon 的 macOS 13 或更高版本，已签名并公证，自动更新" height="56"></picture>
 
