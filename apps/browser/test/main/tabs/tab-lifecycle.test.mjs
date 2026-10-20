@@ -41,6 +41,7 @@ function createView() {
     length: () => 1,
     getEntryAtIndex: () => ({ url: 'https://example.com/', title: 'Example' }),
   };
+  contents.isLoadingMainFrame = () => false;
   contents.executeJavaScriptInIsolatedWorld = async () => true;
   contents.allowUnload = false;
   contents.isDestroyed = () => destroyed;
