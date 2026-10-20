@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.72](https://github.com/YSamed/yalqen/compare/v0.3.71...v0.3.72) (2026-10-20)
+
+
+### Bug Fixes
+
+* allow quitting while a tab is still loading ([#287](https://github.com/YSamed/yalqen/issues/287)) ([12db13d](https://github.com/YSamed/yalqen/commit/12db13dc1034345c163f6b9cccf135bf26551c58))
+
 ## [0.3.71](https://github.com/YSamed/yalqen/compare/v0.3.70...v0.3.71) (2026-10-19)
 
 
