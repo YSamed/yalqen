@@ -9,6 +9,7 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
 function fixture() {
   const contents = new EventEmitter();
   contents.isDestroyed = () => false;
+  contents.isLoadingMainFrame = () => false;
   contents.executeJavaScriptInIsolatedWorld = async () => true;
   contents.calls = [];
   contents.close = (options) => contents.calls.push(options);
@@ -86,4 +87,25 @@ test('a stalled or failed check refuses to discard the page', async (t) => {
     throw new Error('renderer unavailable');
   };
   assert.equal(await checkBeforeUnload(contents), false);
+});
+
+test('a loading page is checked in its current frame without waiting for the load to finish', async () => {
+  const contents = fixture();
+  contents.isLoadingMainFrame = () => true;
+  contents.executeJavaScriptInIsolatedWorld = () => new Promise(() => {});
+  const frames = [
+    {
+      executeJavaScript: async () => {
+        frames.shift();
+        throw new Error('frame swapped by a cross-site commit');
+      },
+    },
+    { executeJavaScript: async () => true },
+  ];
+  Object.defineProperty(contents, 'mainFrame', { get: () => frames[0] });
+  const result = checkBeforeUnload(contents);
+  await tick();
+  assert.deepEqual(contents.calls, [{ waitForBeforeUnload: true }]);
+  contents.fire(true);
+  assert.equal(await result, true);
 });
