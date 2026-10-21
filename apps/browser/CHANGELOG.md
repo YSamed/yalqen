@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.73](https://github.com/YSamed/yalqen/compare/v0.3.72...v0.3.73) (2026-10-21)
+
+
+### Performance
+
+* stop the media card progress bar from animating every frame ([#289](https://github.com/YSamed/yalqen/issues/289)) ([7cb5912](https://github.com/YSamed/yalqen/commit/7cb5912521716d8ad28ad608eb40bd65b475101e))
+
 ## [0.3.72](https://github.com/YSamed/yalqen/compare/v0.3.71...v0.3.72) (2026-10-20)
 
 
