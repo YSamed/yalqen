@@ -138,7 +138,7 @@
     bind:this={pill}
   >
     {#if position !== null && media.duration !== null}
-      <span class="fill" class:instant={scrubbed !== null} style:width="{progress * 100}%"></span>
+      <span class="fill" style:width="{progress * 100}%"></span>
       <div
         class="track"
         role="slider"
@@ -224,11 +224,6 @@
     inset: 0 auto 0 0;
     background: color-mix(in srgb, var(--text) 9%, transparent);
     pointer-events: none;
-    transition: width 1s linear;
-  }
-
-  .fill.instant {
-    transition: none;
   }
 
   .track {
@@ -284,11 +279,5 @@
   /* The track buttons take the time's place while the pointer is on the pill. */
   .pill.skippable:is(:hover, :focus-within):not(.scrubbing) .time {
     display: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .fill {
-      transition: none;
-    }
   }
 </style>
