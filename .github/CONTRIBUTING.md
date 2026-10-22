@@ -11,7 +11,7 @@ Thanks for your interest in improving Yalqen.
 
 ## Development setup
 
-Requires macOS and Node.js 24.
+Requires Node.js 24 and Git on macOS or Linux. Linux support is experimental; initial testing covers Ubuntu with GNOME Wayland. Windows is not yet supported.
 
 ```bash
 npm install
@@ -21,6 +21,14 @@ npm start
 ```
 
 Running `npm install` at the repository root sets up Git hooks: commit messages are checked with commitlint, staged files are linted and formatted with ESLint and Prettier, and typecheck and tests run before each push.
+
+## Testing Linux
+
+In `apps/browser`, run `npm run check` for the standard checks and `npm run package:linux` to build an AppImage in `release/`. Test the packaged app as well as the development build. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to start with `--no-sandbox`.
+
+When reporting a Linux issue, include your distribution and version, CPU architecture, desktop environment, display server (Wayland or X11), Yalqen version or commit, and steps to reproduce. Do not include credentials or private browsing data in logs.
+
+Share platform test results in the [Linux preview discussion](https://github.com/YSamed/yalqen/discussions/280). Contributions for additional distributions, desktop environments, and Windows support are welcome.
 
 ## Making changes
 
