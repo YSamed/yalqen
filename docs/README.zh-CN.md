@@ -11,9 +11,13 @@
 
 ## 系统要求
 
-搭载 Apple Silicon 的 macOS 13 Ventura 或更高版本。不支持 Intel Mac。
+- **macOS：**搭载 Apple Silicon 的 macOS 13 Ventura 或更高版本。不支持 Intel Mac。
+- **Linux：**使用 Node.js 24 从源码构建实验性 AppImage。已在 Ubuntu 和 GNOME Wayland 上进行初步测试；Chromium 沙箱需要可用的非特权用户命名空间。
+- **Windows：**暂不支持。
 
 ## 安装
+
+### macOS
 
 使用 [Homebrew](https://brew.sh)：
 
@@ -23,15 +27,21 @@ brew install --cask YSamed/yalqen/yalqen
 
 或从 [Releases](https://github.com/YSamed/yalqen/releases/latest) 下载 DMG。应用已使用 Developer ID 签名并经过公证，打开时不会出现 Gatekeeper 警告。
 
+### Linux 预览版
+
+请按照 [Linux 构建说明](../README.zh-CN.md#linux-预览版)操作。安装包生成在 `apps/browser/release/`；发布流程尚不提供预构建的 Linux 下载。Yalqen 会拒绝以 `--no-sandbox` 运行。
+
 ## 更新
 
-Yalqen 会在后台检查更新，并在重启时安装。如需通过 Homebrew 更新：
+Linux 自动更新尚未验证。请更新源码并重新构建 AppImage 以升级预览版。
+
+在 macOS 上，Yalqen 会在后台检查更新，并在重启时安装。如需通过 Homebrew 更新：
 
 ```bash
 brew upgrade --cask yalqen
 ```
 
-## 卸载
+## 卸载（macOS）
 
 使用 Homebrew 卸载并删除其数据：
 
@@ -47,7 +57,7 @@ brew uninstall --zap --cask yalqen
 
 ## 开发
 
-应用位于 `apps/browser`，需要 Node.js 22.12 或更高版本。
+应用位于 `apps/browser`。请在 macOS 或 Linux 上使用 Node.js 24，以与贡献环境和 CI 保持一致。
 
 ```bash
 cd apps/browser
@@ -61,6 +71,7 @@ npm start
 | `npm test`            | 仅运行测试                     |
 | `npm run bench`       | 启动、页面加载和空闲性能测试   |
 | `npm run package:mac` | 构建 macOS 应用包              |
+| `npm run package:linux` | 构建实验性 Linux AppImage |
 
 Git hooks、提交信息和 Pull Request 流程请阅读 [CONTRIBUTING.md](../.github/CONTRIBUTING.md)。
 

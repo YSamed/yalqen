@@ -11,9 +11,13 @@
 
 ## Requirements
 
-macOS 13 Ventura or later on Apple Silicon. Intel Macs are not supported.
+- **macOS:** macOS 13 Ventura or later on Apple Silicon. Intel Macs are not supported.
+- **Linux:** experimental AppImage built from source with Node.js 24. Initial testing covers Ubuntu with GNOME Wayland; Chromium sandboxing requires working unprivileged user namespaces.
+- **Windows:** not yet supported.
 
 ## Install
+
+### macOS
 
 With [Homebrew](https://brew.sh):
 
@@ -23,15 +27,21 @@ brew install --cask YSamed/yalqen/yalqen
 
 Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest). The app is signed with a Developer ID and notarized, so it opens without a Gatekeeper warning.
 
+### Linux preview
+
+Follow the [Linux build instructions](../README.md#linux-preview). Packages are written to `apps/browser/release/`; ready-made Linux downloads are not yet published by the release workflow. Yalqen refuses to run with `--no-sandbox`.
+
 ## Updates
 
-Yalqen checks for updates in the background and installs them on restart. To update through Homebrew instead:
+Linux automatic updates are not yet verified. Update your checkout and rebuild the AppImage to update the preview.
+
+On macOS, Yalqen checks for updates in the background and installs them on restart. To update through Homebrew instead:
 
 ```bash
 brew upgrade --cask yalqen
 ```
 
-## Uninstall
+## Uninstall (macOS)
 
 To uninstall and remove its data with Homebrew:
 
@@ -47,7 +57,7 @@ Active-install counting is off by default and can be enabled in **Settings → P
 
 ## Development
 
-The app lives in `apps/browser` and needs Node.js 22.12 or later.
+The app lives in `apps/browser`. Use Node.js 24 on macOS or Linux to match the contribution setup and CI.
 
 ```bash
 cd apps/browser
@@ -61,6 +71,7 @@ npm start
 | `npm test`            | Tests only                              |
 | `npm run bench`       | Startup, page load and idle benchmarks  |
 | `npm run package:mac` | Build the macOS app bundle              |
+| `npm run package:linux` | Build the experimental Linux AppImage |
 
 Read [CONTRIBUTING.md](../.github/CONTRIBUTING.md) for Git hooks, commit messages and pull requests.
 

@@ -11,9 +11,13 @@
 
 ## Gereksinimler
 
-Apple Silicon üzerinde macOS 13 Ventura veya üzeri. Intel Mac'ler desteklenmez.
+- **macOS:** Apple Silicon üzerinde macOS 13 Ventura veya üzeri. Intel Mac'ler desteklenmez.
+- **Linux:** Node.js 24 ile kaynak koddan derlenen deneysel AppImage. İlk testler Ubuntu ve GNOME Wayland üzerinde yapıldı; Chromium sandbox koruması için ayrıcalıksız kullanıcı ad alanlarının çalışıyor olması gerekir.
+- **Windows:** henüz desteklenmiyor.
 
 ## Kurulum
+
+### macOS
 
 [Homebrew](https://brew.sh) ile:
 
@@ -23,15 +27,21 @@ brew install --cask YSamed/yalqen/yalqen
 
 Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Uygulama Developer ID ile imzalı ve notarize edilmiştir, Gatekeeper uyarısı olmadan açılır.
 
+### Linux önizlemesi
+
+[Linux derleme adımlarını](../README.tr.md#linux-önizlemesi) izleyin. Paketler `apps/browser/release/` klasörüne yazılır; hazır Linux dosyaları henüz sürüm iş akışında yayımlanmıyor. Yalqen, `--no-sandbox` ile çalışmayı reddeder.
+
 ## Güncellemeler
 
-Yalqen güncellemeleri arka planda denetler ve yeniden başlatınca kurar. Güncellemeyi Homebrew ile yapmak için:
+Linux'ta otomatik güncellemeler henüz doğrulanmadı. Önizlemeyi güncellemek için kaynak kodu güncelleyip AppImage'i yeniden derleyin.
+
+macOS'ta Yalqen güncellemeleri arka planda denetler ve yeniden başlatınca kurar. Güncellemeyi Homebrew ile yapmak için:
 
 ```bash
 brew upgrade --cask yalqen
 ```
 
-## Kaldırma
+## Kaldırma (macOS)
 
 Homebrew ile kaldırmak ve verilerini silmek için:
 
@@ -47,7 +57,7 @@ Aktif kurulum ölçümü varsayılan olarak kapalıdır, **Ayarlar → Gizlilik*
 
 ## Geliştirme
 
-Uygulama `apps/browser` klasöründedir ve Node.js 22.12 veya üzeri gerekir.
+Uygulama `apps/browser` klasöründedir. Katkı ortamı ve CI ile uyum için macOS veya Linux üzerinde Node.js 24 kullanın.
 
 ```bash
 cd apps/browser
@@ -61,6 +71,7 @@ npm start
 | `npm test`            | Yalnızca testler                              |
 | `npm run bench`       | Açılış, sayfa yükleme ve boşta kalma ölçümü   |
 | `npm run package:mac` | macOS uygulama paketini derler                |
+| `npm run package:linux` | Deneysel Linux AppImage paketini derler |
 
 Git hook'ları, commit mesajları ve pull request'ler için [CONTRIBUTING.md](../.github/CONTRIBUTING.md) dosyasını okuyun.
 
