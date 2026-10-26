@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { PassThrough, Readable, Writable } from 'node:stream';
 import { test } from 'node:test';
 import acpModule from '../../../dist/main/agent-bridge/acp-client.js';
 
@@ -40,10 +41,10 @@ function fixture(t, { http = true, canUseTool, sessionError } = {}) {
       this.signalCode = signal;
     },
   });
-  const calls = { initialize: [], newSession: [], prompt: [], cancel: [] };
+  const calls = { initialize: [], newSession: [], prompt: [], cancel: [], close: [] };
   let client;
   let finishPrompt;
-  const connection = {
+  const handlers = {
     initialize: async (params) => {
       calls.initialize.push(params);
       return {
@@ -64,6 +65,17 @@ function fixture(t, { http = true, canUseTool, sessionError } = {}) {
       calls.cancel.push(params);
       finishPrompt?.({ stopReason: 'cancelled' });
     },
+  };
+  const connection = {
+    agent: {
+      request: (method, params) =>
+        handlers[{ initialize: 'initialize', 'session/new': 'newSession', 'session/prompt': 'prompt' }[method]](params),
+      notify: (method, params) => {
+        assert.equal(method, 'session/cancel');
+        return handlers.cancel(params);
+      },
+    },
+    close: () => calls.close.push(true),
   };
   const input = prompts();
   const query = new AcpQuery(
@@ -122,7 +134,7 @@ test('starts an ACP session in the project with the Yalqen MCP server and report
 });
 
 test('an agent that needs a sign-in reports an authentication failure', async (t) => {
-  const { output } = fixture(t, {
+  const { output, calls } = fixture(t, {
     sessionError: Object.assign(new Error('Authentication required'), { code: -32000 }),
   });
   await tick();
@@ -130,6 +142,7 @@ test('an agent that needs a sign-in reports an authentication failure', async (t
   assert.equal(output[0].type, 'assistant');
   assert.equal(output[0].error, 'authentication_failed');
   assert.equal(output[1].subtype, 'error_during_execution');
+  assert.equal(calls.close.length, 1);
 });
 
 test('other session failures stay generic', async (t) => {
@@ -241,4 +254,97 @@ test('interrupting cancels the turn and closing stops the agent process', async 
   assert.equal((await query.rewindFiles()).canRewind, false);
   query.close();
   assert.deepEqual(child.killed, ['SIGTERM']);
+  assert.equal(calls.close.length, 1);
 });
+
+test(
+  'SDK 2 exchanges initialization, streaming updates, permission requests and cancellation over stdio',
+  { timeout: 10_000 },
+  async (t) => {
+    const acp = await import('@agentclientprotocol/sdk');
+    const stdin = new PassThrough();
+    const stdout = new PassThrough();
+    const child = Object.assign(new EventEmitter(), {
+      stdin,
+      stdout,
+      exitCode: null,
+      signalCode: null,
+      kill(signal) {
+        this.signalCode = signal;
+      },
+    });
+    const input = prompts();
+    const initialized = Promise.withResolvers();
+    const receivedPermission = Promise.withResolvers();
+    const cancelled = Promise.withResolvers();
+    let finishPrompt;
+    const server = acp
+      .agent()
+      .onRequest(acp.methods.agent.initialize, ({ params }) => {
+        initialized.resolve(params);
+        return { protocolVersion: 1, agentCapabilities: { mcpCapabilities: { http: true } } };
+      })
+      .onRequest(acp.methods.agent.session.new, ({ params }) => {
+        assert.equal(params.cwd, '/project');
+        assert.equal(params.mcpServers[0].type, 'http');
+        return { sessionId: 'stdio-session' };
+      })
+      .onRequest(acp.methods.agent.session.prompt, async ({ client, params }) => {
+        assert.deepEqual(params.prompt, [{ type: 'text', text: 'Run tests' }]);
+        const pending = new Promise((resolve) => (finishPrompt = resolve));
+        await client.notify(acp.methods.client.session.update, {
+          sessionId: params.sessionId,
+          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Working' } },
+        });
+        const permission = await client.request(acp.methods.client.session.requestPermission, {
+          sessionId: params.sessionId,
+          toolCall: { toolCallId: 'stdio-tool', title: 'npm test' },
+          options: [{ optionId: 'once', name: 'Allow once', kind: 'allow_once' }],
+        });
+        receivedPermission.resolve(permission);
+        return pending;
+      })
+      .onNotification(acp.methods.agent.session.cancel, ({ params }) => {
+        cancelled.resolve(params);
+        finishPrompt({ stopReason: 'cancelled' });
+      })
+      .connect(acp.ndJsonStream(Writable.toWeb(stdout), Readable.toWeb(stdin)));
+    const query = new AcpQuery(
+      agent,
+      child,
+      {
+        cwd: '/project',
+        env: { YALQEN_MCP_URL: 'http://127.0.0.1:47823/mcp', YALQEN_MCP_TOKEN: 'secret' },
+        canUseTool: async () => ({ behavior: 'allow', updatedInput: {} }),
+      },
+      input,
+    );
+    t.after(() => {
+      query.close();
+      server.close();
+      stdin.destroy();
+      stdout.destroy();
+    });
+    const output = [];
+    const completed = Promise.withResolvers();
+    const reading = (async () => {
+      for await (const message of query) {
+        output.push(message);
+        if (message.type === 'result') completed.resolve();
+      }
+    })();
+    input.push('Run tests');
+    assert.equal((await initialized.promise).protocolVersion, 1);
+    assert.deepEqual(await receivedPermission.promise, { outcome: { outcome: 'selected', optionId: 'once' } });
+    await query.interrupt();
+    assert.deepEqual(await cancelled.promise, { sessionId: 'stdio-session' });
+    await completed.promise;
+    assert.equal(output[0].session_id, 'stdio-session');
+    assert.equal(output.find((message) => message.type === 'assistant').message.content[0].text, 'Working');
+    assert.equal(output.at(-1).is_error, false);
+    query.close();
+    await reading;
+    server.close();
+    await server.closed;
+  },
+);
