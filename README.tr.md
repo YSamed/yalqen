@@ -5,7 +5,7 @@
   </picture>
 
   <p>
-    <strong>Geliştiriciler için klavye öncelikli, gizlilik odaklı Chromium tarayıcısı.</strong><br>
+    <strong><a href="https://yalqen.com/">Yalqen</a> — macOS'ta geliştiriciler için açık kaynaklı, klavye öncelikli Chromium tarayıcısı.</strong><br>
     Dikey sekmeler, hızlı komut çubuğu, yerleşik reklam ve izleyici engelleme<br>ve gereksiz arayüzden arınmış geliştirici araçları.
   </p>
 

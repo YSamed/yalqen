@@ -5,7 +5,7 @@
   </picture>
 
   <p>
-    <strong>A keyboard-first, privacy-minded Chromium browser for developers.</strong><br>
+    <strong><a href="https://yalqen.com/">Yalqen</a> — an open-source, keyboard-first Chromium browser for developers on macOS.</strong><br>
     Vertical tabs, a fast command bar, built-in ad and tracker blocking,<br>and developer tools without the usual browser chrome.
   </p>
 

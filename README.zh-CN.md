@@ -5,7 +5,7 @@
   </picture>
 
   <p>
-    <strong>面向开发者、注重隐私的键盘优先 Chromium 浏览器。</strong><br>
+    <strong><a href="https://yalqen.com/">Yalqen</a> — 面向开发者、注重隐私的键盘优先 Chromium 浏览器。</strong><br>
     垂直标签页、快速命令栏、内置广告和跟踪器拦截，以及没有多余界面的开发者工具。
   </p>
 
