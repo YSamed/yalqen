@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.74](https://github.com/YSamed/yalqen/compare/v0.3.73...v0.3.74) (2026-10-26)
+
+
+### Bug Fixes
+
+* migrate ACP client to SDK 2 and handle display capture permissions ([#305](https://github.com/YSamed/yalqen/issues/305)) ([25163d7](https://github.com/YSamed/yalqen/commit/25163d7153a12b1a476cc9093309fdbd46f56163))
+
 ## [0.3.73](https://github.com/YSamed/yalqen/compare/v0.3.72...v0.3.73) (2026-10-21)
 
 
