@@ -85,6 +85,12 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
         callback(true);
         return;
       }
+      // Let Electron 45 screen-sharing requests proceed to the display-media source picker.
+      if (permission === 'display-capture') {
+        const origin = permissionOrigin(details.requestingUrl);
+        callback(!!origin && origin === permissionOrigin(contents.getURL()));
+        return;
+      }
       const kinds = requestedPermissions(permission, 'mediaTypes' in details ? details.mediaTypes : []);
       const origin = permissionOrigin(details.requestingUrl);
       if (!kinds || !origin || origin !== permissionOrigin(contents.getURL())) {
@@ -96,12 +102,14 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
         decided === 'ask' ? ask(contents, isPrivate, origin, kinds) : Promise.resolve(decided === 'allow');
       siteAllowed.then((allowed) => allowed && systemAccess(contents, kinds)).then(callback, () => callback(false));
     });
-    browsing.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
+    browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) return true;
-      const kinds = requestedPermissions(permission, details.mediaType ? [details.mediaType] : []);
       const origin = permissionOrigin(requestingOrigin);
-      if (!kinds || !origin) return false;
+      if (!origin) return false;
       if (details.embeddingOrigin && permissionOrigin(details.embeddingOrigin) !== origin) return false;
+      if (permission === 'display-capture') return !!contents && origin === permissionOrigin(contents.getURL());
+      const kinds = requestedPermissions(permission, details.mediaType ? [details.mediaType] : []);
+      if (!kinds) return false;
       return storeFor(isPrivate).decide(origin, kinds) === 'allow';
     });
   }

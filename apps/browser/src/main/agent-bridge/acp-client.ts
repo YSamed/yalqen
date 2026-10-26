@@ -17,8 +17,12 @@ export interface AcpAgent {
 }
 
 type ToolCall = acp.ToolCall | acp.ToolCallUpdate;
-type Connection = Pick<acp.ClientSideConnection, 'initialize' | 'newSession' | 'prompt' | 'cancel'>;
-type Connect = (toClient: () => acp.Client, child: ChildProcess) => Promise<Connection>;
+type Connection = Pick<acp.ClientConnection, 'agent' | 'close'>;
+interface ClientHandlers {
+  sessionUpdate(notification: acp.SessionNotification): void;
+  requestPermission(request: acp.RequestPermissionRequest): Promise<acp.RequestPermissionResponse>;
+}
+type Connect = (toClient: () => ClientHandlers, child: ChildProcess) => Promise<Connection>;
 
 class Outbox implements AsyncIterable<SDKMessage> {
   private items: SDKMessage[] = [];
@@ -52,13 +56,17 @@ class Outbox implements AsyncIterable<SDKMessage> {
   }
 }
 
-async function connectProcess(toClient: () => acp.Client, child: ChildProcess): Promise<Connection> {
-  const { ClientSideConnection, ndJsonStream } = await import('@agentclientprotocol/sdk');
+async function connectProcess(toClient: () => ClientHandlers, child: ChildProcess): Promise<Connection> {
+  const { client, methods, ndJsonStream } = await import('@agentclientprotocol/sdk');
   const stream = ndJsonStream(
     Writable.toWeb(child.stdin!) as WritableStream<Uint8Array>,
     Readable.toWeb(child.stdout!) as ReadableStream<Uint8Array>,
   );
-  return new ClientSideConnection(toClient, stream);
+  const handlers = toClient();
+  return client()
+    .onNotification(methods.client.session.update, ({ params }) => handlers.sessionUpdate(params))
+    .onRequest(methods.client.session.requestPermission, ({ params }) => handlers.requestPermission(params))
+    .connect(stream);
 }
 
 function contentText(content: unknown): string {
@@ -102,7 +110,7 @@ export class AcpQuery implements ChatQuery {
     private readonly child: ChildProcess,
     private readonly options: Options,
     prompt: AsyncIterable<SDKUserMessage>,
-    connect: Connect,
+    connect: Connect = connectProcess,
   ) {
     child.once('exit', () => this.close());
     child.once('error', () => this.close());
@@ -115,7 +123,8 @@ export class AcpQuery implements ChatQuery {
 
   async interrupt(): Promise<undefined> {
     this.turn?.abort();
-    if (this.connection && this.sessionId) await this.connection.cancel({ sessionId: this.sessionId });
+    if (this.connection && this.sessionId)
+      await this.connection.agent.notify('session/cancel', { sessionId: this.sessionId });
     return undefined;
   }
 
@@ -123,6 +132,8 @@ export class AcpQuery implements ChatQuery {
     if (this.closed) return;
     this.closed = true;
     this.turn?.abort();
+    this.connection?.close();
+    this.connection = null;
     this.outbox.end();
     if (this.child.exitCode === null && this.child.signalCode === null) {
       this.child.kill('SIGTERM');
@@ -153,7 +164,12 @@ export class AcpQuery implements ChatQuery {
   private async run(prompt: AsyncIterable<SDKUserMessage>, connect: Connect): Promise<void> {
     try {
       const connection = await connect(() => this.client(), this.child);
-      const { agentCapabilities } = await connection.initialize({
+      if (this.closed) {
+        connection.close();
+        return;
+      }
+      this.connection = connection;
+      const { agentCapabilities } = await connection.agent.request('initialize', {
         protocolVersion: 1,
         clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
       });
@@ -170,8 +186,10 @@ export class AcpQuery implements ChatQuery {
               },
             ]
           : [];
-      const { sessionId } = await connection.newSession({ cwd: this.options.cwd ?? process.cwd(), mcpServers });
-      this.connection = connection;
+      const { sessionId } = await connection.agent.request('session/new', {
+        cwd: this.options.cwd ?? process.cwd(),
+        mcpServers,
+      });
       this.sessionId = sessionId;
       this.outbox.push({
         type: 'system',
@@ -195,7 +213,7 @@ export class AcpQuery implements ChatQuery {
     this.messageId = randomUUID();
     this.text = '';
     try {
-      const { stopReason } = await connection.prompt({
+      const { stopReason } = await connection.agent.request('session/prompt', {
         sessionId,
         prompt: promptBlocks(message.message.content, this.images),
       });
@@ -208,7 +226,7 @@ export class AcpQuery implements ChatQuery {
     }
   }
 
-  private client(): acp.Client {
+  private client(): ClientHandlers {
     return {
       sessionUpdate: (notification) => this.update(notification),
       requestPermission: (request) => this.permission(request),
