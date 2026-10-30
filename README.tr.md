@@ -4,8 +4,8 @@
     <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="300">
   </picture>
 
-  <h3>Daha sade bir tarayıcı. Üretmek için daha çok alan.</h3>
-  <p>macOS’ta geliştiriciler için açık kaynaklı bir Chromium tarayıcısı.</p>
+  <h3>Kâğıt kadar hafif. Cam kadar berrak.</h3>
+  <p>macOS için açık kaynaklı bir Chromium tarayıcısı.<br>Dikey sekmeler, yapay zekâ ve geliştirici araçları tek bir yerde.</p>
 
   <p>
     <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="DMG dosyasını indir" width="250"></picture></a>

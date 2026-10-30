@@ -4,8 +4,8 @@
     <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="300">
   </picture>
 
-  <h3>更简洁的浏览器。更多创造的空间。</h3>
-  <p>面向 macOS 开发者的开源 Chromium 浏览器。</p>
+  <h3>轻如纸，澄如玻璃。</h3>
+  <p>面向 macOS 的开源 Chromium 浏览器。<br>垂直标签页、AI 与开发者工具，尽在一处。</p>
 
   <p>
     <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="下载 DMG" width="250"></picture></a>

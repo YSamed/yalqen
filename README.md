@@ -4,8 +4,8 @@
     <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="300">
   </picture>
 
-  <h3>A little less browser. A little more room to build.</h3>
-  <p>An open-source Chromium browser for developers on macOS.</p>
+  <h3>Light as paper. Clear as glass.</h3>
+  <p>An open-source Chromium browser for macOS.<br>Vertical tabs, AI and developer tools in one place.</p>
 
   <p>
     <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="Download the DMG" width="250"></picture></a>
