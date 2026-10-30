@@ -7,7 +7,13 @@
   <h3>A little less browser. A little more room to build.</h3>
   <p>An open-source Chromium browser for developers on macOS.</p>
 
-  <p><strong><a href="https://yalqen.com/download">Download for macOS ↓</a></strong> · <a href="https://yalqen.com/">Website</a></p>
+  <p>
+    <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="Download the DMG" width="250"></picture></a>
+    <a href="#homebrew"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/install-homebrew-dark.png"><img src="assets/readme/install-homebrew.png" alt="Install with Homebrew" width="250"></picture></a>
+  </p>
+  <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Latest release and total downloads" height="56"></picture></a>
+  </p>
   <p><sub>macOS 13+ · Apple Silicon · Signed &amp; notarized</sub></p>
 </div>
 
@@ -20,6 +26,8 @@
   DevTools, AI chat and a terminal, right where you work.<br>
   Built-in ad and tracker blocking.
 </p>
+
+<a id="homebrew"></a>
 
 ### Or install with Homebrew
 

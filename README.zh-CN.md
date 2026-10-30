@@ -7,7 +7,13 @@
   <h3>更简洁的浏览器。更多创造的空间。</h3>
   <p>面向 macOS 开发者的开源 Chromium 浏览器。</p>
 
-  <p><strong><a href="https://yalqen.com/download">下载 macOS 版 ↓</a></strong> · <a href="https://yalqen.com/">官网</a></p>
+  <p>
+    <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="下载 DMG" width="250"></picture></a>
+    <a href="#homebrew"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/install-homebrew-dark.png"><img src="assets/readme/install-homebrew.png" alt="使用 Homebrew 安装" width="250"></picture></a>
+  </p>
+  <p>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="最新版本和总下载量" height="56"></picture></a>
+  </p>
   <p><sub>macOS 13+ · Apple Silicon · 已签名并公证</sub></p>
 </div>
 
@@ -20,6 +26,8 @@
   DevTools、AI 聊天和终端，融入你的工作空间。<br>
   内置广告和跟踪器拦截。
 </p>
+
+<a id="homebrew"></a>
 
 ### 也可通过 Homebrew 安装
 
