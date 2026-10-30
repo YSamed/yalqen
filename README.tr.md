@@ -1,18 +1,17 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/readme/wordmark-dark.png">
-    <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="300">
+    <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="240">
   </picture>
 
-  <h1>Fikirden ekrana.</h1>
-  <p><sub>Tarayıcı, yapay zekâ ve geliştirici araçları.<br>Tek bir çalışma alanında.</sub></p>
+  <h3>Fikirden ekrana.</h3>
+  <p>Tarayıcı, yapay zekâ ve geliştirici araçları. Tek bir çalışma alanında.</p>
 
   <p>
-    <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="DMG dosyasını indir" width="250"></picture></a>
-    <a href="#homebrew"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/install-homebrew-dark.png"><img src="assets/readme/install-homebrew.png" alt="Homebrew ile kur" width="250"></picture></a>
-  </p>
-  <p>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Son sürüm ve toplam indirme sayısı" height="56"></picture></a>
+    <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="DMG dosyasını indir" width="220"></picture></a>
+    <a href="#homebrew"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/install-homebrew-dark.png"><img src="assets/readme/install-homebrew.png" alt="Homebrew ile kur" width="220"></picture></a>
+    <br>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Son sürüm ve toplam indirme sayısı" height="36"></picture></a>
   </p>
 </div>
 
