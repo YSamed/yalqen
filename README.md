@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/readme/wordmark-dark.png">
-    <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="240">
+    <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="360">
   </picture>
 
   <h3>From idea to screen.</h3>
@@ -11,7 +11,7 @@
     <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="Download the DMG" width="220"></picture></a>
     <a href="#homebrew"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/install-homebrew-dark.png"><img src="assets/readme/install-homebrew.png" alt="Install with Homebrew" width="220"></picture></a>
     <br>
-    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Latest release and total downloads" height="36"></picture></a>
+    <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Latest release and total downloads" height="48"></picture></a>
   </p>
 </div>
 
