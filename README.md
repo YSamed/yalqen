@@ -19,8 +19,9 @@
   <a href="https://yalqen.com/"><img src="assets/screenshots/website.webp" alt="Yalqen — Light as paper. Clear as glass." width="900"></a>
 </p>
 
----
-
-[Documentation](docs/README.md) · [Contribute](.github/CONTRIBUTING.md) · [Changelog](apps/browser/CHANGELOG.md)
-
-<p><a href="README.tr.md">Türkçe</a> · <a href="README.zh-CN.md">简体中文</a></p>
+<p align="center">
+  <sub>
+    <a href="docs/README.md">Documentation</a> · <a href=".github/CONTRIBUTING.md">Contribute</a> · <a href="apps/browser/CHANGELOG.md">Changelog</a><br>
+    <a href="README.tr.md">Türkçe</a> · <a href="README.zh-CN.md">简体中文</a>
+  </sub>
+</p>
