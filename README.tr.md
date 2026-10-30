@@ -4,8 +4,8 @@
     <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="300">
   </picture>
 
-  <h3>Kâğıt kadar hafif. Cam kadar berrak.</h3>
-  <p>macOS için açık kaynaklı bir Chromium tarayıcısı.<br>Dikey sekmeler, yapay zekâ ve geliştirici araçları tek bir yerde.</p>
+  <h1>Fikirden ekrana.</h1>
+  <p><sub>Tarayıcı, yapay zekâ ve geliştirici araçları.<br>Tek bir çalışma alanında.</sub></p>
 
   <p>
     <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="DMG dosyasını indir" width="250"></picture></a>
@@ -14,17 +14,10 @@
   <p>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="Son sürüm ve toplam indirme sayısı" height="56"></picture></a>
   </p>
-  <p><sub>macOS 13+ · Apple Silicon · İmzalı ve notarize</sub></p>
 </div>
 
 <p align="center">
   <a href="https://yalqen.com/"><img src="assets/screenshots/website.webp" alt="Yalqen — Light as paper. Clear as glass." width="900"></a>
-</p>
-
-<p align="center">
-  <strong>Dikey sekmeler. Komut çubuğu. Kesintisiz akış.</strong><br>
-  DevTools, yapay zekâ sohbeti ve terminal, çalıştığın yerde.<br>
-  Reklam ve izleyici engelleme, yerleşik.
 </p>
 
 <a id="homebrew"></a>

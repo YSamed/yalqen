@@ -4,8 +4,8 @@
     <img src="assets/readme/wordmark-light.png" alt="Yalqen" width="300">
   </picture>
 
-  <h3>轻如纸，澄如玻璃。</h3>
-  <p>面向 macOS 的开源 Chromium 浏览器。<br>垂直标签页、AI 与开发者工具，尽在一处。</p>
+  <h1>从想法到屏幕。</h1>
+  <p><sub>浏览器、AI 与开发者工具。<br>汇于同一工作空间。</sub></p>
 
   <p>
     <a href="https://yalqen.com/download"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-dmg-dark.png"><img src="assets/readme/download-dmg.png" alt="下载 DMG" width="250"></picture></a>
@@ -14,17 +14,10 @@
   <p>
     <a href="https://github.com/YSamed/yalqen/releases/latest"><picture><source media="(prefers-color-scheme: dark)" srcset="https://ysamed.github.io/yalqen/release-dark.svg"><img src="https://ysamed.github.io/yalqen/release-light.svg" alt="最新版本和总下载量" height="56"></picture></a>
   </p>
-  <p><sub>macOS 13+ · Apple Silicon · 已签名并公证</sub></p>
 </div>
 
 <p align="center">
   <a href="https://yalqen.com/"><img src="assets/screenshots/website.webp" alt="Yalqen — Light as paper. Clear as glass." width="900"></a>
-</p>
-
-<p align="center">
-  <strong>垂直标签页。命令栏。流畅专注。</strong><br>
-  DevTools、AI 聊天和终端，融入你的工作空间。<br>
-  内置广告和跟踪器拦截。
 </p>
 
 <a id="homebrew"></a>
