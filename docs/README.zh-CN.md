@@ -29,7 +29,16 @@ brew install --cask YSamed/yalqen/yalqen
 
 ### Linux 预览版
 
-请按照 [Linux 构建说明](../README.zh-CN.md#linux-预览版)操作。安装包生成在 `apps/browser/release/`；发布流程尚不提供预构建的 Linux 下载。Yalqen 会拒绝以 `--no-sandbox` 运行。
+在 Linux 上使用 Node.js 24 和 Git 构建：
+
+```bash
+git clone https://github.com/YSamed/yalqen.git
+cd yalqen/apps/browser
+npm ci
+npm run package:linux
+```
+
+AppImage 生成于 `apps/browser/release/`。打开前请添加可执行权限。发布流程尚不提供预构建的 Linux 下载。Chromium 沙箱需要可用的非特权用户命名空间；Yalqen 会拒绝以 `--no-sandbox` 运行。
 
 ## 更新
 

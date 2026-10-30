@@ -29,7 +29,16 @@ Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/lates
 
 ### Linux önizlemesi
 
-[Linux derleme adımlarını](../README.tr.md#linux-önizlemesi) izleyin. Paketler `apps/browser/release/` klasörüne yazılır; hazır Linux dosyaları henüz sürüm iş akışında yayımlanmıyor. Yalqen, `--no-sandbox` ile çalışmayı reddeder.
+Linux üzerinde Node.js 24 ve Git ile derleyin:
+
+```bash
+git clone https://github.com/YSamed/yalqen.git
+cd yalqen/apps/browser
+npm ci
+npm run package:linux
+```
+
+AppImage, `apps/browser/release/` klasörüne yazılır. Açmadan önce çalıştırma izni verin. Hazır Linux paketleri henüz yayımlanmıyor. Chromium sandbox koruması için ayrıcalıksız kullanıcı ad alanlarının çalışması gerekir; Yalqen, `--no-sandbox` ile çalışmayı reddeder.
 
 ## Güncellemeler
 

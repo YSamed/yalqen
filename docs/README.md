@@ -29,7 +29,16 @@ Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/la
 
 ### Linux preview
 
-Follow the [Linux build instructions](../README.md#linux-preview). Packages are written to `apps/browser/release/`; ready-made Linux downloads are not yet published by the release workflow. Yalqen refuses to run with `--no-sandbox`.
+Build on Linux with Node.js 24 and Git:
+
+```bash
+git clone https://github.com/YSamed/yalqen.git
+cd yalqen/apps/browser
+npm ci
+npm run package:linux
+```
+
+The AppImage is written to `apps/browser/release/`. Make it executable before opening it. Ready-made Linux downloads are not yet published by the release workflow. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to run with `--no-sandbox`.
 
 ## Updates
 
