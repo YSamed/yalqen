@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.76](https://github.com/YSamed/yalqen/compare/v0.3.75...v0.3.76) (2026-10-31)
+
+
+### Bug Fixes
+
+* **browser:** use opaque theme in fullscreen ([5d6f17a](https://github.com/YSamed/yalqen/commit/5d6f17aa7cb191dd872d4a26b231f4c029dceb39))
+
 ## [0.3.75](https://github.com/YSamed/yalqen/compare/v0.3.74...v0.3.75) (2026-10-31)
 
 
