@@ -69,7 +69,6 @@ import { exportBookmarksWithDialog, importBookmarksWithDialog, importHistoryWith
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
 import { showCertificateDetails } from '../privacy/certificate-details.js';
 import { saveOfflinePage, openLocalFiles } from './page-files.js';
-import { loadWallpaper } from './wallpaper.js';
 import { libraryMenuTemplate, profileMenuTemplate, siteInfoMenu, tabMenuTemplate } from './window-menus.js';
 import { buildSearchUrl, type SearchEngine } from '../address-bar/search.js';
 import type { SettingsStore } from '../app/settings.js';
@@ -116,7 +115,6 @@ const FIRST_PAINT_SCRIPT = `new Promise((resolve) => {
   }).observe({ type: 'paint', buffered: true });
   setTimeout(resolve, ${FIRST_PAINT_WAIT_MS});
 })`;
-const WALLPAPER_PRELOAD_DELAY_MS = 3000;
 const MAX_PICKED_ELEMENTS = 5;
 const MAX_AGENT_PROJECTS = 6;
 
@@ -482,7 +480,6 @@ export class YalqenWindow {
       this.applyLayout();
       if (this.window.isFullScreen() === fullScreen) return;
       fullScreen = !fullScreen;
-      if (fullScreen && this.glassApplied) void this.sendWallpaper();
       this.pushState();
     };
     this.window.on('resize', syncFullScreen);
@@ -495,8 +492,6 @@ export class YalqenWindow {
     this.uiContents.once('did-finish-load', () => {
       this.glassApplied = this.glassApplied && applyGlass(this.window);
       this.pushState();
-      // Only the full-screen glass backdrop draws the wallpaper, so its lookup waits for startup to settle.
-      if (this.glassApplied) setTimeout(() => void this.sendWallpaper(), WALLPAPER_PRELOAD_DELAY_MS);
     });
 
     this.window.on('close', (event) => {
@@ -578,11 +573,6 @@ export class YalqenWindow {
 
   focus(): void {
     if (this.revealed && !this.window.isDestroyed()) this.window.focus();
-  }
-
-  private async sendWallpaper(): Promise<void> {
-    const wallpaper = await loadWallpaper(path.join(app.getPath('userData'), 'wallpaper'));
-    if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.wallpaper, wallpaper);
   }
 
   readonly pushState = (): void => {
@@ -1846,7 +1836,9 @@ export class YalqenWindow {
   }
 
   private material(): WindowMaterial {
-    return this.glassApplied && !nativeTheme.prefersReducedTransparency ? 'glass' : 'opaque';
+    return this.glassApplied && !this.window.isFullScreen() && !nativeTheme.prefersReducedTransparency
+      ? 'glass'
+      : 'opaque';
   }
 
   private isPageFullScreen(): boolean {

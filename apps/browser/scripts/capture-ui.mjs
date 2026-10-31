@@ -219,7 +219,7 @@ const state = {
   agentProjects: [], agentProjectId: '', agentConversationId: '', agentBackgroundChats: [],
 };
 contextBridge.exposeInMainWorld('yalqen', {
-  getState: async () => state, onState: () => () => {}, onWallpaper: () => () => {}, setLayout: () => {}, send: () => {},
+  getState: async () => state, onState: () => () => {}, setLayout: () => {}, send: () => {},
 });`,
   };
   for (const [name, source] of Object.entries({

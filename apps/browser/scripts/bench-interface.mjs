@@ -58,7 +58,7 @@ const listeners = new Set();
 contextBridge.exposeInMainWorld('yalqen', {
   getState: () => ipcRenderer.invoke('bench:initial'),
   onState: (listener) => { listeners.add(listener); return () => listeners.delete(listener); },
-  onWallpaper: () => () => {}, setLayout: () => {}, send: () => {},
+  setLayout: () => {}, send: () => {},
 });
 ipcRenderer.on('bench:state', (_event, state) => {
   const start = performance.now();

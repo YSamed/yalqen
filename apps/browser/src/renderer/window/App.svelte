@@ -303,16 +303,8 @@
       browser = reuseBrowserState(browser, JSON.parse(serializedState));
       stateReceived = true;
     });
-    const offWallpaper = window.yalqen.onWallpaper((wallpaper) => {
-      const root = document.documentElement;
-      root.toggleAttribute('data-wallpaper', wallpaper !== null);
-      root.toggleAttribute('data-wallpaper-split', wallpaper?.split ?? false);
-      if (wallpaper) root.style.setProperty('--wallpaper', `url("${wallpaper.dataUrl}")`);
-      else root.style.removeProperty('--wallpaper');
-    });
     return () => {
       offState();
-      offWallpaper();
     };
   });
 </script>
@@ -468,6 +460,7 @@
       'panel page';
     height: 100%;
     background: var(--chrome-base);
+    transition: background-color var(--transition);
   }
 
   .shell.right {

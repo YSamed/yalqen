@@ -9,7 +9,6 @@ import {
   type AgentRewindPreview,
   type ChromeLayout,
   type UiAction,
-  type Wallpaper,
   type YalqenApi,
 } from '../shared/types.js';
 import type { VisualComparisonPreview, VisualComparisonReview } from '../shared/visual-comparison.js';
@@ -24,7 +23,6 @@ function subscribe<T>(name: string, listener: (value: T) => void): () => void {
 const api: YalqenApi = {
   getState: () => ipcRenderer.invoke(channel.getState) as Promise<BrowserState>,
   onState: (listener) => subscribe<string>(channel.state, listener),
-  onWallpaper: (listener) => subscribe<Wallpaper | null>(channel.wallpaper, listener),
   setLayout: (layout: ChromeLayout) => ipcRenderer.send(channel.setLayout, layout),
   send: (action: UiAction) => ipcRenderer.send(channel.action, action),
   getAgentTerminal: () => ipcRenderer.invoke(channel.agentSnapshot) as Promise<AgentTerminalSnapshot | null>,

@@ -451,7 +451,6 @@ export const IpcChannel = {
   state: 'yalqen:state',
   setLayout: 'yalqen:set-layout',
   action: 'yalqen:action',
-  wallpaper: 'yalqen:wallpaper',
   agentSnapshot: 'yalqen:agent-snapshot',
   agentSelectDirectory: 'yalqen:agent-select-directory',
   agentStart: 'yalqen:agent-start',
@@ -500,16 +499,10 @@ export const IpcChannel = {
   projectRunStop: 'yalqen:project-run-stop',
 } as const;
 
-export interface Wallpaper {
-  dataUrl: string;
-  split: boolean;
-}
-
 export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   getState(): Promise<BrowserState>;
   // State arrives as JSON: the context bridge deep-copies objects, but a string crosses it cheaply.
   onState(listener: (serializedState: string) => void): () => void;
-  onWallpaper(listener: (wallpaper: Wallpaper | null) => void): () => void;
   setLayout(layout: ChromeLayout): void;
   send(action: UiAction): void;
   getAgentTerminal(): Promise<AgentTerminalSnapshot | null>;
