@@ -22,6 +22,7 @@ for (const test of [
   'bookmark-transfer.mjs',
   'bulk-tabs.mjs',
   'tab-selection.mjs',
+  'tab-transition.mjs',
   'media-player.mjs',
   'media-controls.mjs',
   'media-skip.mjs',

@@ -408,7 +408,7 @@
               class="select"
               class:private={tab.isPrivate}
               title={tab.isPrivate ? t('toolbar.privateTabTitle', { title: tab.title }) : tab.title}
-              onclick={() => send({ type: 'activate-tab', id: tab.id })}
+              onclick={(event) => send({ type: 'activate-tab', id: tab.id, animate: event.detail > 0 })}
               onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
             >
               {@render favicon(tab)}

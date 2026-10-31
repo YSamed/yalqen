@@ -374,7 +374,7 @@ export interface AnchorRect {
 
 export type UiAction =
   | { type: 'new-tab'; url?: string }
-  | { type: 'activate-tab'; id: TabId }
+  | { type: 'activate-tab'; id: TabId; animate?: boolean }
   | { type: 'select-tab'; id: TabId; mode: 'toggle' | 'range' }
   | { type: 'clear-tab-selection' }
   | { type: 'close-selected-tabs' }
@@ -421,6 +421,7 @@ export type UiAction =
   | { type: 'open-settings' };
 
 export const PageChannel = {
+  tabTransition: 'yalqen:tab-transition',
   swipe: 'yalqen:page-swipe',
   newTabCenter: 'yalqen:newtab-center',
   credentialSubmitted: 'yalqen:credential-submitted',

@@ -301,7 +301,7 @@ export class TabManager {
     return tab.id;
   }
 
-  activate(id: TabId): void {
+  activate(id: TabId, animate = false): void {
     const next = this.find(id);
     if (!next) return;
     if (next.group) this.collapsedGroups.delete(next.group);
@@ -309,7 +309,13 @@ export class TabManager {
     this.selectionAnchor = id;
 
     const previous = this.active();
+    if (previous === next && next.view) {
+      if (next.url !== 'about:blank') next.view.webContents.focus();
+      this.changed();
+      return;
+    }
     if (previous?.view && previous.id !== id) {
+      previous.view.webContents.send(PageChannel.tabTransition, null);
       this.options.window.contentView.removeChildView(previous.view);
     }
 
@@ -321,12 +327,15 @@ export class TabManager {
       previous.inactiveSince = Date.now();
       this.freezer.maybeFreeze(previous);
     }
+    const wasLive = next.view !== null;
     const view = this.ensureLive(next);
     this.freezer.unfreeze(next);
     this.placement.syncNewTabCenter(next);
     this.placement.place(next, view);
     this.options.window.contentView.addChildView(view);
     if (next.url !== 'about:blank') view.webContents.focus();
+    // Never wait for a load, screenshot or animation before the page can receive input.
+    if (wasLive) view.webContents.send(PageChannel.tabTransition, animate ? Date.now() : null);
     this.changed(true);
   }
 
@@ -1837,6 +1846,7 @@ export class TabManager {
   }
 
   private destroyView(tab: Tab): void {
+    this.freezer.cancel(tab);
     const view = tab.view;
     if (!view) return;
     if (this.media?.tabId === tab.id) this.media = null;

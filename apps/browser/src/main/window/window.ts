@@ -1502,7 +1502,7 @@ export class YalqenWindow {
         tabs.open(action.url);
         break;
       case 'activate-tab':
-        tabs.activate(action.id);
+        tabs.activate(action.id, action.animate === true);
         break;
       case 'select-tab':
         tabs.selectTab(action.id, action.mode);

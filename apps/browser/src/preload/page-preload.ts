@@ -37,12 +37,14 @@ import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
 import { setupAutofill } from './autofill.js';
+import { setupTabTransition } from './tab-transition.js';
 import { setupMediaSession } from './media-session.js';
 import { SiteStorageChannel } from '../shared/site-storage.js';
 import { READING_LIST_URL, ReadingListChannel, type ReadingListApi } from '../shared/reading-list.js';
 import { WORKSPACES_URL, WorkspaceChannel, type WorkspaceApi } from '../shared/workspaces.js';
 
 setupAutofill();
+setupTabTransition();
 
 if (location.href.startsWith(READING_LIST_URL) && window === window.top) {
   const api: ReadingListApi = {
@@ -519,19 +521,43 @@ async function fillLogin(target?: HTMLInputElement): Promise<void> {
 if (window === window.top && (location.protocol === 'https:' || location.protocol === 'http:')) {
   setupMediaSession();
   let fillTimer = 0;
+  let hasPasswordFields = false;
   const scheduleFill = () => {
     if (fillTimer) return;
     fillTimer = window.setTimeout(() => {
       fillTimer = 0;
+      hasPasswordFields = document.querySelector('input[type="password"]') !== null;
       void fillLogin();
     }, FILL_THROTTLE_MS);
   };
   window.addEventListener(
     'DOMContentLoaded',
     () => {
+      hasPasswordFields = document.querySelector('input[type="password"]') !== null;
       void fillLogin();
-      const observer = new MutationObserver(scheduleFill);
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+      const observer = new MutationObserver((records) => {
+        // Most pages have no login form. Text updates and unrelated DOM changes
+        // should not repeatedly scan the whole document during its first paint.
+        if (
+          hasPasswordFields ||
+          records.some((record) =>
+            record.type === 'attributes'
+              ? record.target instanceof HTMLInputElement && record.target.type === 'password'
+              : Array.from(record.addedNodes).some(
+                  (node) =>
+                    node instanceof Element &&
+                    (node.matches('input[type="password"]') || node.querySelector('input[type="password"]') !== null),
+                ),
+          )
+        )
+          scheduleFill();
+      });
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['type', 'autocomplete'],
+      });
       window.setTimeout(() => observer.disconnect(), FILL_WATCH_MS);
     },
     { once: true },

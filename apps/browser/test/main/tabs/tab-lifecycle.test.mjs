@@ -232,12 +232,15 @@ test('a background tab that made sound keeps playing through silence and freezes
   assert.equal(f.manager.discardCandidates()[0].audible, false);
 });
 
-test('a muted autoplay that never made sound still freezes in the background', () => {
+test('a muted autoplay that never made sound still freezes in the background', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
   const f = fixture();
   freezable(f);
   f.view.webContents.emit('media-started-playing');
   assert.equal(f.manager.discardCandidates()[0].audible, false);
   f.manager.freezer.maybeFreeze(f.tab);
+  assert.equal(f.tab.frozen, false);
+  t.mock.timers.tick(10_000);
   assert.equal(f.tab.frozen, true);
 });
 
@@ -247,4 +250,15 @@ test('a silence event left over from the previous page does not protect a page t
   f.view.webContents.emit('media-started-playing');
   sound(false);
   assert.equal(f.manager.discardCandidates()[0].audible, false);
+});
+
+test('selecting the active tab focuses it without remounting its page', () => {
+  const f = fixture();
+  f.manager.activeId = f.tab.id;
+  let focused = 0;
+  f.view.webContents.focus = () => focused++;
+  f.manager.activate(f.tab.id);
+  assert.equal(focused, 1);
+  assert.deepEqual(f.removed, []);
+  assert.deepEqual(f.changes, [false]);
 });

@@ -11,6 +11,7 @@ interface FreezeHost {
 
 // Players fall quiet between tracks and ads, so a tab that made sound is kept running a while after it stops.
 const MEDIA_GAP_MS = 30_000;
+export const FREEZE_IDLE_MS = 10_000;
 
 // Chromium reports a playing tab as silent during a quiet passage; a muted autoplay that never made sound can still freeze.
 // shortcut: a page that made sound once keeps later muted autoplays running too; track sound per player if feeds stay awake.
@@ -19,6 +20,8 @@ export function keepsPlaying(tab: Tab): boolean {
 }
 
 export class TabFreezer {
+  private readonly pending = new Map<Tab, NodeJS.Timeout>();
+
   constructor(private readonly host: FreezeHost) {}
 
   maybeFreeze(tab: Tab): void {
@@ -28,6 +31,21 @@ export class TabFreezer {
     if (contents.isCurrentlyAudible() || keepsPlaying(tab) || contents.isDevToolsOpened()) return;
     // A frozen opener misses the messages its sign-in popup posts back.
     if (this.host.hasLiveChild(tab)) return;
+    // Keep recently used pages warm while the user compares tabs. Chromium still
+    // throttles background timers; explicit freezing can wait until switching settles.
+    const remaining = FREEZE_IDLE_MS - (Date.now() - tab.inactiveSince);
+    if (remaining > 0) {
+      if (!this.pending.has(tab)) {
+        const timer = setTimeout(() => {
+          this.pending.delete(tab);
+          this.maybeFreeze(tab);
+        }, remaining);
+        timer.unref();
+        this.pending.set(tab, timer);
+      }
+      return;
+    }
+    this.cancel(tab);
     tab.frozen = true;
     this.setLifecycleState(tab, 'frozen');
     this.host.changed();
@@ -37,8 +55,15 @@ export class TabFreezer {
     setTimeout(() => this.maybeFreeze(tab), MEDIA_GAP_MS + 1_000);
   }
 
+  cancel(tab: Tab): void {
+    const timer = this.pending.get(tab);
+    if (timer) clearTimeout(timer);
+    this.pending.delete(tab);
+  }
+
   // Resolves once the page runs again, for callers that must execute script in it right away.
   unfreeze(tab: Tab): Promise<void> {
+    this.cancel(tab);
     if (!tab.frozen) return Promise.resolve();
     tab.frozen = false;
     return this.setLifecycleState(tab, 'active');

@@ -88,7 +88,7 @@
   function selectTab(event: MouseEvent, id: TabId): void {
     if (event.shiftKey) send({ type: 'select-tab', id, mode: 'range' });
     else if (event.metaKey || event.ctrlKey) send({ type: 'select-tab', id, mode: 'toggle' });
-    else send({ type: 'activate-tab', id });
+    else send({ type: 'activate-tab', id, animate: event.detail > 0 });
   }
 
   const pinned = $derived(tabs.filter((tab) => tab.pinned));
