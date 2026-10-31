@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.75](https://github.com/YSamed/yalqen/compare/v0.3.74...v0.3.75) (2026-10-31)
+
+
+### Performance
+
+* **browser:** smooth tab switching and reduce page load work ([a31d5cf](https://github.com/YSamed/yalqen/commit/a31d5cf1cdb9be11a7cf21228da64298b1752520))
+
 ## [0.3.74](https://github.com/YSamed/yalqen/compare/v0.3.73...v0.3.74) (2026-10-26)
 
 
