@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.77](https://github.com/YSamed/yalqen/compare/v0.3.76...v0.3.77) (2026-11-01)
+
+
+### Bug Fixes
+
+* remove welcome letter and recipient counting ([dc394dc](https://github.com/YSamed/yalqen/commit/dc394dccb211d4624eec2ff1f65350e5453fa7a8))
+
 ## [0.3.76](https://github.com/YSamed/yalqen/compare/v0.3.75...v0.3.76) (2026-10-31)
 
 
