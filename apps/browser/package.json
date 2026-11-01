@@ -29,14 +29,14 @@
     "package:linux": "npm run build && electron-builder --linux"
   },
   "devDependencies": {
-    "@electron/osx-sign": "^2.7.1",
+    "@electron/osx-sign": "^2.7.2",
     "@eslint/js": "^10.0.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.19.2",
     "bippy": "^0.7.3",
-    "electron": "^45.0.0",
+    "electron": "^45.1.0",
     "electron-builder": "^26.18.0",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
@@ -44,10 +44,10 @@
     "globals": "^17.13.0",
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
-    "svelte": "^5.57.2",
+    "svelte": "^5.57.3",
     "svelte-check": "^4.7.7",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.0",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5"
   },
   "optionalDependencies": {
