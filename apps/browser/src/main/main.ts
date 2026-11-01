@@ -116,7 +116,7 @@ import { isDefaultBrowser } from './app/default-browser.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './address-bar/suggestions.js';
 import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
-import { LETTER_ENDPOINT, sendLetterCount, UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
+import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
 import { YalqenWindow, glassAtLaunch, type AppContext, type WindowOptions } from './window/window.js';
 import { ZoomStore } from './tabs/zoom.js';
@@ -1052,50 +1052,7 @@ function startBrowser(): void {
     );
     if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
     else if (rest.length > 0) openExternal(rest);
-    showLetter();
-  };
-
-  let countingLetter = false;
-  const countLetter = () => {
-    const { letterSeen, letterCounted } = settings.get();
-    if (!app.isPackaged || bench || !letterSeen || letterCounted || countingLetter) return;
-    countingLetter = true;
-    void sendLetterCount(LETTER_ENDPOINT).then((counted) => {
-      countingLetter = false;
-      if (counted) settings.update({ letterCounted: true });
-    });
-  };
-
-  // Everyone gets the sealed thank-you letter once, before the invitation when both are due.
-  const showLetter = () => {
-    const window = current;
-    if (bench || settings.get().letterSeen || !window || window.isPrivate || window.isDeveloper || window.webApp) {
-      showInvitation();
-      return;
-    }
-    const values = settings.get();
-    welcome.show(
-      {
-        window: window.window,
-        open: {
-          name: values.displayName,
-          accent: values.accentColor,
-          theme: values.theme,
-          tabs: invitationTabs(values),
-          material: glassAtLaunch(settings) ? 'glass' : 'opaque',
-          sources: [],
-        },
-        onAction: () => {},
-        importFrom: async () => ({ ok: false, bookmarks: 0, visits: 0 }),
-        onFinish: () => {
-          settings.update({ letterSeen: true });
-          countLetter();
-          window.focus();
-          showInvitation();
-        },
-      },
-      rendererPath('letter.html'),
-    );
+    showInvitation();
   };
 
   // Everyone sees the thank-you invitation once, including people who installed before it existed.
@@ -1145,7 +1102,6 @@ function startBrowser(): void {
     if (!bench) extensions.scheduleUpdates();
     openInitialWindows();
     usage.schedule();
-    countLetter();
     void agentBridge.sync();
     prewarmCommandBar();
     if (!bench) return;

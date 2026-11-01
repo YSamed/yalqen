@@ -19,7 +19,6 @@ export default defineConfig({
         command: page('command.html'),
         find: page('find.html'),
         welcome: page('welcome.html'),
-        letter: page('letter.html'),
       },
     },
   },
