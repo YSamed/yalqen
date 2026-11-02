@@ -146,7 +146,7 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^2.1.0",
-    "@anthropic-ai/claude-agent-sdk": "^0.3.309",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.314",
     "@ghostery/adblocker-electron": "^2.20.3",
     "@mozilla/readability": "^0.6.0",
     "@xterm/addon-fit": "^0.11.0",
