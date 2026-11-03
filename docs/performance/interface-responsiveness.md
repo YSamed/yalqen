@@ -97,7 +97,7 @@ The window is shown 46–62 ms after the layout instead of at once, and it is co
 - **Sidebar highlight after the page.** The highlight follows the page by about one frame, because it waits for the state from the main process. An optimistic highlight would save that frame and need a way to undo itself.
 - **Native view switch.** Removing and adding the page views and moving focus take about 2.7 ms of main-thread time per switch.
 - **A prerendered new tab page.** A hidden, ready page would paint at once, but the page is built from one-shot state (welcome, announcement and repository prompts) that a hidden copy would consume.
-- **Native glass variants.** `electron-liquid-glass` sets the native tint only when the view is created, and its variant methods use private macOS APIs, so the adjustable part is the tint the interface draws.
+- **Native glass variants.** The window uses Electron `hud` vibrancy, whose blur strength is fixed by macOS, so the adjustable part is the tint the interface draws.
 
 ## Sources
 

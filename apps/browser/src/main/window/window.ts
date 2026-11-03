@@ -273,7 +273,7 @@ export class YalqenWindow {
       title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-      transparent: this.glassApplied,
+      visualEffectState: 'active',
       show: false,
     });
     this.activeProjectId = this.addProject().id;

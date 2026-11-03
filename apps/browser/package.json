@@ -51,9 +51,6 @@
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5"
   },
-  "optionalDependencies": {
-    "electron-liquid-glass": "^1.1.1"
-  },
   "build": {
     "appId": "com.yalqen.browser",
     "productName": "Yalqen",
