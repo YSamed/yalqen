@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.82](https://github.com/YSamed/yalqen/compare/v0.3.81...v0.3.82) (2026-11-03)
+
+
+### Bug Fixes
+
+* stop glass toolbar buttons turning white ([#334](https://github.com/YSamed/yalqen/issues/334)) ([509692f](https://github.com/YSamed/yalqen/commit/509692fe6130d48017644ba7c7579a9e0beed3a4))
+
 ## [0.3.81](https://github.com/YSamed/yalqen/compare/v0.3.80...v0.3.81) (2026-11-03)
 
 
