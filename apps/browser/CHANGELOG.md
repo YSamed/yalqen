@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.79](https://github.com/YSamed/yalqen/compare/v0.3.78...v0.3.79) (2026-11-03)
+
+
+### Features
+
+* default to narrow left tab panel for new installs ([#328](https://github.com/YSamed/yalqen/issues/328)) ([da2c361](https://github.com/YSamed/yalqen/commit/da2c3612a072e3ee5a3b69d4d86f6c7dcdec6205))
+
 ## [0.3.78](https://github.com/YSamed/yalqen/compare/v0.3.77...v0.3.78) (2026-11-03)
 
 
