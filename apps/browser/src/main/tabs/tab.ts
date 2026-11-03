@@ -87,7 +87,7 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
 }
 
 export function savedTab(tab: Tab): SavedTab {
-  const navigation = tab.view?.webContents.navigationHistory;
+  const navigation = liveContents(tab)?.navigationHistory;
   const history = navigation ? captureSavedHistory(navigation) : tab.history && trimHistory(tab.history);
   return {
     id: tab.id,
@@ -106,7 +106,7 @@ export function liveContents(tab: Tab | undefined): Electron.WebContents | null 
 }
 
 export function captureHistory(tab: Tab): SavedHistory | null {
-  const history = tab.view?.webContents.navigationHistory;
+  const history = liveContents(tab)?.navigationHistory;
   if (!history) return tab.history;
   const entries = history.getAllEntries();
   return entries.length > 0 ? { entries, index: history.getActiveIndex() } : tab.history;
