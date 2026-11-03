@@ -43,7 +43,7 @@ test('unknown or mistyped fields fall back', () => {
       glassTint: 25,
       startupBehavior: 'restore',
       startupUrls: [],
-      panelCollapsed: false,
+      panelCollapsed: true,
       panelSide: 'left',
       pinnedDisplay: 'always',
       sidebarVisible: true,
