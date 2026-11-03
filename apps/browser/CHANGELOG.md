@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.80](https://github.com/YSamed/yalqen/compare/v0.3.79...v0.3.80) (2026-11-03)
+
+
+### Bug Fixes
+
+* stop stale toolbar pixels on the opaque glass window ([#330](https://github.com/YSamed/yalqen/issues/330)) ([337adff](https://github.com/YSamed/yalqen/commit/337adffe6fae29ff1a9a93aa15c566cc83d6b71b))
+
 ## [0.3.79](https://github.com/YSamed/yalqen/compare/v0.3.78...v0.3.79) (2026-11-03)
 
 
