@@ -82,6 +82,12 @@ function codeBoxes(input: HTMLInputElement, length: number): HTMLInputElement[] 
   return [];
 }
 
+// Pages without color-scheme resolve Canvas to white, so the colours follow the system theme instead.
+export function stylePickerButton(button: HTMLButtonElement): void {
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  button.style.cssText = `all: initial; box-sizing: border-box; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; border: 1px solid ${dark ? 'rgb(255 255 255 / 0.16)' : 'rgb(0 0 0 / 0.12)'}; background: ${dark ? 'rgb(44 44 46)' : 'rgb(255 255 255)'}; color: ${dark ? 'rgb(235 235 245)' : 'rgb(60 60 67)'}; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); font: 12px/1 system-ui; cursor: pointer; outline: revert;`;
+}
+
 export function setupAutofill(): void {
   if (window !== window.top || !['https:', 'http:'].includes(location.protocol)) return;
   let host: HTMLDivElement | null = null,
@@ -121,9 +127,7 @@ export function setupAutofill(): void {
       const shadow = host.attachShadow({ mode: 'closed' });
       button = document.createElement('button');
       button.type = 'button';
-      button.textContent = '⌄';
-      button.style.cssText =
-        'all: initial; box-sizing: border-box; width: 28px; height: 28px; border: 1px solid GrayText; border-radius: 6px; background: Canvas; color: CanvasText; font: 16px system-ui; text-align: center; cursor: pointer; outline: revert;';
+      button.textContent = '▾';
       button.addEventListener('click', async (event) => {
         if (!event.isTrusted || picking || !target) return;
         if (mode === 'code') {
@@ -211,6 +215,7 @@ export function setupAutofill(): void {
       document.addEventListener('scroll', position, { capture: true, passive: true });
       window.addEventListener('resize', position, { passive: true });
     }
+    stylePickerButton(button!);
     button!.ariaLabel = label;
     button!.title = label;
     position();

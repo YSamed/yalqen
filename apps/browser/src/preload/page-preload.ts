@@ -36,7 +36,7 @@ import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
 import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';
 import { setupWebStorePage } from './web-store.js';
-import { setupAutofill } from './autofill.js';
+import { setupAutofill, stylePickerButton } from './autofill.js';
 import { setupTabTransition } from './tab-transition.js';
 import { setupMediaSession } from './media-session.js';
 import { SiteStorageChannel } from '../shared/site-storage.js';
@@ -380,10 +380,7 @@ function showPicker(fields: LoginFields, label: string, mode: 'login' | 'generat
       'all: initial !important; position: fixed !important; z-index: 2147483647 !important; width: 28px !important; height: 28px !important;';
     const shadow = pickerHost.attachShadow({ mode: 'closed' });
     pickerButton = document.createElement('button');
-    pickerButton.style.cssText =
-      'all: initial; box-sizing: border-box; width: 28px; height: 28px; border: 1px solid GrayText; border-radius: 6px; background: Canvas; color: CanvasText; font: 16px system-ui; text-align: center; cursor: pointer; outline: revert;';
     pickerButton.type = 'button';
-    pickerButton.textContent = '⌄';
     pickerButton.addEventListener('click', async (event) => {
       if (!event.isTrusted || picking || !pickerFields) return;
       const fields = pickerFields;
@@ -444,7 +441,8 @@ function showPicker(fields: LoginFields, label: string, mode: 'login' | 'generat
   delete pickerHost!.dataset.yalqenPasswordGenerator;
   if (mode === 'login') pickerHost!.dataset.yalqenLoginPicker = '';
   else pickerHost!.dataset.yalqenPasswordGenerator = '';
-  pickerButton!.textContent = mode === 'generate' ? '✦' : '⌄';
+  stylePickerButton(pickerButton!);
+  pickerButton!.textContent = mode === 'generate' ? '✦' : '▾';
   pickerButton!.ariaLabel = label;
   pickerButton!.title = label;
   positionPicker();
