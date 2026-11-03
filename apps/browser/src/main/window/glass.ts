@@ -1,4 +1,4 @@
-import { nativeTheme, systemPreferences, type BaseWindow } from 'electron';
+import type { BaseWindow } from 'electron';
 
 export const glassAvailable = process.platform === 'darwin';
 
@@ -8,18 +8,11 @@ export function applyGlass(window: BaseWindow): boolean {
   if (!glassAvailable) return false;
   try {
     window.setVibrancy('hud');
-    matchSystemBackground(window);
+    // An opaque colour stops the compositor clearing see-through chrome, so translucent controls pile up into white.
+    window.setBackgroundColor('#00000000');
     return true;
   } catch (error) {
     console.warn('[glass] could not set vibrancy', error);
     return false;
   }
-}
-
-// An opaque window defaults to white, which shows at the frame edge during Stage Manager switches.
-function matchSystemBackground(window: BaseWindow): void {
-  const sync = () => window.setBackgroundColor(systemPreferences.getColor('window-background'));
-  sync();
-  nativeTheme.on('updated', sync);
-  window.once('closed', () => nativeTheme.off('updated', sync));
 }

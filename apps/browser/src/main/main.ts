@@ -159,8 +159,6 @@ const chosenLanguage = new SettingsStore(app.getPath('userData')).get().interfac
 if (chosenLanguage !== 'system') app.commandLine.appendSwitch('lang', chosenLanguage);
 // Chromium keeps one renderer process warm, so a new tab or a new site does not wait for a launch.
 app.commandLine.appendSwitch('enable-features', 'SpareRendererForSitePerProcess');
-// The glass window is opaque under transparent chrome, so a partial redraw leaves stale toolbar pixels behind.
-if (process.platform === 'darwin') app.commandLine.appendSwitch('ui-disable-partial-swap');
 
 function startBrowser(): void {
   const userData = app.getPath('userData');
