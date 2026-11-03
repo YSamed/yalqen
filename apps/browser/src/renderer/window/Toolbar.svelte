@@ -115,12 +115,14 @@
     const align = () => {
       const headerBounds = header.getBoundingClientRect();
       const groupBounds = tabGroup.getBoundingClientRect();
-      const activeBounds = active.getBoundingClientRect();
-      const activeCenter = activeBounds.left + activeBounds.width / 2 - groupBounds.left;
-      const targetLeft = headerBounds.left + headerBounds.width / 2 + centerOffset - activeCenter;
+      // The new tab slot is wider than its button, so the visible group ends at the button.
+      const contentRight =
+        tabGroup.querySelector('.new-tab-slot > *')?.getBoundingClientRect().right ?? groupBounds.right;
+      const contentCenter = (contentRight - groupBounds.left) / 2;
+      const targetLeft = headerBounds.left + headerBounds.width / 2 + centerOffset - contentCenter;
       const leftLimit = headerBounds.left + leadingInset + 8;
       const rightLimit = controls.getBoundingClientRect().left - 8 - groupBounds.width;
-      // Keep the active address centered without moving the group into neighboring controls.
+      // Keep the group centered, so switching tabs does not move it, without overlapping neighboring controls.
       const left = Math.max(leftLimit, Math.min(targetLeft, rightLimit));
       // Whole device pixels keep the address text from shimmering while the panel moves.
       groupOffset = Math.round((left - (groupBounds.left - groupOffset)) * devicePixelRatio) / devicePixelRatio;
@@ -519,13 +521,14 @@
 
   .new-tab-slot {
     display: flex;
-    flex: none;
-    width: 92px;
+    /* The spare room beside the button goes first when tabs need the space. */
+    flex: 0 1000 92px;
+    min-width: var(--chrome-control-size);
   }
 
   @media (max-width: 760px) {
     .new-tab-slot {
-      width: var(--chrome-control-size);
+      flex-basis: var(--chrome-control-size);
     }
   }
 
@@ -553,8 +556,9 @@
   .chip {
     position: relative;
     display: flex;
-    flex: none;
+    flex: 0 1 auto;
     align-items: center;
+    min-width: 40px;
     max-width: 150px;
     height: var(--chrome-control-size);
     padding-right: 5px;
@@ -573,7 +577,6 @@
     max-width: none;
     min-width: 160px;
     padding-right: 0;
-    flex-shrink: 1;
   }
 
   .pill {

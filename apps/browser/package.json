@@ -37,9 +37,9 @@
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.19.2",
     "bippy": "^0.7.3",
-    "electron": "^45.1.0",
+    "electron": "^45.2.0",
     "electron-builder": "^26.18.0",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.23.1",
     "globals": "^17.13.0",
@@ -142,8 +142,8 @@
     }
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^2.1.0",
-    "@anthropic-ai/claude-agent-sdk": "^0.3.309",
+    "@agentclientprotocol/sdk": "^2.2.0",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.314",
     "@ghostery/adblocker-electron": "^2.20.3",
     "@mozilla/readability": "^0.6.0",
     "@xterm/addon-fit": "^0.11.0",
