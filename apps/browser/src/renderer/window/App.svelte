@@ -116,7 +116,9 @@
   const extensions = $derived(browser.extensions);
   const device = $derived(browser.device);
   const showToolbarTabs = $derived(browser.toolbarTabs);
-  const toolbarTabs = $derived(showToolbarTabs ? tabs : activeTab ? [activeTab] : []);
+  const toolbarTabs = $derived(
+    showToolbarTabs ? tabs.filter((tab) => !tab.pinned || tab.id === activeTab?.id) : activeTab ? [activeTab] : [],
+  );
   const agentPanelOpen = $derived(browser.agentPanelOpen);
   const agentSession = $derived(browser.agentSession);
   const agentChat = $derived(browser.agentChat);
