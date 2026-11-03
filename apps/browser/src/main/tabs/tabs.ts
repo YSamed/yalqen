@@ -811,7 +811,7 @@ export class TabManager {
     const tab = this.find(id);
     if (!tab) return;
     tab.muted = !tab.muted;
-    tab.view?.webContents.setAudioMuted(tab.muted);
+    liveContents(tab)?.setAudioMuted(tab.muted);
     this.changed();
   }
 
@@ -900,21 +900,21 @@ export class TabManager {
   }
 
   goBack(): boolean {
-    const history = this.active()?.view?.webContents.navigationHistory;
+    const history = liveContents(this.active())?.navigationHistory;
     if (!history?.canGoBack()) return false;
     history.goBack();
     return true;
   }
 
   goForward(): boolean {
-    const history = this.active()?.view?.webContents.navigationHistory;
+    const history = liveContents(this.active())?.navigationHistory;
     if (!history?.canGoForward()) return false;
     history.goForward();
     return true;
   }
 
   reload(): void {
-    this.active()?.view?.webContents.reload();
+    liveContents(this.active())?.reload();
   }
 
   async approveExtensionReload(
@@ -982,7 +982,7 @@ export class TabManager {
   }
 
   reloadIgnoringCache(): void {
-    this.active()?.view?.webContents.reloadIgnoringCache();
+    liveContents(this.active())?.reloadIgnoringCache();
   }
 
   activeOverrides(): PageOverrides {
@@ -1090,7 +1090,7 @@ export class TabManager {
   }
 
   stop(): void {
-    this.active()?.view?.webContents.stop();
+    liveContents(this.active())?.stop();
   }
 
   syncAgent(): void {
@@ -1270,7 +1270,7 @@ export class TabManager {
   }
 
   toggleDevTools(): void {
-    this.active()?.view?.webContents.toggleDevTools();
+    liveContents(this.active())?.toggleDevTools();
   }
 
   openDevTools(): void {
@@ -1868,7 +1868,7 @@ export class TabManager {
   }
 
   private snapshot(tab: Tab): TabSnapshot {
-    const history = tab.view?.webContents.navigationHistory;
+    const history = liveContents(tab)?.navigationHistory;
     return {
       id: tab.id,
       title: tab.title,
@@ -1886,7 +1886,7 @@ export class TabManager {
       overrides: tab.overrides,
       translation: { status: tab.translation, available: this.translation.available(tab) },
       autoReloadSeconds: tab.autoReload?.seconds ?? null,
-      audible: tab.view !== null && !tab.view.webContents.isDestroyed() && tab.view.webContents.isCurrentlyAudible(),
+      audible: liveContents(tab)?.isCurrentlyAudible() ?? false,
       muted: tab.muted,
       canGoBack: history?.canGoBack() ?? false,
       canGoForward: history?.canGoForward() ?? false,

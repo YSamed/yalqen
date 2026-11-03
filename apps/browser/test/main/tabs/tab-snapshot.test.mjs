@@ -74,3 +74,14 @@ test('targeted snapshots handle missing, inactive and discarded tabs', () => {
   f.manager.activeId = null;
   assert.equal(f.manager.snapshotFor(), null);
 });
+
+test('a tab whose page closed itself still snapshots before the tab is removed', () => {
+  const f = fixture();
+  f.selected.view = {};
+  const selected = f.manager.snapshotFor('selected');
+  assert.equal(selected.live, true);
+  assert.equal(selected.audible, false);
+  assert.equal(selected.canGoBack, false);
+  assert.doesNotThrow(() => f.manager.state());
+  assert.equal(f.manager.goBack(), false);
+});

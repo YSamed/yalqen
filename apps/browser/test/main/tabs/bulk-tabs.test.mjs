@@ -145,7 +145,10 @@ test('duplicate has its own identity and history, preserves privacy, and is unpi
     source.history = history;
     if (!isPrivate)
       source.view = {
-        webContents: { navigationHistory: { getAllEntries: () => history.entries, getActiveIndex: () => 0 } },
+        webContents: {
+          isDestroyed: () => false,
+          navigationHistory: { getAllEntries: () => history.entries, getActiveIndex: () => 0 },
+        },
       };
     const id = manager.duplicate(source.id);
     const copy = manager.tabs[1];
