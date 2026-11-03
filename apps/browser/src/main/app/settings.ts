@@ -38,7 +38,7 @@ const DEFAULTS: Settings = {
   glassTint: DEFAULT_GLASS_TINT,
   startupBehavior: 'restore',
   startupUrls: [],
-  panelCollapsed: false,
+  panelCollapsed: true,
   panelSide: 'left',
   pinnedDisplay: 'always',
   sidebarVisible: true,

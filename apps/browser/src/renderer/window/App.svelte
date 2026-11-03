@@ -49,7 +49,7 @@
     pageFullScreen: false,
     windowFullScreen: false,
     addressPlaceholder: t('app.addressPlaceholder'),
-    panelCollapsed: false,
+    panelCollapsed: true,
     panelSide: 'left',
     pinnedDisplay: 'always',
     sidebarVisible: true,
