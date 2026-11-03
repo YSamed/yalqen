@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.83](https://github.com/YSamed/yalqen/compare/v0.3.82...v0.3.83) (2026-11-03)
+
+
+### Bug Fixes
+
+* match password picker button to the system theme ([#336](https://github.com/YSamed/yalqen/issues/336)) ([5e130bc](https://github.com/YSamed/yalqen/commit/5e130bced66e5a0d032cfc0642fd4eda410ba133))
+
 ## [0.3.82](https://github.com/YSamed/yalqen/compare/v0.3.81...v0.3.82) (2026-11-03)
 
 
