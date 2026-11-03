@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.78](https://github.com/YSamed/yalqen/compare/v0.3.77...v0.3.78) (2026-11-03)
+
+
+### Bug Fixes
+
+* improve toolbar tab strip with many and pinned tabs ([#326](https://github.com/YSamed/yalqen/issues/326)) ([05099da](https://github.com/YSamed/yalqen/commit/05099daa100e788496176821454aff99167f6f36))
+* stop glass window flashing after stage manager switch ([#325](https://github.com/YSamed/yalqen/issues/325)) ([54212bd](https://github.com/YSamed/yalqen/commit/54212bd985e20d07e863ecc7e355d70f14762bd0))
+
 ## [0.3.77](https://github.com/YSamed/yalqen/compare/v0.3.76...v0.3.77) (2026-11-01)
 
 
