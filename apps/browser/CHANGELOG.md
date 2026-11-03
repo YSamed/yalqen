@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.81](https://github.com/YSamed/yalqen/compare/v0.3.80...v0.3.81) (2026-11-03)
+
+
+### Bug Fixes
+
+* stop crash when a page closes itself before its tab is removed ([#332](https://github.com/YSamed/yalqen/issues/332)) ([542b345](https://github.com/YSamed/yalqen/commit/542b3455ea2202697a0d850d4babbcebacdd047e))
+
 ## [0.3.80](https://github.com/YSamed/yalqen/compare/v0.3.79...v0.3.80) (2026-11-03)
 
 
