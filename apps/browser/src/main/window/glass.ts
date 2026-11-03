@@ -1,31 +1,25 @@
-import type { BaseWindow } from 'electron';
+import { nativeTheme, systemPreferences, type BaseWindow } from 'electron';
 
-interface LiquidGlass {
-  addView(handle: Buffer, options?: { cornerRadius?: number; tintColor?: string; opaque?: boolean }): number;
-}
+export const glassAvailable = process.platform === 'darwin';
 
-function loadLiquidGlass(): LiquidGlass | null {
-  if (process.platform !== 'darwin') return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional native module, loaded only on macOS
-    const module = require('electron-liquid-glass') as { default?: LiquidGlass } & LiquidGlass;
-    return module.default ?? module;
-  } catch (error) {
-    console.warn('[glass] electron-liquid-glass not available, using opaque window', error);
-    return null;
-  }
-}
-
-const liquidGlass = loadLiquidGlass();
-
-export const glassAvailable = liquidGlass !== null;
-
+// A transparent window flashes dark grey for one frame after a Stage Manager switch, so the window stays opaque
+// and uses vibrancy; Liquid Glass shows nothing behind an opaque window.
 export function applyGlass(window: BaseWindow): boolean {
-  if (!liquidGlass) return false;
+  if (!glassAvailable) return false;
   try {
-    return liquidGlass.addView(window.getNativeWindowHandle()) >= 0;
+    window.setVibrancy('hud');
+    matchSystemBackground(window);
+    return true;
   } catch (error) {
-    console.warn('[glass] could not add glass view', error);
+    console.warn('[glass] could not set vibrancy', error);
     return false;
   }
+}
+
+// An opaque window defaults to white, which shows at the frame edge during Stage Manager switches.
+function matchSystemBackground(window: BaseWindow): void {
+  const sync = () => window.setBackgroundColor(systemPreferences.getColor('window-background'));
+  sync();
+  nativeTheme.on('updated', sync);
+  window.once('closed', () => nativeTheme.off('updated', sync));
 }
