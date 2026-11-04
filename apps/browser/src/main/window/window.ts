@@ -273,7 +273,8 @@ export class YalqenWindow {
       title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-      transparent: this.glassApplied,
+      // Vibrancy at creation makes the compositor clear see-through chrome; a transparent window flashes in Stage Manager.
+      ...(this.glassApplied ? { vibrancy: 'hud' as const } : {}),
       visualEffectState: 'active',
       show: false,
     });
