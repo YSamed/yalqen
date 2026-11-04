@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.85](https://github.com/YSamed/yalqen/compare/v0.3.84...v0.3.85) (2026-11-04)
+
+
+### Bug Fixes
+
+* create the glass window with vibrancy instead of transparency ([#340](https://github.com/YSamed/yalqen/issues/340)) ([0d6feec](https://github.com/YSamed/yalqen/commit/0d6feecedaba417a106c70b8d6ed987d53d671a5))
+
 ## [0.3.84](https://github.com/YSamed/yalqen/compare/v0.3.83...v0.3.84) (2026-11-04)
 
 
