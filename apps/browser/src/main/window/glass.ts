@@ -2,13 +2,12 @@ import type { BaseWindow } from 'electron';
 
 export const glassAvailable = process.platform === 'darwin';
 
-// A transparent window flashes dark grey for one frame after a Stage Manager switch, so the window stays opaque
-// and uses vibrancy; Liquid Glass shows nothing behind an opaque window.
+// The window must be created transparent: on an opaque window Chromium skips clearing see-through chrome,
+// which leaves ghost copies with partial swap and piles translucent controls into white without it.
 export function applyGlass(window: BaseWindow): boolean {
   if (!glassAvailable) return false;
   try {
     window.setVibrancy('hud');
-    // An opaque colour stops the compositor clearing see-through chrome, so translucent controls pile up into white.
     window.setBackgroundColor('#00000000');
     return true;
   } catch (error) {
