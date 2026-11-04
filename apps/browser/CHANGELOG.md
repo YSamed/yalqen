@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.84](https://github.com/YSamed/yalqen/compare/v0.3.83...v0.3.84) (2026-11-04)
+
+
+### Bug Fixes
+
+* stop toolbar ghosting by creating the glass window transparent ([#338](https://github.com/YSamed/yalqen/issues/338)) ([9db56cc](https://github.com/YSamed/yalqen/commit/9db56ccea7eea5fe3c088b4df8b2fb457f7b03dd))
+
 ## [0.3.83](https://github.com/YSamed/yalqen/compare/v0.3.82...v0.3.83) (2026-11-03)
 
 
