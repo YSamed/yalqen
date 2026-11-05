@@ -24,6 +24,7 @@ import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/me
 import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from '../address-bar/search.js';
 import { sanitizeProtectionExceptions } from '../privacy/site-protections.js';
+import { isBackgroundFileName } from '../pages/new-tab-background.js';
 
 export interface Settings extends SettingsValues {
   version: 1;
@@ -65,6 +66,7 @@ const DEFAULTS: Settings = {
   invitationSeen: false,
   displayName: '',
   accentColor: DEFAULT_ACCENT,
+  newTabBackground: '',
   dismissedAnnouncement: '',
   dismissedFeedback: '',
   dismissedUpdate: '',
@@ -138,6 +140,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen,
     displayName,
     accentColor,
+    newTabBackground,
     dismissedAnnouncement,
     dismissedFeedback,
     dismissedUpdate,
@@ -217,6 +220,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen: typeof invitationSeen === 'boolean' ? invitationSeen : base.invitationSeen,
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
+    newTabBackground:
+      newTabBackground === '' || isBackgroundFileName(newTabBackground) ? newTabBackground : base.newTabBackground,
     dismissedAnnouncement:
       typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,
     dismissedFeedback: typeof dismissedFeedback === 'string' ? dismissedFeedback.slice(0, 64) : base.dismissedFeedback,
