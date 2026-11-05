@@ -84,6 +84,15 @@
         --faint: light-dark(#5d6168, #a4a7ad);
       }
 
+      :root[data-background] body {
+        background: var(--page) url('yalqen://newtab/background') center / cover no-repeat;
+      }
+
+      :root[data-background] .pinned .name {
+        color: #fff;
+        text-shadow: 0 1px 3px rgb(0 0 0 / 0.65);
+      }
+
       * {
         box-sizing: border-box;
       }

@@ -52,6 +52,17 @@
     value: factor,
     label: t('settings.zoomPercent', { percent: Math.round(factor * 100) }),
   }));
+  let choosingBackground = $state(false);
+
+  async function chooseBackground(): Promise<void> {
+    choosingBackground = true;
+    try {
+      await api.chooseNewTabBackground();
+    } finally {
+      choosingBackground = false;
+    }
+  }
+
   const pinnedOptions = [
     { value: 'always', label: t('settings.pinnedAlways') },
     { value: 'expanded', label: t('settings.pinnedExpanded') },
@@ -129,6 +140,15 @@
     value={values.accentColor}
     onchange={(value) => update({ accentColor: value })}
   />
+</SettingRow>
+
+<SettingRow title={t('settings.newTabBackground')} hint={t('settings.newTabBackgroundHint')}>
+  <Button variant="tonal" disabled={choosingBackground} onclick={chooseBackground}>
+    {t('settings.chooseNewTabBackground')}
+  </Button>
+  {#if values.newTabBackground}
+    <Button variant="ghost" onclick={() => api.removeNewTabBackground()}>{t('settings.removeNewTabBackground')}</Button>
+  {/if}
 </SettingRow>
 
 <h2>{t('settings.tabPanel')}</h2>
