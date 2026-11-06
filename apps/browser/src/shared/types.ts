@@ -764,6 +764,7 @@ export interface SettingsValues {
   invitationSeen: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
+  newTabBackground: string;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
   dismissedUpdate: string;
@@ -842,6 +843,8 @@ export const SettingsChannel = {
   checkForUpdates: 'yalqen-settings:check-for-updates',
   installUpdate: 'yalqen-settings:install-update',
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
+  chooseNewTabBackground: 'yalqen-settings:choose-new-tab-background',
+  removeNewTabBackground: 'yalqen-settings:remove-new-tab-background',
   updateThreatLists: 'yalqen-settings:update-threat-lists',
   profiles: 'yalqen-settings:profiles',
   profileAction: 'yalqen-settings:profile-action',
@@ -1038,6 +1041,8 @@ export interface SettingsApi {
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;
   chooseDownloadDirectory(): Promise<SettingsView>;
+  chooseNewTabBackground(): Promise<SettingsView>;
+  removeNewTabBackground(): Promise<SettingsView>;
   updateThreatLists(): Promise<SettingsView>;
   profiles(): Promise<ProfilesView>;
   profileAction(

@@ -1,7 +1,7 @@
 {
   "name": "yalqen",
   "productName": "Yalqen",
-  "version": "0.3.84",
+  "version": "0.3.86",
   "private": true,
   "license": "MIT",
   "description": "A fast, privacy-minded web browser",
@@ -68,6 +68,7 @@
       "dist/renderer/**/*",
       "dist/shared/**/*",
       "!node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
+      "!node_modules/node-pty/prebuilds/win32-*/**/*",
       "!**/*.map",
       "package.json"
     ],

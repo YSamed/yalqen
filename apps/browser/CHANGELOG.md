@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.86](https://github.com/YSamed/yalqen/compare/v0.3.85...v0.3.86) (2026-11-05)
+
+
+### Features
+
+* add a background image option to the new tab page ([#343](https://github.com/YSamed/yalqen/issues/343)) ([ddc0cc6](https://github.com/YSamed/yalqen/commit/ddc0cc6b4b7d04a3868c7a2468b6541c6c4c84b6))
+
+## [0.3.85](https://github.com/YSamed/yalqen/compare/v0.3.84...v0.3.85) (2026-11-04)
+
+
+### Bug Fixes
+
+* create the glass window with vibrancy instead of transparency ([#340](https://github.com/YSamed/yalqen/issues/340)) ([0d6feec](https://github.com/YSamed/yalqen/commit/0d6feecedaba417a106c70b8d6ed987d53d671a5))
+
 ## [0.3.84](https://github.com/YSamed/yalqen/compare/v0.3.83...v0.3.84) (2026-11-04)
 
 

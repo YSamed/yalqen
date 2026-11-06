@@ -1472,6 +1472,12 @@ export const tr: Record<MessageKey, string> = {
   'settings.mediaPlayerHint': 'Bir sekmede çalanı kontrollerle sekme listesinin altında gösterir.',
   'settings.accent': 'Vurgu rengi',
   'settings.accentHint': 'Butonlarda, anahtarlarda ve etkin sekmede kullanılır.',
+  'settings.newTabBackground': 'Yeni sekme arka planı',
+  'settings.newTabBackgroundHint':
+    'Bilgisayarınızdan bir görsel seçin. Yeni sekme sayfasının arkasında görünür. En fazla 20 MB.',
+  'settings.chooseNewTabBackground': 'Görsel seç',
+  'settings.removeNewTabBackground': 'Kaldır',
+  'settings.newTabBackgroundImages': 'Görseller',
   'accent.orange': 'Yalqen turuncusu',
   'accent.coral': 'Mercan',
   'accent.rose': 'Gül',

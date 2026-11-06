@@ -2,6 +2,7 @@ import { displayHost } from '../../shared/hosts.js';
 import { getLocale, t } from '../../shared/i18n.js';
 import { NEW_TAB_URL, type AddressSuggestion } from '../../shared/types.js';
 import type { RecentPage } from '../tabs/tab.js';
+import { readBackground, type NewTabBackground } from './new-tab-background.js';
 import { FORGET_ICON, escapeHtml, fillSlot } from './html.js';
 import { htmlResponse, notFound, scriptResponse } from './responses.js';
 
@@ -30,6 +31,7 @@ export interface NewTabSources {
   showFeedback: () => boolean;
   showRepoPrompt: () => boolean;
   opaque: () => boolean;
+  background?: () => NewTabBackground | null;
   suggestions: (query: string) => AddressSuggestion[];
 }
 
@@ -115,6 +117,14 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
       return new Response(assets.mark, {
         headers: { 'content-type': 'image/png', 'cache-control': 'max-age=86400' },
       });
+    case '/background': {
+      const background = sources.background?.();
+      const data = background && readBackground(background);
+      if (!background || !data) return notFound();
+      return new Response(data, {
+        headers: { 'content-type': background.type, 'cache-control': 'no-cache' },
+      });
+    }
     case '/suggestions':
       return Response.json(sources.suggestions(url.searchParams.get('q') ?? ''), {
         headers: { 'cache-control': 'no-store' },
@@ -138,7 +148,12 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
             : '',
         ],
       ];
-      const template = sources.opaque() ? assets.template.replace('<html ', '<html data-opaque ') : assets.template;
+      const attributes = [sources.opaque() && 'data-opaque', sources.background?.() && 'data-background'].filter(
+        Boolean,
+      );
+      const template = attributes.length
+        ? assets.template.replace('<html ', `<html ${attributes.join(' ')} `)
+        : assets.template;
       const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), template);
       return htmlResponse(body, NEW_TAB_CSP, false);
     }
