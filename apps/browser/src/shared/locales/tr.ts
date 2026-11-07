@@ -1270,13 +1270,16 @@ export const tr: Record<MessageKey, string> = {
   'browserImport.bookmarksTooLarge':
     'Yer imi dosyası çok büyük veya fazla iç içe. Daha küçük bir dosya seçin (en fazla 16 MB).',
   'browserImport.historyMenu': 'Geçmişi içe aktar',
+  'browserImport.arcSidebar': 'Kenar çubuğu',
+  'browserImport.arcSpace': 'Alan {n}',
+  'browserImport.arcFavorites': 'Arc Favorileri',
   'browserImport.historyMenuFile': 'History dosyası seç…',
   'browserImport.bookmarksNotFound': 'Yer imi dosyası bulunamadı.',
   'browserImport.historyNotFound': 'Geçmiş dosyası bulunamadı.',
   'browserImport.noPermission':
     "Dosyayı okuma izni yok. Sistem Ayarları > Gizlilik ve Güvenlik > Tam Disk Erişimi bölümünden Yalqen'e izin verebilirsiniz.",
-  'browserImport.bookmarksUnsupported': 'Bu dosya HTML, Chrome, Brave, Edge ya da Firefox yer imi dosyası değil.',
-  'browserImport.historyUnsupported': 'Bu dosya Chrome, Brave, Edge ya da Firefox geçmiş dosyası değil.',
+  'browserImport.bookmarksUnsupported': 'Bu dosya HTML, Chrome, Brave, Edge, Arc ya da Firefox yer imi dosyası değil.',
+  'browserImport.historyUnsupported': 'Bu dosya Chrome, Brave, Edge, Arc ya da Firefox geçmiş dosyası değil.',
   'browserImport.bookmarksUnreadable': 'Yer imi dosyası okunamadı. Tarayıcıyı kapatıp yeniden deneyin.',
   'browserImport.historyUnreadable': 'Geçmiş dosyası okunamadı. Tarayıcıyı kapatıp yeniden deneyin.',
   'bookmarks.search': 'Yer imlerinde ara',

@@ -184,6 +184,11 @@ test('installed browser profiles are found with their display names', async () =
     fs.mkdirSync(path.join(chrome, 'Profile 3'));
     touch(path.join(dir, 'Microsoft Edge/Default/Bookmarks'));
     touch(path.join(dir, 'Microsoft Edge/Local State'), '{');
+    touch(path.join(dir, 'Arc/User Data/Default/Bookmarks'));
+    touch(
+      path.join(dir, 'Arc/User Data/Local State'),
+      JSON.stringify({ profile: { info_cache: { Default: { name: 'Arc Kişisel' } } } }),
+    );
 
     assert.deepEqual(
       chromiumProfiles('Bookmarks', dir).map(({ label, file }) => [label, path.relative(dir, file)]),
@@ -192,6 +197,7 @@ test('installed browser profiles are found with their display names', async () =
         ['Chrome — Profile 2', 'Google/Chrome/Profile 2/Bookmarks'],
         ['Chrome — Profile 10', 'Google/Chrome/Profile 10/Bookmarks'],
         ['Edge — Default', 'Microsoft Edge/Default/Bookmarks'],
+        ['Arc — Arc Kişisel', 'Arc/User Data/Default/Bookmarks'],
       ],
     );
     assert.deepEqual(chromiumProfiles('History', dir), []);
@@ -394,7 +400,7 @@ test('files that are not Chromium history are rejected with a clear message', as
     for (const file of ['text', 'Cookies']) {
       assert.equal(
         await message(path.join(dir, file)),
-        'Bu dosya Chrome, Brave, Edge ya da Firefox geçmiş dosyası değil.',
+        'Bu dosya Chrome, Brave, Edge, Arc ya da Firefox geçmiş dosyası değil.',
       );
     }
     assert.equal(await message(path.join(dir, 'missing')), 'Geçmiş dosyası bulunamadı.');

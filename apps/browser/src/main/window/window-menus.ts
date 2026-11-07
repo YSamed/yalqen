@@ -2,7 +2,7 @@ import type { MenuItemConstructorOptions, Session } from 'electron';
 import { t } from '../../shared/i18n.js';
 import type { TabSnapshot } from '../../shared/types.js';
 import { bookmarksMenuTemplate, type BookmarkStore } from '../library/bookmarks.js';
-import { chromiumProfiles, firefoxProfiles, historyImportMenu } from '../library/browser-import.js';
+import { arcSidebarSources, chromiumProfiles, firefoxProfiles, historyImportMenu } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
 import { permissionOrigin, type PermissionStore } from '../privacy/permissions.js';
 import { cookieUrl, cookiesForHost } from '../privacy/site-data.js';
@@ -119,7 +119,7 @@ export function libraryMenuTemplate(
     bookmarks.folders(),
     bookmarks.bookmarks(),
     { open: actions.open, showAll: actions.showAll, importFrom: actions.importBookmarks },
-    [...chromiumProfiles('Bookmarks'), ...firefox],
+    [...chromiumProfiles('Bookmarks'), ...arcSidebarSources(), ...firefox],
   );
   template.push(
     { label: t('bookmarks.menuExport'), click: actions.exportBookmarks },
