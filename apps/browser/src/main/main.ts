@@ -38,6 +38,7 @@ import { AgentTokenStore } from './agent-bridge/token-store.js';
 import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench/bench-driver.js';
 import { BookmarkStore, runBookmarksCommand } from './library/bookmarks.js';
 import {
+  arcSidebarSources,
   chromiumProfiles,
   firefoxProfiles,
   importBookmarkFile,
@@ -1072,7 +1073,7 @@ function startBrowser(): void {
     const window = current;
     if (bench || settings.get().invitationSeen || !window || window.isPrivate || window.isDeveloper || window.webApp)
       return;
-    const sources = invitationSources([...chromiumProfiles('Bookmarks'), ...firefoxProfiles()]);
+    const sources = invitationSources([...arcSidebarSources(), ...chromiumProfiles('Bookmarks'), ...firefoxProfiles()]);
     const values = settings.get();
     welcome.show({
       window: window.window,

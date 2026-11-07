@@ -45,12 +45,14 @@ const CHROMIUM_BROWSERS = [
   ['Chrome', 'Google/Chrome'],
   ['Brave', 'BraveSoftware/Brave-Browser'],
   ['Edge', 'Microsoft Edge'],
+  ['Arc', 'Arc/User Data'],
 ] as const;
 const PROFILE_DIR = /^(Default|Profile \d+)$/;
 const CHROMIUM_ROOTS = ['bookmark_bar', 'other', 'synced'] as const;
 // Milliseconds between 1601-01-01 (WebKit epoch) and 1970-01-01.
 const WEBKIT_EPOCH_OFFSET_MS = 11_644_473_600_000;
 const FIREFOX_PLACES = 'places.sqlite';
+const ARC_SIDEBAR = 'StorableSidebar.json';
 // Root guids from Firefox's Bookmarks.sys.mjs. The tags root (`tags________`) holds tags, not bookmarks.
 const FIREFOX_ROOTS = ['toolbar_____', 'menu________', 'unfiled_____', 'mobile______'] as const;
 const FIREFOX_BOOKMARK = 1;
@@ -194,8 +196,133 @@ export async function importChromiumBookmarks(store: BookmarkStore, file: string
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
 
+interface ArcItem {
+  id?: unknown;
+  parentID?: unknown;
+  childrenIds?: unknown;
+  title?: unknown;
+  data?: { tab?: { savedTitle?: unknown; savedURL?: unknown } | null; list?: unknown } | null;
+}
+
+interface ArcSpace {
+  title?: unknown;
+  containerIDs?: unknown;
+  newContainerIDs?: unknown;
+}
+
+// Arc keeps pinned tabs, folders and Favorites in StorableSidebar.json, not in the Chromium Bookmarks file.
+export function arcSidebarSources(appSupport = APP_SUPPORT): ImportSource[] {
+  const file = path.join(appSupport, 'Arc', ARC_SIDEBAR);
+  return fs.existsSync(file) ? [{ label: `Arc — ${t('browserImport.arcSidebar')}`, file }] : [];
+}
+
+export function isArcSidebar(file: string): boolean {
+  return path.basename(file) === ARC_SIDEBAR;
+}
+
+// Arc lists alternate a marker and an id: `["pinned", id]` in older files, `[{ "pinned": {} }, id]` in newer ones.
+function idAfter(list: unknown, matches: (entry: unknown) => boolean): string[] {
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((entry, index) =>
+    matches(entry) && typeof list[index + 1] === 'string' ? [list[index + 1] as string] : [],
+  );
+}
+
+const isPinnedMarker = (entry: unknown) =>
+  entry === 'pinned' || (typeof entry === 'object' && entry !== null && 'pinned' in entry);
+const isProfileMarker = (entry: unknown) => typeof entry === 'object' && entry !== null;
+
+export function parseArcSidebar(data: unknown): ParsedBookmarks {
+  const containers = (data as { sidebar?: { containers?: unknown } } | null)?.sidebar?.containers;
+  type Container = { global?: unknown; items?: unknown; spaces?: unknown; topAppsContainerIDs?: unknown } | null;
+  const list: Container[] = Array.isArray(containers) ? containers : [];
+  // `containers` alternates a marker and its value: `{ global: {} }` is the main sidebar, Little Arc windows come after.
+  const global = list.findIndex((entry) => entry?.global !== undefined);
+  const sidebar = (entry: Container) => Array.isArray(entry?.items) && Array.isArray(entry?.spaces);
+  const container = global >= 0 && sidebar(list[global + 1]) ? list[global + 1] : list.find(sidebar);
+  if (!container) throw new SyntaxError('Not an Arc sidebar file');
+  const items = new Map<string, ArcItem>();
+  for (const item of container.items as unknown[]) {
+    if (item && typeof item === 'object' && typeof (item as ArcItem).id === 'string') {
+      items.set((item as ArcItem).id as string, item as ArcItem);
+    }
+  }
+  const childrenOf = (id: string): ArcItem[] => {
+    const listed = items.get(id)?.childrenIds;
+    const children = Array.isArray(listed) ? listed.flatMap((child) => items.get(String(child)) ?? []) : [];
+    return children.length > 0 ? children : [...items.values()].filter((item) => item.parentID === id);
+  };
+  const bookmarks: ImportedBookmark[] = [];
+  const importedFolders: ImportedBookmarkFolder[] = [];
+  const seen = new Set<string>();
+  const visited = new Set<string>();
+  let skipped = 0;
+  const walk = (id: string, folders: readonly string[]): void => {
+    if (visited.has(id) || folders.length >= 128) return;
+    visited.add(id);
+    for (const item of childrenOf(id)) {
+      const title = typeof item.title === 'string' ? item.title : '';
+      const tab = item.data?.tab;
+      if (tab) {
+        const url = typeof tab.savedURL === 'string' ? tab.savedURL : '';
+        if (!canBookmark(url) || seen.has(url)) {
+          skipped++;
+          continue;
+        }
+        seen.add(url);
+        bookmarks.push({
+          title: title || (typeof tab.savedTitle === 'string' ? tab.savedTitle : ''),
+          url,
+          folder: folderTitle(folders),
+          folderPath: folders.filter((segment) => segment.trim()),
+          createdAt: null,
+        });
+      } else if (item.data?.list === undefined) {
+        // Split views and other groups hold tabs but are not folders the user named.
+        walk(item.id as string, folders);
+      } else if (folders.length < 127) {
+        const segments = [...folders, title.trim() || t('bookmarks.newFolder')];
+        importedFolders.push({ title: segments.join(' / '), path: segments, createdAt: null });
+        walk(item.id as string, segments);
+      }
+    }
+  };
+  const addRoot = (id: string, title: string) => {
+    importedFolders.push({ title, path: [title], createdAt: null });
+    walk(id, [title]);
+  };
+  let unnamed = 0;
+  for (const space of container.spaces as (ArcSpace | string | null)[]) {
+    if (!space || typeof space !== 'object') continue;
+    const name =
+      typeof space.title === 'string' && space.title.trim()
+        ? space.title.trim()
+        : t('browserImport.arcSpace', { n: ++unnamed });
+    for (const id of idAfter(space.newContainerIDs ?? space.containerIDs, isPinnedMarker)) addRoot(id, name);
+  }
+  for (const id of idAfter(container.topAppsContainerIDs, isProfileMarker)) {
+    addRoot(id, t('browserImport.arcFavorites'));
+  }
+  return { bookmarks, folders: importedFolders, skipped };
+}
+
+export async function importArcSidebar(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
+  const text = await fs.promises.readFile(file, 'utf8');
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // Arc rewrites the file while it runs, so a broken copy usually means Arc is still open.
+    throw Object.assign(new Error('Arc sidebar file is incomplete'), { code: 'ERR_SOURCE_BUSY' });
+  }
+  const parsed = parseArcSidebar(data);
+  const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
+  return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
+}
+
 export async function importBookmarkFile(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
   if (isFirefoxPlaces(file)) return importFirefoxBookmarks(store, file);
+  if (isArcSidebar(file)) return importArcSidebar(store, file);
   const { readBookmarkFile, parseBookmarkHtml } = await import('./bookmark-html.js');
   const text = await readBookmarkFile(file);
   const parsed = text.trimStart().startsWith('<')
@@ -454,7 +581,7 @@ export function importErrorMessage(error: unknown, kind: 'bookmarks' | 'history'
   if (error instanceof SyntaxError) {
     return t(kind === 'history' ? 'browserImport.historyUnsupported' : 'browserImport.bookmarksUnsupported');
   }
-  if (code === 'ERR_SQLITE_ERROR') {
+  if (code === 'ERR_SQLITE_ERROR' || code === 'ERR_SOURCE_BUSY') {
     return t(kind === 'history' ? 'browserImport.historyUnreadable' : 'browserImport.bookmarksUnreadable');
   }
   return error instanceof Error ? error.message : String(error);

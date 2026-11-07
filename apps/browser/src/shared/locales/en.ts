@@ -1261,13 +1261,16 @@ export const en = {
   'browserImport.bookmarksTooLarge':
     'The bookmarks file is too large or too deeply nested. Choose a smaller file (up to 16 MB).',
   'browserImport.historyMenu': 'Import History',
+  'browserImport.arcSidebar': 'Sidebar',
+  'browserImport.arcSpace': 'Space {n}',
+  'browserImport.arcFavorites': 'Arc Favorites',
   'browserImport.historyMenuFile': 'Choose History File…',
   'browserImport.bookmarksNotFound': 'Bookmarks file not found.',
   'browserImport.historyNotFound': 'History file not found.',
   'browserImport.noPermission':
     'No permission to read the file. You can allow Yalqen in System Settings > Privacy & Security > Full Disk Access.',
-  'browserImport.bookmarksUnsupported': 'This is not an HTML, Chrome, Brave, Edge or Firefox bookmarks file.',
-  'browserImport.historyUnsupported': 'This is not a Chrome, Brave, Edge or Firefox history file.',
+  'browserImport.bookmarksUnsupported': 'This is not an HTML, Chrome, Brave, Edge, Arc or Firefox bookmarks file.',
+  'browserImport.historyUnsupported': 'This is not a Chrome, Brave, Edge, Arc or Firefox history file.',
   'browserImport.bookmarksUnreadable': "Couldn't read the bookmarks file. Close the browser and try again.",
   'browserImport.historyUnreadable': "Couldn't read the history file. Close the browser and try again.",
   'bookmarks.search': 'Search bookmarks',
