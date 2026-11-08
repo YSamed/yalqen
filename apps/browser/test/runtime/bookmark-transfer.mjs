@@ -105,4 +105,11 @@ app.on('before-quit', () => {
   copy?.saveNow();
   window?.destroy();
 });
-app.on('quit', () => fs.rmSync(profile, { recursive: true, force: true }));
+// A throw here opens Electron's modal error box and the process never exits.
+app.on('quit', () => {
+  try {
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch (error) {
+    console.error('Test profile cleanup failed:', error);
+  }
+});

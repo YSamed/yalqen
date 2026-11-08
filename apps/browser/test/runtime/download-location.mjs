@@ -61,6 +61,10 @@ app
 function finish(code) {
   clearTimeout(deadline);
   manager?.destroy();
-  fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  try {
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch (error) {
+    console.error('Test profile cleanup failed:', error);
+  }
   app.exit(code);
 }
