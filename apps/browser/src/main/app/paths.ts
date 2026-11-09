@@ -5,7 +5,7 @@ import { app } from 'electron';
 const DIST = path.join(__dirname, '../..');
 
 export function preloadPath(
-  name: 'preload' | 'page-preload' | 'command-preload' | 'find-preload' | 'welcome-preload',
+  name: 'preload' | 'page-preload' | 'command-preload' | 'find-preload' | 'welcome-preload' | 'extension-apis',
 ): string {
   return path.join(DIST, 'preload', `${name}.js`);
 }

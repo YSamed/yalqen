@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import preferences from '../../../dist/main/app/page-preferences.js';
 
-const { acceptLanguages, chromeUserAgent, signInUserAgent, spellCheckerLanguages } = preferences;
+const { acceptLanguages, chromeUserAgent, firefoxVersion, signInUserAgent, spellCheckerLanguages } = preferences;
 
 test('languages are ordered by the chosen preference', () => {
   assert.equal(acceptLanguages('tr'), 'tr-TR,tr,en-US,en');
@@ -26,4 +26,15 @@ test('google sign-in gets a firefox user agent for the platform', () => {
   assert.match(signInUserAgent('https://accounts.google.com/', 'linux'), /Linux.*Firefox\//);
   assert.equal(signInUserAgent('https://mail.google.com/', 'darwin'), null);
   assert.equal(signInUserAgent('not a url', 'darwin'), null);
+});
+
+test('the sign-in firefox version follows the four-week release train', () => {
+  assert.equal(firefoxVersion(Date.UTC(2025, 0, 1)), 145);
+  assert.equal(firefoxVersion(Date.UTC(2025, 10, 11)), 145);
+  assert.equal(firefoxVersion(Date.UTC(2025, 11, 9)), 146);
+  assert.equal(firefoxVersion(Date.UTC(2026, 10, 9)), 157);
+  assert.match(
+    signInUserAgent('https://accounts.google.com/', 'darwin', Date.UTC(2026, 10, 9)),
+    /rv:157\.0\) Gecko\/20100101 Firefox\/157\.0$/,
+  );
 });

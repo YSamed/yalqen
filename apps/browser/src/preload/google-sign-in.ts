@@ -1,8 +1,13 @@
-import { webFrame } from 'electron';
+import { contextBridge } from 'electron';
 
-// The tab presents a Firefox user agent here, so Chromium-only APIs would contradict it.
-const PAGE_SCRIPT = `delete Navigator.prototype.userAgentData; delete window.chrome;`;
+// The tab presents a Firefox user agent here, so Chromium-only APIs would contradict it. This must run
+// synchronously, before the page's own scripts read them.
+function hideChromiumApis(): void {
+  if (!navigator.userAgent.includes(' Firefox/')) return;
+  delete (Navigator.prototype as { userAgentData?: unknown }).userAgentData;
+  delete (window as { chrome?: unknown }).chrome;
+}
 
 export function setupGoogleSignInPage(): void {
-  void webFrame.executeJavaScript(PAGE_SCRIPT);
+  contextBridge.executeInMainWorld({ func: hideChromiumApis });
 }
