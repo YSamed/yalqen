@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.87](https://github.com/YSamed/yalqen/compare/v0.3.86...v0.3.87) (2026-11-09)
+
+
+### Features
+
+* import arc history, pinned tabs and spaces ([#346](https://github.com/YSamed/yalqen/issues/346)) ([5421444](https://github.com/YSamed/yalqen/commit/5421444bf03e71f10d1f2b3c4bb41ef7f030fa11))
+
+
+### Bug Fixes
+
+* stop runtime tests hanging when profile cleanup throws on quit ([#342](https://github.com/YSamed/yalqen/issues/342)) ([7085b55](https://github.com/YSamed/yalqen/commit/7085b55f3d62ee56446144aeb5a25e5772aaca9d))
+
 ## [0.3.86](https://github.com/YSamed/yalqen/compare/v0.3.85...v0.3.86) (2026-11-05)
 
 
