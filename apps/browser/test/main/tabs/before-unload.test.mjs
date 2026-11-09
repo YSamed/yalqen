@@ -9,6 +9,7 @@ const tick = () => new Promise((resolve) => setImmediate(resolve));
 function fixture() {
   const contents = new EventEmitter();
   contents.isDestroyed = () => false;
+  contents.getURL = () => 'https://example.com/';
   contents.isLoadingMainFrame = () => false;
   contents.executeJavaScriptInIsolatedWorld = async () => true;
   contents.calls = [];
@@ -108,4 +109,11 @@ test('a loading page is checked in its current frame without waiting for the loa
   assert.deepEqual(contents.calls, [{ waitForBeforeUnload: true }]);
   contents.fire(true);
   assert.equal(await result, true);
+});
+
+test('a tab without a committed page closes without asking it', async () => {
+  const contents = fixture();
+  contents.getURL = () => '';
+  assert.equal(await checkBeforeUnload(contents), true);
+  assert.deepEqual(contents.calls, []);
 });

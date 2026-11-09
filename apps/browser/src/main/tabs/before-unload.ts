@@ -9,7 +9,8 @@ const NOOP_LISTENER = "window.addEventListener('beforeunload', () => {}, { once:
 // Vetoing it checks consent without destroying tabs, preserving all pages when
 // a window/quit request is cancelled. Keep the Electron runtime test on upgrades.
 export function checkBeforeUnload(contents: WebContents): Promise<boolean> {
-  if (contents.isDestroyed()) return Promise.resolve(true);
+  // A tab whose first navigation never committed (cancelled or still pending) has no page to lose and never answers.
+  if (contents.isDestroyed() || contents.getURL() === '') return Promise.resolve(true);
   const pending = checks.get(contents);
   if (pending) return pending;
   const events = contents as unknown as EventEmitter;

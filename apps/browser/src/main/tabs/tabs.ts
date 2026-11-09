@@ -25,6 +25,7 @@ import {
 } from '../../shared/types.js';
 import { withoutHash } from '../address-bar/url.js';
 import { signInUserAgent } from '../app/page-preferences.js';
+import { authRedirectExtension } from '../../shared/extension-bridge.js';
 import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
@@ -1322,6 +1323,23 @@ export class TabManager {
     return this.tabs.some((tab) => tab.view?.webContents === contents);
   }
 
+  openContents(url: string | null, activate: boolean): WebContents | null {
+    const previous = this.activeId;
+    const id = this.open(url ?? undefined, { activate, isPrivate: false });
+    // A web-app window hands the URL elsewhere and returns its current tab, which is not a new tab.
+    return id === previous ? null : (liveContents(this.find(id)) ?? null);
+  }
+
+  closeContents(contents: WebContents): boolean {
+    const tab = this.tabs.find((candidate) => candidate.view?.webContents === contents);
+    if (tab) this.close(tab.id);
+    return tab !== undefined;
+  }
+
+  isActiveContents(contents: WebContents): boolean {
+    return this.activeContents() === contents;
+  }
+
   suggestionTabs(): { id: TabId; title: string; url: string }[] {
     return this.tabs.filter((tab) => tab.id !== this.activeId).map(({ id, title, url }) => ({ id, title, url }));
   }
@@ -1692,6 +1710,20 @@ export class TabManager {
     const contents = view.webContents;
     listen('will-redirect', (event) => {
       if (!event.isMainFrame) return;
+      // A redirect keeps the user agent the navigation started with, so Gmail's hop to Google sign-in
+      // would show the page a Chrome user agent under Firefox headers; restart it with the right one.
+      // Changing it mid-navigation aborts the load, so the restart waits for the cancelled one to unwind.
+      const userAgent = signInUserAgent(event.url, process.platform) ?? contents.session.getUserAgent();
+      if (contents.getUserAgent() !== userAgent && !authRedirectExtension(event.url)) {
+        event.preventDefault();
+        const url = event.url;
+        setTimeout(() => {
+          if (tab.view !== view || contents.isDestroyed()) return;
+          contents.setUserAgent(userAgent);
+          void contents.loadURL(url).catch(() => {});
+        }, 0);
+        return;
+      }
       if (this.routeAppNavigation(tab, event.url)) {
         event.preventDefault();
         return;

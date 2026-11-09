@@ -56,6 +56,7 @@ import { CommandBar } from './address-bar/command-bar.js';
 import { DEFAULT_DEVICE_ID } from './devtools/devices.js';
 import { DownloadManager } from './library/download-manager.js';
 import { DownloadStore } from './library/downloads.js';
+import { ExtensionBridge } from './extensions/extension-bridge.js';
 import { ExtensionPopup } from './extensions/extension-popup.js';
 import { ExtensionManager } from './extensions/extensions.js';
 import { registerExtensionsIpc } from './extensions/extensions-ipc.js';
@@ -287,6 +288,24 @@ function startBrowser(): void {
     { automatic: () => settings.get().autoUpdateExtensions },
   );
   const extensionPopup = new ExtensionPopup();
+  const extensionTabWindow = () =>
+    focusedFirst().find((window) => !window.isPrivate && !window.isDeveloper && window.webApp === null) ?? null;
+  const tabsWindowOf = (contents: Electron.WebContents) => windows.find((window) => window.tabs.hasContents(contents));
+  new ExtensionBridge(
+    daily,
+    {
+      open: (url, active) => {
+        const window = extensionTabWindow() ?? openWindow({});
+        if (active) window.focus();
+        return window.tabs.openContents(url, active);
+      },
+      close: (contents) => tabsWindowOf(contents)?.tabs.closeContents(contents) ?? false,
+      isTab: (contents) => tabsWindowOf(contents) !== undefined,
+      windowId: (contents) => tabsWindowOf(contents)?.window.id ?? -1,
+      isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
+    },
+    preloadPath('extension-apis'),
+  );
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;

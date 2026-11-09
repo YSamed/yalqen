@@ -37,6 +37,7 @@ for (const test of [
   'password-tools.mjs',
   'certificate-details.mjs',
   'bookmark-editing.mjs',
+  'extension-bridge.mjs',
 ]) {
   const result = spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
     stdio: 'inherit',
