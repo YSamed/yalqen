@@ -1138,6 +1138,8 @@ export const tr: Record<MessageKey, string> = {
   'window.noNewBookmarks': 'İçe aktarılacak yeni yer imi bulunamadı.',
   'window.foldersCreated': '{count} yeni klasör oluşturuldu.',
   'window.foldersCreated.one': '{count} yeni klasör oluşturuldu.',
+  'window.workspacesCreated': '{count} yeni çalışma alanı oluşturuldu.',
+  'window.workspacesCreated.one': '{count} yeni çalışma alanı oluşturuldu.',
   'window.bookmarksSkipped': '{count} yer imi zaten vardı ya da desteklenmiyor, atlandı.',
   'window.bookmarksSkipped.one': '{count} yer imi zaten vardı ya da desteklenmiyor, atlandı.',
   'window.bookmarksImportFailed': 'Yer imleri içe aktarılamadı.',

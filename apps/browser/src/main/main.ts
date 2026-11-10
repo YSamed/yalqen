@@ -228,6 +228,11 @@ function startBrowser(): void {
     changed: readingListChanged,
   });
   const storageOrigins = new StorageOrigins(userData);
+  const workspacesChanged = () => {
+    for (const contents of webContents.getAllWebContents())
+      if (!contents.isDestroyed() && contents.getURL().startsWith(WORKSPACES_URL))
+        contents.send(WorkspaceChannel.changed);
+  };
   installWorkspaceHandlers({
     store: workspaces,
     owned: (contents) => windows.some((window) => window.tabs.hasContents(contents)),
@@ -238,11 +243,7 @@ function startBrowser(): void {
     open: (saved) => {
       openWindow({ saved });
     },
-    changed: () => {
-      for (const contents of webContents.getAllWebContents())
-        if (!contents.isDestroyed() && contents.getURL().startsWith(WORKSPACES_URL))
-          contents.send(WorkspaceChannel.changed);
-    },
+    changed: workspacesChanged,
   });
   const siteStorage = new SiteStorageManager(daily, storageOrigins, () => history.list().map((entry) => entry.url));
   observeStorageOrigins(daily, storageOrigins, (contents) =>
@@ -657,8 +658,9 @@ function startBrowser(): void {
       if (runBookmarksCommand(bookmarks, command, params)) bookmarksChanged();
     },
     importBookmarks: async (file) => {
-      const result = await importBookmarkFile(bookmarks, file);
+      const result = await importBookmarkFile(bookmarks, file, workspaces);
       if (result.bookmarks > 0 || result.folders > 0) bookmarksChanged();
+      if (result.workspaces) workspacesChanged();
       return result;
     },
     importHistory: async (file) => {

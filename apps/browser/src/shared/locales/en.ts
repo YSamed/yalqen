@@ -1129,6 +1129,8 @@ export const en = {
   'window.noNewBookmarks': 'No new bookmarks to import.',
   'window.foldersCreated': '{count} new folders created.',
   'window.foldersCreated.one': '{count} new folder created.',
+  'window.workspacesCreated': '{count} new workspaces created.',
+  'window.workspacesCreated.one': '{count} new workspace created.',
   'window.bookmarksSkipped': '{count} bookmarks already existed or are not supported, so they were skipped.',
   'window.bookmarksSkipped.one': '{count} bookmark already existed or is not supported, so it was skipped.',
   'window.bookmarksImportFailed': "Couldn't import bookmarks.",
