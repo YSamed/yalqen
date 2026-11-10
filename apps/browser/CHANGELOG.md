@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.91](https://github.com/YSamed/yalqen/compare/v0.3.90...v0.3.91) (2026-11-10)
+
+
+### Bug Fixes
+
+* render deferred content in full-page screenshots ([d9d4f93](https://github.com/YSamed/yalqen/commit/d9d4f93141f96dd10f1fe78cbf8cf2453b7eadd9))
+
 ## [0.3.90](https://github.com/YSamed/yalqen/compare/v0.3.89...v0.3.90) (2026-11-10)
 
 
