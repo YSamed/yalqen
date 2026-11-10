@@ -12,6 +12,7 @@ export function preloadPath(
     | 'find-preload'
     | 'welcome-preload'
     | 'confirm-preload'
+    | 'peek-preload'
     | 'extension-apis',
 ): string {
   return path.join(DIST, 'preload', `${name}.js`);

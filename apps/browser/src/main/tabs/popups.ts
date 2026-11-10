@@ -17,6 +17,15 @@ export function opensInPlace(url: string): boolean {
   return /^(https?:|about:blank$)/i.test(url);
 }
 
+export function isPeekable(url: string): boolean {
+  return /^https?:/i.test(url);
+}
+
+// A shift+click on a link is the only page-opened window Chromium reports as a plain new window without features.
+export function opensPeek(disposition: string, features: string, url: string): boolean {
+  return disposition === 'new-window' && features === '' && isPeekable(url);
+}
+
 export function recordBlocked(blocked: readonly string[], url: string): string[] {
   if (!/^https?:/i.test(url)) return [...blocked];
   return [...blocked.filter((item) => item !== url), url].slice(-MAX_BLOCKED);

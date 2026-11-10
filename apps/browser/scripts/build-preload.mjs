@@ -11,6 +11,7 @@ const PRELOADS = [
   'find-preload',
   'welcome-preload',
   'confirm-preload',
+  'peek-preload',
   'page-preload',
   'extension-apis',
 ];

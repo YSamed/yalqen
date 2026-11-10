@@ -20,6 +20,7 @@ export default defineConfig({
         find: page('find.html'),
         welcome: page('welcome.html'),
         confirm: page('confirm.html'),
+        peek: page('peek.html'),
       },
     },
   },

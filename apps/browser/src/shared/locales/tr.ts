@@ -1084,6 +1084,11 @@ export const tr: Record<MessageKey, string> = {
 
   'contextMenu.openLinkInNewTab': 'Bağlantıyı yeni sekmede aç',
   'contextMenu.openLinkInNewWindow': 'Bağlantıyı yeni pencerede aç',
+  'contextMenu.peekLink': 'Bağlantıya göz at',
+  'linkPeek.pageTitle': 'Bağlantı önizleme',
+  'linkPeek.promote': 'Sekmede aç',
+  'linkPeek.close': 'Kapat',
+  'linkPeek.closeTitle': 'Kapat (Esc)',
   'contextMenu.downloadLink': 'Bağlantıyı indir',
   'contextMenu.copyLinkAddress': 'Bağlantı adresini kopyala',
   'contextMenu.openImageInNewTab': 'Resmi yeni sekmede aç',

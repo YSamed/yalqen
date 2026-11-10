@@ -1,6 +1,7 @@
 import type { ContextMenuParams, MenuItemConstructorOptions } from 'electron';
 import type { AddressFormat } from '../devtools/page-export.js';
 import { t } from '../../shared/i18n.js';
+import { isPeekable } from '../tabs/popups.js';
 
 const SNIPPET_LENGTH = 30;
 
@@ -24,6 +25,7 @@ interface ContextMenuActions {
   canViewSource: boolean;
   openInNewTab(url: string): void;
   openInNewWindow(url: string): void;
+  peekLink?(url: string): void;
   copyText(text: string): void;
   copyImage(): void;
   download(url: string): void;
@@ -63,6 +65,9 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
         ? [
             { label: t('contextMenu.openLinkInNewTab'), click: () => actions.openInNewTab(link) },
             { label: t('contextMenu.openLinkInNewWindow'), click: () => actions.openInNewWindow(link) },
+            ...(actions.peekLink && isPeekable(link)
+              ? [{ label: t('contextMenu.peekLink'), click: () => actions.peekLink?.(link) }]
+              : []),
             { label: t('contextMenu.downloadLink'), click: () => actions.download(link) },
           ]
         : []),

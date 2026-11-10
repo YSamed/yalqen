@@ -60,7 +60,7 @@ import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
 import { PagePlacement, type PaneSlot } from './page-placement.js';
 import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
-import { isActivation, mayOpenWindow, opensInPlace, recordBlocked } from './popups.js';
+import { isActivation, mayOpenWindow, opensInPlace, opensPeek, recordBlocked } from './popups.js';
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
 import { checkBeforeUnload } from './before-unload.js';
 import { keepsPlaying, TabFreezer } from './tab-freezer.js';
@@ -148,6 +148,7 @@ interface TabManagerOptions {
   onProceedHttp: (token: string, currentUrl: string) => string | null;
   confirmHttpRedirect: (url: string) => Promise<boolean>;
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
+  onPeek: (url: string, isPrivate: boolean) => void;
   requestRules: () => readonly RequestRule[];
   translation: () => { enabled: boolean; language: PageLanguage };
   agentScope: (tab: { url: string; isPrivate: boolean }) => boolean;
@@ -1653,15 +1654,7 @@ export class TabManager {
   private ensureLive(tab: Tab): WebContentsView {
     if (tab.view) return tab.view;
 
-    const view = new WebContentsView({
-      webPreferences: {
-        preload: this.options.pagePreload,
-        session: tab.isPrivate ? this.options.privateSession : this.options.session,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
+    const view = this.createPageView(tab.isPrivate);
     const emulated = this.mount(tab, view);
     if (emulated) {
       void emulated.then(() => {
@@ -1671,6 +1664,35 @@ export class TabManager {
       this.load(tab, view);
     }
     return view;
+  }
+
+  createPageView(isPrivate: boolean): WebContentsView {
+    return new WebContentsView({
+      webPreferences: {
+        preload: this.options.pagePreload,
+        session: isPrivate ? this.options.privateSession : this.options.session,
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+  }
+
+  adoptView(
+    view: WebContentsView,
+    page: { url: string; title: string; isPrivate: boolean; interacted: boolean; edited: boolean },
+  ): void {
+    const opener = this.active();
+    const tab = this.createRecord({ url: page.url, title: page.title }, page.isPrivate);
+    tab.openerId = opener?.id ?? null;
+    tab.group = opener?.group ?? null;
+    tab.loading = view.webContents.isLoading();
+    tab.interacted = page.interacted;
+    tab.edited = page.edited;
+    tab.visitId = page.isPrivate ? null : this.options.onVisit(page.url, page.title);
+    this.insertAfterActive(tab);
+    this.mount(tab, view);
+    this.activate(tab.id);
   }
 
   private mount(tab: Tab, view: WebContentsView): Promise<void> | null {
@@ -1869,9 +1891,13 @@ export class TabManager {
       }
       if (input.type === 'char') tab.edited = true;
     });
-    contents.setWindowOpenHandler(({ url }) => {
+    contents.setWindowOpenHandler(({ url, disposition, features }) => {
       if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
         tab.activatedAt = 0;
+        if (opensPeek(disposition, features, url)) {
+          this.options.onPeek(url, tab.isPrivate);
+          return { action: 'deny' };
+        }
         if (opensInPlace(url) && !this.options.upgradeHttp(url)) {
           return {
             action: 'allow',
