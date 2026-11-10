@@ -18,6 +18,7 @@
     developer,
     activeTabId,
     selectedTabIds,
+    splitTabIds,
     groups,
     collapsed,
     fading,
@@ -30,12 +31,15 @@
     profileName,
     pinnedDisplay,
     media,
+    pageRect,
+    onSplitDrop,
   }: {
     tabs: TabSnapshot[];
     listOrder: TabId[];
     developer: boolean;
     activeTabId: TabId | null;
     selectedTabIds: TabId[];
+    splitTabIds: TabId[];
     groups: TabGroup[];
     collapsed: boolean;
     fading: boolean;
@@ -48,9 +52,12 @@
     profileName?: string;
     pinnedDisplay: PinnedDisplay;
     media: MediaInfo | null;
+    pageRect?: () => DOMRect | undefined;
+    onSplitDrop?: (side: SplitSide | null) => void;
   } = $props();
 
   type DragGroup = 'pinned' | 'listed';
+  type SplitSide = 'left' | 'right';
   interface Press {
     id: TabId;
     group: DragGroup;
@@ -70,6 +77,7 @@
 
   let press: Press | null = null;
   let pointer = { x: 0, y: 0 };
+  let splitSide: SplitSide | null = null;
   let scrollFrame = 0;
   let lists: HTMLElement | undefined = $state();
   let dragId: TabId | null = $state(null);
@@ -84,6 +92,7 @@
 
   const send = window.yalqen.send;
   const selected = $derived(new Set(selectedTabIds));
+  const split = $derived(new Set(splitTabIds));
 
   function selectTab(event: MouseEvent, id: TabId): void {
     if (event.shiftKey) send({ type: 'select-tab', id, mode: 'range' });
@@ -138,6 +147,7 @@
     const states = [
       tab.id === activeTabId ? t('tabPanel.stateActive') : null,
       selected.has(tab.id) ? t('tabPanel.stateSelected') : null,
+      split.has(tab.id) ? t('tabPanel.stateSplit') : null,
       developer ? t('tabPanel.stateDeveloper') : tab.isPrivate ? t('tabPanel.statePrivate') : null,
       tab.live ? null : t('tabPanel.stateUnloaded'),
       tab.frozen ? t('tabPanel.stateFrozen') : null,
@@ -177,13 +187,37 @@
       dragGroup = press.group;
     }
     track();
+    setSplitSide(splitSideAt(), press.id);
+    if (splitSide) dropIndex = null;
     if (scrollSpeed() !== 0 && !scrollFrame) scrollFrame = requestAnimationFrame(autoScroll);
+  }
+
+  // Dropping a tab on the page opens it beside the active tab, on the half it was released over.
+  function splitSideAt(): SplitSide | null {
+    const page = pageRect?.();
+    if (!press || press.id === activeTabId || !page) return null;
+    if (pointer.x < page.left || pointer.x > page.right || pointer.y < page.top || pointer.y > page.bottom) return null;
+    return pointer.x < page.left + page.width / 2 ? 'left' : 'right';
+  }
+
+  function setSplitSide(next: SplitSide | null, id: TabId | null = null): void {
+    if (next === splitSide) return;
+    splitSide = next;
+    send({ type: 'preview-split', id: next ? id : null, side: next ?? 'right' });
+    onSplitDrop?.(next);
   }
 
   function onPointerUp(event: PointerEvent): void {
     if (!press || !event.isPrimary) return;
     if (press.dragging) {
       suppressNextClick();
+      if (!press.cancelled && splitSide) {
+        send({ type: 'split-tab', id: press.id, side: splitSide });
+        splitSide = null;
+        onSplitDrop?.(null);
+        endDrag();
+        return;
+      }
       if (!press.cancelled && commitMove(press.id, press.group === 'pinned' ? pinned : listed)) {
         settle();
         return;
@@ -307,6 +341,7 @@
   }
 
   function resetDragState(): void {
+    setSplitSide(null);
     dragId = null;
     dragGroup = null;
     dropIndex = null;
@@ -404,6 +439,7 @@
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
     <span class="title">{tab.title}</span>
+    {#if split.has(tab.id)}<span class="mark" title={t('tabPanel.splitTab')}><Icon name="split" size={13} /></span>{/if}
     {#if developer}<span class="mark" title={t('tabPanel.developerTab')}><Icon name="gauge" size={13} /></span
       >{:else if tab.isPrivate}<span class="mark" title={t('tabPanel.privateTab')}
         ><Icon name="private" size={13} /></span
@@ -958,6 +994,9 @@
     place-items: center;
     margin-left: auto;
     color: var(--text-muted);
+  }
+  .mark + .mark {
+    margin-left: 4px;
   }
 
   .actions {

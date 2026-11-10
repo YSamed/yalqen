@@ -1168,6 +1168,11 @@ export const tr: Record<MessageKey, string> = {
   'tabPanel.clearSelection': 'Sekme seçimini temizle',
   'tabPanel.selectionHint': 'Cmd/Ctrl ile tek tek, Shift ile aralık seçin',
   'tabPanel.stateSelected': 'seçili',
+  'tabPanel.stateSplit': 'bölünmüş görünümde',
+  'tabPanel.splitTab': 'Bölünmüş görünümde',
+  'window.openInSplitView': 'Bölünmüş görünümde aç',
+  'window.exitSplitView': 'Bölünmüş görünümden çık',
+  'window.splitSelectedTabs': '{count} sekmeyi bölünmüş görünümde aç',
   'window.showOriginalPage': 'Özgün sayfayı göster',
   'window.translatePage': 'Sayfayı çevir',
 

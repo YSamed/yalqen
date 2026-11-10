@@ -57,7 +57,7 @@ import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from '..
 import { securityState } from '../privacy/site-info.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
-import { PagePlacement } from './page-placement.js';
+import { PagePlacement, type PaneSlot } from './page-placement.js';
 import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, opensInPlace, recordBlocked } from './popups.js';
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
@@ -151,6 +151,9 @@ interface TabManagerOptions {
 
 export type DetachedTab = Tab;
 
+export const MAX_SPLIT_PANES = 4;
+export type SplitSide = 'left' | 'right';
+
 type PickOutcome =
   | { status: 'picked'; selection: ElementSelection }
   | { status: 'referenced'; tabId: TabId; reference: ReferenceCapture }
@@ -161,7 +164,11 @@ export class TabManager {
   private activeId: TabId | null = null;
   private readonly openedPinned = new Map<TabId, TabId | null>();
   private readonly collapsedGroups = new Set<string>();
-  private readonly placement = new PagePlacement();
+  private readonly placement = new PagePlacement((tab) => this.slotOf(tab));
+  private readonly splits: TabId[][] = [];
+  private shown: Tab[] = [];
+  private fullScreenId: TabId | null = null;
+  private splitPreview: SplitSide | null = null;
   private readonly autoReloader = new AutoReloader(() => this.tabs);
   private readonly freezer: TabFreezer;
   private readonly translation: TabTranslation;
@@ -175,7 +182,7 @@ export class TabManager {
   constructor(private readonly options: TabManagerOptions) {
     this.freezer = new TabFreezer({
       enabled: () => options.freezeBackground(),
-      isActive: (tab) => tab.id === this.activeId,
+      isActive: (tab) => this.isVisible(tab),
       hasLiveChild: (tab) => this.tabs.some((item) => item.openerId === tab.id && item.view),
       needsDebugger,
       changed: () => this.changed(),
@@ -204,7 +211,7 @@ export class TabManager {
 
   state(): Pick<
     BrowserState,
-    'tabs' | 'listOrder' | 'activeTabId' | 'selectedTabIds' | 'tabGroups' | 'device' | 'zoom'
+    'tabs' | 'listOrder' | 'activeTabId' | 'selectedTabIds' | 'splitTabIds' | 'tabGroups' | 'device' | 'zoom'
   > {
     const contents = liveContents(this.active());
     return {
@@ -212,6 +219,7 @@ export class TabManager {
       listOrder: tabListOrder(this.tabs, this.openedPinned).map((tab) => tab.id),
       activeTabId: this.activeId,
       selectedTabIds: this.selectedTabIds,
+      splitTabIds: this.splits.flat(),
       tabGroups: this.groupView(),
       device: this.placement.deviceFrame(this.active()),
       zoom: contents ? contents.getZoomFactor() : 1,
@@ -234,13 +242,12 @@ export class TabManager {
     if (!boundsChanged && newTabCenterOffset === placement.newTabCenterOffset) return;
     placement.bounds = bounds;
     placement.newTabCenterOffset = newTabCenterOffset;
-    const tab = this.active();
-    if (!tab) return;
-    // The new tab applies the offset on its own resize, so it has to arrive before the bounds do.
-    placement.syncNewTabCenter(tab);
-    if (!boundsChanged || !tab.view) return;
-    placement.place(tab, tab.view, true);
-    if (tab.emulation) this.changed();
+    for (const tab of this.shown) {
+      // The new tab applies the offset on its own resize, so it has to arrive before the bounds do.
+      placement.syncNewTabCenter(tab);
+      if (boundsChanged && tab.view) placement.place(tab, tab.view, true);
+    }
+    if (boundsChanged && this.shown.some((tab) => tab.emulation)) this.changed();
   }
 
   setPageRadius(radius: number): void {
@@ -315,29 +322,136 @@ export class TabManager {
       this.changed();
       return;
     }
-    if (previous?.view && previous.id !== id) {
-      previous.view.webContents.send(PageChannel.tabTransition, null);
-      this.options.window.contentView.removeChildView(previous.view);
+    if (previous && next.view && this.shown.includes(next) && this.splitOf(previous.id)?.includes(id)) {
+      this.activeId = id;
+      if (next.url !== 'about:blank') next.view.webContents.focus();
+      this.changed();
+      return;
     }
 
     this.activeId = id;
     if (next.pinnedUrl && !this.openedPinned.has(id)) {
       this.openedPinned.set(id, this.tabs.findLast((tab) => !tab.pinnedUrl)?.id ?? null);
     }
-    if (previous && previous.id !== id) {
-      previous.inactiveSince = Date.now();
-      this.freezer.maybeFreeze(previous);
-    }
     const wasLive = next.view !== null;
-    const view = this.ensureLive(next);
-    this.freezer.unfreeze(next);
-    this.placement.syncNewTabCenter(next);
-    this.placement.place(next, view);
-    this.options.window.contentView.addChildView(view);
+    this.showVisible();
+    const view = next.view!;
     if (next.url !== 'about:blank') view.webContents.focus();
     // Never wait for a load, screenshot or animation before the page can receive input.
     if (wasLive) view.webContents.send(PageChannel.tabTransition, animate ? Date.now() : null);
     this.changed(true);
+  }
+
+  get splitTabIds(): TabId[] {
+    return this.splits.flat();
+  }
+
+  isShown(id: TabId): boolean {
+    return this.shown.some((tab) => tab.id === id);
+  }
+
+  canSplitWithActive(id: TabId): boolean {
+    const active = this.activeId;
+    if (!active || active === id || !this.find(id)) return false;
+    const split = this.splitOf(active) ?? [active];
+    return !split.includes(id) && split.length < MAX_SPLIT_PANES;
+  }
+
+  splitWithActive(id: TabId, side: unknown = 'right'): void {
+    if (!this.activeId || !this.canSplitWithActive(id)) return;
+    const current = this.splitOf(this.activeId) ?? [this.activeId];
+    this.splitPreview = null;
+    this.split(side === 'left' ? [id, ...current] : [...current, id], true);
+  }
+
+  // Makes room beside the visible panes while a tab is dragged over the page.
+  previewSplit(id: TabId | null, side: unknown): void {
+    const next = id && this.canSplitWithActive(id) ? (side === 'left' ? 'left' : 'right') : null;
+    if (next === this.splitPreview) return;
+    this.splitPreview = next;
+    for (const tab of this.shown) if (tab.view) void this.placement.place(tab, tab.view, true);
+  }
+
+  splitSelected(): void {
+    this.split(this.selectedTabIds);
+  }
+
+  split(ids: readonly TabId[], keepOrder = false): void {
+    const members = new Set(ids.filter((id) => this.find(id)));
+    if (members.size < 2 || members.size > MAX_SPLIT_PANES) return;
+    for (const id of members) this.leaveSplit(id);
+    const ordered = keepOrder
+      ? [...members]
+      : tabListOrder(this.tabs, this.openedPinned)
+          .map((tab) => tab.id)
+          .filter((id) => members.has(id));
+    this.splits.push(ordered);
+    if (this.activeId && members.has(this.activeId)) {
+      this.selected.clear();
+      this.showVisible();
+      this.changed(true);
+    } else {
+      this.activate(ordered[0]);
+    }
+  }
+
+  unsplit(id: TabId): void {
+    const split = this.splitOf(id);
+    if (!split) return;
+    this.splits.splice(this.splits.indexOf(split), 1);
+    this.showVisible();
+    this.changed(true);
+  }
+
+  private splitOf(id: TabId | null): TabId[] | undefined {
+    return id ? this.splits.find((split) => split.includes(id)) : undefined;
+  }
+
+  // Returns a remaining member so a closing pane can hand focus to its neighbor.
+  private leaveSplit(id: TabId): TabId | null {
+    const split = this.splitOf(id);
+    if (!split) return null;
+    split.splice(split.indexOf(id), 1);
+    if (split.length < 2) this.splits.splice(this.splits.indexOf(split), 1);
+    return split[0] ?? null;
+  }
+
+  private visibleIds(): TabId[] {
+    const active = this.activeId;
+    if (!active) return [];
+    const split = this.splitOf(active);
+    return split && this.fullScreenId !== active ? split : [active];
+  }
+
+  private isVisible(tab: Tab): boolean {
+    return this.visibleIds().includes(tab.id);
+  }
+
+  private slotOf(tab: Tab): PaneSlot | null {
+    const visible = this.visibleIds();
+    const index = visible.indexOf(tab.id);
+    const preview = this.splitPreview;
+    const count = visible.length + (preview ? 1 : 0);
+    return count > 1 && index >= 0 ? { index: index + (preview === 'left' ? 1 : 0), count } : null;
+  }
+
+  private showVisible(): void {
+    const next = this.visibleIds().flatMap((id) => this.find(id) ?? []);
+    for (const tab of this.shown) {
+      if (next.includes(tab) || !tab.view) continue;
+      tab.view.webContents.send(PageChannel.tabTransition, null);
+      this.options.window.contentView.removeChildView(tab.view);
+      tab.inactiveSince = Date.now();
+      this.freezer.maybeFreeze(tab);
+    }
+    for (const tab of next) {
+      const view = this.ensureLive(tab);
+      this.freezer.unfreeze(tab);
+      this.placement.syncNewTabCenter(tab);
+      this.placement.place(tab, view);
+      if (!this.shown.includes(tab)) this.options.window.contentView.addChildView(view);
+    }
+    this.shown = next;
   }
 
   focusActive(): boolean {
@@ -584,10 +698,11 @@ export class TabManager {
     this.selected.delete(id);
     if (this.selectionAnchor === id) this.selectionAnchor = null;
     const { pinnedUrl } = this.tabs[index];
+    const partner = this.leaveSplit(id);
     const neighbor = this.listNeighbor(id);
     if (pinnedUrl) {
       this.openedPinned.delete(id);
-      this.unloadPinned(this.tabs[index], pinnedUrl, neighbor);
+      this.unloadPinned(this.tabs[index], pinnedUrl, partner ?? neighbor);
       return;
     }
     this.reanchorOpenedPinned(id);
@@ -605,12 +720,13 @@ export class TabManager {
     const opener = tab.openerId ? this.find(tab.openerId) : undefined;
     if (this.activeId === id) {
       this.activeId = null;
-      if (opener) this.activate(opener.id);
-      else if (neighbor) this.activate(neighbor);
+      const next = partner ?? opener?.id ?? neighbor;
+      if (next) this.activate(next);
       else this.open();
       return;
     }
     if (opener) this.freezer.maybeFreeze(opener);
+    if (partner) this.showVisible();
     this.changed(true);
   }
 
@@ -710,7 +826,7 @@ export class TabManager {
 
   discard(id: TabId): boolean {
     const tab = this.find(id);
-    if (!tab?.view || id === this.activeId) return false;
+    if (!tab?.view || this.isVisible(tab)) return false;
     tab.history = captureHistory(tab);
     this.destroyView(tab);
     this.changed(true);
@@ -725,7 +841,7 @@ export class TabManager {
       candidates.push({
         id: tab.id,
         live: true,
-        active: tab.id === this.activeId,
+        active: this.isVisible(tab),
         pinned: tab.pinnedUrl !== null,
         loading: tab.loading,
         audible: contents.isCurrentlyAudible() || keepsPlaying(tab),
@@ -783,6 +899,7 @@ export class TabManager {
     tab.upgrade = null;
     tab.blockedPopups = [];
     if (this.activeId !== tab.id) {
+      this.showVisible();
       this.changed(true);
       return;
     }
@@ -1362,6 +1479,9 @@ export class TabManager {
     const index = this.indexOf(id);
     const tab = this.tabs[index];
     if (!tab || this.tabs.length < 2) return null;
+    const partner = this.leaveSplit(id);
+    this.shown = this.shown.filter((item) => item !== tab);
+    if (this.fullScreenId === id) this.fullScreenId = null;
     this.selected.delete(id);
     if (this.selectionAnchor === id) this.selectionAnchor = null;
     this.reanchorOpenedPinned(id);
@@ -1375,8 +1495,9 @@ export class TabManager {
     this.autoReloader.sync();
     if (this.activeId === id) {
       this.activeId = null;
-      this.activate(this.tabs[Math.min(index, this.tabs.length - 1)].id);
+      this.activate(partner ?? this.tabs[Math.min(index, this.tabs.length - 1)].id);
     } else {
+      if (partner) this.showVisible();
       this.changed(true);
     }
     return tab;
@@ -1550,6 +1671,14 @@ export class TabManager {
     allowPinch();
     listen('did-navigate', allowPinch);
 
+    // Clicking a split pane makes it the focused tab without the layout change activate() would do.
+    listen('focus', () => {
+      if (tab.id === this.activeId || !this.shown.includes(tab)) return;
+      this.activeId = tab.id;
+      this.selectionAnchor = tab.id;
+      this.changed();
+    });
+
     listen('ipc-message', (event, channel, direction) => {
       if (channel !== PageChannel.swipe || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
       if (direction === 'back' || direction === 'forward') this.options.onPageSwipe(direction);
@@ -1581,8 +1710,18 @@ export class TabManager {
       this.options.onFindResult({ active: result.activeMatchOrdinal ?? 0, matches: result.matches });
     });
 
-    listen('enter-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, true));
-    listen('leave-html-full-screen', () => this.options.onHtmlFullScreenChange(tab.id, false));
+    listen('enter-html-full-screen', () => {
+      this.fullScreenId = tab.id;
+      this.showVisible();
+      this.options.onHtmlFullScreenChange(tab.id, true);
+    });
+    listen('leave-html-full-screen', () => {
+      if (this.fullScreenId === tab.id) {
+        this.fullScreenId = null;
+        this.showVisible();
+      }
+      this.options.onHtmlFullScreenChange(tab.id, false);
+    });
   }
 
   private listenForWindowRequests(tab: Tab, contents: WebContents, listen: Listen): void {
@@ -1885,6 +2024,8 @@ export class TabManager {
     this.freezer.cancel(tab);
     const view = tab.view;
     if (!view) return;
+    this.shown = this.shown.filter((item) => item !== tab);
+    if (this.fullScreenId === tab.id) this.fullScreenId = null;
     if (this.media?.tabId === tab.id) this.media = null;
     tab.detachListeners?.();
     tab.detachListeners = null;

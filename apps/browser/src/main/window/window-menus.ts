@@ -20,6 +20,9 @@ interface TabMenuActions {
   closeOthers(): void;
   closeRight(): void;
   closeSelected?(): void;
+  splitWithActive?(): void;
+  unsplit?(): void;
+  splitSelected?(): void;
   muteSelected?(): void;
   pinSelected?(): void;
 }
@@ -28,6 +31,9 @@ interface TabMenuAvailability {
   others: boolean;
   right: boolean;
   selected?: number;
+  splitWithActive?: boolean;
+  inSplit?: boolean;
+  splitSelected?: boolean;
 }
 
 export function tabMenuTemplate(
@@ -45,6 +51,9 @@ export function tabMenuTemplate(
     template.push({ label: tab.muted ? t('window.unmuteTab') : t('window.muteTab'), click: actions.toggleMute });
   }
   if (tab.live && !isActive) template.push({ label: t('window.unloadTab'), click: actions.discard });
+  if (availability.inSplit) template.push({ label: t('window.exitSplitView'), click: actions.unsplit });
+  else if (availability.splitWithActive)
+    template.push({ label: t('window.openInSplitView'), click: actions.splitWithActive });
   if (template.length > 0) template.push({ type: 'separator' });
   template.push({ label: t('window.closeTab'), click: actions.close });
   template.push(
@@ -57,6 +66,9 @@ export function tabMenuTemplate(
       { label: t('window.closeSelectedTabs', { count: availability.selected! }), click: actions.closeSelected },
       { label: t('window.muteSelectedTabs'), click: actions.muteSelected },
       { label: t('window.pinSelectedTabs'), click: actions.pinSelected },
+      ...(availability.splitSelected
+        ? [{ label: t('window.splitSelectedTabs', { count: availability.selected! }), click: actions.splitSelected }]
+        : []),
     );
   return template;
 }

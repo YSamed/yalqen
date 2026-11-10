@@ -45,6 +45,7 @@ let state = {
   developer: false,
   activeTabId: 'a',
   selectedTabIds: [],
+  splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
   addressPlaceholder: 'Search',
@@ -119,8 +120,10 @@ app
       canNext: false,
       updatedAt: Date.now(),
     };
+    // A hidden window advances the sidebar's transitions unevenly, so the pill could move between two calls.
     const drag = (types, from, to = from) =>
       window.webContents.executeJavaScript(`(() => {
+        document.getAnimations().forEach((animation) => animation.finish());
         const track = document.querySelector('.player .track');
         const rect = document.querySelector('.player .pill').getBoundingClientRect();
         const at = (type, fraction) =>

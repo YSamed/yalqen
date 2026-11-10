@@ -48,6 +48,7 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     tabs: reuseArray(previous.tabs, tabs),
     listOrder: reuseArray(previous.listOrder, next.listOrder),
     selectedTabIds: reuseArray(previous.selectedTabIds, next.selectedTabIds),
+    splitTabIds: reuseArray(previous.splitTabIds, next.splitTabIds),
     ...(next.tabGroups && { tabGroups: reuseItems(previous.tabGroups ?? [], next.tabGroups) }),
     toolbarButtons: reuseArray(previous.toolbarButtons, next.toolbarButtons),
     ...(next.toolbarExtensions && {

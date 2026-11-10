@@ -138,6 +138,7 @@ export interface BrowserState {
   developer: boolean;
   activeTabId: TabId | null;
   selectedTabIds: TabId[];
+  splitTabIds: TabId[];
   tabGroups?: import('./tab-groups').TabGroup[];
   pageFullScreen: boolean;
   windowFullScreen: boolean;
@@ -420,6 +421,8 @@ export type UiAction =
   | { type: 'skip-media'; id: TabId; direction: import('./sidebar-widgets').MediaSkip }
   | { type: 'open-tab-menu'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
+  | { type: 'preview-split'; id: TabId | null; side: 'left' | 'right' }
+  | { type: 'split-tab'; id: TabId; side: 'left' | 'right' }
   | { type: 'navigate'; input: string }
   | { type: 'go-home' }
   | { type: 'go-back' }
