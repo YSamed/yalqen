@@ -1,6 +1,11 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
-  import { DEFAULT_ZOOM_FACTORS, type SettingsValues } from '../../shared/types';
+  import { onMount, untrack } from 'svelte';
+  import {
+    DEFAULT_ZOOM_FACTORS,
+    type ExtensionInfo,
+    type SettingsValues,
+    type ToolbarExtension,
+  } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import AccentPicker from '../ui/AccentPicker.svelte';
   import Button from '../ui/Button.svelte';
@@ -16,6 +21,21 @@
     $props();
 
   const api = window.yalqenSettings;
+
+  // Enabled extensions can be pinned to the toolbar next to the built-in buttons.
+  let installed = $state<ExtensionInfo[]>([]);
+  const toolbarExtensions = $derived<ToolbarExtension[]>(
+    installed.flatMap((extension) =>
+      extension.enabled && extension.id ? [{ id: extension.id, title: extension.name, icon: extension.icon }] : [],
+    ),
+  );
+  onMount(() => {
+    api
+      .extensions()
+      .then((next) => (installed = next))
+      .catch(() => {});
+    return api.onExtensionsChange((next) => (installed = next));
+  });
   const startupTransparency = untrack(() => values.transparency);
   const transparencyChanged = $derived(values.transparency !== startupTransparency);
 
@@ -161,7 +181,11 @@
 />
 
 <h2>{t('settings.toolbar')}</h2>
-<ToolbarEditor shown={values.toolbarButtons} onchange={(buttons) => update({ toolbarButtons: buttons })} />
+<ToolbarEditor
+  shown={values.toolbarButtons}
+  extensions={toolbarExtensions}
+  onchange={(buttons) => update({ toolbarButtons: buttons })}
+/>
 
 <AdvancedGroup>
   <SettingRow title={t('settings.pinnedTabs')}>

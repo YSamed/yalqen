@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { nativeImage, net, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
 import { t } from '../../shared/i18n.js';
-import type { ExtensionInfo, ExtensionSiteAccess } from '../../shared/types.js';
+import type { ExtensionInfo, ExtensionSiteAccess, ToolbarExtension } from '../../shared/types.js';
 import { extensionSite, parseExtensionAccess } from '../../shared/extension-sites.js';
 import {
   extensionIdentity,
@@ -38,6 +38,8 @@ import {
 } from './extension-updates.js';
 
 const MENU_ICON_SIZE = 16;
+// Drawn at 16 points in the toolbar, so twice that keeps it sharp on Retina screens.
+const TOOLBAR_ICON_SIZE = 32;
 const LIST_ICON_SIZE = 64;
 const STORE_DIRECTORY = 'store-extensions';
 
@@ -51,6 +53,7 @@ type ConfirmUpdatePermissions = (name: string, permissions: string[]) => Promise
 
 interface ExtensionAction {
   path?: string;
+  id?: string;
   requestAccess?: boolean;
   title: string;
   icon: NativeImage | null;
@@ -128,6 +131,7 @@ export class ExtensionManager {
   private stopped = false;
   private readonly updateRequests = new Set<AbortController>();
   private readonly changingAccess = new Set<string>();
+  private readonly toolbarIcons = new Map<string, { version: string; icon: string | null }>();
   private readonly sessionSites = new Map<string, Set<string>>();
   private readonly loadingIds = new Set<string>();
 
@@ -157,6 +161,7 @@ export class ExtensionManager {
       return [
         {
           path: entry.path,
+          id: extension.id,
           requestAccess: this.accessFor(entry.path).mode === 'click',
           title: actionTitle(manifest, extension.name),
           icon: this.icon(entry.path, manifest, MENU_ICON_SIZE),
@@ -164,6 +169,25 @@ export class ExtensionManager {
           optionsUrl: extensionPage(extension.url, optionsPage(manifest)),
         },
       ];
+    });
+  }
+
+  // Enabled extensions that can be pinned to the toolbar. Window state is rebuilt often, so the icon is
+  // encoded once per extension version.
+  toolbarExtensions(): ToolbarExtension[] {
+    return this.entries.flatMap((entry) => {
+      const extension = this.loadedAt(entry.path);
+      if (!extension) return [];
+      const manifest = extension.manifest as Manifest;
+      let cached = this.toolbarIcons.get(entry.path);
+      if (cached?.version !== extension.version) {
+        cached = {
+          version: extension.version,
+          icon: this.icon(entry.path, manifest, TOOLBAR_ICON_SIZE)?.toDataURL() ?? null,
+        };
+        this.toolbarIcons.set(entry.path, cached);
+      }
+      return [{ id: extension.id, title: actionTitle(manifest, extension.name), icon: cached.icon }];
     });
   }
 

@@ -94,6 +94,24 @@ test('toolbar buttons are deduplicated, filtered and always keep settings', () =
   assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 8);
 });
 
+test('developer tools starts hidden but stays once added', () => {
+  assert.equal(sanitizeSettings(null).toolbarButtons.includes('devtools'), false);
+  assert.deepEqual(sanitizeSettings({ toolbarButtons: ['devtools', 'settings'] }).toolbarButtons, [
+    'devtools',
+    'settings',
+  ]);
+});
+
+test('pinned extensions are kept by id next to the built-in buttons', () => {
+  const id = 'abcdefghijklmnopabcdefghijklmnop';
+  assert.deepEqual(
+    sanitizeSettings({
+      toolbarButtons: [`extension:${id}`, 'extension:not-an-id', 'extension:', `extension:${id}`, 'settings', 42],
+    }).toolbarButtons,
+    [`extension:${id}`, 'settings'],
+  );
+});
+
 test('the sidebar media player is on by default and stays off once turned off', () => {
   assert.deepEqual(sanitizeSettings({}).sidebarWidgets, ['media']);
   assert.deepEqual(sanitizeSettings({ sidebarWidgets: [] }).sidebarWidgets, []);
