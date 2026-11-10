@@ -387,6 +387,8 @@ export type UiAction =
   | { type: 'toggle-pin'; id: TabId }
   | { type: 'toggle-mute'; id: TabId }
   | { type: 'toggle-media'; id: TabId }
+  | { type: 'show-tooltip'; tooltip: import('./tooltip').TooltipRequest }
+  | { type: 'hide-tooltip' }
   | { type: 'seek-media'; id: TabId; seconds: number }
   | { type: 'skip-media'; id: TabId; direction: import('./sidebar-widgets').MediaSkip }
   | { type: 'open-tab-menu'; id: TabId }

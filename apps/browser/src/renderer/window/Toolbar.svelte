@@ -401,6 +401,7 @@
                 tone="muted"
                 class="close"
                 label={t('toolbar.close')}
+                title={t('toolbar.closeTitle')}
                 onclick={() => send({ type: 'close-tab', id: tab.id })}
               />
               {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}
@@ -432,6 +433,7 @@
               tone="muted"
               class="close"
               label={t('toolbar.close')}
+              title={t('toolbar.closeTitle')}
               onclick={() => send({ type: 'close-tab', id: tab.id })}
             />
             {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}

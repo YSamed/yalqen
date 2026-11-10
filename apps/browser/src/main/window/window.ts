@@ -53,6 +53,8 @@ import type { HistoryStore } from '../library/history.js';
 import type { HttpsOnly } from '../privacy/https-only.js';
 import { canViewSource, formatAddress, type AddressFormat } from '../devtools/page-export.js';
 import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
+import { TooltipOverlay } from './tooltip-overlay.js';
+import { validTooltip } from '../../shared/tooltip.js';
 import { PageNotice } from './page-notice.js';
 import { AgentControl } from './agent-control.js';
 import type { ActionWindow } from '../agent-bridge/action-runner.js';
@@ -236,6 +238,7 @@ export class YalqenWindow {
   private lastPushedState = '';
   private findTarget: { tabId: string; url: string } | null = null;
   private readonly navigationHint: NavigationHint;
+  private readonly tooltip: TooltipOverlay;
   private readonly notice: PageNotice;
   private readonly agentControl: AgentControl;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
@@ -462,6 +465,7 @@ export class YalqenWindow {
     });
 
     this.navigationHint = new NavigationHint({ window: this.window, area: () => this.pageArea });
+    this.tooltip = new TooltipOverlay(this.window);
     this.notice = new PageNotice({ window: this.window, area: () => this.pageArea });
     this.agentControl = new AgentControl({
       window: this.window,
@@ -485,6 +489,8 @@ export class YalqenWindow {
       this.pushState();
     };
     this.window.on('resize', syncFullScreen);
+    this.window.on('blur', () => this.tooltip.hide());
+    this.window.on('resize', () => this.tooltip.hide());
     this.window.on('enter-full-screen', syncFullScreen);
     this.window.on('leave-full-screen', syncFullScreen);
     this.applyLayout();
@@ -527,6 +533,7 @@ export class YalqenWindow {
       this.commandBar.release(this.window);
       this.findBar.release(this.window);
       this.navigationHint.destroy();
+      this.tooltip.destroy();
       this.notice.destroy();
       this.agentControl.destroy();
       app.extensionPopup.close(this.window);
@@ -1531,6 +1538,14 @@ export class YalqenWindow {
         break;
       case 'toggle-media':
         tabs.toggleMedia(action.id);
+        break;
+      case 'show-tooltip': {
+        const tooltip = validTooltip(action.tooltip);
+        if (tooltip) this.tooltip.show(tooltip);
+        break;
+      }
+      case 'hide-tooltip':
+        this.tooltip.hide();
         break;
       case 'seek-media':
         tabs.seekMedia(action.id, action.seconds);

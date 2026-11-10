@@ -386,6 +386,7 @@
         tone="muted"
         icon="close"
         label={t('tabPanel.close')}
+        title={t('tabPanel.closeTitle')}
         onclick={() => send({ type: 'close-tab', id: tab.id })}
       />
     </span>
