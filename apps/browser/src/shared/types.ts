@@ -743,6 +743,30 @@ export interface WelcomeApi {
   importFrom(request: WelcomeImportRequest): Promise<WelcomeImportResult>;
 }
 
+export interface ConfirmRequest {
+  icon: 'extensions' | 'trash';
+  title: string;
+  message?: string;
+  items: string[];
+  confirmLabel: string;
+  cancelLabel: string;
+  danger?: boolean;
+}
+
+export interface ConfirmOpen extends ConfirmRequest {
+  accent: string;
+}
+
+export const ConfirmChannel = {
+  open: 'yalqen-confirm:open',
+  answer: 'yalqen-confirm:answer',
+} as const;
+
+export interface ConfirmApi {
+  onOpen(listener: (open: ConfirmOpen) => void): () => void;
+  answer(confirmed: boolean): void;
+}
+
 export interface FindResult {
   active: number;
   matches: number;

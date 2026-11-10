@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.92](https://github.com/YSamed/yalqen/compare/v0.3.91...v0.3.92) (2026-11-10)
+
+
+### Features
+
+* show extension confirmations in an in-app dialog ([#364](https://github.com/YSamed/yalqen/issues/364)) ([6c100e3](https://github.com/YSamed/yalqen/commit/6c100e31f4a8cbf5c6e58af86f175707cac38e1a))
+
 ## [0.3.91](https://github.com/YSamed/yalqen/compare/v0.3.90...v0.3.91) (2026-11-10)
 
 

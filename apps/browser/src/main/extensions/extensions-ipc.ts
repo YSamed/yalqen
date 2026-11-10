@@ -1,6 +1,7 @@
 import { dialog, type BaseWindow, type OpenDialogOptions, type WebContents } from 'electron';
 import { t } from '../../shared/i18n.js';
-import { ExtensionsChannel } from '../../shared/types.js';
+import { ExtensionsChannel, type ConfirmRequest } from '../../shared/types.js';
+import { permissionLines } from './permission-text.js';
 import { handleSettingsCall, isSettingsFrame } from '../app/settings-page.js';
 import type { ExtensionAccessController } from './extension-access-controller.js';
 import { STORE_HOME } from './chrome-web-store.js';
@@ -10,10 +11,11 @@ interface ExtensionsIpcHost {
   extensions: ExtensionManager;
   access: ExtensionAccessController;
   parentWindow(contents: WebContents): BaseWindow | undefined;
+  confirm(window: BaseWindow | undefined, request: ConfirmRequest, returnFocus: WebContents): Promise<boolean>;
   openTab(contents: WebContents, url: string): void;
 }
 
-export function registerExtensionsIpc({ extensions, access, parentWindow, openTab }: ExtensionsIpcHost): void {
+export function registerExtensionsIpc({ extensions, access, parentWindow, confirm, openTab }: ExtensionsIpcHost): void {
   handleSettingsCall(ExtensionsChannel.list, () => extensions.list());
   handleSettingsCall(ExtensionsChannel.setAccess, (event, directory, value) =>
     typeof directory === 'string'
@@ -26,18 +28,17 @@ export function registerExtensionsIpc({ extensions, access, parentWindow, openTa
       : t('extensions.accessInvalid'),
   );
   handleSettingsCall(ExtensionsChannel.checkUpdates, (event) =>
-    extensions.checkForUpdates(async (name, permissions) => {
-      const options: Electron.MessageBoxOptions = {
-        type: 'question',
-        message: t('extensions.updatePermissionsPrompt', { name }),
-        detail: permissions.slice(0, 12).join(', ') + (permissions.length > 12 ? '…' : ''),
-        buttons: [t('extensions.updateAllow'), t('webStoreApi.cancel')],
-        defaultId: 1,
-        cancelId: 1,
+    extensions.checkForUpdates((name, permissions) => {
+      const lines = permissionLines(permissions);
+      const request: ConfirmRequest = {
+        icon: 'extensions',
+        title: t('extensions.updatePermissionsPrompt', { name }),
+        message: t('extensions.updateNewPermissions'),
+        items: lines.length > 0 ? lines : permissions,
+        confirmLabel: t('extensions.updateAllow'),
+        cancelLabel: t('webStoreApi.cancel'),
       };
-      const parent = parentWindow(event.sender);
-      const result = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
-      return result.response === 0;
+      return confirm(parentWindow(event.sender), request, event.sender);
     }),
   );
   handleSettingsCall(ExtensionsChannel.install, async (event) => {

@@ -34,6 +34,7 @@ import type { BookmarkImportResult, HistoryImportResult } from '../library/brows
 import type { CertificateExceptions } from '../privacy/certificates.js';
 import type { CommandBar, CommandBarHost } from '../address-bar/command-bar.js';
 import type { WelcomeCard } from './welcome-card.js';
+import type { ConfirmDialog } from './confirm-dialog.js';
 import { contextMenuTemplate } from './context-menu.js';
 import {
   autoReloadSeconds,
@@ -139,6 +140,7 @@ export interface AppContext {
   commandBar: CommandBar;
   findBar: FindBar;
   welcome: WelcomeCard;
+  confirmDialog: ConfirmDialog;
   history: HistoryStore;
   repoPrompt: RepoPrompt;
   dismissAnnouncement: () => void;
@@ -380,6 +382,7 @@ export class YalqenWindow {
         this.findBar.keepOnTop(this.window);
         this.commandBar.keepOnTop(this.window);
         app.welcome.keepOnTop(this.window);
+        app.confirmDialog.keepOnTop(this.window);
         this.pushState();
         app.onWindowChange(persist);
       },
