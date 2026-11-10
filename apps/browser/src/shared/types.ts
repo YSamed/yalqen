@@ -801,6 +801,23 @@ export interface FindBarApi {
   send(action: FindBarAction): void;
 }
 
+export const PeekChannel = {
+  update: 'yalqen-peek:update',
+  action: 'yalqen-peek:action',
+} as const;
+
+export interface PeekState {
+  title: string;
+  url: string;
+}
+
+export type PeekAction = 'close' | 'promote';
+
+export interface PeekApi {
+  onUpdate(listener: (state: PeekState) => void): () => void;
+  send(action: PeekAction): void;
+}
+
 export interface SettingsValues {
   searchEngine: SearchEngineId;
   customSearchTemplate: string | null;

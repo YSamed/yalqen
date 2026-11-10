@@ -1077,6 +1077,11 @@ export const en = {
 
   'contextMenu.openLinkInNewTab': 'Open Link in New Tab',
   'contextMenu.openLinkInNewWindow': 'Open Link in New Window',
+  'contextMenu.peekLink': 'Peek Link',
+  'linkPeek.pageTitle': 'Link preview',
+  'linkPeek.promote': 'Open in tab',
+  'linkPeek.close': 'Close',
+  'linkPeek.closeTitle': 'Close (Esc)',
   'contextMenu.downloadLink': 'Download Linked File',
   'contextMenu.copyLinkAddress': 'Copy Link Address',
   'contextMenu.openImageInNewTab': 'Open Image in New Tab',
