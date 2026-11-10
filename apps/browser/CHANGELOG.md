@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.90](https://github.com/YSamed/yalqen/compare/v0.3.89...v0.3.90) (2026-11-10)
+
+
+### Features
+
+* add developer tools and extensions to the toolbar editor ([#361](https://github.com/YSamed/yalqen/issues/361)) ([e8ed28c](https://github.com/YSamed/yalqen/commit/e8ed28c74699ba6024cc5b8f2b802118bba1821d))
+
+
+### Bug Fixes
+
+* let grammarly finish signing in ([#360](https://github.com/YSamed/yalqen/issues/360)) ([a18adf7](https://github.com/YSamed/yalqen/commit/a18adf7b1620621664690b80c66b053b8330d184))
+
 ## [0.3.89](https://github.com/YSamed/yalqen/compare/v0.3.88...v0.3.89) (2026-11-10)
 
 
