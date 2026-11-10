@@ -1,3 +1,5 @@
+import { groupOrder, type GroupParents } from '../../shared/tab-groups.js';
+
 interface Listable {
   id: string;
   pinnedUrl: string | null;
@@ -6,7 +8,11 @@ interface Listable {
 
 type OpenedPinned = ReadonlyMap<string, string | null>;
 
-export function tabListOrder<T extends Listable>(tabs: readonly T[], opened: OpenedPinned): T[] {
+export function tabListOrder<T extends Listable>(
+  tabs: readonly T[],
+  opened: OpenedPinned,
+  parents: GroupParents = new Map(),
+): T[] {
   const unpinned = tabs.filter((tab) => !tab.pinnedUrl);
   const pinnedById = new Map(tabs.filter((tab) => tab.pinnedUrl).map((tab) => [tab.id, tab]));
   const unpinnedIds = new Set(unpinned.map((tab) => tab.id));
@@ -28,10 +34,13 @@ export function tabListOrder<T extends Listable>(tabs: readonly T[], opened: Ope
     ...unpinned.flatMap((tab) => [tab, ...(byAnchor.get(tab.id) ?? [])]),
     ...orphans,
   ];
-  const groups = new Set(tabs.flatMap((tab) => (tab.group ? [tab.group] : [])));
+  const groups = groupOrder(
+    tabs.flatMap((tab) => (tab.group ? [tab.group] : [])),
+    parents,
+  );
   return [
     ...ordered.filter((tab) => !tab.group),
-    ...Array.from(groups).flatMap((name) => ordered.filter((tab) => tab.group === name)),
+    ...groups.flatMap((name) => ordered.filter((tab) => tab.group === name)),
   ];
 }
 

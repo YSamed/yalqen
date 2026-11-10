@@ -410,6 +410,9 @@ export type UiAction =
   | { type: 'rename-tab-group'; name: string; next: string }
   | { type: 'toggle-tab-group'; name: string }
   | { type: 'remove-tab-group'; name: string }
+  | { type: 'move-tab-to-group'; id: TabId; name: string | null }
+  | { type: 'move-tab-group'; name: string; parent: string | null }
+  | { type: 'open-folder-menu'; name: string }
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }

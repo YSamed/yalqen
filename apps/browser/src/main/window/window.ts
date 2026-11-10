@@ -72,7 +72,13 @@ import { exportBookmarksWithDialog, importBookmarksWithDialog, importHistoryWith
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
 import { showCertificateDetails } from '../privacy/certificate-details.js';
 import { saveOfflinePage, openLocalFiles } from './page-files.js';
-import { libraryMenuTemplate, profileMenuTemplate, siteInfoMenu, tabMenuTemplate } from './window-menus.js';
+import {
+  folderMenuTemplate,
+  libraryMenuTemplate,
+  profileMenuTemplate,
+  siteInfoMenu,
+  tabMenuTemplate,
+} from './window-menus.js';
 import { buildSearchUrl, type SearchEngine } from '../address-bar/search.js';
 import type { SettingsStore } from '../app/settings.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
@@ -1528,6 +1534,15 @@ export class YalqenWindow {
       case 'remove-tab-group':
         tabs.removeGroup(action.name);
         break;
+      case 'move-tab-to-group':
+        tabs.setTabGroup(action.id, action.name);
+        break;
+      case 'move-tab-group':
+        tabs.moveGroup(action.name, action.parent);
+        break;
+      case 'open-folder-menu':
+        this.openFolderMenu(action.name);
+        break;
       case 'close-tab':
         tabs.close(action.id);
         break;
@@ -1835,6 +1850,8 @@ export class YalqenWindow {
           splitWithActive: () => tabs.splitWithActive(id),
           unsplit: () => tabs.unsplit(id),
           splitSelected: () => tabs.splitSelected(),
+          moveToFolder: (name) => tabs.setTabGroup(id, name),
+          moveToNewFolder: () => tabs.setTabGroup(id, tabs.newGroupName(t('window.newFolderName'))),
         },
         {
           others: tabs.canCloseRelated(id, 'others'),
@@ -1843,8 +1860,21 @@ export class YalqenWindow {
           splitWithActive: tabs.canSplitWithActive(id),
           inSplit: tabs.splitTabIds.includes(id),
           splitSelected: tabs.selectedTabIds.includes(id) && tabs.selectedTabIds.length <= MAX_SPLIT_PANES,
+          folders: tabs.groupView().flatMap((group) => (group.name === tab.group ? [] : [group.name])),
         },
       ),
+    );
+  }
+
+  private openFolderMenu(name: string): void {
+    const tabs = this.tabs;
+    const folder = tabs.groupView().find((group) => group.name === name);
+    if (!folder) return;
+    this.popup(
+      folderMenuTemplate(folder, tabs.groupTargets(name), {
+        moveTo: (parent) => tabs.moveGroup(name, parent),
+        remove: () => tabs.removeGroup(name),
+      }),
     );
   }
 
