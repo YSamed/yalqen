@@ -2,11 +2,35 @@ export const ExtensionBridgeChannel = {
   createTab: 'yalqen-extension-bridge:create-tab',
   removeTabs: 'yalqen-extension-bridge:remove-tabs',
   cookies: 'yalqen-extension-bridge:cookies',
+  windows: 'yalqen-extension-bridge:windows',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;
 
-export type ExtensionBridgeEvent = 'tabs.onUpdated' | 'tabs.onRemoved' | 'cookies.onChanged';
+export type ExtensionBridgeEvent =
+  | 'tabs.onUpdated'
+  | 'tabs.onRemoved'
+  | 'cookies.onChanged'
+  | 'windows.onFocusChanged'
+  | 'windows.onCreated'
+  | 'windows.onRemoved';
+
+export const WINDOW_ID_NONE = -1;
+
+export interface ExtensionWindowState {
+  id: number;
+  focused: boolean;
+}
+
+export interface ExtensionWindows {
+  currentId: number | null;
+  windows: ReturnType<typeof chromeWindow>[];
+}
+
+// The fields of chrome.windows.Window that extensions read; every Yalqen window is a normal one.
+export function chromeWindow({ id, focused }: ExtensionWindowState) {
+  return { id, focused, type: 'normal', state: 'normal', incognito: false, alwaysOnTop: false };
+}
 
 const EXTENSION_ID = /^[a-p]{32}$/;
 
