@@ -55,6 +55,7 @@ import { PROCEED_URL } from '../privacy/certificates.js';
 import { PROCEED_HTTP_URL } from '../privacy/https-only.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from '../privacy/site-data.js';
 import { securityState } from '../privacy/site-info.js';
+import { shouldArchive } from './auto-archive.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
 import { PagePlacement, type PaneSlot } from './page-placement.js';
@@ -861,6 +862,29 @@ export class TabManager {
     return count;
   }
 
+  archiveInactive(now: number, hours: number): number {
+    let count = 0;
+    for (const tab of [...this.tabs]) {
+      const contents = liveContents(tab);
+      const candidate = {
+        active: this.isVisible(tab),
+        pinned: tab.pinnedUrl !== null,
+        private: tab.isPrivate,
+        loading: tab.loading,
+        playing: !!contents?.isCurrentlyAudible() || keepsPlaying(tab) || tab.playingMedia > 0,
+        devToolsOpen: !!contents?.isDevToolsOpened(),
+        edited: tab.edited,
+        autoReload: tab.autoReload !== null,
+        hasLiveChild: this.tabs.some((item) => item.openerId === tab.id && !!item.view),
+        inactiveSince: tab.inactiveSince,
+      };
+      if (!shouldArchive(candidate, now, hours)) continue;
+      this.closeApproved(tab.id);
+      count++;
+    }
+    return count;
+  }
+
   togglePin(id: TabId): void {
     const tab = this.find(id);
     if (!tab) return;
@@ -1429,7 +1453,10 @@ export class TabManager {
     const kept = this.tabs.filter((tab) => !tab.isPrivate);
     return {
       activeTabId: kept.some((tab) => tab.id === this.activeId) ? this.activeId : (kept[0]?.id ?? null),
-      tabs: kept.map(savedTab),
+      tabs: kept.map((tab) => ({
+        ...savedTab(tab),
+        inactiveSince: this.isVisible(tab) ? Date.now() : tab.inactiveSince,
+      })),
       ...(this.collapsedGroups.size && {
         collapsedGroups: Array.from(this.collapsedGroups).filter((name) => kept.some((tab) => tab.group === name)),
       }),

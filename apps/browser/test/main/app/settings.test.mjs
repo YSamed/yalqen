@@ -20,6 +20,7 @@ test('unknown or mistyped fields fall back', () => {
       sidebarWidgets: 'media',
       toolbarVisible: 0,
       discardAfterMinutes: 45,
+      autoArchiveHours: 5,
       adBlocking: 'no',
       threatProtection: 'yes',
       httpsOnly: 'yes',
@@ -51,6 +52,7 @@ test('unknown or mistyped fields fall back', () => {
       toolbarVisible: true,
       toolbarButtons: ['home', 'bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
       discardAfterMinutes: 30,
+      autoArchiveHours: 0,
       adBlocking: true,
       threatProtection: true,
       adBlockExceptions: [],
@@ -155,6 +157,7 @@ test('updates keep valid fields and persist', () => {
       toolbarVisible: false,
       toolbarButtons: ['downloads', 'settings'],
       discardAfterMinutes: 0,
+      autoArchiveHours: 24,
       adBlocking: false,
       httpsOnly: true,
       blockThirdPartyCookies: true,
@@ -177,6 +180,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.pinnedDisplay, 'expanded');
     assert.deepEqual(reloaded.toolbarButtons, ['downloads', 'settings']);
     assert.equal(reloaded.discardAfterMinutes, 0);
+    assert.equal(reloaded.autoArchiveHours, 24);
     assert.equal(reloaded.adBlocking, false);
     assert.equal(reloaded.httpsOnly, true);
     assert.equal(reloaded.blockThirdPartyCookies, true);

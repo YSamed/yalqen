@@ -49,6 +49,11 @@ export interface RecentPage {
   faviconUrl: string | null;
 }
 
+function restoredInactiveSince(saved: unknown): number {
+  const now = Date.now();
+  return typeof saved === 'number' && Number.isFinite(saved) && saved > 0 && saved <= now ? saved : now;
+}
+
 export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate = false): Tab {
   return {
     id: saved.id ?? randomUUID(),
@@ -64,7 +69,7 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     upgrade: null,
     failed: false,
     activatedAt: 0,
-    inactiveSince: Date.now(),
+    inactiveSince: restoredInactiveSince(saved.inactiveSince),
     edited: false,
     interacted: false,
     blockedPopups: [],
