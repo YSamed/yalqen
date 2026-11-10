@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.88](https://github.com/YSamed/yalqen/compare/v0.3.87...v0.3.88) (2026-11-09)
+
+
+### Bug Fixes
+
+* unblock google and extension sign-in flows ([#350](https://github.com/YSamed/yalqen/issues/350)) ([cbf65f6](https://github.com/YSamed/yalqen/commit/cbf65f68b47fc2df7a8f5de6cd86a178634495ee))
+
 ## [0.3.87](https://github.com/YSamed/yalqen/compare/v0.3.86...v0.3.87) (2026-11-09)
 
 
