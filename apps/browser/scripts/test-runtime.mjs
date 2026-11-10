@@ -24,6 +24,7 @@ for (const test of [
   'tab-selection.mjs',
   'tab-transition.mjs',
   'media-player.mjs',
+  'toolbar-buttons.mjs',
   'tooltips.mjs',
   'media-controls.mjs',
   'media-skip.mjs',

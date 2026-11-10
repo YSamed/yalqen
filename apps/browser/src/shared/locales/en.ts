@@ -705,6 +705,8 @@ export const en = {
   'toolbar.downloadsActive': 'Downloads, {count} in progress',
   'toolbar.downloads': 'Downloads',
   'toolbar.fullPageScreenshot': 'Take full-page screenshot',
+  'toolbar.devtools': 'Developer tools',
+  'toolbar.devtoolsTitle': 'Developer tools (⌥⌘I)',
   'toolbar.fullPageScreenshotTitle': 'Take full-page screenshot (⌥⌘S)',
   'toolbar.back': 'Back',
   'toolbar.forward': 'Forward',

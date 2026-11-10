@@ -8,13 +8,15 @@ import type {
   SecureDnsSetting,
   SettingsValues,
   ThemeSource,
-  ToolbarButtonId,
+  ToolbarItemId,
 } from '../../shared/types.js';
 import {
   DEFAULT_GLASS_TINT,
+  DEFAULT_TOOLBAR_BUTTONS,
   DEFAULT_ZOOM_FACTORS,
   REQUIRED_TOOLBAR_BUTTON,
   TOOLBAR_BUTTON_IDS,
+  toolbarExtensionId,
 } from '../../shared/types.js';
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
@@ -45,7 +47,7 @@ const DEFAULTS: Settings = {
   sidebarVisible: true,
   sidebarWidgets: ['media'],
   toolbarVisible: true,
-  toolbarButtons: [...TOOLBAR_BUTTON_IDS],
+  toolbarButtons: [...DEFAULT_TOOLBAR_BUTTONS],
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   adBlocking: true,
   threatProtection: true,
@@ -87,9 +89,11 @@ const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab', 'pages'] satisf
 const TOOLBAR_BUTTONS = new Set<string>(TOOLBAR_BUTTON_IDS);
 const AGENT_ACTIONS = new Set<string>(['off', 'ask', 'allow'] satisfies AgentActionPolicy[]);
 
-function sanitizeToolbarButtons(value: unknown, fallback: ToolbarButtonId[]): ToolbarButtonId[] {
+function sanitizeToolbarButtons(value: unknown, fallback: ToolbarItemId[]): ToolbarItemId[] {
   if (!Array.isArray(value)) return fallback;
-  const buttons = [...new Set(value)].filter((id): id is ToolbarButtonId => TOOLBAR_BUTTONS.has(id));
+  const buttons = [...new Set(value)].filter(
+    (id): id is ToolbarItemId => typeof id === 'string' && (TOOLBAR_BUTTONS.has(id) || toolbarExtensionId(id) !== null),
+  );
   return buttons.includes(REQUIRED_TOOLBAR_BUTTON) ? buttons : [...buttons, REQUIRED_TOOLBAR_BUTTON];
 }
 

@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session } from 'electron';
 import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
 import internal from '../../dist/main/pages/internal-pages.js';
+import types from '../../dist/shared/types.js';
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-appearance-ui-'));
 app.setPath('userData', root);
 internal.registerInternalScheme();
@@ -32,7 +33,15 @@ app
   .whenReady()
   .then(async () => {
     const preferences = new settings.SettingsStore(root);
-    preferences.update({ toolbarButtons: ['bookmarks', 'history', 'settings'] });
+    const pinnable = 'abcdefghijklmnopabcdefghijklmnop';
+    const uninstalled = 'ponmlkjihgfedcbaponmlkjihgfedcba';
+    preferences.update({ toolbarButtons: ['bookmarks', 'history', 'settings', `extension:${uninstalled}`] });
+    const icon =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    ipcMain.handle(types.ExtensionsChannel.list, () => [
+      { id: pinnable, name: 'Grammar Helper', enabled: true, icon },
+      { id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', name: 'Switched Off', enabled: false, icon },
+    ]);
     ipc.registerSettingsIpc({
       view: () => ({
         values: preferences.get(),
@@ -108,19 +117,61 @@ app
     assert.equal(preferences.get().theme, 'dark');
 
     // Toolbar buttons are removed and added from the preview, and move with Option and the arrow keys.
+    // A pinned extension that is no longer installed is kept but not shown.
+    const missing = `extension:${uninstalled}`;
     await run(`${labelled('Remove History button')}.click()`);
     await eventually(`!!${labelled('Add History button')}`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'settings']);
+    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'settings', missing]);
     await run(`${labelled('Add Downloads button')}.click()`);
     await eventually(`!!${labelled('Remove Downloads button')}`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'settings', 'downloads']);
+    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'settings', 'downloads', missing]);
     await run(
       `${labelled('Remove Downloads button')}.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',altKey:true,bubbles:true}))`,
     );
     await eventually(`document.querySelector('#pane [data-id]:nth-of-type(2)')?.dataset.id==='downloads'`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings']);
+    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', missing]);
     await run(`document.querySelector('#pane [data-id=settings]').click()`);
     assert.ok(preferences.get().toolbarButtons.includes('settings'));
+    assert.equal(await run(`document.querySelectorAll('#pane .bar [data-id]').length`), 3);
+
+    // Developer tools waits in the tray and is added like any other button.
+    await eventually(`!!${labelled('Add Developer tools button')}`);
+    await run(`${labelled('Add Developer tools button')}.click()`);
+    await eventually(`!!${labelled('Remove Developer tools button')}`);
+    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', 'devtools', missing]);
+
+    // Enabled extensions can be pinned with their own icon and moved like the built-in buttons.
+    await eventually(`!!${labelled('Add Grammar Helper button')}`);
+    assert.equal(await run(`!!${labelled('Add Switched Off button')}`), false);
+    assert.equal(await run(`${labelled('Add Grammar Helper button')}.querySelector('img')?.getAttribute('src')`), icon);
+    await run(`${labelled('Add Grammar Helper button')}.click()`);
+    await eventually(`!!${labelled('Remove Grammar Helper button')}`);
+    const pinned = `extension:${pinnable}`;
+    assert.deepEqual(preferences.get().toolbarButtons, [
+      'bookmarks',
+      'downloads',
+      'settings',
+      'devtools',
+      pinned,
+      missing,
+    ]);
+    await run(
+      `${labelled('Remove Grammar Helper button')}.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',altKey:true,bubbles:true}))`,
+    );
+    await eventually(
+      `document.querySelector('#pane [data-id]:nth-of-type(4)')?.dataset.id===${JSON.stringify(pinned)}`,
+    );
+    assert.deepEqual(preferences.get().toolbarButtons, [
+      'bookmarks',
+      'downloads',
+      'settings',
+      pinned,
+      'devtools',
+      missing,
+    ]);
+    await run(`${labelled('Remove Grammar Helper button')}.click()`);
+    await eventually(`!!${labelled('Add Grammar Helper button')}`);
+    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', 'devtools', missing]);
 
     // Clearing browsing data happens in a dialog opened from the Privacy pane.
     await window.loadURL('yalqen://settings/privacy');

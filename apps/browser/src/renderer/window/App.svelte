@@ -57,6 +57,7 @@
     toolbarVisible: true,
     toolbarTabs: true,
     toolbarButtons: [],
+    toolbarExtensions: [],
     material: 'opaque',
     glassTint: DEFAULT_GLASS_TINT,
     accent: accentHex(DEFAULT_ACCENT),
@@ -110,6 +111,7 @@
   const sidebarVisible = $derived(browser.sidebarVisible);
   const toolbarVisible = $derived(browser.toolbarVisible);
   const toolbarButtons = $derived(browser.toolbarButtons);
+  const toolbarExtensions = $derived(browser.toolbarExtensions ?? []);
   const zoom = $derived(browser.zoom);
   const defaultZoom = $derived(browser.defaultZoom);
   const downloads = $derived(browser.downloads);
@@ -361,6 +363,7 @@
         {agentPanelOpen}
         {agentStatus}
         buttons={toolbarButtons}
+        {toolbarExtensions}
         leadingInset={windowControls
           ? side === 'left'
             ? Math.max(0, WINDOW_CONTROLS_END - shownWidth)

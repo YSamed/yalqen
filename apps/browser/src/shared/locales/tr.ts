@@ -712,6 +712,8 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.downloadsActive': 'İndirilenler, {count} indirme sürüyor',
   'toolbar.downloads': 'İndirilenler',
   'toolbar.fullPageScreenshot': 'Tam sayfa ekran görüntüsü al',
+  'toolbar.devtools': 'Sayfa geliştirici araçları',
+  'toolbar.devtoolsTitle': 'Sayfa geliştirici araçları (⌥⌘I)',
   'toolbar.fullPageScreenshotTitle': 'Tam sayfa ekran görüntüsü al (⌥⌘S)',
   'toolbar.back': 'Geri',
   'toolbar.forward': 'İleri',
