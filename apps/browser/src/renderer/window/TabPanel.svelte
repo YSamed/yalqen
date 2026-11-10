@@ -235,6 +235,16 @@
   const draggingPinned = $derived(dragGroup === 'pinned');
   const draggingListed = $derived(dragGroup === 'listed');
 
+  // A favourite opens or switches to a tab on its site, so it shows that tab's unread mail.
+  function favoriteUnread(url: string): boolean {
+    try {
+      const { host } = new URL(url);
+      return tabs.some((tab) => tab.unread && !tab.isPrivate && new URL(tab.url).host === host);
+    } catch {
+      return false;
+    }
+  }
+
   function label(tab: TabSnapshot): string {
     const states = [
       tab.id === activeTabId ? t('tabPanel.stateActive') : null,
@@ -245,6 +255,7 @@
       tab.frozen ? t('tabPanel.stateFrozen') : null,
       tab.pinned ? t('tabPanel.statePinned') : null,
       tab.muted ? t('tabPanel.stateMuted') : tab.audible ? t('tabPanel.stateAudible') : null,
+      tab.unread ? t('tabPanel.stateUnread') : null,
       ...devStates(tab),
     ].filter(Boolean);
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
@@ -481,7 +492,7 @@
   });
 </script>
 
-{#snippet favicon(tab: Pick<TabSnapshot, 'faviconUrl'>, size: number)}
+{#snippet favicon(tab: Pick<TabSnapshot, 'faviconUrl'>, size: number, unread = false)}
   <span class="favicon" style:width="{size}px" style:height="{size}px">
     {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
       <img
@@ -495,6 +506,7 @@
     {:else}
       <Icon name="globe" {size} />
     {/if}
+    {#if unread}<span class="unread-dot" aria-hidden="true"></span>{/if}
   </span>
 {/snippet}
 
@@ -508,7 +520,7 @@
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
-    {@render favicon(tab, 16)}
+    {@render favicon(tab, 16, tab.unread)}
   </IconButton>
 {/snippet}
 
@@ -524,7 +536,7 @@
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
-    {@render favicon(tab, 16)}
+    {@render favicon(tab, 16, tab.unread)}
   </IconButton>
   <div class="pill">
     {@render selectButton(tab, tabLabel)}
@@ -611,7 +623,7 @@
                   label={favorite.title}
                   onclick={() => send({ type: 'open-favorite', url: favorite.url })}
                 >
-                  {@render favicon(favorite, 16)}
+                  {@render favicon(favorite, 16, favoriteUnread(favorite.url))}
                 </IconButton>
               </li>
             {/each}
@@ -653,7 +665,7 @@
                     onclick={(e) => selectTab(e, tab.id)}
                     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
                   >
-                    {@render favicon(tab, 16)}
+                    {@render favicon(tab, 16, tab.unread)}
                     {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
                   </IconButton>
                 {/if}
@@ -1145,6 +1157,23 @@
     width: 100%;
     height: 100%;
     border-radius: 4px;
+  }
+
+  .favicon {
+    position: relative;
+  }
+
+  /* Cut out of the favicon's corner by a ring of the surface behind it, as on a phone's app icons. */
+  .unread-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 1.5px var(--surface-strong);
+    pointer-events: none;
   }
 
   .row.discarded .favicon img,

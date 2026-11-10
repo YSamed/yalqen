@@ -25,6 +25,7 @@ for (const test of [
   'split-drag.mjs',
   'tab-transition.mjs',
   'media-player.mjs',
+  'unread-dot.mjs',
   'toolbar-buttons.mjs',
   'tooltips.mjs',
   'media-controls.mjs',

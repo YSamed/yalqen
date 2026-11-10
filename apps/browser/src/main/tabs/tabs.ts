@@ -26,6 +26,7 @@ import {
 import { withoutHash } from '../address-bar/url.js';
 import { signInUserAgent } from '../app/page-preferences.js';
 import { authRedirectExtension } from '../../shared/extension-bridge.js';
+import { unreadCount } from '../../shared/unread.js';
 import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
@@ -1904,8 +1905,10 @@ export class TabManager {
       if (tab.url === contents.getURL()) this.options.onVisitTitle(tab.visitId, title);
       // Players retitle the page per track, which is the cue to re-read the metadata.
       if (this.media?.tabId === tab.id) void this.refreshMedia(tab.id);
-      if (tab.title === title) return;
+      const unread = unreadCount(contents.getURL(), title, tab.unread);
+      if (tab.title === title && tab.unread === unread) return;
       tab.title = title;
+      tab.unread = unread;
       this.changed('lazy');
     });
     listen('page-favicon-updated', (_event, favicons) => {
@@ -2180,6 +2183,8 @@ export class TabManager {
       autoReloadSeconds: tab.autoReload?.seconds ?? null,
       audible: liveContents(tab)?.isCurrentlyAudible() ?? false,
       muted: tab.muted,
+      // A discarded tab no longer runs the page, so whatever it last showed may be out of date.
+      unread: tab.view !== null && (tab.unread ?? 0) > 0,
       canGoBack: history?.canGoBack() ?? false,
       canGoForward: history?.canGoForward() ?? false,
       agentObserved: tab.agent !== null,

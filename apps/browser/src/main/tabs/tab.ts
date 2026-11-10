@@ -41,6 +41,8 @@ export interface Tab {
   openerId: TabId | null;
   agent: TabRuntime | null;
   agentReadAt: number | null;
+  // Unread items a mail or chat site shows in its title; null on other pages.
+  unread: number | null;
 }
 
 export interface RecentPage {
@@ -88,6 +90,7 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     openerId: null,
     agent: null,
     agentReadAt: null,
+    unread: null,
   };
 }
 
