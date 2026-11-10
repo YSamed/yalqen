@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.93](https://github.com/YSamed/yalqen/compare/v0.3.92...v0.3.93) (2026-11-10)
+
+
+### Features
+
+* add split view with drag-to-split ([#366](https://github.com/YSamed/yalqen/issues/366)) ([50980aa](https://github.com/YSamed/yalqen/commit/50980aae29742f4fd3437e7ec9774078fd75a09d))
+
 ## [0.3.92](https://github.com/YSamed/yalqen/compare/v0.3.91...v0.3.92) (2026-11-10)
 
 
