@@ -55,6 +55,7 @@ import { PROCEED_URL } from '../privacy/certificates.js';
 import { PROCEED_HTTP_URL } from '../privacy/https-only.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from '../privacy/site-data.js';
 import { securityState } from '../privacy/site-info.js';
+import { shouldArchive } from './auto-archive.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
 import { PagePlacement, type PaneSlot } from './page-placement.js';
@@ -171,6 +172,7 @@ export class TabManager {
   private readonly tabs: Tab[] = [];
   private activeId: TabId | null = null;
   private readonly openedPinned = new Map<TabId, TabId | null>();
+  private readonly favoriteTabs = new Map<string, TabId>();
   private readonly collapsedGroups = new Set<string>();
   private groupParents = new Map<string, string>();
   private readonly placement = new PagePlacement((tab) => this.slotOf(tab));
@@ -936,6 +938,29 @@ export class TabManager {
     return count;
   }
 
+  archiveInactive(now: number, hours: number): number {
+    let count = 0;
+    for (const tab of [...this.tabs]) {
+      const contents = liveContents(tab);
+      const candidate = {
+        active: this.isVisible(tab),
+        pinned: tab.pinnedUrl !== null,
+        private: tab.isPrivate,
+        loading: tab.loading,
+        playing: !!contents?.isCurrentlyAudible() || keepsPlaying(tab) || tab.playingMedia > 0,
+        devToolsOpen: !!contents?.isDevToolsOpened(),
+        edited: tab.edited,
+        autoReload: tab.autoReload !== null,
+        hasLiveChild: this.tabs.some((item) => item.openerId === tab.id && !!item.view),
+        inactiveSince: tab.inactiveSince,
+      };
+      if (!shouldArchive(candidate, now, hours)) continue;
+      this.closeApproved(tab.id);
+      count++;
+    }
+    return count;
+  }
+
   togglePin(id: TabId): void {
     const tab = this.find(id);
     if (!tab) return;
@@ -1084,6 +1109,14 @@ export class TabManager {
         if (contents && tab.url.startsWith(prefix)) contents.reload();
       }
     });
+  }
+
+  openOrActivate(url: string): void {
+    const remembered = this.favoriteTabs.get(url);
+    const existing =
+      (remembered && this.find(remembered)) || this.tabs.find((tab) => tab.url === url && !tab.isPrivate);
+    if (existing) this.activate(existing.id);
+    else this.favoriteTabs.set(url, this.open(url));
   }
 
   private openSingle(url: string): void {
@@ -1507,7 +1540,10 @@ export class TabManager {
     const names = new Set(groupOrder(this.usedGroups(kept), parents));
     return {
       activeTabId: kept.some((tab) => tab.id === this.activeId) ? this.activeId : (kept[0]?.id ?? null),
-      tabs: kept.map(savedTab),
+      tabs: kept.map((tab) => ({
+        ...savedTab(tab),
+        inactiveSince: this.isVisible(tab) ? Date.now() : tab.inactiveSince,
+      })),
       ...(this.collapsedGroups.size && {
         collapsedGroups: Array.from(this.collapsedGroups).filter((name) => names.has(name)),
       }),

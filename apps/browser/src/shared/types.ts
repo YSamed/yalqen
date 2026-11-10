@@ -52,6 +52,12 @@ export interface TabSnapshot {
   agentRules: number;
 }
 
+export interface Favorite {
+  url: string;
+  title: string;
+  faviconUrl: string | null;
+}
+
 export interface AgentEpisodePreview {
   id: string;
   lines: string[];
@@ -131,6 +137,7 @@ export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
 // How strongly the glass window is tinted, in percent: 0 leaves the bare glass, 100 is almost solid.
 export const DEFAULT_GLASS_TINT = 25;
 export const DISCARD_AFTER_MINUTES = [0, 15, 30, 60, 120] as const;
+export const AUTO_ARCHIVE_HOURS = [0, 12, 24, 168, 720] as const;
 
 export interface BrowserState {
   tabs: TabSnapshot[];
@@ -146,6 +153,7 @@ export interface BrowserState {
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
+  favorites: Favorite[];
   sidebarVisible: boolean;
   // Filled only while the sidebar media player is on and a tab has played sound.
   media: import('./sidebar-widgets').MediaInfo | null;
@@ -416,6 +424,8 @@ export type UiAction =
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }
+  | { type: 'open-favorite'; url: string }
+  | { type: 'open-favorite-menu'; url: string }
   | { type: 'toggle-mute'; id: TabId }
   | { type: 'toggle-media'; id: TabId }
   | { type: 'show-tooltip'; tooltip: import('./tooltip').TooltipRequest }
@@ -805,6 +815,7 @@ export interface SettingsValues {
   toolbarVisible: boolean;
   toolbarButtons: ToolbarItemId[];
   discardAfterMinutes: number;
+  autoArchiveHours: number;
   adBlocking: boolean;
   threatProtection: boolean;
   adBlockExceptions: string[];

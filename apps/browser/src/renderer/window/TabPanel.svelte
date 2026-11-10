@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import type { Favorite, PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
   import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
@@ -30,6 +30,7 @@
     profile,
     profileName,
     pinnedDisplay,
+    favorites,
     media,
     pageRect,
     onSplitDrop,
@@ -51,6 +52,7 @@
     profile: ProfileKind;
     profileName?: string;
     pinnedDisplay: PinnedDisplay;
+    favorites: Favorite[];
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
@@ -479,7 +481,7 @@
   });
 </script>
 
-{#snippet favicon(tab: TabSnapshot, size: number)}
+{#snippet favicon(tab: Pick<TabSnapshot, 'faviconUrl'>, size: number)}
   <span class="favicon" style:width="{size}px" style:height="{size}px">
     {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
       <img
@@ -591,6 +593,32 @@
   {#key collapsed}
     <div class="body" in:reveal>
       <div class="lists" bind:this={lists}>
+        {#if favorites.length > 0}
+          <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
+            {#each favorites as favorite (favorite.url)}
+              <li
+                class="favorite"
+                class:active={tabsById.get(activeTabId ?? '')?.url === favorite.url}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  send({ type: 'open-favorite-menu', url: favorite.url });
+                }}
+              >
+                <IconButton
+                  size="lg"
+                  variant="surface"
+                  class="tile"
+                  label={favorite.title}
+                  onclick={() => send({ type: 'open-favorite', url: favorite.url })}
+                >
+                  {@render favicon(favorite, 16)}
+                </IconButton>
+              </li>
+            {/each}
+          </ul>
+          {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
+        {/if}
+
         {#if showPinned && pinned.length > 0}
           <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
             {#each pinned as tab, index (tab.id)}

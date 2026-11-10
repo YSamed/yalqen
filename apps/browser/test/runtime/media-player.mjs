@@ -52,6 +52,7 @@ let state = {
   panelCollapsed: false,
   panelSide: 'left',
   pinnedDisplay: 'always',
+  favorites: [],
   sidebarVisible: true,
   media: null,
   toolbarVisible: true,

@@ -22,6 +22,7 @@ import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
 import { JsonFile } from '../storage/json-file.js';
+import { isAutoArchiveHours } from '../tabs/auto-archive.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
 import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from '../address-bar/search.js';
@@ -49,6 +50,7 @@ const DEFAULTS: Settings = {
   toolbarVisible: true,
   toolbarButtons: [...DEFAULT_TOOLBAR_BUTTONS],
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
+  autoArchiveHours: 0,
   adBlocking: true,
   threatProtection: true,
   adBlockExceptions: [],
@@ -124,6 +126,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     toolbarVisible,
     toolbarButtons,
     discardAfterMinutes,
+    autoArchiveHours,
     adBlocking,
     threatProtection,
     adBlockExceptions,
@@ -186,6 +189,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     toolbarButtons: sanitizeToolbarButtons(toolbarButtons, base.toolbarButtons),
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
+    autoArchiveHours: isAutoArchiveHours(autoArchiveHours) ? autoArchiveHours : base.autoArchiveHours,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
     threatProtection: typeof threatProtection === 'boolean' ? threatProtection : base.threatProtection,
     adBlockExceptions: Array.isArray(adBlockExceptions)

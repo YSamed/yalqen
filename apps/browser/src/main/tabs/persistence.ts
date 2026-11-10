@@ -47,6 +47,7 @@ export interface SavedTab {
   group?: string | null;
   keepAlive?: boolean;
   closedAt?: number;
+  inactiveSince?: number;
   history: SavedHistory | null;
 }
 

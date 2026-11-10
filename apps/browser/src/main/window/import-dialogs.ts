@@ -23,8 +23,9 @@ export async function importBookmarksWithDialog(
   const source = file ?? (await chooseFile(window, t('window.chooseBookmarksFile')));
   if (!source) return;
   try {
-    const { bookmarks, folders, skipped } = await importBookmarks(source);
+    const { bookmarks, folders, skipped, workspaces = 0 } = await importBookmarks(source);
     const details = [
+      workspaces > 0 ? t('window.workspacesCreated', { count: workspaces }) : '',
       folders > 0 ? t('window.foldersCreated', { count: folders }) : '',
       skipped > 0 ? t('window.bookmarksSkipped', { count: skipped }) : '',
     ];
