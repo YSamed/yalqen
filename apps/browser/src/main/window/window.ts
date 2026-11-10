@@ -55,6 +55,8 @@ import type { HttpsOnly } from '../privacy/https-only.js';
 import { canViewSource, formatAddress, type AddressFormat } from '../devtools/page-export.js';
 import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
 import { TooltipOverlay } from './tooltip-overlay.js';
+import { LinkPeek, type PeekOwner } from './link-peek.js';
+import { createOverlayView } from './overlay-view.js';
 import { validTooltip } from '../../shared/tooltip.js';
 import { PageNotice } from './page-notice.js';
 import { AgentControl } from './agent-control.js';
@@ -243,6 +245,7 @@ export class YalqenWindow {
   private readonly tooltip: TooltipOverlay;
   private readonly notice: PageNotice;
   private readonly agentControl: AgentControl;
+  private readonly peek: LinkPeek;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
 
   constructor(
@@ -379,6 +382,8 @@ export class YalqenWindow {
         if (target && (target.tabId !== this.tabs.activeTabId || target.url !== withoutHash(this.tabs.activeUrl))) {
           this.endFind();
         }
+        this.peek.closeUnless(this.peekOwner());
+        this.peek.keepOnTop();
         this.findBar.keepOnTop(this.window);
         this.commandBar.keepOnTop(this.window);
         app.welcome.keepOnTop(this.window);
@@ -457,6 +462,7 @@ export class YalqenWindow {
         return response === 1;
       },
       onContextMenu: (contents, params) => this.showContextMenu(contents, params),
+      onPeek: (url, isPrivate) => this.peek.open(url, isPrivate, this.peekOwner()),
       requestRules: () => app.requestRules.list(),
       translation: () => ({
         enabled: app.settings.get().pageTranslation,
@@ -467,6 +473,19 @@ export class YalqenWindow {
       agentTracing: () => app.settings.get().agentBridge && app.settings.get().agentTracing,
     });
 
+    this.peek = new LinkPeek({
+      window: this.window,
+      page: rendererPath('peek.html'),
+      area: () => this.pageArea,
+      createOverlay: () => createOverlayView(preloadPath('peek-preload')),
+      createPageView: (isPrivate) => this.tabs.createPageView(isPrivate),
+      upgradeHttp: (url) => app.httpsOnly.upgrade(url),
+      onPromote: (page) => this.tabs.adoptView(page.view, page),
+      onClosed: () => {
+        if (this.window.isDestroyed()) return;
+        if (!this.tabs.focusActive()) this.uiContents.focus();
+      },
+    });
     this.navigationHint = new NavigationHint({ window: this.window, area: () => this.pageArea });
     this.tooltip = new TooltipOverlay(this.window);
     this.notice = new PageNotice({ window: this.window, area: () => this.pageArea });
@@ -492,6 +511,9 @@ export class YalqenWindow {
       this.pushState();
     };
     this.window.on('resize', syncFullScreen);
+    this.uiContents.on('input-event', (_event, input) => {
+      if (input.type === 'mouseDown') this.peek.close();
+    });
     this.window.on('blur', () => this.tooltip.hide());
     this.window.on('resize', () => this.tooltip.hide());
     this.window.on('enter-full-screen', syncFullScreen);
@@ -532,6 +554,7 @@ export class YalqenWindow {
       for (const scan of this.responsiveScans.values()) void scan.clear();
       this.responsiveScans.clear();
       const hadPrivate = this.tabs.hasPrivateTabs;
+      this.peek.close();
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
       this.findBar.release(this.window);
@@ -1871,6 +1894,7 @@ export class YalqenWindow {
       canViewSource: canViewSource(contents.getURL()),
       openInNewTab: (url) => tabs.open(url, { activate: false, isPrivate }),
       openInNewWindow: (url) => this.app.openWindow({ url, isPrivate, developer: this.isDeveloper, from: this }),
+      peekLink: (url) => this.peek.open(url, isPrivate, this.peekOwner()),
       copyText: (text) => clipboard.writeText(text),
       copyImage: () => contents.copyImageAt(params.x, params.y),
       download: (url) => contents.downloadURL(url),
@@ -1901,6 +1925,10 @@ export class YalqenWindow {
     return this.htmlFullScreenTabId !== null && this.htmlFullScreenTabId === this.tabs.activeTabId;
   }
 
+  private peekOwner(): PeekOwner {
+    return { tabId: this.tabs.activeTabId, url: withoutHash(this.tabs.activeUrl) };
+  }
+
   private endFind(): void {
     if (this.findTarget) this.tabs.stopFind(this.findTarget.tabId);
     this.findTarget = null;
@@ -1910,6 +1938,7 @@ export class YalqenWindow {
   private syncPageFullScreen(): void {
     if (this.isPageFullScreen()) {
       this.commandBar.close(this.window);
+      this.peek.close();
       this.endFind();
     }
     this.applyLayout();
@@ -1937,6 +1966,7 @@ export class YalqenWindow {
     this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
     this.pageArea = bounds;
     this.findBar.relayout(this.window);
+    this.peek.relayout();
     this.agentControl.layout();
     return radius;
   }

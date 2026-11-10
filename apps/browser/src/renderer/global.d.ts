@@ -1,4 +1,12 @@
-import type { CommandBarApi, ConfirmApi, FindBarApi, SettingsApi, WelcomeApi, YalqenApi } from '../shared/types';
+import type {
+  CommandBarApi,
+  ConfirmApi,
+  FindBarApi,
+  PeekApi,
+  SettingsApi,
+  WelcomeApi,
+  YalqenApi,
+} from '../shared/types';
 
 declare global {
   interface Window {
@@ -6,6 +14,7 @@ declare global {
     yalqenSettings: SettingsApi;
     yalqenCommand: CommandBarApi;
     yalqenFind: FindBarApi;
+    yalqenPeek: PeekApi;
     yalqenWelcome: WelcomeApi;
     yalqenConfirm: ConfirmApi;
   }
