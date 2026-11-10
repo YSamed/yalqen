@@ -22,6 +22,7 @@ for (const test of [
   'bookmark-transfer.mjs',
   'bulk-tabs.mjs',
   'tab-selection.mjs',
+  'split-drag.mjs',
   'tab-transition.mjs',
   'media-player.mjs',
   'toolbar-buttons.mjs',

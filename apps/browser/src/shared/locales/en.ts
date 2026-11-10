@@ -1159,6 +1159,11 @@ export const en = {
   'tabPanel.clearSelection': 'Clear Tab Selection',
   'tabPanel.selectionHint': 'Cmd/Ctrl-click to select tabs, Shift-click to select a range',
   'tabPanel.stateSelected': 'selected',
+  'tabPanel.stateSplit': 'in split view',
+  'tabPanel.splitTab': 'In Split View',
+  'window.openInSplitView': 'Open in Split View',
+  'window.exitSplitView': 'Exit Split View',
+  'window.splitSelectedTabs': 'Open {count} Tabs in Split View',
   'window.showOriginalPage': 'Show Original Page',
   'window.translatePage': 'Translate Page',
 

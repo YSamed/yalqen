@@ -77,7 +77,7 @@ import type { SettingsStore } from '../app/settings.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
 import { EMPTY_HISTORY_INDEX, suggest } from '../address-bar/suggestions.js';
-import { TabManager, type DetachedTab } from '../tabs/tabs.js';
+import { MAX_SPLIT_PANES, TabManager, type DetachedTab } from '../tabs/tabs.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
@@ -1560,6 +1560,12 @@ export class YalqenWindow {
       case 'move-tab':
         tabs.move(action.id, action.toIndex);
         break;
+      case 'preview-split':
+        tabs.previewSplit(action.id, action.side);
+        break;
+      case 'split-tab':
+        tabs.splitWithActive(action.id, action.side);
+        break;
       case 'navigate':
         tabs.navigate(resolveInput(action.input, app.searchEngine()));
         break;
@@ -1803,7 +1809,7 @@ export class YalqenWindow {
     this.popup(
       tabMenuTemplate(
         tab,
-        id === tabs.activeTabId,
+        tabs.isShown(id),
         {
           togglePin: () => tabs.togglePin(id),
           toggleMute: () => tabs.toggleMute(id),
@@ -1823,11 +1829,17 @@ export class YalqenWindow {
           },
           muteSelected: () => tabs.toggleSelectedMute(),
           pinSelected: () => tabs.toggleSelectedPin(),
+          splitWithActive: () => tabs.splitWithActive(id),
+          unsplit: () => tabs.unsplit(id),
+          splitSelected: () => tabs.splitSelected(),
         },
         {
           others: tabs.canCloseRelated(id, 'others'),
           right: tabs.canCloseRelated(id, 'right'),
           selected: tabs.selectedTabIds.includes(id) ? tabs.selectedTabIds.length : 0,
+          splitWithActive: tabs.canSplitWithActive(id),
+          inSplit: tabs.splitTabIds.includes(id),
+          splitSelected: tabs.selectedTabIds.includes(id) && tabs.selectedTabIds.length <= MAX_SPLIT_PANES,
         },
       ),
     );

@@ -49,6 +49,7 @@ const state = {
   developer: false,
   activeTabId: 'a',
   selectedTabIds: [],
+  splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
   addressPlaceholder: 'Search',

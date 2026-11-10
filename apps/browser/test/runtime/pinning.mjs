@@ -129,6 +129,8 @@ app
       await eventually(`document.querySelectorAll('aside .favorite').length === ${index + 1}`);
       assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, index + 1);
     }
+    // A hidden window never advances the sidebar's reveal transition, so geometry would be read mid-slide.
+    await window.webContents.executeJavaScript('document.getAnimations().forEach((animation) => animation.finish())');
     const geometry = await window.webContents.executeJavaScript(`(() => {
       const panel = document.querySelector('aside').getBoundingClientRect();
       return [...document.querySelectorAll('.favorite button')].map(button => {

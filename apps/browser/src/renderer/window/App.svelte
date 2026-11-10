@@ -46,6 +46,7 @@
     developer: false,
     activeTabId: null,
     selectedTabIds: [],
+    splitTabIds: [],
     pageFullScreen: false,
     windowFullScreen: false,
     addressPlaceholder: t('app.addressPlaceholder'),
@@ -101,6 +102,8 @@
   const listOrder = $derived(browser.listOrder);
   const activeTabId = $derived(browser.activeTabId);
   const selectedTabIds = $derived(browser.selectedTabIds);
+  let pageElement: HTMLElement | undefined = $state();
+  let splitDrop: 'left' | 'right' | null = $state(null);
   const tabGroups = $derived(browser.tabGroups ?? NO_GROUPS);
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
   const developer = $derived(browser.developer);
@@ -335,6 +338,9 @@
         {developer}
         {activeTabId}
         {selectedTabIds}
+        splitTabIds={browser.splitTabIds}
+        pageRect={() => pageElement?.getBoundingClientRect()}
+        onSplitDrop={(next) => (splitDrop = next)}
         groups={tabGroups}
         collapsed={contentCollapsed}
         fading={contentFading}
@@ -380,6 +386,7 @@
     {/if}
   {/if}
   <section
+    bind:this={pageElement}
     class="page"
     class:blank
     style:margin={pageFullScreen
@@ -390,6 +397,7 @@
     style:border-radius={pageFullScreen ? '0' : `${PAGE_RADIUS}px`}
   >
     <div class="viewport" aria-hidden="true">
+      {#if splitDrop}<div class="split-drop" class:left={splitDrop === 'left'}></div>{/if}
       {#if device}
         {#if !device.resizable}
           <div
@@ -561,6 +569,18 @@
 
   .page.blank .viewport {
     background: transparent;
+  }
+
+  .split-drop {
+    position: absolute;
+    inset: 0 0 0 50%;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
+  .split-drop.left {
+    inset: 0 50% 0 0;
   }
 
   .viewport {
