@@ -548,8 +548,8 @@
         {/if}
       </div>
 
-      {#if !collapsed && media}
-        <MediaPlayer {media} />
+      {#if media}
+        <MediaPlayer {media} compact={collapsed} />
       {/if}
 
       <footer class="footer" class:compact={collapsed}>
