@@ -34,6 +34,7 @@ for (const test of [
   'sites-settings.mjs',
   'closed-tabs.mjs',
   'page-files.mjs',
+  'full-page-screenshot.mjs',
   'password-tools.mjs',
   'certificate-details.mjs',
   'bookmark-editing.mjs',

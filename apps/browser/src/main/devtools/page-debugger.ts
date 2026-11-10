@@ -1,7 +1,11 @@
 import type { WebContents } from 'electron';
 import { fullPageClip } from './page-export.js';
 import type { ProtocolCommand } from './page-overrides.js';
-import { PREPARE_SCREENSHOT_SCRIPT } from './screenshot-preparation.js';
+import {
+  PREPARE_SCREENSHOT_SCRIPT,
+  RESTORE_SCREENSHOT_CONTENT_SCRIPT,
+  REVEAL_SCREENSHOT_CONTENT_SCRIPT,
+} from './screenshot-preparation.js';
 
 const PROTOCOL_VERSION = '1.3';
 const SCREENSHOT_WORLD_ID = 1005;
@@ -56,14 +60,25 @@ async function capturePreparedPage(contents: WebContents): Promise<Buffer> {
   attachDebugger(contents);
   const dbg = contents.debugger;
   await contents.executeJavaScriptInIsolatedWorld(SCREENSHOT_WORLD_ID, [{ code: PREPARE_SCREENSHOT_SCRIPT }]);
-  const metrics = (await dbg.sendCommand('Page.getLayoutMetrics')) as {
-    cssContentSize: { width: number; height: number };
-  };
-  const pixelRatio = Number(await contents.executeJavaScript('window.devicePixelRatio')) || 1;
-  const { data } = (await dbg.sendCommand('Page.captureScreenshot', {
-    format: 'png',
-    captureBeyondViewport: true,
-    clip: fullPageClip(metrics.cssContentSize, pixelRatio),
-  })) as { data: string };
-  return Buffer.from(data, 'base64');
+  try {
+    await contents.executeJavaScriptInIsolatedWorld(SCREENSHOT_WORLD_ID, [{ code: REVEAL_SCREENSHOT_CONTENT_SCRIPT }]);
+    const metrics = (await dbg.sendCommand('Page.getLayoutMetrics')) as {
+      cssContentSize: { width: number; height: number };
+    };
+    const pixelRatio = Number(await contents.executeJavaScript('window.devicePixelRatio')) || 1;
+    const { data } = (await dbg.sendCommand('Page.captureScreenshot', {
+      format: 'png',
+      captureBeyondViewport: true,
+      clip: fullPageClip(metrics.cssContentSize, pixelRatio),
+    })) as { data: string };
+    return Buffer.from(data, 'base64');
+  } finally {
+    if (!contents.isDestroyed()) {
+      await contents
+        .executeJavaScriptInIsolatedWorld(SCREENSHOT_WORLD_ID, [{ code: RESTORE_SCREENSHOT_CONTENT_SCRIPT }])
+        .catch(() => {
+          // The capture document may have been replaced during navigation.
+        });
+    }
+  }
 }

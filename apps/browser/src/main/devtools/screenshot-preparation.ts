@@ -52,3 +52,37 @@ async function prepareScreenshot(maxWaitMs = 10000): Promise<void> {
 }
 
 export const PREPARE_SCREENSHOT_SCRIPT = `(${prepareScreenshot.toString()})()`;
+
+// Chromium can skip painting these sections again after preparation restores the scroll position.
+function revealDeferredContent(): void {
+  const restore: Array<() => void> = [];
+  const world = globalThis as typeof globalThis & { restoreScreenshotContent?: () => void };
+  world.restoreScreenshotContent = () => {
+    delete world.restoreScreenshotContent;
+    for (const reset of restore) reset();
+  };
+
+  const deferred = Array.from(document.querySelectorAll<HTMLElement | SVGElement>('*')).filter(
+    (element) => getComputedStyle(element).contentVisibility === 'auto',
+  );
+  for (const element of deferred) {
+    const hadStyle = element.hasAttribute('style');
+    const { style } = element;
+    if (!style) continue;
+    const value = style.getPropertyValue('content-visibility');
+    const priority = style.getPropertyPriority('content-visibility');
+    restore.push(() => {
+      if (
+        style.getPropertyValue('content-visibility') === 'visible' &&
+        style.getPropertyPriority('content-visibility') === 'important'
+      ) {
+        style.setProperty('content-visibility', value, priority);
+        if (!hadStyle && element.getAttribute('style') === '') element.removeAttribute('style');
+      }
+    });
+    style.setProperty('content-visibility', 'visible', 'important');
+  }
+}
+
+export const REVEAL_SCREENSHOT_CONTENT_SCRIPT = `(${revealDeferredContent.toString()})()`;
+export const RESTORE_SCREENSHOT_CONTENT_SCRIPT = 'globalThis.restoreScreenshotContent?.()';
