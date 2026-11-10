@@ -5,7 +5,15 @@ import { build } from 'vite';
 
 // Sandboxed preloads can only require Electron and a few Node built-ins, so each one is
 // bundled into a single self-contained file.
-const PRELOADS = ['preload', 'command-preload', 'find-preload', 'welcome-preload', 'page-preload', 'extension-apis'];
+const PRELOADS = [
+  'preload',
+  'command-preload',
+  'find-preload',
+  'welcome-preload',
+  'confirm-preload',
+  'page-preload',
+  'extension-apis',
+];
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = path.join(project, 'dist/preload');
 
