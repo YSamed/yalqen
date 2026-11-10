@@ -303,7 +303,7 @@ function startBrowser(): void {
       },
       close: (contents) => tabsWindowOf(contents)?.tabs.closeContents(contents) ?? false,
       isTab: (contents) => tabsWindowOf(contents) !== undefined,
-      windowId: (contents) => tabsWindowOf(contents)?.window.id ?? -1,
+      windowId: (contents) => tabsWindowOf(contents)?.window.id ?? extensionPopup.windowId(contents) ?? WINDOW_ID_NONE,
       isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
       windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
     },

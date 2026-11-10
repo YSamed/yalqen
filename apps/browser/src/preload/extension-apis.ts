@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { ExtensionBridgeChannel, type ExtensionBridgeEvent } from '../shared/extension-bridge.js';
+import {
+  ExtensionBridgeChannel,
+  type ExtensionBridgeEvent,
+  type ExtensionWindows,
+} from '../shared/extension-bridge.js';
 
 type Dispatch = (...args: unknown[]) => void;
 
@@ -7,7 +11,7 @@ interface Bridge {
   createTab(properties: unknown): Promise<unknown>;
   removeTabs(ids: unknown): Promise<void>;
   cookies(method: string, details: unknown): Promise<unknown>;
-  windows(): Promise<{ id: number; focused: boolean }[]>;
+  windows(): Promise<ExtensionWindows>;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
 
@@ -100,26 +104,32 @@ function installExtensionApis(api: Bridge): void {
     // signed-in account. shortcut: no create/update/remove; extensions only read windows and follow focus.
     const WINDOW_ID_NONE = -1;
     const WINDOW_ID_CURRENT = -2;
-    type Window = { id: number; focused: boolean };
     const lastArgument = (args: unknown[]) => args.find((arg) => typeof arg === 'function') as Callback;
-    const pick = (choose: (windows: Window[]) => Window | undefined) =>
-      api.windows().then((windows) => {
-        const window = choose(windows);
+    type Window = ExtensionWindows['windows'][number];
+    const pick = (choose: (result: ExtensionWindows) => Window | undefined) =>
+      api.windows().then((result) => {
+        const window = choose(result);
         if (!window) throw new Error('No browser window');
         return window;
       });
-    const current = (windows: Window[]) => windows.find((window) => window.focused) ?? windows[0];
+    const lastFocused = ({ windows }: ExtensionWindows) => windows.find((window) => window.focused) ?? windows[0];
+    const current = (result: ExtensionWindows) =>
+      result.windows.find((window) => window.id === result.currentId) ?? lastFocused(result);
     define(chromeApi, 'windows', {
       WINDOW_ID_NONE,
       WINDOW_ID_CURRENT,
       getCurrent: (...args: unknown[]) => settle(pick(current), lastArgument(args)),
-      getLastFocused: (...args: unknown[]) => settle(pick(current), lastArgument(args)),
+      getLastFocused: (...args: unknown[]) => settle(pick(lastFocused), lastArgument(args)),
       get: (id: unknown, ...args: unknown[]) =>
         settle(
-          pick((windows) => (id === WINDOW_ID_CURRENT ? current(windows) : windows.find((window) => window.id === id))),
+          pick(id === WINDOW_ID_CURRENT ? current : ({ windows }) => windows.find((window) => window.id === id)),
           lastArgument(args),
         ),
-      getAll: (...args: unknown[]) => settle(api.windows(), lastArgument(args)),
+      getAll: (...args: unknown[]) =>
+        settle(
+          api.windows().then(({ windows }) => windows),
+          lastArgument(args),
+        ),
       onCreated: event('windows.onCreated'),
       onRemoved: event('windows.onRemoved'),
       onFocusChanged: event('windows.onFocusChanged'),

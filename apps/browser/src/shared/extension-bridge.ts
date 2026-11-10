@@ -22,8 +22,13 @@ export interface ExtensionWindowState {
   focused: boolean;
 }
 
+export interface ExtensionWindows {
+  currentId: number | null;
+  windows: ReturnType<typeof chromeWindow>[];
+}
+
 // The fields of chrome.windows.Window that extensions read; every Yalqen window is a normal one.
-export function chromeWindow({ id, focused }: ExtensionWindowState): Record<string, unknown> {
+export function chromeWindow({ id, focused }: ExtensionWindowState) {
   return { id, focused, type: 'normal', state: 'normal', incognito: false, alwaysOnTop: false };
 }
 

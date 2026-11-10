@@ -35,6 +35,10 @@ async function eventually(predicate) {
 }
 
 const WORKER = `chrome.runtime.onMessage.addListener((message, _sender, reply) => {
+  if (message.type === 'currentWindow') {
+    chrome.windows.getCurrent().then((window) => reply(window.id), (error) => reply({ error: error.message }));
+    return true;
+  }
   if (message.type !== 'auth') return;
   const redirect = chrome.identity.getRedirectURL().replace(/\\/$/, '');
   chrome.tabs.create({ url: message.url + '?redirect=' + encodeURIComponent(redirect) }).then((tab) => {
@@ -75,7 +79,9 @@ globalThis.windowChecks = async () => ({
   current: (await chrome.windows.getCurrent()).id,
   callback: await new Promise((resolve) => chrome.windows.getLastFocused({}, (window) => resolve(window.id))),
   all: (await chrome.windows.getAll()).map((window) => window.id),
-  byId: (await chrome.windows.get(chrome.windows.WINDOW_ID_CURRENT)).type,
+  byId: (await chrome.windows.get(chrome.windows.WINDOW_ID_CURRENT)).id,
+  type: (await chrome.windows.get(chrome.windows.WINDOW_ID_CURRENT)).type,
+  worker: await chrome.runtime.sendMessage({ type: 'currentWindow' }),
   missing: await chrome.windows.get(-99).then(() => 'found', () => 'rejected'),
 });`;
 
@@ -103,6 +109,8 @@ app
     const browsing = session.fromPartition('persist:extension-tabs');
     const window = new BaseWindow({ show: false });
     windows.push(window);
+    const page = new BrowserWindow({ show: false, webPreferences: { session: browsing } });
+    windows.push(page);
     tabManager = new tabs.TabManager({
       window,
       session: browsing,
@@ -129,15 +137,16 @@ app
         open: (url, active) => tabManager.openContents(url, active),
         close: (contents) => tabManager.closeContents(contents),
         isTab: (contents) => tabManager.hasContents(contents),
-        windowId: () => window.id,
+        windowId: (contents) => (contents === page.webContents ? page.id : window.id),
         isActive: (contents) => tabManager.isActiveContents(contents),
-        windows: () => [{ id: window.id, focused: false }],
+        windows: () => [
+          { id: window.id, focused: true },
+          { id: page.id, focused: false },
+        ],
       },
       path.resolve(import.meta.dirname, '../../dist/preload/extension-apis.js'),
     );
     const extension = await browsing.extensions.loadExtension(source);
-    const page = new BrowserWindow({ show: false, webPreferences: { session: browsing } });
-    windows.push(page);
     await page.loadURL(`chrome-extension://${extension.id}/page.html`);
     const opener = tabManager.open(`http://127.0.0.1:${server.address().port}/`);
     // A tab to the right of the opener: closing the sign-in tab used to activate this one instead.
@@ -162,10 +171,12 @@ app
 
     // Grammarly's background page throws at startup without chrome.windows and never loads the account.
     assert.deepEqual(await page.webContents.executeJavaScript('windowChecks()'), {
-      current: window.id,
+      current: page.id,
       callback: window.id,
-      all: [window.id],
-      byId: 'normal',
+      all: [window.id, page.id],
+      byId: page.id,
+      type: 'normal',
+      worker: window.id,
       missing: 'rejected',
     });
     bridge.windowFocusChanged(window.id);

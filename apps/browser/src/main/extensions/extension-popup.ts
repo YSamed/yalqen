@@ -1,4 +1,4 @@
-import { WebContentsView, type BaseWindow, type Rectangle, type Session, type Size } from 'electron';
+import { WebContentsView, type BaseWindow, type Rectangle, type Session, type Size, type WebContents } from 'electron';
 import type { AnchorRect } from '../../shared/types.js';
 import { raiseToTop } from '../window/overlay-view.js';
 
@@ -83,6 +83,10 @@ export class ExtensionPopup {
       console.warn('[extensions] could not open the popup:', error);
       this.closeView(view);
     });
+  }
+
+  windowId(contents: WebContents): number | undefined {
+    if (this.view?.webContents === contents) return this.window?.id;
   }
 
   close(window?: BaseWindow): void {

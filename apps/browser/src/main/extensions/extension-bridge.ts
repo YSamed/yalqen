@@ -14,6 +14,7 @@ import {
   extensionTabUrl,
   type ExtensionBridgeEvent,
   type ExtensionWindowState,
+  type ExtensionWindows,
 } from '../../shared/extension-bridge.js';
 import { callCookies, chromeCookieChange, cookieUrl, extensionGrant, hostPermitted } from './extension-cookies.js';
 
@@ -61,7 +62,7 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.cookies, (event, method, details) =>
       this.cookies(this.frameExtension(event), method, details),
     );
-    ipcMain.handle(ExtensionBridgeChannel.windows, (event) => this.windows(this.frameExtension(event)));
+    ipcMain.handle(ExtensionBridgeChannel.windows, (event) => this.windows(this.frameExtension(event), event.sender));
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -100,9 +101,12 @@ export class ExtensionBridge {
     this.emit('windows.onRemoved', [id]);
   }
 
-  private windows(extensionId: string): Record<string, unknown>[] {
+  private windows(extensionId: string, contents?: WebContents): ExtensionWindows {
     if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
-    return this.host.windows().map(chromeWindow);
+    return {
+      currentId: contents ? this.host.windowId(contents) : null,
+      windows: this.host.windows().map(chromeWindow),
+    };
   }
 
   private emit(name: ExtensionBridgeEvent, args: unknown[]): void {
