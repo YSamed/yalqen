@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.94](https://github.com/YSamed/yalqen/compare/v0.3.93...v0.3.94) (2026-11-10)
+
+
+### Features
+
+* add auto-archive for idle tabs ([#371](https://github.com/YSamed/yalqen/issues/371)) ([f9d4997](https://github.com/YSamed/yalqen/commit/f9d4997cb7dfd866d9f7a8bb2018c8b32fde2b6f))
+* add favorites grid above pinned tabs ([#370](https://github.com/YSamed/yalqen/issues/370)) ([70e5d03](https://github.com/YSamed/yalqen/commit/70e5d038cddbcc16006bf5ef9d92b01a5502fc3b))
+* add link peek overlay for shift-click and context menu ([#372](https://github.com/YSamed/yalqen/issues/372)) ([56cde79](https://github.com/YSamed/yalqen/commit/56cde79414210f3bd338d429e7fbfece645cefc4))
+* add nested tab folders ([#369](https://github.com/YSamed/yalqen/issues/369)) ([2281c93](https://github.com/YSamed/yalqen/commit/2281c9350987552310f267c192dc049a13bc6afc))
+* import arc spaces as workspaces ([#368](https://github.com/YSamed/yalqen/issues/368)) ([f7030b4](https://github.com/YSamed/yalqen/commit/f7030b4c5d0e45dbbb438d4e1cbe0719eae0e66f))
+
 ## [0.3.93](https://github.com/YSamed/yalqen/compare/v0.3.92...v0.3.93) (2026-11-10)
 
 
