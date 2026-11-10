@@ -760,6 +760,7 @@ export const tr: Record<MessageKey, string> = {
   'tabPanel.statePinned': 'sabitlendi',
   'tabPanel.stateMuted': 'sessiz',
   'tabPanel.stateAudible': 'ses çalıyor',
+  'tabPanel.stateUnread': 'okunmamış mesajlar',
   'tabPanel.close': 'Kapat',
   'tabPanel.closeTitle': 'Sekmeyi kapat (⌘W)',
   'tabPanel.developerTab': 'Geliştirici sekmesi',

@@ -170,6 +170,7 @@
     {:else}
       <Icon name="globe" size={14} />
     {/if}
+    {#if tab.unread}<span class="unread-dot" aria-hidden="true"></span>{/if}
   </span>
 {/snippet}
 
@@ -877,7 +878,20 @@
     }
   }
 
+  .unread-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 1.5px var(--surface-strong);
+    pointer-events: none;
+  }
+
   .favicon {
+    position: relative;
     display: grid;
     flex: none;
     place-items: center;

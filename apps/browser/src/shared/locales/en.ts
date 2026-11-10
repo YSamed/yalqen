@@ -753,6 +753,7 @@ export const en = {
   'tabPanel.statePinned': 'pinned',
   'tabPanel.stateMuted': 'muted',
   'tabPanel.stateAudible': 'playing audio',
+  'tabPanel.stateUnread': 'unread messages',
   'tabPanel.close': 'Close',
   'tabPanel.closeTitle': 'Close tab (⌘W)',
   'tabPanel.developerTab': 'Developer tab',

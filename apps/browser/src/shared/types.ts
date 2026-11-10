@@ -44,6 +44,8 @@ export interface TabSnapshot {
   autoReloadSeconds: number | null;
   audible: boolean;
   muted: boolean;
+  // The site's title shows unread mail or messages (Gmail).
+  unread: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
   agentObserved: boolean;
