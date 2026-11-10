@@ -47,6 +47,7 @@ import {
   isFirefoxPlaces,
 } from './library/browser-import.js';
 import { WelcomeCard } from './window/welcome-card.js';
+import { ConfirmDialog } from './window/confirm-dialog.js';
 import { appearancePatch, invitationSources, invitationTabs } from './app/invitation.js';
 import { setPageAccent } from './pages/responses.js';
 import { accentHex } from '../shared/accent.js';
@@ -542,6 +543,11 @@ function startBrowser(): void {
     preload: preloadPath('welcome-preload'),
     page: rendererPath('welcome.html'),
   });
+  const confirmDialog = new ConfirmDialog({
+    preload: preloadPath('confirm-preload'),
+    page: rendererPath('confirm.html'),
+    accent: () => accentHex(settings.get().accentColor),
+  });
   setPageAccent(accentHex(settings.get().accentColor));
   nativeTheme.themeSource = settings.get().theme;
   let deviceId = DEFAULT_DEVICE_ID;
@@ -612,6 +618,7 @@ function startBrowser(): void {
     commandBar,
     findBar,
     welcome,
+    confirmDialog,
     history,
     repoPrompt,
     dismissAnnouncement: () => settings.update({ dismissedAnnouncement: app.getVersion() }),
@@ -945,11 +952,13 @@ function startBrowser(): void {
     daily,
     extensions,
     parentWindow: (contents) => windowOf(contents)?.window ?? null,
+    confirm: (window, request, returnFocus) => confirmDialog.confirm(window, request, returnFocus),
   });
   registerExtensionsIpc({
     extensions,
     access: extensionAccess,
     parentWindow: (contents) => windowOf(contents)?.window,
+    confirm: (window, request, returnFocus) => confirmDialog.confirm(window, request, returnFocus),
     openTab: (contents, url) => {
       windowOf(contents)?.tabs.open(url, { isPrivate: false });
     },
@@ -1036,6 +1045,7 @@ function startBrowser(): void {
     commandBar.destroy();
     findBar.destroy();
     welcome.destroy();
+    confirmDialog.destroy();
     extensionPopup.close();
     extensions.stopUpdates();
     extensions.saveNow();

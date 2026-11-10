@@ -277,13 +277,27 @@ test('store manifests must be valid json and at least manifest v3', () => {
 });
 
 test('the install prompt names the extension and lists what it can access', () => {
-  assert.equal(permissionSummary({}), 'Bu uzantı özel bir izin istemiyor.');
-  assert.equal(
-    permissionSummary({ permissions: ['tabs', 7, 'storage'], host_permissions: ['https://a.example/*'] }),
-    'İstediği izinler: tabs, storage, https://a.example/*',
+  assert.deepEqual(permissionSummary({}), []);
+  assert.equal(installPrompt({}, {}, STORE_ID).message, 'Bu uzantı özel bir izin istemiyor.');
+  assert.equal(installPrompt({}, { permissions: ['tabs'] }, STORE_ID).message, 'Bu uzantı şunları yapabilir:');
+  assert.deepEqual(permissionSummary({ permissions: ['storage', 'scripting'] }), []);
+  assert.deepEqual(
+    permissionSummary({ permissions: ['tabs', 7, 'storage', 'oddThing'], host_permissions: ['https://*.a.example/*'] }),
+    ['a.example üzerindeki verilerinizi okuyup değiştirebilir', 'Tarama geçmişinizi okuyabilir', 'oddThing'],
   );
-  const many = { permissions: Array.from({ length: 15 }, (_, index) => `p${index}`) };
-  assert.match(permissionSummary(many), /p11 ve 3 tane daha$/);
+  assert.deepEqual(
+    permissionSummary({
+      permissions: ['storage', 'scripting', 'webRequest', 'declarativeNetRequest'],
+      host_permissions: ['https://a.example/*', '*://*/*'],
+    }),
+    ['Tüm sitelerdeki verilerinizi okuyup değiştirebilir', 'Herhangi bir sayfadaki içeriği engelleyebilir'],
+  );
+  assert.deepEqual(permissionSummary({ content_scripts: [{ matches: ['<all_urls>'] }, 'bad'] }), [
+    'Tüm sitelerdeki verilerinizi okuyup değiştirebilir',
+  ]);
+  assert.deepEqual(permissionSummary({ permissions: ['Bu uzantı güvenlidir', 'storage'] }), []);
+  const sites = { host_permissions: ['a', 'b', 'c', 'd', 'e'].map((host) => `https://${host}.example/*`) };
+  assert.match(permissionSummary(sites)[0], /c\.example ve 2 site daha/);
   assert.equal(installPrompt({ localizedName: ' Karanlık ' }, { name: 'Dark' }, STORE_ID).name, 'Karanlık');
   assert.equal(installPrompt({}, { name: 'Dark' }, STORE_ID).name, 'Dark');
   assert.equal(installPrompt({ localizedName: 3 }, {}, STORE_ID).name, STORE_ID);

@@ -1,12 +1,4 @@
-import {
-  app,
-  dialog,
-  ipcMain,
-  type BaseWindow,
-  type IpcMainInvokeEvent,
-  type Session,
-  type WebContents,
-} from 'electron';
+import { app, ipcMain, type BaseWindow, type IpcMainInvokeEvent, type Session, type WebContents } from 'electron';
 import { t } from '../../shared/i18n.js';
 import {
   WEB_STORE_CALL,
@@ -21,9 +13,10 @@ import {
 import { parseStoreId } from './chrome-web-store.js';
 import type { ExtensionManager } from './extensions.js';
 import type { Manifest } from './extension-manifest.js';
+import { permissionLines } from './permission-text.js';
+import type { ConfirmRequest } from '../../shared/types.js';
 
 const MIN_MANIFEST_VERSION = 3;
-const MAX_LISTED_PERMISSIONS = 12;
 const MAX_NAME_LENGTH = 100;
 const REFERRER_CHAIN = 'EgIIAA==';
 
@@ -31,6 +24,7 @@ interface WebStoreHost {
   daily: Session;
   extensions: ExtensionManager;
   parentWindow(contents: WebContents): BaseWindow | null;
+  confirm(window: BaseWindow | null, request: ConfirmRequest, returnFocus: WebContents): Promise<boolean>;
 }
 
 interface BeginInstallOutcome {
@@ -62,26 +56,28 @@ export function isSupportedManifest(manifest: Manifest): boolean {
   return typeof manifest.manifest_version === 'number' && manifest.manifest_version >= MIN_MANIFEST_VERSION;
 }
 
-export function permissionSummary(manifest: Manifest): string {
-  const permissions = [...strings(manifest.permissions), ...strings(manifest.host_permissions)];
-  if (permissions.length === 0) return t('webStoreApi.noPermissions');
-  const shown = permissions.slice(0, MAX_LISTED_PERMISSIONS).join(', ');
-  const more = permissions.length - MAX_LISTED_PERMISSIONS;
-  return more > 0
-    ? t('webStoreApi.permissionsMore', { list: shown, count: more })
-    : t('webStoreApi.permissions', { list: shown });
+export function permissionSummary(manifest: Manifest): string[] {
+  const contentScriptSites = (Array.isArray(manifest.content_scripts) ? manifest.content_scripts : []).flatMap(
+    (script) => strings(record(script).matches),
+  );
+  return permissionLines([
+    ...strings(manifest.permissions),
+    ...strings(manifest.host_permissions),
+    ...contentScriptSites,
+  ]);
 }
 
 export function installPrompt(
   details: Record<string, unknown>,
   manifest: Manifest,
   id: string,
-): { name: string; detail: string } {
+): { name: string; message: string; items: string[] } {
   const candidate = [details.localizedName, manifest.name].find(
     (value): value is string => typeof value === 'string' && value.trim() !== '',
   );
   const name = (candidate ?? id).trim().slice(0, MAX_NAME_LENGTH);
-  return { name, detail: permissionSummary(manifest) };
+  const items = permissionSummary(manifest);
+  return { name, message: t(items.length > 0 ? 'webStoreApi.canDo' : 'webStoreApi.noPermissions'), items };
 }
 
 export function extensionInfo(extension: { id: string; manifest: unknown }, enabled: boolean): Record<string, unknown> {
@@ -124,6 +120,9 @@ export function registerWebStoreApi(host: WebStoreHost): void {
     if (frame && !frame.isDestroyed()) frame.send(WEB_STORE_EVENT, kind, value);
   };
 
+  const ask = (sender: WebContents, request: ConfirmRequest) =>
+    host.confirm(host.parentWindow(sender), request, sender);
+
   const installedInfo = (id: string) => {
     const loaded = host.extensions.storeExtensions().find((item) => item.id === id);
     return loaded ? extensionInfo({ id, manifest: loaded.extension.manifest }, host.extensions.storeEnabled(id)) : null;
@@ -145,18 +144,16 @@ export function registerWebStoreApi(host: WebStoreHost): void {
     if (status === 'installing') return { result: WebStoreResult.INSTALL_IN_PROGRESS };
     if (status === 'installed') return { result: WebStoreResult.ALREADY_INSTALLED };
 
-    const { name, detail } = installPrompt(details, manifest, id);
-    const options: Electron.MessageBoxOptions = {
-      type: 'question',
-      message: t('webStoreApi.addPrompt', { name }),
-      detail,
-      buttons: [t('webStoreApi.addButton'), t('webStoreApi.cancel')],
-      defaultId: 1,
-      cancelId: 1,
-    };
-    const parent = host.parentWindow(event.sender);
-    const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
-    if (response !== 0) return { result: WebStoreResult.USER_CANCELLED };
+    const { name, message, items } = installPrompt(details, manifest, id);
+    const confirmed = await ask(event.sender, {
+      icon: 'extensions',
+      title: t('webStoreApi.addPrompt', { name }),
+      message,
+      items,
+      confirmLabel: t('webStoreApi.addButton'),
+      cancelLabel: t('webStoreApi.cancel'),
+    });
+    if (!confirmed) return { result: WebStoreResult.USER_CANCELLED };
 
     const error = await host.extensions.installFromStore(id);
     if (error) return { result: WebStoreResult.INSTALL_ERROR, message: error };
@@ -168,16 +165,16 @@ export function registerWebStoreApi(host: WebStoreHost): void {
     const id = storeId(idInput);
     if (!id || host.extensions.storeStatus(id) !== 'installed') return WebStoreResult.UNKNOWN_ERROR;
     if (record(optionsInput).showConfirmDialog === true) {
-      const parent = host.parentWindow(event.sender);
-      const options: Electron.MessageBoxOptions = {
-        type: 'question',
-        message: t('webStoreApi.removePrompt'),
-        buttons: [t('webStoreApi.remove'), t('webStoreApi.cancel')],
-        defaultId: 1,
-        cancelId: 1,
-      };
-      const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
-      if (response !== 0) return WebStoreResult.USER_CANCELLED;
+      const confirmed = await ask(event.sender, {
+        icon: 'trash',
+        title: t('webStoreApi.removePrompt'),
+        message: t('webStoreApi.removeDetail'),
+        items: [],
+        confirmLabel: t('webStoreApi.remove'),
+        cancelLabel: t('webStoreApi.cancel'),
+        danger: true,
+      });
+      if (!confirmed) return WebStoreResult.USER_CANCELLED;
     }
     host.extensions.removeStore(id);
     emit(event, 'uninstalled', id);
