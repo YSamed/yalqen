@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import tabs from '../../dist/shared/extension-bridge.js';
 
-const { authRedirectExtension, extensionIdOf, extensionTabUrl } = tabs;
+const { authRedirectExtension, chromeWindow, extensionIdOf, extensionTabUrl, WINDOW_ID_NONE } = tabs;
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
 
 test('extension pages and workers are recognized by their origin', () => {
@@ -31,4 +31,16 @@ test('extensions open web pages and their own pages, nothing else', () => {
   assert.throws(() => extensionTabUrl(`chrome-extension://${'b'.repeat(32)}/page.html`, ID));
   assert.throws(() => extensionTabUrl('yalqen://settings', ID));
   assert.throws(() => extensionTabUrl(42, ID));
+});
+
+test('windows are described to extensions as normal, non-incognito windows', () => {
+  assert.deepEqual(chromeWindow({ id: 3, focused: true }), {
+    id: 3,
+    focused: true,
+    type: 'normal',
+    state: 'normal',
+    incognito: false,
+    alwaysOnTop: false,
+  });
+  assert.equal(WINDOW_ID_NONE, -1);
 });

@@ -1327,7 +1327,11 @@ export class TabManager {
     const previous = this.activeId;
     const id = this.open(url ?? undefined, { activate, isPrivate: false });
     // A web-app window hands the URL elsewhere and returns its current tab, which is not a new tab.
-    return id === previous ? null : (liveContents(this.find(id)) ?? null);
+    if (id === previous) return null;
+    const tab = this.find(id);
+    // Sign-in tabs close themselves once done; return to the tab the user was on, not the next one in the list.
+    if (tab && activate && previous) tab.openerId = previous;
+    return liveContents(tab) ?? null;
   }
 
   closeContents(contents: WebContents): boolean {
