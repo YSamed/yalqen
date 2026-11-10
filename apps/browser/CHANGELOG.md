@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.3.90](https://github.com/YSamed/yalqen/compare/v0.3.89...v0.3.90) (2026-11-10)
+
+
+### Features
+
+* add developer tools and extensions to the toolbar editor ([#361](https://github.com/YSamed/yalqen/issues/361)) ([e8ed28c](https://github.com/YSamed/yalqen/commit/e8ed28c74699ba6024cc5b8f2b802118bba1821d))
+
+
+### Bug Fixes
+
+* let grammarly finish signing in ([#360](https://github.com/YSamed/yalqen/issues/360)) ([a18adf7](https://github.com/YSamed/yalqen/commit/a18adf7b1620621664690b80c66b053b8330d184))
+
+## [0.3.89](https://github.com/YSamed/yalqen/compare/v0.3.88...v0.3.89) (2026-11-10)
+
+
+### Features
+
+* draw tooltips in yalqen's style with shortcut key caps ([#358](https://github.com/YSamed/yalqen/issues/358)) ([b4f81ba](https://github.com/YSamed/yalqen/commit/b4f81bab20161139d573e758844f14110f7c01ba))
+* show the play button in the collapsed sidebar ([#357](https://github.com/YSamed/yalqen/issues/357)) ([a1ea790](https://github.com/YSamed/yalqen/commit/a1ea79008c47d4cb8ff345e5f847e0f309305cd8))
+
+## [0.3.88](https://github.com/YSamed/yalqen/compare/v0.3.87...v0.3.88) (2026-11-09)
+
+
+### Bug Fixes
+
+* unblock google and extension sign-in flows ([#350](https://github.com/YSamed/yalqen/issues/350)) ([cbf65f6](https://github.com/YSamed/yalqen/commit/cbf65f68b47fc2df7a8f5de6cd86a178634495ee))
+
 ## [0.3.87](https://github.com/YSamed/yalqen/compare/v0.3.86...v0.3.87) (2026-11-09)
 
 

@@ -1,10 +1,25 @@
 <script lang="ts">
-  import { REQUIRED_TOOLBAR_BUTTON, TOOLBAR_BUTTON_IDS, type ToolbarButtonId } from '../../shared/types';
+  import {
+    REQUIRED_TOOLBAR_BUTTON,
+    TOOLBAR_BUTTON_IDS,
+    toolbarExtensionId,
+    toolbarExtensionItem,
+    type ToolbarButtonId,
+    type ToolbarExtension,
+    type ToolbarItemId,
+  } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Icon, { type IconName } from '../ui/Icon.svelte';
 
-  let { shown, onchange }: { shown: readonly ToolbarButtonId[]; onchange: (buttons: ToolbarButtonId[]) => void } =
-    $props();
+  let {
+    shown: saved,
+    extensions = [],
+    onchange,
+  }: {
+    shown: readonly ToolbarItemId[];
+    extensions?: readonly ToolbarExtension[];
+    onchange: (buttons: ToolbarItemId[]) => void;
+  } = $props();
 
   const buttons: Record<ToolbarButtonId, { label: string; icon: IconName }> = {
     home: { label: t('toolbar.home'), icon: 'home' },
@@ -15,31 +30,49 @@
     settings: { label: t('settings.toolbarSettings'), icon: 'settings' },
     screenshot: { label: t('toolbar.fullPageScreenshot'), icon: 'screenshot' },
     downloads: { label: t('settings.downloads'), icon: 'download' },
+    devtools: { label: t('toolbar.devtools'), icon: 'code' },
   };
 
+  function itemOf(id: ToolbarItemId): { label: string; icon: IconName; image: string | null } | null {
+    const extensionId = toolbarExtensionId(id);
+    if (!extensionId) return { ...buttons[id as ToolbarButtonId], image: null };
+    const extension = extensions.find((candidate) => candidate.id === extensionId);
+    return extension ? { label: extension.title, icon: 'extensions', image: extension.icon } : null;
+  }
+
+  // Pinned extensions that are no longer installed stay saved but are not shown or moved.
+  const shown = $derived(saved.filter((id) => itemOf(id) !== null));
+  const missing = $derived(saved.filter((id) => itemOf(id) === null));
   const hidden = $derived(TOOLBAR_BUTTON_IDS.filter((id) => !shown.includes(id)));
+  const hiddenExtensions = $derived(
+    extensions.map((extension) => toolbarExtensionItem(extension.id)).filter((id) => !shown.includes(id)),
+  );
   let bar = $state<HTMLElement>();
-  let dragging = $state<ToolbarButtonId | null>(null);
+  let dragging = $state<ToolbarItemId | null>(null);
   let dropIndex = $state<number | null>(null);
 
-  function place(id: ToolbarButtonId, index: number): void {
+  function save(items: ToolbarItemId[]): void {
+    onchange([...items, ...missing]);
+  }
+
+  function place(id: ToolbarItemId, index: number): void {
     const rest = shown.filter((item) => item !== id);
     const from = shown.indexOf(id);
     const at = from !== -1 && from < index ? index - 1 : index;
     rest.splice(Math.max(0, Math.min(at, rest.length)), 0, id);
-    onchange(rest);
+    save(rest);
   }
 
-  function remove(id: ToolbarButtonId): void {
-    if (id !== REQUIRED_TOOLBAR_BUTTON) onchange(shown.filter((item) => item !== id));
+  function remove(id: ToolbarItemId): void {
+    if (id !== REQUIRED_TOOLBAR_BUTTON) save(shown.filter((item) => item !== id));
   }
 
-  async function focusButton(id: ToolbarButtonId): Promise<void> {
+  async function focusButton(id: ToolbarItemId): Promise<void> {
     await Promise.resolve();
     bar?.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus();
   }
 
-  function keydown(event: KeyboardEvent, id: ToolbarButtonId): void {
+  function keydown(event: KeyboardEvent, id: ToolbarItemId): void {
     const index = shown.indexOf(id);
     if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
       event.preventDefault();
@@ -53,7 +86,7 @@
     }
   }
 
-  function dragStart(event: DragEvent, id: ToolbarButtonId): void {
+  function dragStart(event: DragEvent, id: ToolbarItemId): void {
     dragging = id;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
@@ -97,6 +130,26 @@
   }
 </script>
 
+{#snippet glyph(item: { icon: IconName; image: string | null })}
+  {#if item.image}<img src={item.image} alt="" width="16" height="16" />{:else}<Icon name={item.icon} />{/if}
+{/snippet}
+
+{#snippet spare(id: ToolbarItemId)}
+  {@const item = itemOf(id)!}
+  <button
+    type="button"
+    class="chip spare"
+    draggable="true"
+    title={item.label}
+    aria-label={t('settings.addToolbarButton', { label: item.label })}
+    onclick={() => save([...shown, id])}
+    ondragstart={(event) => dragStart(event, id)}
+    ondragend={dragEnd}
+  >
+    {@render glyph(item)}
+  </button>
+{/snippet}
+
 <div class="editor">
   <div
     class="bar"
@@ -119,7 +172,7 @@
       <span>yalqen.com</span>
     </span>
     {#each shown as id, index (id)}
-      {@const item = buttons[id]}
+      {@const item = itemOf(id)!}
       {#if dropIndex === index}<span class="marker"></span>{/if}
       <button
         type="button"
@@ -137,7 +190,7 @@
         ondragstart={(event) => dragStart(event, id)}
         ondragend={dragEnd}
       >
-        <Icon name={item.icon} />
+        {@render glyph(item)}
       </button>
     {/each}
     {#if dropIndex === shown.length}<span class="marker"></span>{/if}
@@ -151,26 +204,20 @@
     ondragover={dragOverTray}
     ondrop={dropOnTray}
   >
-    {#if hidden.length}
+    {#if hidden.length || hiddenExtensions.length}
       <span class="tray-label">{t('settings.toolbarAvailable')}</span>
     {:else}
       <span class="tray-label">{t('settings.toolbarAllShown')}</span>
     {/if}
     {#each hidden as id (id)}
-      {@const item = buttons[id]}
-      <button
-        type="button"
-        class="chip spare"
-        draggable="true"
-        title={item.label}
-        aria-label={t('settings.addToolbarButton', { label: item.label })}
-        onclick={() => onchange([...shown, id])}
-        ondragstart={(event) => dragStart(event, id)}
-        ondragend={dragEnd}
-      >
-        <Icon name={item.icon} />
-      </button>
+      {@render spare(id)}
     {/each}
+    {#if hiddenExtensions.length}
+      <span class="tray-label extensions-label">{t('toolbar.extensions')}</span>
+      {#each hiddenExtensions as id (id)}
+        {@render spare(id)}
+      {/each}
+    {/if}
   </div>
   <p class="hint">{t('settings.toolbarEditHint')}</p>
 </div>
@@ -278,6 +325,15 @@
 
   .chip.spare:hover {
     color: var(--text);
+  }
+
+  .chip img {
+    display: block;
+    pointer-events: none;
+  }
+
+  .extensions-label {
+    margin-left: 8px;
   }
 
   p.hint {

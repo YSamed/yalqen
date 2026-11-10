@@ -97,9 +97,34 @@ export const TOOLBAR_BUTTON_IDS = [
   'settings',
   'screenshot',
   'downloads',
+  'devtools',
 ] as const;
 export type ToolbarButtonId = (typeof TOOLBAR_BUTTON_IDS)[number];
 export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
+// Buttons a new profile starts without; they wait in the toolbar editor until the user adds them.
+export const OPTIONAL_TOOLBAR_BUTTONS: readonly ToolbarButtonId[] = ['devtools'];
+export const DEFAULT_TOOLBAR_BUTTONS: ToolbarButtonId[] = TOOLBAR_BUTTON_IDS.filter(
+  (id) => !OPTIONAL_TOOLBAR_BUTTONS.includes(id),
+);
+
+// An extension pinned to the toolbar is stored next to the built-in buttons by its extension id.
+export type ToolbarExtensionItem = `extension:${string}`;
+export type ToolbarItemId = ToolbarButtonId | ToolbarExtensionItem;
+const TOOLBAR_EXTENSION = /^extension:([a-p]{32})$/;
+
+export function toolbarExtensionId(item: string): string | null {
+  return TOOLBAR_EXTENSION.exec(item)?.[1] ?? null;
+}
+
+export function toolbarExtensionItem(id: string): ToolbarExtensionItem {
+  return `extension:${id}`;
+}
+
+export interface ToolbarExtension {
+  id: string;
+  title: string;
+  icon: string | null;
+}
 
 export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
 
@@ -125,7 +150,9 @@ export interface BrowserState {
   media: import('./sidebar-widgets').MediaInfo | null;
   toolbarVisible: boolean;
   toolbarTabs: boolean;
-  toolbarButtons: ToolbarButtonId[];
+  toolbarButtons: ToolbarItemId[];
+  // Extensions that can be pinned to the toolbar, with their icons.
+  toolbarExtensions: ToolbarExtension[];
   material: WindowMaterial;
   glassTint: number;
   accent: string;
@@ -387,6 +414,8 @@ export type UiAction =
   | { type: 'toggle-pin'; id: TabId }
   | { type: 'toggle-mute'; id: TabId }
   | { type: 'toggle-media'; id: TabId }
+  | { type: 'show-tooltip'; tooltip: import('./tooltip').TooltipRequest }
+  | { type: 'hide-tooltip' }
   | { type: 'seek-media'; id: TabId; seconds: number }
   | { type: 'skip-media'; id: TabId; direction: import('./sidebar-widgets').MediaSkip }
   | { type: 'open-tab-menu'; id: TabId }
@@ -397,6 +426,8 @@ export type UiAction =
   | { type: 'go-forward' }
   | { type: 'reload' }
   | { type: 'open-devtools' }
+  | { type: 'toggle-devtools' }
+  | { type: 'open-extension-action'; id: string; anchor: AnchorRect }
   | { type: 'open-dev-menu' }
   | { type: 'dev-command'; id: DevCommandId }
   | { type: 'resize-device'; width: number; height: number }
@@ -742,7 +773,7 @@ export interface SettingsValues {
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;
-  toolbarButtons: ToolbarButtonId[];
+  toolbarButtons: ToolbarItemId[];
   discardAfterMinutes: number;
   adBlocking: boolean;
   threatProtection: boolean;
