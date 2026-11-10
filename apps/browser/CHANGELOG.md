@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.95](https://github.com/YSamed/yalqen/compare/v0.3.94...v0.3.95) (2026-11-10)
+
+
+### Features
+
+* show an unread dot on mail and chat tabs ([#374](https://github.com/YSamed/yalqen/issues/374)) ([6c23c65](https://github.com/YSamed/yalqen/commit/6c23c65a70b3bed951bb66e3dfd8b1b86ec3ef47))
+
 ## [0.3.94](https://github.com/YSamed/yalqen/compare/v0.3.93...v0.3.94) (2026-11-10)
 
 
