@@ -183,10 +183,19 @@ app
     await click('.player button.track');
     assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
 
-    // The narrow sidebar has no room for the player.
-    push({ panelCollapsed: true });
+    // The narrow sidebar keeps only the play button, named after what is playing.
+    push({ panelCollapsed: true, media: { ...song, updatedAt: Date.now() } });
+    await eventually("!!document.querySelector('.player .play') && !document.querySelector('.player .pill')");
+    assert.equal(
+      await window.webContents.executeJavaScript("document.querySelector('.player .play').title"),
+      'Midnight City',
+    );
+    await click('.player .play');
+    assert.deepEqual(actions.at(-1), { type: 'toggle-media', id: 'b' });
+    await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Play'");
+    push({ panelCollapsed: true, media: null });
     await eventually("!document.querySelector('.player')");
-    push({ panelCollapsed: false, media: null });
+    push({ panelCollapsed: false });
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(await window.webContents.executeJavaScript("!!document.querySelector('.player')"), false);
 

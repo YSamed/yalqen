@@ -743,6 +743,7 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.resetZoomTitle': 'Varsayılan yakınlaştırmaya dön (⌘0)',
   'toolbar.zoomPercent': '%{percent}',
   'toolbar.close': 'Kapat',
+  'toolbar.closeTitle': 'Sekmeyi kapat (⌘W)',
   'toolbar.loading': 'Yükleniyor',
   'toolbar.privateTabTitle': '{title} (gizli)',
 
@@ -758,6 +759,7 @@ export const tr: Record<MessageKey, string> = {
   'tabPanel.stateMuted': 'sessiz',
   'tabPanel.stateAudible': 'ses çalıyor',
   'tabPanel.close': 'Kapat',
+  'tabPanel.closeTitle': 'Sekmeyi kapat (⌘W)',
   'tabPanel.developerTab': 'Geliştirici sekmesi',
   'tabPanel.privateTab': 'Gizli sekme',
   'tabPanel.unmute': 'Sesi aç',

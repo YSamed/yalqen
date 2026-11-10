@@ -5,7 +5,8 @@
   import { cubicOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
 
-  let { media }: { media: MediaInfo } = $props();
+  // The collapsed sidebar is one button wide, so it keeps only play and pause.
+  let { media, compact = false }: { media: MediaInfo; compact?: boolean } = $props();
 
   const send = window.yalqen.send;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -122,73 +123,76 @@
   }
 </script>
 
-<section class="player" aria-label={t('widgets.media')} in:appear>
+<section class="player" class:compact aria-label={t('widgets.media')} in:appear>
   <IconButton
     size="lg"
     variant="surface"
     class="play"
     icon={playing ? 'pause' : 'play'}
     label={playing ? t('widgets.pause') : t('widgets.play')}
+    title={compact ? media.title : undefined}
     onclick={toggle}
   />
-  <div
-    class="pill"
-    class:scrubbing={scrubbed !== null}
-    class:skippable={media.canPrevious || media.canNext}
-    bind:this={pill}
-  >
-    {#if position !== null && media.duration !== null}
-      <span class="fill" style:width="{progress * 100}%"></span>
-      <div
-        class="track"
-        role="slider"
-        tabindex="0"
-        title={t('widgets.showTab', { title: media.title })}
-        aria-label={media.title}
-        aria-valuemin={0}
-        aria-valuemax={Math.round(media.duration)}
-        aria-valuenow={Math.round(shown ?? position)}
-        aria-valuetext={t('widgets.elapsed', { elapsed: clock(shown ?? position), duration: clock(media.duration) })}
-        onpointerdown={pointerDown}
-        onpointermove={pointerMove}
-        onpointerup={pointerUp}
-        onpointercancel={() => (scrub = null)}
-        onkeydown={seekByKey}
-      >
-        <span class="title">{media.title}</span>
-        <span class="time">
-          {scrubbed !== null ? `${clock(scrubbed)} / ${clock(media.duration)}` : clock(shown ?? position)}
+  {#if !compact}
+    <div
+      class="pill"
+      class:scrubbing={scrubbed !== null}
+      class:skippable={media.canPrevious || media.canNext}
+      bind:this={pill}
+    >
+      {#if position !== null && media.duration !== null}
+        <span class="fill" style:width="{progress * 100}%"></span>
+        <div
+          class="track"
+          role="slider"
+          tabindex="0"
+          title={t('widgets.showTab', { title: media.title })}
+          aria-label={media.title}
+          aria-valuemin={0}
+          aria-valuemax={Math.round(media.duration)}
+          aria-valuenow={Math.round(shown ?? position)}
+          aria-valuetext={t('widgets.elapsed', { elapsed: clock(shown ?? position), duration: clock(media.duration) })}
+          onpointerdown={pointerDown}
+          onpointermove={pointerMove}
+          onpointerup={pointerUp}
+          onpointercancel={() => (scrub = null)}
+          onkeydown={seekByKey}
+        >
+          <span class="title">{media.title}</span>
+          <span class="time">
+            {scrubbed !== null ? `${clock(scrubbed)} / ${clock(media.duration)}` : clock(shown ?? position)}
+          </span>
+        </div>
+      {:else}
+        <!-- A live stream has no length to scrub. -->
+        <button class="track" aria-label={t('widgets.showTab', { title: media.title })} onclick={showTab}>
+          <span class="title">{media.title}</span>
+        </button>
+      {/if}
+      {#if media.canPrevious || media.canNext}
+        <span class="actions">
+          {#if media.canPrevious}
+            <IconButton
+              size="sm"
+              tone="muted"
+              icon="skip-back"
+              label={t('widgets.previous')}
+              onclick={() => skip('previous')}
+            />
+          {/if}
+          {#if media.canNext}
+            <IconButton
+              size="sm"
+              tone="muted"
+              icon="skip-forward"
+              label={t('widgets.next')}
+              onclick={() => skip('next')}
+            />
+          {/if}
         </span>
-      </div>
-    {:else}
-      <!-- A live stream has no length to scrub. -->
-      <button class="track" aria-label={t('widgets.showTab', { title: media.title })} onclick={showTab}>
-        <span class="title">{media.title}</span>
-      </button>
-    {/if}
-    {#if media.canPrevious || media.canNext}
-      <span class="actions">
-        {#if media.canPrevious}
-          <IconButton
-            size="sm"
-            tone="muted"
-            icon="skip-back"
-            label={t('widgets.previous')}
-            onclick={() => skip('previous')}
-          />
-        {/if}
-        {#if media.canNext}
-          <IconButton
-            size="sm"
-            tone="muted"
-            icon="skip-forward"
-            label={t('widgets.next')}
-            onclick={() => skip('next')}
-          />
-        {/if}
-      </span>
-    {/if}
-  </div>
+      {/if}
+    </div>
+  {/if}
 </section>
 
 <style>

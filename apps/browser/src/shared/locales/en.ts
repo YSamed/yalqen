@@ -736,6 +736,7 @@ export const en = {
   'toolbar.resetZoomTitle': 'Reset to default zoom (⌘0)',
   'toolbar.zoomPercent': '{percent}%',
   'toolbar.close': 'Close',
+  'toolbar.closeTitle': 'Close tab (⌘W)',
   'toolbar.loading': 'Loading',
   'toolbar.privateTabTitle': '{title} (private)',
 
@@ -751,6 +752,7 @@ export const en = {
   'tabPanel.stateMuted': 'muted',
   'tabPanel.stateAudible': 'playing audio',
   'tabPanel.close': 'Close',
+  'tabPanel.closeTitle': 'Close tab (⌘W)',
   'tabPanel.developerTab': 'Developer tab',
   'tabPanel.privateTab': 'Private tab',
   'tabPanel.unmute': 'Unmute',

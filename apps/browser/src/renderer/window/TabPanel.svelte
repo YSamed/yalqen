@@ -386,6 +386,7 @@
         tone="muted"
         icon="close"
         label={t('tabPanel.close')}
+        title={t('tabPanel.closeTitle')}
         onclick={() => send({ type: 'close-tab', id: tab.id })}
       />
     </span>
@@ -548,8 +549,8 @@
         {/if}
       </div>
 
-      {#if !collapsed && media}
-        <MediaPlayer {media} />
+      {#if media}
+        <MediaPlayer {media} compact={collapsed} />
       {/if}
 
       <footer class="footer" class:compact={collapsed}>
