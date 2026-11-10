@@ -62,7 +62,22 @@ globalThis.cookieRoundTrip = async (url) => {
   const gone = await chrome.cookies.get({ url, name: 'grauth' });
   return { set: set && set.value, got: got && got.value, denied, gone };
 };
-globalThis.openOwnPage = () => new Promise((resolve) => chrome.tabs.create({ url: 'page.html', active: false }, resolve));`;
+globalThis.openOwnPage = () => new Promise((resolve) => chrome.tabs.create({ url: 'page.html', active: false }, resolve));
+globalThis.permissionChecks = async () => ({
+  cookies: await chrome.permissions.contains({ permissions: ['cookies'], origins: ['http://127.0.0.1/*'] }),
+  identity: await chrome.permissions.contains({ permissions: ['identity'] }),
+  listed: (await chrome.permissions.getAll()).permissions.includes('cookies'),
+});
+globalThis.windowEvents = [];
+chrome.windows.onFocusChanged.addListener((id) => windowEvents.push('focus:' + id));
+chrome.windows.onRemoved.addListener((id) => windowEvents.push('removed:' + id));
+globalThis.windowChecks = async () => ({
+  current: (await chrome.windows.getCurrent()).id,
+  callback: await new Promise((resolve) => chrome.windows.getLastFocused({}, (window) => resolve(window.id))),
+  all: (await chrome.windows.getAll()).map((window) => window.id),
+  byId: (await chrome.windows.get(chrome.windows.WINDOW_ID_CURRENT)).type,
+  missing: await chrome.windows.get(-99).then(() => 'found', () => 'rejected'),
+});`;
 
 app
   .whenReady()
@@ -108,7 +123,7 @@ app
       translation: () => ({ enabled: false, language: 'en' }),
       confirmUnload: () => true,
     });
-    new extensionBridge.ExtensionBridge(
+    const bridge = new extensionBridge.ExtensionBridge(
       browsing,
       {
         open: (url, active) => tabManager.openContents(url, active),
@@ -116,6 +131,7 @@ app
         isTab: (contents) => tabManager.hasContents(contents),
         windowId: () => window.id,
         isActive: (contents) => tabManager.isActiveContents(contents),
+        windows: () => [{ id: window.id, focused: false }],
       },
       path.resolve(import.meta.dirname, '../../dist/preload/extension-apis.js'),
     );
@@ -123,7 +139,9 @@ app
     const page = new BrowserWindow({ show: false, webPreferences: { session: browsing } });
     windows.push(page);
     await page.loadURL(`chrome-extension://${extension.id}/page.html`);
-    tabManager.open(`http://127.0.0.1:${server.address().port}/`);
+    const opener = tabManager.open(`http://127.0.0.1:${server.address().port}/`);
+    // A tab to the right of the opener: closing the sign-in tab used to activate this one instead.
+    tabManager.open(`http://127.0.0.1:${server.address().port}/other`, { activate: false });
     const startingTabs = tabManager.tabs.length;
 
     const result = await page.webContents.executeJavaScript(`auth('http://127.0.0.1:${server.address().port}/auth')`);
@@ -132,6 +150,32 @@ app
     assert.equal(result.url, `https://${extension.id}.chromiumapp.org/cb?code=abc`);
     await eventually(() => tabManager.tabs.length === startingTabs);
     await eventually(() => page.webContents.executeJavaScript(`removed.includes(${result.tabId})`));
+    assert.equal(tabManager.activeId, opener);
+
+    // Electron's chrome.permissions rejects permissions it does not implement; Grammarly checks for
+    // "cookies" before reading its sign-in cookie.
+    assert.deepEqual(await page.webContents.executeJavaScript('permissionChecks()'), {
+      cookies: true,
+      identity: true,
+      listed: true,
+    });
+
+    // Grammarly's background page throws at startup without chrome.windows and never loads the account.
+    assert.deepEqual(await page.webContents.executeJavaScript('windowChecks()'), {
+      current: window.id,
+      callback: window.id,
+      all: [window.id],
+      byId: 'normal',
+      missing: 'rejected',
+    });
+    bridge.windowFocusChanged(window.id);
+    bridge.windowFocusChanged(-1);
+    bridge.windowRemoved(window.id);
+    await eventually(
+      async () =>
+        (await page.webContents.executeJavaScript('windowEvents.join()')) ===
+        `focus:${window.id},focus:-1,removed:${window.id}`,
+    );
 
     const cookieUrl = `http://127.0.0.1:${server.address().port}/`;
     assert.deepEqual(await page.webContents.executeJavaScript(`cookieRoundTrip(${JSON.stringify(cookieUrl)})`), {
@@ -153,7 +197,7 @@ app
       tabManager.tabs.some((tab) => tab.view?.webContents.getURL() === `chrome-extension://${extension.id}/page.html`),
     );
     console.log(
-      'PASS: extension tabs.create/remove/onUpdated/onRemoved, host-scoped cookies and identity redirect bridge',
+      'PASS: extension tabs.create/remove/onUpdated/onRemoved, host-scoped cookies, permissions, windows and identity redirect bridge',
     );
   })
   .then(() => app.quit())

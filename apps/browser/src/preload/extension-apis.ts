@@ -7,6 +7,7 @@ interface Bridge {
   createTab(properties: unknown): Promise<unknown>;
   removeTabs(ids: unknown): Promise<void>;
   cookies(method: string, details: unknown): Promise<unknown>;
+  windows(): Promise<{ id: number; focused: boolean }[]>;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
 
@@ -19,6 +20,7 @@ const bridge: Bridge = {
   createTab: (properties) => ipcRenderer.invoke(ExtensionBridgeChannel.createTab, properties),
   removeTabs: (ids) => ipcRenderer.invoke(ExtensionBridgeChannel.removeTabs, ids),
   cookies: (method, details) => ipcRenderer.invoke(ExtensionBridgeChannel.cookies, method, details),
+  windows: () => ipcRenderer.invoke(ExtensionBridgeChannel.windows),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
   },
@@ -91,6 +93,84 @@ function installExtensionApis(api: Bridge): void {
     define(chromeApi, 'identity', {
       getRedirectURL: (path = '') => `https://${runtime.id}.chromiumapp.org/${String(path).replace(/^\//, '')}`,
     });
+  }
+
+  if (!chromeApi.windows) {
+    // Without chrome.windows, Grammarly's background page throws while starting up and never loads the
+    // signed-in account. shortcut: no create/update/remove; extensions only read windows and follow focus.
+    const WINDOW_ID_NONE = -1;
+    const WINDOW_ID_CURRENT = -2;
+    type Window = { id: number; focused: boolean };
+    const lastArgument = (args: unknown[]) => args.find((arg) => typeof arg === 'function') as Callback;
+    const pick = (choose: (windows: Window[]) => Window | undefined) =>
+      api.windows().then((windows) => {
+        const window = choose(windows);
+        if (!window) throw new Error('No browser window');
+        return window;
+      });
+    const current = (windows: Window[]) => windows.find((window) => window.focused) ?? windows[0];
+    define(chromeApi, 'windows', {
+      WINDOW_ID_NONE,
+      WINDOW_ID_CURRENT,
+      getCurrent: (...args: unknown[]) => settle(pick(current), lastArgument(args)),
+      getLastFocused: (...args: unknown[]) => settle(pick(current), lastArgument(args)),
+      get: (id: unknown, ...args: unknown[]) =>
+        settle(
+          pick((windows) => (id === WINDOW_ID_CURRENT ? current(windows) : windows.find((window) => window.id === id))),
+          lastArgument(args),
+        ),
+      getAll: (...args: unknown[]) => settle(api.windows(), lastArgument(args)),
+      onCreated: event('windows.onCreated'),
+      onRemoved: event('windows.onRemoved'),
+      onFocusChanged: event('windows.onFocusChanged'),
+    });
+  }
+
+  // Electron's chrome.permissions throws on permissions it does not implement, so an extension that checks
+  // for "cookies" before reading its sign-in cookie would treat itself as signed out.
+  const bridged = ['cookies', 'identity'].filter((name) => permissions.includes(name));
+  const native = chromeApi.permissions as
+    | {
+        contains(query: unknown): Promise<boolean>;
+        getAll(): Promise<{ permissions?: string[]; origins?: string[] }>;
+        request(query: unknown): Promise<boolean>;
+      }
+    | undefined;
+  if (native && bridged.length > 0) {
+    const split = (query: unknown) => {
+      const { permissions: names, ...rest } = (typeof query === 'object' && query !== null ? query : {}) as {
+        permissions?: unknown;
+      };
+      const list = Array.isArray(names) ? names : [];
+      return {
+        granted: list.every((name) => !bridged.includes(name) || permissions.includes(name)),
+        rest: { ...rest, permissions: list.filter((name) => !bridged.includes(name)) },
+      };
+    };
+    const original = {
+      contains: native.contains?.bind(native),
+      request: native.request?.bind(native),
+    };
+    const check = (method: 'contains' | 'request') => (query: unknown, callback: Callback) => {
+      const { granted, rest } = split(query);
+      const nothingElse = rest.permissions.length === 0 && !(rest as { origins?: unknown[] }).origins?.length;
+      const forward = original[method];
+      const result = !granted
+        ? Promise.resolve(false)
+        : nothingElse || !forward
+          ? Promise.resolve(true)
+          : forward(rest);
+      return settle(result, callback);
+    };
+    const getAll = native.getAll.bind(native);
+    define(native, 'contains', check('contains'));
+    define(native, 'request', check('request'));
+    define(native, 'getAll', (callback: Callback) =>
+      settle(
+        getAll().then((all) => ({ ...all, permissions: [...new Set([...(all.permissions ?? []), ...bridged])] })),
+        callback,
+      ),
+    );
   }
 }
 

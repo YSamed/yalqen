@@ -8,10 +8,12 @@ import {
 } from 'electron';
 import {
   authRedirectExtension,
+  chromeWindow,
   extensionIdOf,
   ExtensionBridgeChannel,
   extensionTabUrl,
   type ExtensionBridgeEvent,
+  type ExtensionWindowState,
 } from '../../shared/extension-bridge.js';
 import { callCookies, chromeCookieChange, cookieUrl, extensionGrant, hostPermitted } from './extension-cookies.js';
 
@@ -21,6 +23,8 @@ export interface ExtensionBridgeHost {
   isTab(contents: WebContents): boolean;
   windowId(contents: WebContents): number;
   isActive(contents: WebContents): boolean;
+  // Browser windows extensions may know about, most recently focused first.
+  windows(): ExtensionWindowState[];
 }
 
 interface Receiver {
@@ -28,8 +32,8 @@ interface Receiver {
   send(name: ExtensionBridgeEvent, args: unknown[]): void;
 }
 
-// Electron's chrome.tabs has no create/remove and never fires onUpdated/onRemoved, and chrome.cookies and
-// chrome.identity are missing; sign-in flows such as Grammarly's open a tab, watch it reach the chromiumapp.org
+// Electron's chrome.tabs has no create/remove and never fires onUpdated/onRemoved, and chrome.cookies,
+// chrome.identity and chrome.windows are missing; sign-in flows such as Grammarly's open a tab, watch it reach the chromiumapp.org
 // redirect and then read the account cookie.
 export class ExtensionBridge {
   private readonly workers = new Map<number, Receiver>();
@@ -57,6 +61,7 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.cookies, (event, method, details) =>
       this.cookies(this.frameExtension(event), method, details),
     );
+    ipcMain.handle(ExtensionBridgeChannel.windows, (event) => this.windows(this.frameExtension(event)));
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -81,6 +86,29 @@ export class ExtensionBridge {
           receiver.send('cookies.onChanged', [change]);
       }
     });
+  }
+
+  windowCreated(state: ExtensionWindowState): void {
+    this.emit('windows.onCreated', [chromeWindow(state)]);
+  }
+
+  windowFocusChanged(id: number): void {
+    this.emit('windows.onFocusChanged', [id]);
+  }
+
+  windowRemoved(id: number): void {
+    this.emit('windows.onRemoved', [id]);
+  }
+
+  private windows(extensionId: string): Record<string, unknown>[] {
+    if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
+    return this.host.windows().map(chromeWindow);
+  }
+
+  private emit(name: ExtensionBridgeEvent, args: unknown[]): void {
+    for (const receiver of this.receivers()) {
+      if (receiver.extensionId()) receiver.send(name, args);
+    }
   }
 
   private grant(extensionId: string) {
@@ -109,6 +137,7 @@ export class ExtensionBridge {
     worker.ipc.handle(ExtensionBridgeChannel.cookies, (_event, method, details) =>
       this.cookies(extensionId, method, details),
     );
+    worker.ipc.handle(ExtensionBridgeChannel.windows, () => this.windows(extensionId));
   }
 
   private frameExtension(event: IpcMainInvokeEvent): string {

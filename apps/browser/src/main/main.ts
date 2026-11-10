@@ -57,6 +57,7 @@ import { DEFAULT_DEVICE_ID } from './devtools/devices.js';
 import { DownloadManager } from './library/download-manager.js';
 import { DownloadStore } from './library/downloads.js';
 import { ExtensionBridge } from './extensions/extension-bridge.js';
+import { WINDOW_ID_NONE } from '../shared/extension-bridge.js';
 import { ExtensionPopup } from './extensions/extension-popup.js';
 import { ExtensionManager } from './extensions/extensions.js';
 import { registerExtensionsIpc } from './extensions/extensions-ipc.js';
@@ -291,7 +292,8 @@ function startBrowser(): void {
   const extensionTabWindow = () =>
     focusedFirst().find((window) => !window.isPrivate && !window.isDeveloper && window.webApp === null) ?? null;
   const tabsWindowOf = (contents: Electron.WebContents) => windows.find((window) => window.tabs.hasContents(contents));
-  new ExtensionBridge(
+  const extensionWindows = () => focusedFirst().filter((window) => !window.isPrivate && !window.window.isDestroyed());
+  const extensionBridge = new ExtensionBridge(
     daily,
     {
       open: (url, active) => {
@@ -303,9 +305,23 @@ function startBrowser(): void {
       isTab: (contents) => tabsWindowOf(contents) !== undefined,
       windowId: (contents) => tabsWindowOf(contents)?.window.id ?? -1,
       isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
+      windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
     },
     preloadPath('extension-apis'),
   );
+  // chrome.windows events; extensions such as Grammarly follow the focused window to find the active tab.
+  const watchExtensionWindow = (window: YalqenWindow) => {
+    const { id } = window.window;
+    extensionBridge.windowCreated({ id, focused: window.window.isFocused() });
+    window.window.on('focus', () => extensionBridge.windowFocusChanged(id));
+    window.window.on('blur', () =>
+      setImmediate(() => {
+        if (!extensionWindows().some((other) => other.window.isFocused()))
+          extensionBridge.windowFocusChanged(WINDOW_ID_NONE);
+      }),
+    );
+    window.window.once('closed', () => extensionBridge.windowRemoved(id));
+  };
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;
@@ -700,6 +716,7 @@ function startBrowser(): void {
     const window = new YalqenWindow(context, options);
     windows.push(window);
     current = window;
+    if (!window.isPrivate) watchExtensionWindow(window);
     return window;
   };
 
