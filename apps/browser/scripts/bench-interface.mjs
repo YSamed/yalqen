@@ -108,6 +108,7 @@ ipcRenderer.on('bench:state', (_event, state) => {
     panelCollapsed: false,
     panelSide: 'left',
     pinnedDisplay: 'always',
+    favorites: [],
     sidebarVisible: true,
     media: null,
     toolbarVisible: true,

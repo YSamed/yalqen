@@ -52,6 +52,12 @@ export interface TabSnapshot {
   agentRules: number;
 }
 
+export interface Favorite {
+  url: string;
+  title: string;
+  faviconUrl: string | null;
+}
+
 export interface AgentEpisodePreview {
   id: string;
   lines: string[];
@@ -147,6 +153,7 @@ export interface BrowserState {
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
+  favorites: Favorite[];
   sidebarVisible: boolean;
   // Filled only while the sidebar media player is on and a tab has played sound.
   media: import('./sidebar-widgets').MediaInfo | null;
@@ -414,6 +421,8 @@ export type UiAction =
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }
+  | { type: 'open-favorite'; url: string }
+  | { type: 'open-favorite-menu'; url: string }
   | { type: 'toggle-mute'; id: TabId }
   | { type: 'toggle-media'; id: TabId }
   | { type: 'show-tooltip'; tooltip: import('./tooltip').TooltipRequest }

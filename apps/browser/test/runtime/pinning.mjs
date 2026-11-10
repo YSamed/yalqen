@@ -50,6 +50,7 @@ app
       panelCollapsed: collapsed,
       panelSide: 'left',
       pinnedDisplay,
+      favorites: [],
       sidebarVisible: true,
       media: null,
       toolbarVisible: true,

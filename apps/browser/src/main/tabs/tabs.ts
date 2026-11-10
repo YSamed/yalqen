@@ -164,6 +164,7 @@ export class TabManager {
   private readonly tabs: Tab[] = [];
   private activeId: TabId | null = null;
   private readonly openedPinned = new Map<TabId, TabId | null>();
+  private readonly favoriteTabs = new Map<string, TabId>();
   private readonly collapsedGroups = new Set<string>();
   private readonly placement = new PagePlacement((tab) => this.slotOf(tab));
   private readonly splits: TabId[][] = [];
@@ -1033,6 +1034,14 @@ export class TabManager {
         if (contents && tab.url.startsWith(prefix)) contents.reload();
       }
     });
+  }
+
+  openOrActivate(url: string): void {
+    const remembered = this.favoriteTabs.get(url);
+    const existing =
+      (remembered && this.find(remembered)) || this.tabs.find((tab) => tab.url === url && !tab.isPrivate);
+    if (existing) this.activate(existing.id);
+    else this.favoriteTabs.set(url, this.open(url));
   }
 
   private openSingle(url: string): void {
