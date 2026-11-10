@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import type { Favorite, PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
   import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
@@ -30,6 +30,7 @@
     profile,
     profileName,
     pinnedDisplay,
+    favorites,
     media,
     pageRect,
     onSplitDrop,
@@ -51,6 +52,7 @@
     profile: ProfileKind;
     profileName?: string;
     pinnedDisplay: PinnedDisplay;
+    favorites: Favorite[];
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
@@ -89,6 +91,10 @@
   let settleTimer = 0;
   let returnTimer = 0;
   let brokenIcons: Record<string, true> = $state({});
+  let folderPress: { name: string; x: number; y: number; dragging: boolean } | null = null;
+  let dropFolder: string | null = $state(null);
+  let renaming: string | null = $state(null);
+  let renameValue = $state('');
 
   const send = window.yalqen.send;
   const selected = $derived(new Set(selectedTabIds));
@@ -113,16 +119,102 @@
       .map((id) => tabsById.get(id))
       .filter((tab): tab is TabSnapshot => tab !== undefined && (!showPinned || !collapsed || !tab.pinned)),
   );
+  const groupsByName = $derived(new Map(groups.map((group) => [group.name, group])));
   const sections = $derived(
     [
-      { key: 'ungrouped', group: null, entries: entries.filter((tab) => !tab.group) },
-      ...groups.map((group) => ({
-        key: 'group:' + group.name,
-        group,
-        entries: entries.filter((tab) => tab.group === group.name),
-      })),
-    ].filter((section) => section.entries.length > 0),
+      { key: 'ungrouped', group: null, depth: 0, entries: entries.filter((tab) => !tab.group) },
+      ...groups.flatMap((group) => {
+        const ancestors = groupAncestors(group);
+        return ancestors.some((ancestor) => ancestor.collapsed)
+          ? []
+          : [
+              {
+                key: 'group:' + group.name,
+                group,
+                depth: ancestors.length,
+                entries: entries.filter((tab) => tab.group === group.name),
+              },
+            ];
+      }),
+    ].filter((section) => section.entries.length > 0 || (section.group && section.group.count === 0)),
   );
+
+  function groupAncestors(group: TabGroup): TabGroup[] {
+    const chain: TabGroup[] = [];
+    for (let next = groupsByName.get(group.parent ?? ''); next; next = groupsByName.get(next.parent ?? ''))
+      chain.push(next);
+    return chain;
+  }
+
+  function indent(depth: number): string | undefined {
+    return collapsed || depth === 0 ? undefined : `${depth * 12}px`;
+  }
+
+  function folderAt(): string | null {
+    for (const element of document.elementsFromPoint(pointer.x, pointer.y)) {
+      const name = (element as HTMLElement).dataset?.folder;
+      if (name) return name;
+    }
+    return null;
+  }
+
+  function canDropFolder(name: string, target: string): boolean {
+    const folder = groupsByName.get(name),
+      destination = groupsByName.get(target);
+    return (
+      !!folder &&
+      !!destination &&
+      folder.parent !== target &&
+      !groupAncestors(destination).some((ancestor) => ancestor.name === name) &&
+      name !== target
+    );
+  }
+
+  function onFolderPointerDown(event: PointerEvent, name: string): void {
+    if (event.button !== 0 || !event.isPrimary || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    folderPress = { name, x: event.clientX, y: event.clientY, dragging: false };
+  }
+
+  function moveFolderDrag(event: PointerEvent): void {
+    if (!folderPress || !event.isPrimary) return;
+    pointer = { x: event.clientX, y: event.clientY };
+    if (!folderPress.dragging && Math.hypot(pointer.x - folderPress.x, pointer.y - folderPress.y) < DRAG_THRESHOLD)
+      return;
+    folderPress.dragging = true;
+    const target = folderAt();
+    dropFolder = target && canDropFolder(folderPress.name, target) ? target : null;
+  }
+
+  function finishFolderDrag(): void {
+    if (folderPress?.dragging) {
+      suppressNextClick();
+      if (dropFolder) send({ type: 'move-tab-group', name: folderPress.name, parent: dropFolder });
+    }
+    cancelFolderDrag();
+  }
+
+  function cancelFolderDrag(): void {
+    folderPress = null;
+    dropFolder = null;
+  }
+
+  function startRename(name: string): void {
+    if (collapsed) return;
+    renaming = name;
+    renameValue = name;
+  }
+
+  function commitRename(): void {
+    if (renaming === null) return;
+    const name = renaming;
+    renaming = null;
+    if (renameValue.trim() && renameValue !== name) send({ type: 'rename-tab-group', name, next: renameValue });
+  }
+
+  function focusSelect(node: HTMLInputElement): void {
+    node.focus();
+    node.select();
+  }
   const profiles: { id: ProfileKind; name: string }[] = $derived([
     { id: 'personal', name: profileName ?? t('tabPanel.profilePersonal') },
     { id: 'developer', name: t('tabPanel.profileDeveloper') },
@@ -178,6 +270,10 @@
   }
 
   function onPointerMove(event: PointerEvent): void {
+    if (folderPress) {
+      moveFolderDrag(event);
+      return;
+    }
     if (!press || press.cancelled || !event.isPrimary) return;
     pointer = { x: event.clientX, y: event.clientY };
     if (!press.dragging) {
@@ -188,7 +284,9 @@
     }
     track();
     setSplitSide(splitSideAt(), press.id);
-    if (splitSide) dropIndex = null;
+    const folder = press.group === 'listed' && !splitSide ? folderAt() : null;
+    dropFolder = folder && folder !== tabsById.get(press.id)?.group ? folder : null;
+    if (splitSide || dropFolder) dropIndex = null;
     if (scrollSpeed() !== 0 && !scrollFrame) scrollFrame = requestAnimationFrame(autoScroll);
   }
 
@@ -208,6 +306,10 @@
   }
 
   function onPointerUp(event: PointerEvent): void {
+    if (folderPress) {
+      finishFolderDrag();
+      return;
+    }
     if (!press || !event.isPrimary) return;
     if (press.dragging) {
       suppressNextClick();
@@ -215,6 +317,11 @@
         send({ type: 'split-tab', id: press.id, side: splitSide });
         splitSide = null;
         onSplitDrop?.(null);
+        endDrag();
+        return;
+      }
+      if (!press.cancelled && dropFolder) {
+        send({ type: 'move-tab-to-group', id: press.id, name: dropFolder });
         endDrag();
         return;
       }
@@ -228,6 +335,10 @@
   }
 
   function onKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && folderPress) {
+      cancelFolderDrag();
+      return;
+    }
     if (event.key === 'Escape' && selectedTabIds.length > 0 && !press?.dragging) {
       send({ type: 'clear-tab-selection' });
       return;
@@ -344,6 +455,7 @@
     setSplitSide(null);
     dragId = null;
     dragGroup = null;
+    dropFolder = null;
     dropIndex = null;
     dragOffset = { x: 0, y: 0 };
     settleOrder = null;
@@ -353,6 +465,7 @@
   }
 
   function endDrag(): void {
+    cancelFolderDrag();
     press = null;
     resetDragState();
   }
@@ -368,7 +481,7 @@
   });
 </script>
 
-{#snippet favicon(tab: TabSnapshot, size: number)}
+{#snippet favicon(tab: Pick<TabSnapshot, 'faviconUrl'>, size: number)}
   <span class="favicon" style:width="{size}px" style:height="{size}px">
     {#if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
       <img
@@ -480,6 +593,32 @@
   {#key collapsed}
     <div class="body" in:reveal>
       <div class="lists" bind:this={lists}>
+        {#if favorites.length > 0}
+          <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
+            {#each favorites as favorite (favorite.url)}
+              <li
+                class="favorite"
+                class:active={tabsById.get(activeTabId ?? '')?.url === favorite.url}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  send({ type: 'open-favorite-menu', url: favorite.url });
+                }}
+              >
+                <IconButton
+                  size="lg"
+                  variant="surface"
+                  class="tile"
+                  label={favorite.title}
+                  onclick={() => send({ type: 'open-favorite', url: favorite.url })}
+                >
+                  {@render favicon(favorite, 16)}
+                </IconButton>
+              </li>
+            {/each}
+          </ul>
+          {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
+        {/if}
+
         {#if showPinned && pinned.length > 0}
           <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
             {#each pinned as tab, index (tab.id)}
@@ -529,20 +668,46 @@
 
         {#each sections as section (section.key)}
           {#if section.group}
-            <button
-              class="group-heading"
-              title={section.group.name}
-              aria-label={`${section.group.name} (${section.group.count})`}
-              aria-expanded={!section.group.collapsed}
-              onclick={() => send({ type: 'toggle-tab-group', name: section.group!.name })}
-            >
-              <span>{collapsed ? section.group.name.slice(0, 1) : section.group.name}</span><small
-                >{section.group.count}</small
+            {@const group = section.group}
+            {#if renaming === group.name}
+              <input
+                class="group-rename"
+                style:margin-inline-start={indent(section.depth)}
+                aria-label={t('tabPanel.renameFolder')}
+                maxlength="80"
+                bind:value={renameValue}
+                use:focusSelect
+                onblur={commitRename}
+                onkeydown={(e) => {
+                  if (e.key === 'Enter') commitRename();
+                  else if (e.key === 'Escape') renaming = null;
+                  e.stopPropagation();
+                }}
+              />
+            {:else}
+              <button
+                class="group-heading"
+                class:drop-target={dropFolder === group.name}
+                style:margin-inline-start={indent(section.depth)}
+                data-folder={group.name}
+                title={group.name}
+                aria-label={`${group.name} (${group.count})`}
+                aria-expanded={!group.collapsed}
+                onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
+                ondblclick={() => startRename(group.name)}
+                onpointerdown={(e) => onFolderPointerDown(e, group.name)}
+                oncontextmenu={(e) => {
+                  e.preventDefault();
+                  send({ type: 'open-folder-menu', name: group.name });
+                }}
+                onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
               >
-            </button>
+                <span>{collapsed ? group.name.slice(0, 1) : group.name}</span><small>{group.count}</small>
+              </button>
+            {/if}
           {/if}
           {#if !section.group?.collapsed}
-            <ol class="rows">
+            <ol class="rows" style:margin-inline-start={indent(section.depth)}>
               {#each section.entries as tab (tab.id)}
                 {@const index = listedIndex.get(tab.id) ?? -1}
                 <li
@@ -658,6 +823,20 @@
     border-radius: 6px;
     background: var(--surface);
     color: var(--text-muted);
+    padding: 6px;
+    font-size: 12px;
+    margin: 6px 0 3px;
+  }
+  .group-heading.drop-target,
+  .group-rename:focus {
+    outline: 2px solid var(--accent);
+  }
+  .group-rename {
+    flex: none;
+    border: 0;
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
     padding: 6px;
     font-size: 12px;
     margin: 6px 0 3px;

@@ -47,6 +47,7 @@ export interface SavedTab {
   group?: string | null;
   keepAlive?: boolean;
   closedAt?: number;
+  inactiveSince?: number;
   history: SavedHistory | null;
 }
 
@@ -54,6 +55,7 @@ export interface SavedWindow {
   activeTabId: TabId | null;
   tabs: SavedTab[];
   collapsedGroups?: string[];
+  groupParents?: Record<string, string>;
   webAppId?: string;
 }
 
@@ -76,6 +78,7 @@ export function pinnedOnly(window: SavedWindow): SavedWindow {
     activeTabId: null,
     tabs,
     ...(window.collapsedGroups && { collapsedGroups: window.collapsedGroups }),
+    ...(window.groupParents && { groupParents: window.groupParents }),
     ...(window.webAppId && { webAppId: window.webAppId }),
   };
 }

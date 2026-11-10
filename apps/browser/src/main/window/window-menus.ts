@@ -13,6 +13,7 @@ import type { SettingsValues } from '../../shared/types.js';
 
 interface TabMenuActions {
   togglePin(): void;
+  toggleFavorite(): void;
   toggleMute(): void;
   discard(): void;
   close(): void;
@@ -23,17 +24,47 @@ interface TabMenuActions {
   splitWithActive?(): void;
   unsplit?(): void;
   splitSelected?(): void;
+  moveToFolder?(name: string | null): void;
+  moveToNewFolder?(): void;
   muteSelected?(): void;
   pinSelected?(): void;
 }
 
 interface TabMenuAvailability {
+  favorite: boolean;
   others: boolean;
   right: boolean;
   selected?: number;
   splitWithActive?: boolean;
   inSplit?: boolean;
   splitSelected?: boolean;
+  folders?: string[];
+}
+
+interface FolderMenuActions {
+  moveTo(parent: string | null): void;
+  remove(): void;
+}
+
+export function folderMenuTemplate(
+  folder: { parent: string | null },
+  targets: string[],
+  actions: FolderMenuActions,
+): MenuItemConstructorOptions[] {
+  return [
+    ...(targets.length || folder.parent
+      ? [
+          {
+            label: t('window.moveToFolder'),
+            submenu: [
+              ...(folder.parent ? [{ label: t('window.moveOutOfFolder'), click: () => actions.moveTo(null) }] : []),
+              ...targets.map((name) => ({ label: name, click: () => actions.moveTo(name) })),
+            ],
+          },
+        ]
+      : []),
+    { label: t('window.removeFolder'), click: actions.remove },
+  ];
 }
 
 export function tabMenuTemplate(
@@ -47,9 +78,24 @@ export function tabMenuTemplate(
   if (tab.pinned || (!tab.isPrivate && /^https?:/.test(tab.url))) {
     template.push({ label: tab.pinned ? t('window.unpinTab') : t('window.pinTab'), click: actions.togglePin });
   }
+  if (availability.favorite || (!tab.isPrivate && /^https?:/.test(tab.url))) {
+    template.push({
+      label: availability.favorite ? t('window.removeFavorite') : t('window.addFavorite'),
+      click: actions.toggleFavorite,
+    });
+  }
   if (tab.audible || tab.muted) {
     template.push({ label: tab.muted ? t('window.unmuteTab') : t('window.muteTab'), click: actions.toggleMute });
   }
+  if (actions.moveToFolder && actions.moveToNewFolder && availability.folders)
+    template.push({
+      label: t('window.moveToFolder'),
+      submenu: [
+        { label: t('window.newFolder'), click: actions.moveToNewFolder },
+        ...(tab.group ? [{ label: t('window.moveOutOfFolder'), click: () => actions.moveToFolder!(null) }] : []),
+        ...availability.folders.map((name) => ({ label: name, click: () => actions.moveToFolder!(name) })),
+      ],
+    });
   if (tab.live && !isActive) template.push({ label: t('window.unloadTab'), click: actions.discard });
   if (availability.inSplit) template.push({ label: t('window.exitSplitView'), click: actions.unsplit });
   else if (availability.splitWithActive)

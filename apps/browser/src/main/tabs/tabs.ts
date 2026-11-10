@@ -55,6 +55,7 @@ import { PROCEED_URL } from '../privacy/certificates.js';
 import { PROCEED_HTTP_URL } from '../privacy/https-only.js';
 import { MEASURE_STORAGE_SCRIPT, parseStorageUsage, type StorageUsage } from '../privacy/site-data.js';
 import { securityState } from '../privacy/site-info.js';
+import { shouldArchive } from './auto-archive.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
 import { PagePlacement, type PaneSlot } from './page-placement.js';
@@ -84,7 +85,15 @@ import {
   parsePageMedia,
   type PageMedia,
 } from './media.js';
-import { tabGroupName, type TabGroup } from '../../shared/tab-groups.js';
+import {
+  canNestGroup,
+  groupAncestors,
+  groupOrder,
+  parseGroupParents,
+  pruneGroupParents,
+  tabGroupName,
+  type TabGroup,
+} from '../../shared/tab-groups.js';
 import { WORKSPACES_URL } from '../../shared/workspaces.js';
 import { webAppContains } from '../../shared/web-apps.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
@@ -164,7 +173,9 @@ export class TabManager {
   private readonly tabs: Tab[] = [];
   private activeId: TabId | null = null;
   private readonly openedPinned = new Map<TabId, TabId | null>();
+  private readonly favoriteTabs = new Map<string, TabId>();
   private readonly collapsedGroups = new Set<string>();
+  private groupParents = new Map<string, string>();
   private readonly placement = new PagePlacement((tab) => this.slotOf(tab));
   private readonly splits: TabId[][] = [];
   private shown: Tab[] = [];
@@ -217,7 +228,7 @@ export class TabManager {
     const contents = liveContents(this.active());
     return {
       tabs: this.tabs.map((tab) => this.snapshot(tab)),
-      listOrder: tabListOrder(this.tabs, this.openedPinned).map((tab) => tab.id),
+      listOrder: this.listOrder().map((tab) => tab.id),
       activeTabId: this.activeId,
       selectedTabIds: this.selectedTabIds,
       splitTabIds: this.splits.flat(),
@@ -313,7 +324,7 @@ export class TabManager {
   activate(id: TabId, animate = false): void {
     const next = this.find(id);
     if (!next) return;
-    if (next.group) this.collapsedGroups.delete(next.group);
+    if (next.group) this.expandGroup(next.group);
     this.selected.clear();
     this.selectionAnchor = id;
 
@@ -383,7 +394,7 @@ export class TabManager {
     for (const id of members) this.leaveSplit(id);
     const ordered = keepOrder
       ? [...members]
-      : tabListOrder(this.tabs, this.openedPinned)
+      : this.listOrder()
           .map((tab) => tab.id)
           .filter((id) => members.has(id));
     this.splits.push(ordered);
@@ -483,7 +494,7 @@ export class TabManager {
   }
 
   private selectionOrder(): Tab[] {
-    const ordered = tabListOrder(this.tabs, this.openedPinned);
+    const ordered = this.listOrder();
     const seen = new Set(ordered.map((tab) => tab.id));
     return [...this.tabs.filter((tab) => tab.pinnedUrl && !seen.has(tab.id)), ...ordered];
   }
@@ -519,17 +530,51 @@ export class TabManager {
     this.changed();
   }
 
+  private listOrder(): Tab[] {
+    return tabListOrder(this.tabs, this.openedPinned, this.liveParents());
+  }
+
+  private liveParents(): Map<string, string> {
+    this.groupParents = pruneGroupParents(this.groupParents, this.usedGroups());
+    return this.groupParents;
+  }
+
+  private usedGroups(tabs: readonly Tab[] = this.tabs): string[] {
+    return tabs.flatMap((tab) => (tab.group ? [tab.group] : []));
+  }
+
+  private hasGroup(name: string): boolean {
+    return groupOrder(this.usedGroups(), this.liveParents()).includes(name);
+  }
+
+  private expandGroup(name: string): void {
+    for (const group of [name, ...groupAncestors(this.groupParents, name)]) this.collapsedGroups.delete(group);
+  }
+
   groupView(): TabGroup[] {
     const counts = new Map<string, number>();
-    for (const tab of this.tabs) if (tab.group) counts.set(tab.group, (counts.get(tab.group) ?? 0) + 1);
-    return Array.from(counts, ([name, count]) => ({ name, count, collapsed: this.collapsedGroups.has(name) }));
+    for (const name of this.usedGroups()) counts.set(name, (counts.get(name) ?? 0) + 1);
+    const parents = this.liveParents();
+    return groupOrder(counts.keys(), parents).map((name) => ({
+      name,
+      count: counts.get(name) ?? 0,
+      collapsed: this.collapsedGroups.has(name),
+      parent: parents.get(name) ?? null,
+    }));
   }
 
   setSelectedGroup(value: unknown): boolean {
+    return this.setGroup(this.selected.size ? this.selected : new Set(this.activeId ? [this.activeId] : []), value);
+  }
+
+  setTabGroup(id: TabId, value: unknown): boolean {
+    return this.setGroup(this.selected.has(id) ? this.selected : new Set([id]), value);
+  }
+
+  private setGroup(ids: ReadonlySet<TabId>, value: unknown): boolean {
     const name = value === null ? null : tabGroupName(value);
     if (value !== null && !name) return false;
-    if (name && !this.tabs.some((tab) => tab.group === name) && this.groupView().length >= 50) return false;
-    const ids = this.selected.size ? this.selected : new Set(this.activeId ? [this.activeId] : []);
+    if (name && !this.hasGroup(name) && this.groupView().length >= 50) return false;
     let changed = false;
     for (const tab of this.tabs)
       if (ids.has(tab.id)) {
@@ -537,7 +582,38 @@ export class TabManager {
         changed = true;
       }
     if (!changed) return false;
-    if (name) this.collapsedGroups.delete(name);
+    if (name) this.expandGroup(name);
+    this.changed(true);
+    return true;
+  }
+
+  newGroupName(base: string): string {
+    const taken = new Set(this.groupView().map((group) => group.name));
+    for (let n = 1; ; n++) {
+      const name = n === 1 ? base : `${base} ${n}`;
+      if (!taken.has(name)) return name;
+    }
+  }
+
+  groupTargets(name: string): string[] {
+    const parents = this.liveParents();
+    return this.groupView().flatMap((group) =>
+      group.name !== name && group.name !== parents.get(name) && canNestGroup(parents, name, group.name)
+        ? [group.name]
+        : [],
+    );
+  }
+
+  moveGroup(value: unknown, parentValue: unknown): boolean {
+    const name = tabGroupName(value),
+      parent = parentValue === null ? null : tabGroupName(parentValue);
+    if (!name || !this.hasGroup(name) || (parentValue !== null && !(parent && this.hasGroup(parent)))) return false;
+    if (!canNestGroup(this.groupParents, name, parent)) return false;
+    if (parent === null) this.groupParents.delete(name);
+    else {
+      this.groupParents.set(name, parent);
+      this.expandGroup(parent);
+    }
     this.changed(true);
     return true;
   }
@@ -545,14 +621,10 @@ export class TabManager {
   renameGroup(value: unknown, nextValue: unknown): boolean {
     const name = tabGroupName(value),
       next = tabGroupName(nextValue);
-    if (
-      !name ||
-      !next ||
-      !this.tabs.some((tab) => tab.group === name) ||
-      (name !== next && this.tabs.some((tab) => tab.group === next))
-    )
-      return false;
+    if (!name || !next || !this.hasGroup(name) || (name !== next && this.hasGroup(next))) return false;
     for (const tab of this.tabs) if (tab.group === name) tab.group = next;
+    const rename = (group: string) => (group === name ? next : group);
+    this.groupParents = new Map([...this.groupParents].map(([child, parent]) => [rename(child), rename(parent)]));
     if (this.collapsedGroups.delete(name)) this.collapsedGroups.add(next);
     this.changed(true);
     return true;
@@ -560,7 +632,7 @@ export class TabManager {
 
   toggleGroup(value: unknown): void {
     const name = tabGroupName(value);
-    if (!name || !this.tabs.some((tab) => tab.group === name)) return;
+    if (!name || !this.hasGroup(name)) return;
     if (!this.collapsedGroups.delete(name)) this.collapsedGroups.add(name);
     this.changed(true);
   }
@@ -568,7 +640,14 @@ export class TabManager {
   removeGroup(value: unknown): void {
     const name = tabGroupName(value);
     if (!name) return;
-    for (const tab of this.tabs) if (tab.group === name) tab.group = null;
+    const parent = this.liveParents().get(name) ?? null;
+    for (const tab of this.tabs) if (tab.group === name) tab.group = parent;
+    this.groupParents.delete(name);
+    for (const [child, owner] of this.groupParents)
+      if (owner === name) {
+        if (parent) this.groupParents.set(child, parent);
+        else this.groupParents.delete(child);
+      }
     this.collapsedGroups.delete(name);
     this.changed(true);
   }
@@ -610,7 +689,7 @@ export class TabManager {
   }
 
   private bulkTargets(id: TabId, mode: BulkCloseMode): Tab[] {
-    const ordered = tabListOrder(this.tabs, this.openedPinned);
+    const ordered = this.listOrder();
     const source = this.find(id);
     // A pinned launcher not opened in the list sits above all ordinary tabs.
     if (source?.pinnedUrl && !ordered.includes(source)) ordered.unshift(source);
@@ -660,9 +739,7 @@ export class TabManager {
       )
         return false;
       if (targets.some((tab) => tab.id === this.activeId)) {
-        const retained = keepId
-          ? this.find(keepId)
-          : tabListOrder(this.tabs, this.openedPinned).find((tab) => !targets.includes(tab));
+        const retained = keepId ? this.find(keepId) : this.listOrder().find((tab) => !targets.includes(tab));
         if (retained) this.activate(retained.id);
         else this.activeId = null;
       }
@@ -732,7 +809,7 @@ export class TabManager {
   }
 
   private listNeighbor(id: TabId): TabId | null {
-    const order = tabListOrder(this.tabs, this.openedPinned);
+    const order = this.listOrder();
     const position = order.findIndex((tab) => tab.id === id);
     if (position < 0) return null;
     return (order[position + 1] ?? order[position - 1])?.id ?? null;
@@ -858,6 +935,29 @@ export class TabManager {
     let count = 0;
     for (const candidate of this.discardCandidates()) {
       if (shouldDiscard(candidate, now, afterMinutes) && this.discard(candidate.id)) count++;
+    }
+    return count;
+  }
+
+  archiveInactive(now: number, hours: number): number {
+    let count = 0;
+    for (const tab of [...this.tabs]) {
+      const contents = liveContents(tab);
+      const candidate = {
+        active: this.isVisible(tab),
+        pinned: tab.pinnedUrl !== null,
+        private: tab.isPrivate,
+        loading: tab.loading,
+        playing: !!contents?.isCurrentlyAudible() || keepsPlaying(tab) || tab.playingMedia > 0,
+        devToolsOpen: !!contents?.isDevToolsOpened(),
+        edited: tab.edited,
+        autoReload: tab.autoReload !== null,
+        hasLiveChild: this.tabs.some((item) => item.openerId === tab.id && !!item.view),
+        inactiveSince: tab.inactiveSince,
+      };
+      if (!shouldArchive(candidate, now, hours)) continue;
+      this.closeApproved(tab.id);
+      count++;
     }
     return count;
   }
@@ -1010,6 +1110,14 @@ export class TabManager {
         if (contents && tab.url.startsWith(prefix)) contents.reload();
       }
     });
+  }
+
+  openOrActivate(url: string): void {
+    const remembered = this.favoriteTabs.get(url);
+    const existing =
+      (remembered && this.find(remembered)) || this.tabs.find((tab) => tab.url === url && !tab.isPrivate);
+    if (existing) this.activate(existing.id);
+    else this.favoriteTabs.set(url, this.open(url));
   }
 
   private openSingle(url: string): void {
@@ -1398,7 +1506,7 @@ export class TabManager {
   }
 
   selectByIndex(index: number): void {
-    const tab = tabForShortcut(tabListOrder(this.tabs, this.openedPinned), index);
+    const tab = tabForShortcut(this.listOrder(), index);
     if (tab) this.activate(tab.id);
   }
 
@@ -1410,6 +1518,7 @@ export class TabManager {
   }
 
   restore(session: SavedWindow, url?: string): void {
+    this.groupParents = parseGroupParents(session.groupParents);
     if (Array.isArray(session.collapsedGroups))
       for (const name of session.collapsedGroups.slice(0, 50)) {
         const valid = tabGroupName(name);
@@ -1428,12 +1537,18 @@ export class TabManager {
 
   toSavedWindow(): SavedWindow {
     const kept = this.tabs.filter((tab) => !tab.isPrivate);
+    const parents = pruneGroupParents(this.groupParents, this.usedGroups(kept));
+    const names = new Set(groupOrder(this.usedGroups(kept), parents));
     return {
       activeTabId: kept.some((tab) => tab.id === this.activeId) ? this.activeId : (kept[0]?.id ?? null),
-      tabs: kept.map(savedTab),
+      tabs: kept.map((tab) => ({
+        ...savedTab(tab),
+        inactiveSince: this.isVisible(tab) ? Date.now() : tab.inactiveSince,
+      })),
       ...(this.collapsedGroups.size && {
-        collapsedGroups: Array.from(this.collapsedGroups).filter((name) => kept.some((tab) => tab.group === name)),
+        collapsedGroups: Array.from(this.collapsedGroups).filter((name) => names.has(name)),
       }),
+      ...(parents.size && { groupParents: Object.fromEntries(parents) }),
     };
   }
 

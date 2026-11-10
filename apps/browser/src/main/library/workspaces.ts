@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { readingUrl } from '../../shared/reading-list.js';
-import { tabGroupName } from '../../shared/tab-groups.js';
+import { parseGroupParents, pruneGroupParents, tabGroupName } from '../../shared/tab-groups.js';
 import type { WorkspaceSummary } from '../../shared/workspaces.js';
 import type { SavedWindow, SavedTab } from '../tabs/persistence.js';
 
@@ -40,6 +40,7 @@ export function workspaceSnapshot(value: SavedWindow): SavedWindow | null {
     collapsedGroups: Array.isArray(value.collapsedGroups)
       ? value.collapsedGroups.filter((name) => groups.has(name)).slice(0, 50)
       : [],
+    groupParents: Object.fromEntries(pruneGroupParents(parseGroupParents(value.groupParents), groups)),
   };
 }
 export class WorkspaceStore {
