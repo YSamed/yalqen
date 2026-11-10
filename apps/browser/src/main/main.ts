@@ -71,6 +71,7 @@ import { HttpsOnly, hostResolverOptions } from './privacy/https-only.js';
 import { chromeUserAgent } from './app/page-preferences.js';
 import { FindBar } from './window/find-bar.js';
 import { ExternalUrlInbox } from './app/external-urls.js';
+import { startAutoArchive } from './tabs/auto-archive.js';
 import { startMemorySaver } from './tabs/memory-saver.js';
 import { LAZY_SAVE_DELAY_MS } from './storage/json-file.js';
 import { installAppMenu } from './app/app-menu.js';
@@ -1021,6 +1022,10 @@ function startBrowser(): void {
     tabSets: () => windows.map((window) => window.tabs),
     afterMinutes: () => settings.get().discardAfterMinutes,
   });
+  const stopAutoArchive = startAutoArchive({
+    tabSets: () => windows.map((window) => window.tabs),
+    afterHours: () => settings.get().autoArchiveHours,
+  });
 
   app.on('before-quit', (event) => {
     if (quitting) return;
@@ -1038,6 +1043,7 @@ function startBrowser(): void {
   app.on('will-quit', () => {
     persistentProfiles.stop();
     stopMemorySaver();
+    stopAutoArchive();
     void agentBridge.stop();
     updater.stop();
     usage.stop();

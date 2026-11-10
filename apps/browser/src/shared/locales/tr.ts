@@ -807,6 +807,10 @@ export const tr: Record<MessageKey, string> = {
   'settings.minutes30': '30 dk',
   'settings.hours1': '1 sa',
   'settings.hours2': '2 sa',
+  'settings.hours12': '12 sa',
+  'settings.hours24': '24 sa',
+  'settings.days7': '7 gün',
+  'settings.days30': '30 gün',
   'settings.themeSystem': 'Sistem',
   'settings.themeDark': 'Koyu',
   'settings.startupRestore': 'Kaldığım yerden devam et',
@@ -918,6 +922,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.cleared': 'Temizlendi.',
   'settings.memory': 'Bellek',
   'settings.discardUnusedTabs': 'Arka plan sekmelerinin belleğini boşalt',
+  'settings.autoArchiveTabs': 'Kullanılmayan sekmeleri kapat',
+  'settings.autoArchiveTabsHint':
+    'Bu süre boyunca görüntülemediğiniz sekmeler kendiliğinden kapanır. Sekmeleri Kapatılan Sekmeyi Yeniden Aç ile geri getirin veya sayfaları Geçmiş içinde bulun. Sabitlenmiş sekmeler, açık sekme, ses çalan sekmeler ve yazılmış metni olan sekmeler korunur. Hiçbir sekmeyi kapatmamak için Kapalı seçin.',
   'settings.discardUnusedTabsHint':
     'Terk ettiğiniz sekmelerde kod ve animasyonlar durur. Bu süre boyunca görüntülemediğiniz sekmeler ayrıca bellekten çıkar ve tıkladığınızda yeniden yüklenir. Ses çalan, sabitlenmiş ve yazılmış metni olan sekmeler korunur. Hiçbir sekmeyi durdurmamak için Kapalı seçin.',
 
