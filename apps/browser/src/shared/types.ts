@@ -137,6 +137,7 @@ export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
 // How strongly the glass window is tinted, in percent: 0 leaves the bare glass, 100 is almost solid.
 export const DEFAULT_GLASS_TINT = 25;
 export const DISCARD_AFTER_MINUTES = [0, 15, 30, 60, 120] as const;
+export const AUTO_ARCHIVE_HOURS = [0, 12, 24, 168, 720] as const;
 
 export interface BrowserState {
   tabs: TabSnapshot[];
@@ -811,6 +812,7 @@ export interface SettingsValues {
   toolbarVisible: boolean;
   toolbarButtons: ToolbarItemId[];
   discardAfterMinutes: number;
+  autoArchiveHours: number;
   adBlocking: boolean;
   threatProtection: boolean;
   adBlockExceptions: string[];

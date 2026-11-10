@@ -11,6 +11,7 @@ import {
 } from './bookmarks.js';
 import { isWebUrl, MAX_VISITS, type HistoryStore, type ImportedVisit } from './history.js';
 import { t } from '../../shared/i18n.js';
+import type { WorkspaceStore } from './workspaces.js';
 
 export interface ImportSource {
   label: string;
@@ -27,6 +28,22 @@ export interface BookmarkImportResult {
   bookmarks: number;
   folders: number;
   skipped: number;
+  workspaces?: number;
+}
+
+interface SpaceTab {
+  url: string;
+  title: string;
+  group: string | null;
+}
+
+interface ImportedSpace {
+  name: string;
+  tabs: SpaceTab[];
+}
+
+interface ParsedArcSidebar extends ParsedBookmarks {
+  spaces: ImportedSpace[];
 }
 
 export interface HistoryImportResult {
@@ -232,7 +249,7 @@ const isPinnedMarker = (entry: unknown) =>
   entry === 'pinned' || (typeof entry === 'object' && entry !== null && 'pinned' in entry);
 const isProfileMarker = (entry: unknown) => typeof entry === 'object' && entry !== null;
 
-export function parseArcSidebar(data: unknown): ParsedBookmarks {
+export function parseArcSidebar(data: unknown): ParsedArcSidebar {
   const containers = (data as { sidebar?: { containers?: unknown } } | null)?.sidebar?.containers;
   type Container = { global?: unknown; items?: unknown; spaces?: unknown; topAppsContainerIDs?: unknown } | null;
   const list: Container[] = Array.isArray(containers) ? containers : [];
@@ -256,6 +273,8 @@ export function parseArcSidebar(data: unknown): ParsedBookmarks {
   const importedFolders: ImportedBookmarkFolder[] = [];
   const seen = new Set<string>();
   const visited = new Set<string>();
+  const spaces: ImportedSpace[] = [];
+  let space: Map<string, SpaceTab> | null = null;
   let skipped = 0;
   const walk = (id: string, folders: readonly string[]): void => {
     if (visited.has(id) || folders.length >= 128) return;
@@ -265,13 +284,18 @@ export function parseArcSidebar(data: unknown): ParsedBookmarks {
       const tab = item.data?.tab;
       if (tab) {
         const url = typeof tab.savedURL === 'string' ? tab.savedURL : '';
+        const tabTitle = title || (typeof tab.savedTitle === 'string' ? tab.savedTitle : '');
+        // Workspaces keep a tab in every space that pins it, so this check is separate from the bookmark one below.
+        if (space && canBookmark(url) && !space.has(url)) {
+          space.set(url, { url, title: tabTitle, group: folders[1] ?? null });
+        }
         if (!canBookmark(url) || seen.has(url)) {
           skipped++;
           continue;
         }
         seen.add(url);
         bookmarks.push({
-          title: title || (typeof tab.savedTitle === 'string' ? tab.savedTitle : ''),
+          title: tabTitle,
           url,
           folder: folderTitle(folders),
           folderPath: folders.filter((segment) => segment.trim()),
@@ -287,26 +311,52 @@ export function parseArcSidebar(data: unknown): ParsedBookmarks {
       }
     }
   };
-  const addRoot = (id: string, title: string) => {
+  const addRoot = (id: string, title: string, own: Map<string, SpaceTab> | null = null) => {
     importedFolders.push({ title, path: [title], createdAt: null });
+    space = own;
     walk(id, [title]);
+    space = null;
   };
   let unnamed = 0;
-  for (const space of container.spaces as (ArcSpace | string | null)[]) {
-    if (!space || typeof space !== 'object') continue;
+  for (const arcSpace of container.spaces as (ArcSpace | string | null)[]) {
+    if (!arcSpace || typeof arcSpace !== 'object') continue;
     const name =
-      typeof space.title === 'string' && space.title.trim()
-        ? space.title.trim()
+      typeof arcSpace.title === 'string' && arcSpace.title.trim()
+        ? arcSpace.title.trim()
         : t('browserImport.arcSpace', { n: ++unnamed });
-    for (const id of idAfter(space.newContainerIDs ?? space.containerIDs, isPinnedMarker)) addRoot(id, name);
+    const own = new Map<string, SpaceTab>();
+    for (const id of idAfter(arcSpace.newContainerIDs ?? arcSpace.containerIDs, isPinnedMarker)) addRoot(id, name, own);
+    if (own.size > 0) spaces.push({ name, tabs: [...own.values()] });
   }
   for (const id of idAfter(container.topAppsContainerIDs, isProfileMarker)) {
     addRoot(id, t('browserImport.arcFavorites'));
   }
-  return { bookmarks, folders: importedFolders, skipped };
+  return { bookmarks, folders: importedFolders, skipped, spaces };
 }
 
-export async function importArcSidebar(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
+// Names that already exist are rejected by the store, so importing again adds nothing.
+function saveSpaces(workspaces: WorkspaceStore, spaces: readonly ImportedSpace[]): number {
+  return spaces.filter(({ name, tabs }) =>
+    workspaces.save(name.slice(0, 80), {
+      activeTabId: null,
+      tabs: tabs.slice(0, 200).map((tab, index) => ({
+        id: String(index),
+        url: tab.url,
+        title: tab.title || tab.url,
+        faviconUrl: null,
+        pinnedUrl: tab.url,
+        group: tab.group,
+        history: null,
+      })),
+    }),
+  ).length;
+}
+
+export async function importArcSidebar(
+  store: BookmarkStore,
+  file: string,
+  workspaces?: WorkspaceStore,
+): Promise<BookmarkImportResult> {
   const text = await fs.promises.readFile(file, 'utf8');
   let data: unknown;
   try {
@@ -317,12 +367,20 @@ export async function importArcSidebar(store: BookmarkStore, file: string): Prom
   }
   const parsed = parseArcSidebar(data);
   const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
-  return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
+  return {
+    ...added,
+    skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks,
+    workspaces: workspaces ? saveSpaces(workspaces, parsed.spaces) : 0,
+  };
 }
 
-export async function importBookmarkFile(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
+export async function importBookmarkFile(
+  store: BookmarkStore,
+  file: string,
+  workspaces?: WorkspaceStore,
+): Promise<BookmarkImportResult> {
   if (isFirefoxPlaces(file)) return importFirefoxBookmarks(store, file);
-  if (isArcSidebar(file)) return importArcSidebar(store, file);
+  if (isArcSidebar(file)) return importArcSidebar(store, file, workspaces);
   const { readBookmarkFile, parseBookmarkHtml } = await import('./bookmark-html.js');
   const text = await readBookmarkFile(file);
   const parsed = text.trimStart().startsWith('<')

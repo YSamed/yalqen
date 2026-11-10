@@ -801,6 +801,10 @@ export const en = {
   'settings.minutes30': '30 min',
   'settings.hours1': '1 hr',
   'settings.hours2': '2 hr',
+  'settings.hours12': '12 hr',
+  'settings.hours24': '24 hr',
+  'settings.days7': '7 days',
+  'settings.days30': '30 days',
   'settings.themeSystem': 'System',
   'settings.themeDark': 'Dark',
   'settings.startupRestore': 'Restore last session',
@@ -911,6 +915,9 @@ export const en = {
   'settings.cleared': 'Cleared.',
   'settings.memory': 'Memory',
   'settings.discardUnusedTabs': 'Free memory from background tabs',
+  'settings.autoArchiveTabs': 'Close tabs you have not used',
+  'settings.autoArchiveTabsHint':
+    "Tabs you haven't viewed for this long close on their own. Reopen them with Reopen Closed Tab, or find the pages in History. Pinned tabs, the open tab, tabs playing audio and tabs with typed text are kept. Choose Off to keep every tab.",
   'settings.discardUnusedTabsHint':
     "Code and animations stop in tabs you leave. Tabs you haven't viewed for this long also free their memory and reload when you click them. Tabs playing audio, pinned tabs and tabs with typed text are kept. Choose Off to keep every tab running.",
 
@@ -1130,6 +1137,8 @@ export const en = {
   'window.noNewBookmarks': 'No new bookmarks to import.',
   'window.foldersCreated': '{count} new folders created.',
   'window.foldersCreated.one': '{count} new folder created.',
+  'window.workspacesCreated': '{count} new workspaces created.',
+  'window.workspacesCreated.one': '{count} new workspace created.',
   'window.bookmarksSkipped': '{count} bookmarks already existed or are not supported, so they were skipped.',
   'window.bookmarksSkipped.one': '{count} bookmark already existed or is not supported, so it was skipped.',
   'window.bookmarksImportFailed': "Couldn't import bookmarks.",
