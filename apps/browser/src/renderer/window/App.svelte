@@ -53,6 +53,7 @@
     panelCollapsed: true,
     panelSide: 'left',
     pinnedDisplay: 'always',
+    favorites: [],
     sidebarVisible: true,
     media: null,
     toolbarVisible: true,
@@ -111,6 +112,7 @@
   const profileName = $derived(browser.profileName);
   const media = $derived(browser.media);
   const pinnedDisplay = $derived(browser.pinnedDisplay);
+  const favorites = $derived(browser.favorites);
   const sidebarVisible = $derived(browser.sidebarVisible);
   const toolbarVisible = $derived(browser.toolbarVisible);
   const toolbarButtons = $derived(browser.toolbarButtons);
@@ -352,6 +354,7 @@
         {profile}
         {profileName}
         {pinnedDisplay}
+        {favorites}
         {media}
       />
     {/if}

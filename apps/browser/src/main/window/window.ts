@@ -30,6 +30,7 @@ import {
   type WindowMaterial,
 } from '../../shared/types.js';
 import type { BookmarkStore } from '../library/bookmarks.js';
+import type { FavoriteStore } from '../library/favorites.js';
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
 import type { CommandBar, CommandBarHost } from '../address-bar/command-bar.js';
@@ -150,6 +151,8 @@ export interface AppContext {
   chatPreferences: ChatPreferenceStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
+  favorites: FavoriteStore;
+  favoritesChanged(): void;
   extensions: ExtensionManager;
   extensionPopup: ExtensionPopup;
   extensionAccess: import('../extensions/extension-access-controller.js').ExtensionAccessController;
@@ -619,6 +622,7 @@ export class YalqenWindow {
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
+      favorites: this.webApp ? [] : this.app.favorites.list(),
       sidebarVisible: this.webApp ? false : this.app.settings.get().sidebarVisible,
       media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
       toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
@@ -1560,6 +1564,13 @@ export class YalqenWindow {
       case 'open-tab-menu':
         this.openTabMenu(action.id);
         break;
+      case 'open-favorite':
+        if (this.app.favorites.has(action.url)) tabs.openOrActivate(action.url);
+        break;
+      case 'open-favorite-menu':
+        if (!this.isPrivate && this.app.favorites.has(action.url))
+          this.popup([{ label: t('window.removeFavorite'), click: () => this.toggleFavorite(action.url) }]);
+        break;
       case 'move-tab':
         tabs.move(action.id, action.toIndex);
         break;
@@ -1815,6 +1826,7 @@ export class YalqenWindow {
         tabs.isShown(id),
         {
           togglePin: () => tabs.togglePin(id),
+          toggleFavorite: () => this.toggleFavorite(tab.url, tab.title, tab.faviconUrl),
           toggleMute: () => tabs.toggleMute(id),
           discard: () => tabs.discard(id),
           close: () => tabs.close(id),
@@ -1837,6 +1849,7 @@ export class YalqenWindow {
           splitSelected: () => tabs.splitSelected(),
         },
         {
+          favorite: !this.isPrivate && this.app.favorites.has(tab.url),
           others: tabs.canCloseRelated(id, 'others'),
           right: tabs.canCloseRelated(id, 'right'),
           selected: tabs.selectedTabIds.includes(id) ? tabs.selectedTabIds.length : 0,
@@ -1846,6 +1859,11 @@ export class YalqenWindow {
         },
       ),
     );
+  }
+
+  private toggleFavorite(url: string, title = url, faviconUrl: string | null = null): void {
+    if (this.isPrivate || this.webApp) return;
+    if (this.app.favorites.toggle({ url, title, faviconUrl })) this.app.favoritesChanged();
   }
 
   private popup(template: Electron.MenuItemConstructorOptions[]): void {

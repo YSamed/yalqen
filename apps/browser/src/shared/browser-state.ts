@@ -62,6 +62,7 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     projectRun: reuseFields(previous.projectRun, next.projectRun)!,
     agentProviders: reuseArray(previous.agentProviders, next.agentProviders),
     agentElements: reuseItems(previous.agentElements, next.agentElements),
+    favorites: reuseItems(previous.favorites, next.favorites),
     agentProjects: reuseItems(previous.agentProjects, next.agentProjects),
     agentBackgroundChats: reuseItems(previous.agentBackgroundChats, next.agentBackgroundChats),
   };

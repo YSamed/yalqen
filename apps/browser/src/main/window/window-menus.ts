@@ -13,6 +13,7 @@ import type { SettingsValues } from '../../shared/types.js';
 
 interface TabMenuActions {
   togglePin(): void;
+  toggleFavorite(): void;
   toggleMute(): void;
   discard(): void;
   close(): void;
@@ -28,6 +29,7 @@ interface TabMenuActions {
 }
 
 interface TabMenuAvailability {
+  favorite: boolean;
   others: boolean;
   right: boolean;
   selected?: number;
@@ -46,6 +48,12 @@ export function tabMenuTemplate(
   template.push({ label: t('window.duplicateTab'), click: actions.duplicate });
   if (tab.pinned || (!tab.isPrivate && /^https?:/.test(tab.url))) {
     template.push({ label: tab.pinned ? t('window.unpinTab') : t('window.pinTab'), click: actions.togglePin });
+  }
+  if (availability.favorite || (!tab.isPrivate && /^https?:/.test(tab.url))) {
+    template.push({
+      label: availability.favorite ? t('window.removeFavorite') : t('window.addFavorite'),
+      click: actions.toggleFavorite,
+    });
   }
   if (tab.audible || tab.muted) {
     template.push({ label: tab.muted ? t('window.unmuteTab') : t('window.muteTab'), click: actions.toggleMute });

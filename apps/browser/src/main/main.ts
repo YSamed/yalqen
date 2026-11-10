@@ -85,6 +85,7 @@ import { installSiteStorageHandlers, observeStorageOrigins } from './privacy/sit
 import { ReadingListStore, saveReadingPage } from './library/reading-list.js';
 import { installReadingListHandlers, broadcastReadingList } from './library/reading-list-handlers.js';
 import { WorkspaceStore } from './library/workspaces.js';
+import { FavoriteStore } from './library/favorites.js';
 import { installWorkspaceHandlers } from './library/workspace-handlers.js';
 import { WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
 import { WebAppStore } from './library/web-apps.js';
@@ -193,6 +194,7 @@ function startBrowser(): void {
   const bookmarks = new BookmarkStore(userData);
   const readingList = new ReadingListStore(userData);
   const workspaces = new WorkspaceStore(userData);
+  const favorites = new FavoriteStore(userData);
   const webAppStore = new WebAppStore(userData);
   const webApps = new WebAppController({
     store: webAppStore,
@@ -631,6 +633,8 @@ function startBrowser(): void {
     chatPreferences,
     downloads,
     bookmarks,
+    favorites,
+    favoritesChanged: pushState,
     extensions,
     extensionPopup,
     extensionAccess,
