@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.89](https://github.com/YSamed/yalqen/compare/v0.3.88...v0.3.89) (2026-11-10)
+
+
+### Features
+
+* draw tooltips in yalqen's style with shortcut key caps ([#358](https://github.com/YSamed/yalqen/issues/358)) ([b4f81ba](https://github.com/YSamed/yalqen/commit/b4f81bab20161139d573e758844f14110f7c01ba))
+* show the play button in the collapsed sidebar ([#357](https://github.com/YSamed/yalqen/issues/357)) ([a1ea790](https://github.com/YSamed/yalqen/commit/a1ea79008c47d4cb8ff345e5f847e0f309305cd8))
+
 ## [0.3.88](https://github.com/YSamed/yalqen/compare/v0.3.87...v0.3.88) (2026-11-09)
 
 
