@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.97](https://github.com/YSamed/yalqen/compare/v0.3.96...v0.3.97) (2026-11-11)
+
+
+### Features
+
+* preview gmail and calendar when hovering their tabs ([#383](https://github.com/YSamed/yalqen/issues/383)) ([feb5c92](https://github.com/YSamed/yalqen/commit/feb5c922c1bbd6eec74dfb7be2abc0af62bb4a7d))
+* redesign sidebar bottom row and space switcher ([#387](https://github.com/YSamed/yalqen/issues/387)) ([b52458c](https://github.com/YSamed/yalqen/commit/b52458c965e15563893615c06b5022083fdb57de))
+
 ## [0.3.96](https://github.com/YSamed/yalqen/compare/v0.3.95...v0.3.96) (2026-11-11)
 
 
