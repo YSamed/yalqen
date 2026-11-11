@@ -2,7 +2,7 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain, nativeTheme, webContents, type WebContents } from 'electron';
+import { app, dialog, ipcMain, nativeTheme, net, webContents, type WebContents } from 'electron';
 import { ExtensionAccessController } from './extensions/extension-access-controller.js';
 import {
   BOOKMARKS_URL,
@@ -87,6 +87,7 @@ import { ReadingListStore, saveReadingPage } from './library/reading-list.js';
 import { installReadingListHandlers, broadcastReadingList } from './library/reading-list-handlers.js';
 import { WorkspaceStore } from './library/workspaces.js';
 import { FavoriteStore } from './library/favorites.js';
+import { LiveFolderRefresher, LiveFolderStore } from './library/live-folders.js';
 import { installWorkspaceHandlers } from './library/workspace-handlers.js';
 import { spaceForUrl } from '../shared/space-rules.js';
 import { DEFAULT_SPACE_ID, WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
@@ -202,6 +203,7 @@ function startBrowser(): void {
   const readingList = new ReadingListStore(userData);
   const workspaces = new WorkspaceStore(userData);
   const favorites = new FavoriteStore(userData);
+  const liveFolders = new LiveFolderStore(userData);
   const webAppStore = new WebAppStore(userData);
   const webApps = new WebAppController({
     store: webAppStore,
@@ -300,6 +302,11 @@ function startBrowser(): void {
     for (const window of [...windows]) run(window);
   };
   const pushState = () => eachWindow((window) => window.pushState());
+  const liveFolderRefresher = new LiveFolderRefresher({
+    store: liveFolders,
+    fetch: (url, init) => net.fetch(url, init),
+    changed: pushState,
+  });
   const persistentProfiles = new ProfileController(
     profileRegistry,
     selectedProfile.profile.id,
@@ -665,6 +672,9 @@ function startBrowser(): void {
     bookmarks,
     favorites,
     favoritesChanged: pushState,
+    liveFolders,
+    liveFolderRefresher,
+    liveFoldersChanged: pushState,
     workspaces,
     spacesChanged: workspacesChanged,
     extensions,
@@ -1073,6 +1083,7 @@ function startBrowser(): void {
     tabSets: () => windows.map((window) => window.tabs),
     afterMinutes: () => settings.get().discardAfterMinutes,
   });
+  const stopLiveFolders = liveFolderRefresher.start();
   const stopAutoArchive = startAutoArchive({
     tabSets: () => windows.map((window) => window.tabs),
     afterHours: () => settings.get().autoArchiveHours,
@@ -1095,6 +1106,7 @@ function startBrowser(): void {
     persistentProfiles.stop();
     stopMemorySaver();
     stopAutoArchive();
+    stopLiveFolders();
     void agentBridge.stop();
     updater.stop();
     usage.stop();
@@ -1114,6 +1126,7 @@ function startBrowser(): void {
     chatPreferences.saveNow();
     downloads.saveNow();
     bookmarks.saveNow();
+    liveFolders.saveNow();
     zoom.saveNow();
     permissions.saveNow();
     passwords.saveNow();

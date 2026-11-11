@@ -149,6 +149,7 @@ export interface BrowserState {
   selectedTabIds: TabId[];
   splitTabIds: TabId[];
   tabGroups?: import('./tab-groups').TabGroup[];
+  liveFolders?: import('./live-folders').LiveFolderView[];
   // Empty where spaces do not apply (private, developer and web-app windows).
   spaces: import('./workspaces').SpaceView[];
   activeSpaceId: string;
@@ -427,6 +428,11 @@ export type UiAction =
   | { type: 'move-tab-to-group'; id: TabId; name: string | null }
   | { type: 'move-tab-group'; name: string; parent: string | null }
   | { type: 'open-folder-menu'; name: string }
+  | { type: 'add-live-folder'; kind: import('./live-folders').LiveFolderKind; input: string }
+  | { type: 'toggle-live-folder'; id: string }
+  | { type: 'refresh-live-folder'; id: string }
+  | { type: 'open-live-folder-menu'; id: string }
+  | { type: 'open-live-item'; id: string; itemId: string }
   | { type: 'switch-space'; id: string }
   | { type: 'create-space' }
   | { type: 'rename-space'; id: string; name: string }

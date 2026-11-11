@@ -9,8 +9,10 @@
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import MediaPlayer from './MediaPlayer.svelte';
+  import LiveFolders from './LiveFolders.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import type { TabGroup } from '../../shared/tab-groups';
+  import type { LiveFolderView } from '../../shared/live-folders';
   import type { SpaceView } from '../../shared/workspaces';
 
   let {
@@ -32,6 +34,7 @@
     profileName,
     pinnedDisplay,
     favorites,
+    liveFolders,
     spaces,
     activeSpaceId,
     media,
@@ -56,6 +59,7 @@
     profileName?: string;
     pinnedDisplay: PinnedDisplay;
     favorites: Favorite[];
+    liveFolders: LiveFolderView[];
     spaces: SpaceView[];
     activeSpaceId: string;
     media: MediaInfo | null;
@@ -781,6 +785,10 @@
           </div>
         {/if}
       </div>
+
+      {#if !collapsed && profile !== 'private'}
+        <LiveFolders folders={liveFolders} />
+      {/if}
 
       {#if media}
         <MediaPlayer {media} compact={collapsed} />

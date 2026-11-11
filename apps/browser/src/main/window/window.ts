@@ -31,6 +31,8 @@ import {
 } from '../../shared/types.js';
 import type { BookmarkStore } from '../library/bookmarks.js';
 import type { FavoriteStore } from '../library/favorites.js';
+import type { LiveFolderRefresher, LiveFolderStore } from '../library/live-folders.js';
+import { isLiveFolderKind, liveFolderSource } from '../../shared/live-folders.js';
 import type { WorkspaceStore } from '../library/workspaces.js';
 import { DEFAULT_SPACE_ID, SPACE_ICONS, type SpaceView } from '../../shared/workspaces.js';
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
@@ -164,6 +166,9 @@ export interface AppContext {
   bookmarks: BookmarkStore;
   favorites: FavoriteStore;
   favoritesChanged(): void;
+  liveFolders: LiveFolderStore;
+  liveFolderRefresher: LiveFolderRefresher;
+  liveFoldersChanged(): void;
   workspaces: WorkspaceStore;
   spacesChanged(): void;
   extensions: ExtensionManager;
@@ -661,6 +666,7 @@ export class YalqenWindow {
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
       favorites: this.webApp ? [] : this.app.favorites.list(),
+      liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
       sidebarVisible: this.webApp ? false : this.app.settings.get().sidebarVisible,
       media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
       toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
@@ -1612,6 +1618,26 @@ export class YalqenWindow {
       case 'open-folder-menu':
         this.openFolderMenu(action.name);
         break;
+      case 'add-live-folder':
+        this.addLiveFolder(action.kind, action.input);
+        break;
+      case 'toggle-live-folder':
+        if (!this.isPrivate && this.app.liveFolders.toggle(action.id)) this.app.liveFoldersChanged();
+        break;
+      case 'refresh-live-folder':
+        if (!this.isPrivate) void this.app.liveFolderRefresher.refresh([action.id]);
+        break;
+      case 'open-live-folder-menu':
+        this.openLiveFolderMenu(action.id);
+        break;
+      case 'open-live-item': {
+        const url = this.isPrivate ? null : this.app.liveFolders.open(action.id, action.itemId);
+        if (url) {
+          tabs.openOrActivate(url);
+          this.app.liveFoldersChanged();
+        }
+        break;
+      }
       case 'close-tab':
         tabs.close(action.id);
         break;
@@ -2013,6 +2039,31 @@ export class YalqenWindow {
         remove: () => tabs.removeGroup(name),
       }),
     );
+  }
+
+  private addLiveFolder(kind: unknown, input: unknown): void {
+    const source = isLiveFolderKind(kind) ? liveFolderSource(kind, input) : null;
+    const id = this.isPrivate || !source ? null : this.app.liveFolders.add(source);
+    if (!id) {
+      this.notice.show([t('liveFolders.failed')]);
+      return;
+    }
+    this.app.liveFoldersChanged();
+    void this.app.liveFolderRefresher.refresh([id]);
+  }
+
+  private openLiveFolderMenu(id: string): void {
+    if (this.isPrivate) return;
+    const store = this.app.liveFolders;
+    this.popup([
+      { label: t('liveFolders.refresh'), click: () => void this.app.liveFolderRefresher.refresh([id]) },
+      {
+        label: t('liveFolders.markRead'),
+        click: () => store.readAll(id) && this.app.liveFoldersChanged(),
+      },
+      { type: 'separator' },
+      { label: t('liveFolders.remove'), click: () => store.remove(id) && this.app.liveFoldersChanged() },
+    ]);
   }
 
   private toggleFavorite(url: string, title = url, faviconUrl: string | null = null): void {

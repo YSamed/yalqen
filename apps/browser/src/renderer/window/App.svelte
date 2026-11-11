@@ -3,6 +3,7 @@
   import { t } from '../../shared/i18n';
   import { DEFAULT_GLASS_TINT, type BrowserState } from '../../shared/types';
   import type { TabGroup } from '../../shared/tab-groups';
+  import type { LiveFolderView } from '../../shared/live-folders';
   import { reuseBrowserState } from '../../shared/browser-state';
   import { accentHex, DEFAULT_ACCENT } from '../../shared/accent';
   import { windowTintVars } from '../../shared/window-color';
@@ -40,6 +41,7 @@
   const PANEL_ANIMATION_MS = 240;
   const CONTENT_SWAP_PROGRESS = 0.5;
   const NO_GROUPS: TabGroup[] = [];
+  const NO_LIVE_FOLDERS: LiveFolderView[] = [];
 
   let browser: BrowserState = $state.raw({
     tabs: [],
@@ -366,6 +368,7 @@
         {profileName}
         {pinnedDisplay}
         {favorites}
+        liveFolders={browser.liveFolders ?? NO_LIVE_FOLDERS}
         {spaces}
         {activeSpaceId}
         {media}

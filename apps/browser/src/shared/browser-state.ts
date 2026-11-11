@@ -1,3 +1,4 @@
+import type { LiveFolderView } from './live-folders';
 import type { BrowserState, TabSnapshot } from './types';
 
 function sameFields<T extends object>(previous: T | null, next: T | null): boolean {
@@ -30,6 +31,15 @@ function reuseTab(previous: TabSnapshot | undefined, next: TabSnapshot): TabSnap
   return sameFields(previous, candidate) ? previous : candidate;
 }
 
+function reuseLiveFolders(previous: LiveFolderView[], next: LiveFolderView[]): LiveFolderView[] {
+  return reuseArray(
+    previous,
+    next.map((folder, index) =>
+      previous[index] && JSON.stringify(previous[index]) === JSON.stringify(folder) ? previous[index] : folder,
+    ),
+  );
+}
+
 // IPC clones every object in a snapshot. Keep unchanged values stable so Svelte's
 // derived signals and keyed rows can skip work, without mutating raw state.
 export function reuseBrowserState(previous: BrowserState, next: BrowserState): BrowserState {
@@ -51,6 +61,7 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     splitTabIds: reuseArray(previous.splitTabIds, next.splitTabIds),
     spaces: reuseItems(previous.spaces, next.spaces),
     ...(next.tabGroups && { tabGroups: reuseItems(previous.tabGroups ?? [], next.tabGroups) }),
+    ...(next.liveFolders && { liveFolders: reuseLiveFolders(previous.liveFolders ?? [], next.liveFolders) }),
     toolbarButtons: reuseArray(previous.toolbarButtons, next.toolbarButtons),
     ...(next.toolbarExtensions && {
       toolbarExtensions: reuseItems(previous.toolbarExtensions ?? [], next.toolbarExtensions),
