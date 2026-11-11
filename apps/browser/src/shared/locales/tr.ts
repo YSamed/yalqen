@@ -1528,6 +1528,10 @@ export const tr: Record<MessageKey, string> = {
   'settings.mediaPlayerHint': 'Bir sekmede çalanı kontrollerle sekme listesinin altında gösterir.',
   'settings.accent': 'Vurgu rengi',
   'settings.accentHint': 'Butonlarda, anahtarlarda ve etkin sekmede kullanılır.',
+  'settings.windowColor': 'Pencere rengi',
+  'settings.windowColorHint': 'Kenar çubuğunu ve araç çubuğunu renklendirir. Metin her renkte okunur kalır.',
+  'windowColor.none': 'Renk yok',
+  'windowColor.accent': 'Vurguyla aynı',
   'settings.newTabBackground': 'Yeni sekme arka planı',
   'settings.newTabBackgroundHint':
     'Bilgisayarınızdan bir görsel seçin. Yeni sekme sayfasının arkasında görünür. En fazla 20 MB.',

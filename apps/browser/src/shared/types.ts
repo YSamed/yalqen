@@ -167,6 +167,7 @@ export interface BrowserState {
   material: WindowMaterial;
   glassTint: number;
   accent: string;
+  windowColor: string | null;
   device: DeviceFrame | null;
   zoom: number;
   defaultZoom: number;
@@ -855,6 +856,7 @@ export interface SettingsValues {
   invitationSeen: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
+  windowColor: import('./window-color').WindowColor;
   newTabBackground: string;
   dismissedAnnouncement: string;
   dismissedFeedback: string;

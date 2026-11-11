@@ -113,6 +113,7 @@ import { readingUrl } from '../../shared/reading-list.js';
 import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
 import { accentHex } from '../../shared/accent.js';
+import { windowColorHex } from '../../shared/window-color.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -661,6 +662,7 @@ export class YalqenWindow {
       material: this.material(),
       glassTint: this.app.settings.get().glassTint,
       accent: accentHex(this.app.settings.get().accentColor),
+      windowColor: windowColorHex(this.app.settings.get().windowColor, this.app.settings.get().accentColor),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
