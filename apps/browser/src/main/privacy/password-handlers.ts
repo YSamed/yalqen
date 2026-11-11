@@ -19,6 +19,7 @@ import { passwordOrigin, sanitizeCredential, type Cipher, type PasswordStore, ty
 
 // A login that succeeds navigates or removes its form; one that does neither in time most likely failed.
 const SUBMISSION_WAIT_MS = 10_000;
+const CLIPBOARD_CLEAR_MS = 30_000;
 
 export const safeStorageCipher: Cipher = {
   available: () => safeStorage.isEncryptionAvailable(),
@@ -90,6 +91,7 @@ export function installPasswordHandlers({
 }: PasswordHandlerOptions): void {
   const pending = new WeakMap<WebContents, { accept: () => void; cancel: () => void }>();
   let prompts: Promise<unknown> = Promise.resolve();
+  let clipboardTimer: NodeJS.Timeout | undefined;
 
   const offerToSave = (contents: WebContents, submission: Submission) => {
     prompts = prompts
@@ -225,6 +227,21 @@ export function installPasswordHandlers({
     const password = store.reveal(id);
     if (password === null) return false;
     clipboard.writeText(password);
+    clearTimeout(clipboardTimer);
+    clipboardTimer = setTimeout(() => {
+      void Promise.resolve(clipboard.readText())
+        .then((current) => {
+          if (current === store.reveal(id)) clipboard.clear();
+        })
+        .catch(() => {});
+    }, CLIPBOARD_CLEAR_MS);
+    clipboardTimer.unref();
+    return true;
+  });
+  ipcMain.handle(PasswordsChannel.copyUsername, (event, id: unknown) => {
+    const username = isSettingsFrame(event) && typeof id === 'string' ? store.username(id) : null;
+    if (!username) return false;
+    clipboard.writeText(username);
     return true;
   });
   ipcMain.handle(PasswordsChannel.remove, (event, id: unknown) => {

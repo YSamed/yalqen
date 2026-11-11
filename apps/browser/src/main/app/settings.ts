@@ -21,6 +21,7 @@ import {
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
+import { DEFAULT_WINDOW_COLOR, isWindowColor } from '../../shared/window-color.js';
 import { JsonFile } from '../storage/json-file.js';
 import { isAutoArchiveHours } from '../tabs/auto-archive.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
@@ -70,6 +71,7 @@ const DEFAULTS: Settings = {
   invitationSeen: false,
   displayName: '',
   accentColor: DEFAULT_ACCENT,
+  windowColor: DEFAULT_WINDOW_COLOR,
   newTabBackground: '',
   dismissedAnnouncement: '',
   dismissedFeedback: '',
@@ -147,6 +149,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen,
     displayName,
     accentColor,
+    windowColor,
     newTabBackground,
     dismissedAnnouncement,
     dismissedFeedback,
@@ -228,6 +231,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen: typeof invitationSeen === 'boolean' ? invitationSeen : base.invitationSeen,
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
+    windowColor: isWindowColor(windowColor) ? windowColor : base.windowColor,
     newTabBackground:
       newTabBackground === '' || isBackgroundFileName(newTabBackground) ? newTabBackground : base.newTabBackground,
     dismissedAnnouncement:
