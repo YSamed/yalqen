@@ -78,6 +78,7 @@ app
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
+        spaces: [],
         update: { state: 'unavailable' },
       });
     ipc.registerSettingsIpc({

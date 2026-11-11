@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { passwordIssues } from '../../shared/password-health.js';
 import type { PasswordsView, SubmittedCredential } from '../../shared/types.js';
 import { JsonFile } from '../storage/json-file.js';
 
@@ -218,12 +219,32 @@ export class PasswordStore {
     return entry ? this.decrypt(entry) : null;
   }
 
-  view(): PasswordsView {
+  username(id: string): string | null {
+    return this.passwords.find((candidate) => candidate.id === id)?.username ?? null;
+  }
+
+  view(now = Date.now()): PasswordsView {
+    const available = this.cipher.available();
+    const issues = passwordIssues(
+      available
+        ? this.passwords.flatMap((entry) => {
+            const password = this.decrypt(entry);
+            return password === null ? [] : [{ id: entry.id, password, updatedAt: entry.updatedAt }];
+          })
+        : [],
+      now,
+    );
     return {
-      available: this.cipher.available(),
+      available,
       passwords: [...this.passwords]
         .sort((a, b) => a.origin.localeCompare(b.origin) || a.username.localeCompare(b.username))
-        .map(({ id, origin, username, updatedAt }) => ({ id, origin, username, updatedAt })),
+        .map(({ id, origin, username, updatedAt }) => ({
+          id,
+          origin,
+          username,
+          updatedAt,
+          issues: issues.get(id) ?? [],
+        })),
       neverSave: [...this.never].sort(),
     };
   }

@@ -19,8 +19,10 @@ import {
   toolbarExtensionId,
 } from '../../shared/types.js';
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
+import { sanitizeSpaceRules } from '../../shared/space-rules.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
+import { DEFAULT_WINDOW_COLOR, isWindowColor } from '../../shared/window-color.js';
 import { JsonFile } from '../storage/json-file.js';
 import { isAutoArchiveHours } from '../tabs/auto-archive.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
@@ -42,6 +44,7 @@ const DEFAULTS: Settings = {
   glassTint: DEFAULT_GLASS_TINT,
   startupBehavior: 'restore',
   startupUrls: [],
+  spaceRules: [],
   panelCollapsed: true,
   panelSide: 'left',
   pinnedDisplay: 'always',
@@ -72,6 +75,7 @@ const DEFAULTS: Settings = {
   invitationSeen: false,
   displayName: '',
   accentColor: DEFAULT_ACCENT,
+  windowColor: DEFAULT_WINDOW_COLOR,
   newTabBackground: '',
   dismissedAnnouncement: '',
   dismissedFeedback: '',
@@ -120,6 +124,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     glassTint,
     startupBehavior,
     startupUrls,
+    spaceRules,
     panelCollapsed,
     panelSide,
     pinnedDisplay,
@@ -151,6 +156,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen,
     displayName,
     accentColor,
+    windowColor,
     newTabBackground,
     dismissedAnnouncement,
     dismissedFeedback,
@@ -182,6 +188,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? (startupBehavior as Settings['startupBehavior'])
         : base.startupBehavior,
     startupUrls: Array.isArray(startupUrls) ? sanitizeStartupUrls(startupUrls) : base.startupUrls,
+    spaceRules: Array.isArray(spaceRules) ? sanitizeSpaceRules(spaceRules) : base.spaceRules,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
     panelSide: typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
     pinnedDisplay:
@@ -234,6 +241,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen: typeof invitationSeen === 'boolean' ? invitationSeen : base.invitationSeen,
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
+    windowColor: isWindowColor(windowColor) ? windowColor : base.windowColor,
     newTabBackground:
       newTabBackground === '' || isBackgroundFileName(newTabBackground) ? newTabBackground : base.newTabBackground,
     dismissedAnnouncement:

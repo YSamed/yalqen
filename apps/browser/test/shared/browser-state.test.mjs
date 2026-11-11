@@ -50,6 +50,8 @@ const fixture = () => ({
   panelSide: 'left',
   pinnedDisplay: 'always',
   favorites: [],
+  spaces: [],
+  activeSpaceId: '',
   sidebarVisible: true,
   media: null,
   toolbarVisible: true,
@@ -242,4 +244,23 @@ test('all window fields and nested summaries remain current while tabs are reuse
     next[key] = value;
     assert.deepEqual(reuseBrowserState(previous, freeze(next)), next);
   }
+});
+
+test('live folders keep their identity until their content changes', () => {
+  const folder = {
+    id: 'f',
+    title: 'Feed',
+    collapsed: false,
+    failed: false,
+    unread: 0,
+    items: [{ id: '1', title: 'One', unread: false }],
+  };
+  const previous = freeze({ ...fixture(), liveFolders: [folder] });
+  const same = freeze(structuredClone(previous));
+  assert.equal(reuseBrowserState(previous, same), previous);
+  const changed = structuredClone(previous);
+  changed.liveFolders[0].items[0].unread = true;
+  const result = reuseBrowserState(previous, freeze(changed));
+  assert.deepEqual(result.liveFolders, changed.liveFolders);
+  assert.notEqual(result.liveFolders[0], previous.liveFolders[0]);
 });

@@ -16,6 +16,8 @@ export interface AppMenuHost {
   updater: Updater;
   toggleBookmark(url: string, title: string): void;
   saveReadingPage(window: YalqenWindow): void;
+  hideElement(window: YalqenWindow): void;
+  clipToEasel(window: YalqenWindow): void;
   installWebApp(window: YalqenWindow): void;
   manageWebApps(window: YalqenWindow): void;
   deviceId(): DeviceId;
@@ -57,6 +59,7 @@ export function installAppMenu(host: AppMenuHost): void {
       selectNextTab: inWindow((window) => window.tabs.selectRelative(1)),
       selectPreviousTab: inWindow((window) => window.tabs.selectRelative(-1)),
       selectTab: (index) => current()?.tabs.selectByIndex(index),
+      switchSpace: (index) => current()?.tabs.switchSpaceByIndex(index),
       focusAddress: inWindow((window) => window.openAddress()),
       find: () => current()?.openFind(),
       findNext: (forward) => current()?.openFind(forward),
@@ -116,6 +119,10 @@ export function installAppMenu(host: AppMenuHost): void {
       saveReadingPage: inWindow((window) => host.saveReadingPage(window)),
       showReadingList: inWindow((window) => window.tabs.openReadingList()),
       showWorkspaces: inWindow((window) => window.tabs.openWorkspaces()),
+      showBoosts: inWindow((window) => window.tabs.openBoosts()),
+      hideElement: inWindow((window) => host.hideElement(window)),
+      showEasels: inWindow((window) => window.tabs.openEasels()),
+      clipToEasel: inWindow((window) => host.clipToEasel(window)),
       installWebApp: () => {
         const window = current();
         if (window) host.installWebApp(window);
