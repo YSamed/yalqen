@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.99](https://github.com/YSamed/yalqen/compare/v0.3.98...v0.3.99) (2026-11-11)
+
+
+### Features
+
+* open new tabs at the end of the tab list ([#389](https://github.com/YSamed/yalqen/issues/389)) ([309373a](https://github.com/YSamed/yalqen/commit/309373a2679142b69858823594f5152cc912319c))
+
 ## [0.3.98](https://github.com/YSamed/yalqen/compare/v0.3.97...v0.3.98) (2026-11-11)
 
 
