@@ -9,8 +9,10 @@
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import MediaPlayer from './MediaPlayer.svelte';
+  import LiveFolders from './LiveFolders.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import type { TabGroup } from '../../shared/tab-groups';
+  import type { LiveFolderView } from '../../shared/live-folders';
 
   let {
     tabs,
@@ -31,6 +33,7 @@
     profileName,
     pinnedDisplay,
     favorites,
+    liveFolders,
     media,
     pageRect,
     onSplitDrop,
@@ -53,6 +56,7 @@
     profileName?: string;
     pinnedDisplay: PinnedDisplay;
     favorites: Favorite[];
+    liveFolders: LiveFolderView[];
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
@@ -761,6 +765,10 @@
           </div>
         {/if}
       </div>
+
+      {#if !collapsed && profile !== 'private'}
+        <LiveFolders folders={liveFolders} />
+      {/if}
 
       {#if media}
         <MediaPlayer {media} compact={collapsed} />

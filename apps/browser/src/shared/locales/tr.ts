@@ -17,6 +17,21 @@ export const tr: Record<MessageKey, string> = {
   'webApps.unavailable':
     'Bu sayfada desteklenen web uygulaması manifesti yok. Normal, güvenilir bir HTTPS sayfasından veya yerel test sitesinden kurulum yapın.',
   'webApps.failed': 'Web uygulaması değişikliği kaydedilemedi. Bir profilde en fazla 50 uygulama olabilir.',
+  'liveFolders.failed':
+    'https ile başlayan bir akış adresi veya GitHub akışı için sahip/depo adı girin. En fazla 20 canlı klasör ekleyebilirsiniz.',
+  'liveFolders.title': 'Canlı klasörler',
+  'liveFolders.add': 'Canlı klasör ekle',
+  'liveFolders.kindFeed': 'Akış adresi',
+  'liveFolders.kindReleases': 'GitHub sürümleri',
+  'liveFolders.kindCommits': 'GitHub commit’leri',
+  'liveFolders.kindTags': 'GitHub etiketleri',
+  'liveFolders.inputFeed': 'https://example.com/feed.xml',
+  'liveFolders.inputRepo': 'sahip/depo',
+  'liveFolders.refresh': 'Şimdi yenile',
+  'liveFolders.markRead': 'Tümünü okundu işaretle',
+  'liveFolders.remove': 'Canlı klasörü kaldır',
+  'liveFolders.unavailable': 'Bu akış yenilenemedi',
+  'liveFolders.unread': '{count} okunmamış',
   'tabGroups.failed': '1–80 karakterlik benzersiz bir grup adı kullanın. Bir pencerede en fazla 50 grup olabilir.',
   'workspaces.title': 'Tarayıcı çalışma alanları',
   'workspaces.intro':

@@ -14,6 +14,21 @@ export const en = {
   'webApps.unavailable':
     'This page does not have a supported web app manifest. Install from a normal, trusted HTTPS page or a local test site.',
   'webApps.failed': 'Could not save the web app change. A profile can have up to 50 installed apps.',
+  'liveFolders.failed':
+    'Enter an https feed address, or an owner/repo name for a GitHub feed. You can add up to 20 live folders.',
+  'liveFolders.title': 'Live folders',
+  'liveFolders.add': 'Add live folder',
+  'liveFolders.kindFeed': 'Feed address',
+  'liveFolders.kindReleases': 'GitHub releases',
+  'liveFolders.kindCommits': 'GitHub commits',
+  'liveFolders.kindTags': 'GitHub tags',
+  'liveFolders.inputFeed': 'https://example.com/feed.xml',
+  'liveFolders.inputRepo': 'owner/repo',
+  'liveFolders.refresh': 'Refresh now',
+  'liveFolders.markRead': 'Mark all as read',
+  'liveFolders.remove': 'Remove live folder',
+  'liveFolders.unavailable': 'Could not refresh this feed',
+  'liveFolders.unread': '{count} unread',
   'tabGroups.failed': 'Use a unique group name of 1–80 characters. A window can have up to 50 groups.',
   'workspaces.title': 'Browsing workspaces',
   'workspaces.intro':
