@@ -43,6 +43,10 @@ interface MenuActions {
   showBookmarks(): void;
   saveReadingPage(): void;
   showWorkspaces(): void;
+  showBoosts(): void;
+  hideElement(): void;
+  showEasels(): void;
+  clipToEasel(): void;
   installWebApp(): void;
   manageWebApps(): void;
   showReadingList(): void;
@@ -160,6 +164,10 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.moveTabToNewWindow'), click: actions.moveTabToNewWindow },
         { type: 'separator' },
         { label: t('workspaces.title'), click: actions.showWorkspaces },
+        { label: t('boosts.title'), click: actions.showBoosts },
+        { label: t('boosts.hideElement'), click: actions.hideElement },
+        { label: t('easels.title'), click: actions.showEasels },
+        { label: t('easels.clip'), click: actions.clipToEasel },
         { label: t('webApps.installPage'), click: actions.installWebApp },
         { label: t('webApps.manage'), click: actions.manageWebApps },
         ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({

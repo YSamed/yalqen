@@ -2,7 +2,7 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain, nativeTheme, webContents } from 'electron';
+import { app, dialog, ipcMain, nativeTheme, webContents, type WebContents } from 'electron';
 import { ExtensionAccessController } from './extensions/extension-access-controller.js';
 import {
   BOOKMARKS_URL,
@@ -90,6 +90,11 @@ import { FavoriteStore } from './library/favorites.js';
 import { installWorkspaceHandlers } from './library/workspace-handlers.js';
 import { WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
 import { WebAppStore } from './library/web-apps.js';
+import { BoostStore, boostOrigin } from './library/boosts.js';
+import { installBoosts } from './library/boost-handlers.js';
+import { EaselStore } from './library/easels.js';
+import { installEasels } from './library/easel-handlers.js';
+import { captureClip, pickedSelector } from './tabs/tab-picker.js';
 import { WebAppController } from './app/web-app-controller.js';
 import { webAppContains } from '../shared/web-apps.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
@@ -229,6 +234,22 @@ function startBrowser(): void {
       contents.session === daily &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
     changed: readingListChanged,
+  });
+  const regularPage = (contents: WebContents) =>
+    contents.session === daily &&
+    windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents));
+  const owned = (contents: WebContents) => windows.some((window) => window.tabs.hasContents(contents));
+  const boosts = installBoosts({
+    store: new BoostStore(userData),
+    owned,
+    writable: regularPage,
+    styled: regularPage,
+  });
+  const easels = installEasels({
+    store: new EaselStore(userData),
+    owned,
+    writable: regularPage,
+    defaultName: () => t('easels.defaultName'),
   });
   const storageOrigins = new StorageOrigins(userData);
   const workspacesChanged = () => {
@@ -742,6 +763,8 @@ function startBrowser(): void {
     bookmarks: rendererPath('bookmarks.html'),
     readingList: rendererPath('reading-list.html'),
     workspaces: rendererPath('workspaces.html'),
+    boosts: rendererPath('boosts.html'),
+    easels: rendererPath('easels.html'),
     settings: rendererPath('settings.html'),
   });
   for (const [browsing, isPrivate] of [
@@ -816,6 +839,21 @@ function startBrowser(): void {
         readingListChanged();
         window.tabs.openReadingList();
       } else void dialog.showMessageBox(window.window, { type: 'info', message: t('readingList.saveFailed') });
+    },
+    hideElement: async (window) => {
+      const picked = await window.pickOnPage(pickedSelector);
+      if (!picked) return;
+      const origin = boostOrigin(picked.url);
+      window.showNotice([
+        t(origin && boosts.hide(origin, picked.value) ? 'boosts.elementHidden' : 'boosts.hideFailed'),
+      ]);
+    },
+    clipToEasel: async (window) => {
+      const picked = await window.pickOnPage(captureClip);
+      if (!picked) return;
+      const { url, value: clip } = picked;
+      const name = clip && easels.clip({ ...clip, url, title: window.tabs.activePage()?.title ?? url });
+      window.showNotice([name ? t('easels.clipped', { name }) : t('easels.clipFailed')]);
     },
     deviceId: () => deviceId,
     selectDevice: (id) => {

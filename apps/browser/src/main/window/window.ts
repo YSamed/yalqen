@@ -87,7 +87,7 @@ import type { SettingsStore } from '../app/settings.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
 import { EMPTY_HISTORY_INDEX, suggest } from '../address-bar/suggestions.js';
-import { MAX_SPLIT_PANES, TabManager, type DetachedTab } from '../tabs/tabs.js';
+import { MAX_SPLIT_PANES, TabManager, type DetachedTab, type PageReader } from '../tabs/tabs.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
@@ -1508,6 +1508,24 @@ export class YalqenWindow {
         this.notice.show([t('picker.failed')]);
         break;
     }
+  }
+
+  showNotice(lines: string[]): void {
+    this.notice.show(lines);
+  }
+
+  async pickOnPage<T>(read: PageReader<T>): Promise<{ url: string; value: T } | null> {
+    if (this.tabs.isPicking) {
+      this.tabs.cancelPicking();
+      return null;
+    }
+    const picking = this.tabs.pickPage(read);
+    if (this.tabs.isPicking) this.notice.show([t('pagePicker.start'), t('picker.cancelHint')]);
+    const outcome = await picking;
+    if (outcome.status === 'picked') return outcome;
+    if (outcome.status === 'failed') this.notice.show([t('picker.failed')]);
+    if (outcome.status === 'unavailable') this.notice.show([t('pagePicker.unavailable')]);
+    return null;
   }
 
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
