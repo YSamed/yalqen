@@ -88,7 +88,8 @@ import { installReadingListHandlers, broadcastReadingList } from './library/read
 import { WorkspaceStore } from './library/workspaces.js';
 import { FavoriteStore } from './library/favorites.js';
 import { installWorkspaceHandlers } from './library/workspace-handlers.js';
-import { WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
+import { spaceForUrl } from '../shared/space-rules.js';
+import { DEFAULT_SPACE_ID, WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
 import { WebAppStore } from './library/web-apps.js';
 import { BoostStore, boostOrigin } from './library/boosts.js';
 import { installBoosts } from './library/boost-handlers.js';
@@ -256,6 +257,8 @@ function startBrowser(): void {
     for (const contents of webContents.getAllWebContents())
       if (!contents.isDestroyed() && contents.getURL().startsWith(WORKSPACES_URL))
         contents.send(WorkspaceChannel.changed);
+    for (const window of windows) window.spacesChanged();
+    broadcastSettings(settingsView());
   };
   installWorkspaceHandlers({
     store: workspaces,
@@ -263,7 +266,10 @@ function startBrowser(): void {
     writable: (contents) =>
       contents.session === daily &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
-    snapshot: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.tabs.toSavedWindow() ?? null,
+    snapshot: (contents) => {
+      const tabs = windows.find((window) => window.tabs.hasContents(contents))?.tabs;
+      return tabs?.toSavedWindow(tabs.activeSpaceId) ?? null;
+    },
     open: (saved) => {
       openWindow({ saved });
     },
@@ -588,6 +594,7 @@ function startBrowser(): void {
       version: app.getVersion(),
       update: updater.status(),
       threatLists: threatLists.view(),
+      spaces: [{ id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null }, ...workspaces.spaces()],
     };
   };
   const updater = new Updater({
@@ -658,6 +665,8 @@ function startBrowser(): void {
     bookmarks,
     favorites,
     favoritesChanged: pushState,
+    workspaces,
+    spacesChanged: workspacesChanged,
     extensions,
     extensionPopup,
     extensionAccess,
@@ -1139,28 +1148,40 @@ function startBrowser(): void {
     const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter(
       (window) => window.tabs.length > 0,
     );
-    const openExternal = (urls: string[]) => {
-      const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
-      for (const url of urls) window.tabs.open(url);
+    const routeExternal = (url: string | undefined, external: readonly string[]) =>
+      url !== undefined && external.includes(url)
+        ? (spaceForUrl(settings.get().spaceRules, url, [
+            DEFAULT_SPACE_ID,
+            ...workspaces.spaces().map((space) => space.id),
+          ]) ?? undefined)
+        : undefined;
+    const openExternal = (urls: string[], external: readonly string[] = [...urls]) => {
+      const reusable = current && !current.window.isDestroyed() ? current : null;
+      const first = reusable ? undefined : urls.shift();
+      const window = reusable ?? openWindow({ url: first, space: routeExternal(first, external) });
+      for (const url of urls) window.tabs.open(url, { space: routeExternal(url, external) });
       window.focus();
     };
+    const external = externalUrls.deliverTo(openExternal);
     const launchUrls = [
       ...startupPages(settings.get().startupBehavior, settings.get().startupUrls, saved?.resume === true),
-      ...externalUrls.deliverTo(openExternal),
+      ...external,
     ];
     const [first, ...rest] = launchUrls;
-    if (restored.length === 0) openWindow(first ? { url: first } : {});
-    restored.forEach((window, index) =>
+    if (restored.length === 0) openWindow(first ? { url: first, space: routeExternal(first, external) } : {});
+    restored.forEach((window, index) => {
+      const url = !restoring && index === restored.length - 1 ? first : undefined;
       openWindow({
         saved: window,
         webApp: webAppStore
           .list()
           .find((app) => app.id === window.webAppId && window.tabs.every((tab) => webAppContains(app.scope, tab.url))),
-        url: !restoring && index === restored.length - 1 ? first : undefined,
-      }),
-    );
-    if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
-    else if (rest.length > 0) openExternal(rest);
+        url,
+        space: routeExternal(url, external),
+      });
+    });
+    if (restoring && restored.length > 0 && first) openExternal([first, ...rest], external);
+    else if (rest.length > 0) openExternal(rest, external);
     showInvitation();
   };
 

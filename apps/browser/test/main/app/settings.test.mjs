@@ -44,6 +44,7 @@ test('unknown or mistyped fields fall back', () => {
       glassTint: 25,
       startupBehavior: 'restore',
       startupUrls: [],
+      spaceRules: [],
       panelCollapsed: true,
       panelSide: 'left',
       pinnedDisplay: 'always',
@@ -234,4 +235,28 @@ test('the glass tint is a whole percentage between 0 and 100', () => {
   assert.equal(sanitizeSettings({ glassTint: -4 }).glassTint, 0);
   for (const value of ['40', null, Number.NaN, Infinity])
     assert.equal(sanitizeSettings({ glassTint: value }).glassTint, 25);
+});
+
+test('space rules keep only valid, unique entries and cap at fifty', () => {
+  const rules = sanitizeSettings({
+    spaceRules: [
+      { host: ' GitHub.com ', path: '/org/', space: 'work' },
+      { host: 'github.com', path: '/org', space: 'other' },
+      { host: 'example.com', space: '' },
+      { host: 'https://example.com', space: 'work' },
+      { host: 'example.com:8080', space: 'work' },
+      { host: 'a.test', path: 'no-slash', space: 'work' },
+      { host: 'a.test', path: '/x?y', space: 'work' },
+      { host: 'a.test', space: 7 },
+      'github.com',
+      null,
+    ],
+  }).spaceRules;
+  assert.deepEqual(rules, [
+    { host: 'github.com', path: '/org', space: 'work' },
+    { host: 'example.com', path: '', space: '' },
+  ]);
+  const many = Array.from({ length: 80 }, (_, i) => ({ host: `site${i}.test`, space: 'work' }));
+  assert.equal(sanitizeSettings({ spaceRules: many }).spaceRules.length, 50);
+  assert.deepEqual(sanitizeSettings({ spaceRules: 'x' }).spaceRules, []);
 });
