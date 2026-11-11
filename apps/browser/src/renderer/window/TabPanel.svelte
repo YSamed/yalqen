@@ -11,6 +11,7 @@
   import MediaPlayer from './MediaPlayer.svelte';
   import LiveFolders from './LiveFolders.svelte';
   import IconButton from '../ui/IconButton.svelte';
+  import { createHoverPreviews } from './hover-previews';
   import type { TabGroup } from '../../shared/tab-groups';
   import type { LiveFolderView } from '../../shared/live-folders';
   import type { SpaceView } from '../../shared/workspaces';
@@ -107,6 +108,7 @@
   let renamingSpace: string | null = $state(null);
 
   const send = window.yalqen.send;
+  const previews = createHoverPreviews(send);
   const selected = $derived(new Set(selectedTabIds));
   const split = $derived(new Set(splitTabIds));
 
@@ -635,6 +637,9 @@
               <li
                 class="favorite"
                 class:active={tabsById.get(activeTabId ?? '')?.url === favorite.url}
+                data-hover-preview={previews.has(favorite.url) ? '' : undefined}
+                onpointerenter={(e) => previews.enter(e.currentTarget, null, favorite.url)}
+                onpointerleave={previews.leave}
                 oncontextmenu={(e) => {
                   e.preventDefault();
                   send({ type: 'open-favorite-menu', url: favorite.url });
@@ -668,8 +673,11 @@
                 class:drop-before={draggingPinned && dropIndex === index}
                 class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
                 data-drag-index={index}
+                data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
                 animate:reorder
                 style:transform={dragStyle(tab.id)}
+                onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
+                onpointerleave={previews.leave}
                 onpointerdown={(e) => onPointerDown(e, tab.id, 'pinned')}
                 oncontextmenu={(e) => {
                   e.preventDefault();
@@ -760,8 +768,11 @@
                     dropIndex === index + 1 &&
                     tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
                   data-drag-index={index >= 0 ? index : undefined}
+                  data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
                   animate:reorder
                   style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
+                  onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
+                  onpointerleave={previews.leave}
                   onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
                   oncontextmenu={(e) => {
                     e.preventDefault();

@@ -5,6 +5,19 @@ const DELAY_MS = 500;
 // Moving straight from one tooltip to the next shows it at once, as the system tooltip does.
 const WARM_MS = 300;
 
+// The interface's own colours, for overlays the main process draws above the page.
+export function interfaceTheme(root: Document = document): TooltipTheme {
+  const style = getComputedStyle(root.documentElement);
+  const token = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+  return {
+    dark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+    surface: token('--surface-menu', token('--surface-strong', '#f7f7f8')),
+    text: token('--text', '#1a1b1e'),
+    accent: token('--accent', '#0a84ff'),
+    border: token('--border', 'rgb(16 18 24 / 0.12)'),
+  };
+}
+
 // Native title tooltips cannot follow Yalqen's surface and accent colours, so the interface keeps writing
 // plain title attributes and this takes them over: the title is held aside while hovered so the system
 // tooltip never appears, and the main process draws the styled one above the page.
@@ -15,20 +28,9 @@ export function installTooltips(send: (action: UiAction) => void, root: Document
   let shown = false;
   let lastHidden = 0;
 
-  function theme(): TooltipTheme {
-    const style = getComputedStyle(root.documentElement);
-    const token = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
-    return {
-      dark: window.matchMedia('(prefers-color-scheme: dark)').matches,
-      surface: token('--surface-menu', token('--surface-strong', '#f7f7f8')),
-      text: token('--text', '#1a1b1e'),
-      accent: token('--accent', '#0a84ff'),
-      border: token('--border', 'rgb(16 18 24 / 0.12)'),
-    };
-  }
-
   function show(): void {
-    if (!target?.isConnected) return;
+    // A tile with a hover preview shows that instead; its title is still held aside so no system tooltip shows.
+    if (!target?.isConnected || target.closest('[data-hover-preview]')) return;
     const { text, keys } = splitShortcut(title);
     if (!text) return;
     const rect = target.getBoundingClientRect();
@@ -36,7 +38,12 @@ export function installTooltips(send: (action: UiAction) => void, root: Document
     shown = true;
     send({
       type: 'show-tooltip',
-      tooltip: { text, keys, anchor: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, theme: theme() },
+      tooltip: {
+        text,
+        keys,
+        anchor: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+        theme: interfaceTheme(root),
+      },
     });
   }
 
