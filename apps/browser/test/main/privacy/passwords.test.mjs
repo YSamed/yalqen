@@ -59,7 +59,13 @@ test('a new login is offered for saving, a known one only when its password chan
     store.save(SITE, { username: 'ada', password: 'second' }, 2);
     const { passwords: saved } = store.view();
     assert.equal(saved.length, 1);
-    assert.deepEqual(saved[0], { id: saved[0].id, origin: SITE, username: 'ada', updatedAt: 2 });
+    assert.deepEqual(saved[0], {
+      id: saved[0].id,
+      origin: SITE,
+      username: 'ada',
+      updatedAt: 2,
+      issues: ['weak', 'old'],
+    });
     assert.equal(store.reveal(saved[0].id), 'second');
   });
 });

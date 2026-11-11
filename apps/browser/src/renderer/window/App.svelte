@@ -5,6 +5,7 @@
   import type { TabGroup } from '../../shared/tab-groups';
   import { reuseBrowserState } from '../../shared/browser-state';
   import { accentHex, DEFAULT_ACCENT } from '../../shared/accent';
+  import { windowTintVars } from '../../shared/window-color';
   import { isNewTab } from './format';
   import DeviceControls from './DeviceControls.svelte';
   import TabPanel from './TabPanel.svelte';
@@ -65,6 +66,7 @@
     material: 'opaque',
     glassTint: DEFAULT_GLASS_TINT,
     accent: accentHex(DEFAULT_ACCENT),
+    windowColor: null,
     device: null,
     zoom: 1,
     defaultZoom: 1,
@@ -279,6 +281,11 @@
     document.documentElement.dataset.material = material;
     document.documentElement.style.setProperty('--accent', browser.accent);
     document.documentElement.style.setProperty('--glass-tint', String(browser.glassTint / 100));
+    for (const [name, value] of Object.entries(windowTintVars(browser.windowColor))) {
+      if (value) document.documentElement.style.setProperty(name, value);
+      else document.documentElement.style.removeProperty(name);
+    }
+    document.documentElement.toggleAttribute('data-window-color', browser.windowColor !== null);
     document.documentElement.toggleAttribute('data-fullscreen', windowFullScreen);
   });
 

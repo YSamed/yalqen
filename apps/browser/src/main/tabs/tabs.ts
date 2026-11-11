@@ -96,6 +96,9 @@ import {
   type TabGroup,
 } from '../../shared/tab-groups.js';
 import { DEFAULT_SPACE_ID, WORKSPACES_URL } from '../../shared/workspaces.js';
+import { BOOSTS_URL } from '../../shared/boosts.js';
+import { EASELS_URL } from '../../shared/easels.js';
+import { boostOrigin } from '../library/boosts.js';
 import { webAppContains } from '../../shared/web-apps.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
@@ -171,6 +174,11 @@ interface GroupState {
 
 export const MAX_SPLIT_PANES = 4;
 export type SplitSide = 'left' | 'right';
+
+export type PageReader<T> = (contents: WebContents, backendNodeId: number, view: Rectangle) => Promise<T>;
+
+export type PagePick<T> =
+  { status: 'picked'; url: string; value: T } | { status: 'cancelled' | 'failed' | 'unavailable' };
 
 type PickOutcome =
   | { status: 'picked'; selection: ElementSelection }
@@ -1184,6 +1192,21 @@ export class TabManager {
     this.openSingle(WORKSPACES_URL);
   }
 
+  openBoosts(): void {
+    const site = boostOrigin(this.active()?.url);
+    const url = site ? `${BOOSTS_URL}?site=${encodeURIComponent(site)}` : BOOSTS_URL;
+    const existing = this.tabs.find((tab) => tab.url.startsWith(BOOSTS_URL));
+    if (!existing) this.open(url);
+    else {
+      this.activate(existing.id);
+      if (site) this.navigate(url);
+    }
+  }
+
+  openEasels(): void {
+    this.openSingle(EASELS_URL);
+  }
+
   openSettings(pane?: string): void {
     this.openSingle(pane ? `${SETTINGS_URL}${pane}` : SETTINGS_URL);
   }
@@ -1505,6 +1528,34 @@ export class TabManager {
       return { status: 'referenced', tabId: tab.id, reference };
     } catch (error) {
       console.warn(`[picker] could not read the reference: ${(error as Error).message}`);
+      return { status: 'failed' };
+    } finally {
+      if (this.picking === session) this.picking = null;
+      if (!contents.isDestroyed()) releaseDebugger(tab, contents);
+    }
+  }
+
+  // Lets the user click an element of the current web page; `read` turns the pick into a value.
+  async pickPage<T>(read: PageReader<T>): Promise<PagePick<T>> {
+    const tab = this.active();
+    const contents = liveContents(tab);
+    if (!tab?.view || !contents) return { status: 'cancelled' };
+    if (tab.isPrivate || !/^https?:/.test(tab.url)) return { status: 'unavailable' };
+    this.picking?.cancel();
+    try {
+      attachDebugger(contents);
+    } catch {
+      return { status: 'failed' };
+    }
+    const session = startPicking(contents);
+    this.picking = session;
+    contents.focus();
+    try {
+      const backendNodeId = await session.result;
+      if (backendNodeId === null || contents.isDestroyed()) return { status: 'cancelled' };
+      return { status: 'picked', url: tab.url, value: await read(contents, backendNodeId, tab.view.getBounds()) };
+    } catch (error) {
+      console.warn(`[picker] could not read the page: ${(error as Error).message}`);
       return { status: 'failed' };
     } finally {
       if (this.picking === session) this.picking = null;
