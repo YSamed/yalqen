@@ -1033,11 +1033,14 @@ export interface SavedLoginsView {
   chooseLabel: string;
 }
 
+export type PasswordIssue = 'weak' | 'reused' | 'old';
+
 export interface SavedPasswordInfo {
   id: string;
   origin: string;
   username: string;
   updatedAt: number;
+  issues: PasswordIssue[];
 }
 
 export interface PasswordsView {
@@ -1110,6 +1113,7 @@ export const PasswordsChannel = {
   list: 'yalqen-passwords:list',
   reveal: 'yalqen-passwords:reveal',
   copy: 'yalqen-passwords:copy',
+  copyUsername: 'yalqen-passwords:copy-username',
   remove: 'yalqen-passwords:remove',
   allowSaving: 'yalqen-passwords:allow-saving',
   changed: 'yalqen-passwords:changed',
@@ -1170,6 +1174,7 @@ export interface SettingsApi {
   transferPasswords(mode: 'import' | 'export'): Promise<PasswordTransferResult>;
   revealPassword(id: string): Promise<string | null>;
   copyPassword(id: string): Promise<boolean>;
+  copyUsername(id: string): Promise<boolean>;
   removePassword(id: string): Promise<void>;
   allowSaving(origin: string): Promise<void>;
   onPasswordsChange(listener: (view: PasswordsView) => void): () => void;
