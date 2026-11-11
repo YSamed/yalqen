@@ -1,11 +1,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { bench } from '../bench/bench.js';
 
 const SAVE_DELAY_MS = 500;
 export const LAZY_SAVE_DELAY_MS = 5000;
 const MAX_SAVE_WAIT_MS = 5000;
+
+export function writeFileAtomic(file: string, content: string): boolean {
+  const temp = `${file}.${randomUUID()}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(temp, content, { mode: 0o600 });
+    fs.renameSync(temp, file);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    fs.rmSync(temp, { force: true });
+  }
+}
 
 export class JsonFile {
   private timer: NodeJS.Timeout | null = null;

@@ -2,7 +2,7 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain, nativeTheme, net, webContents } from 'electron';
+import { app, dialog, ipcMain, nativeTheme, net, webContents, type WebContents } from 'electron';
 import { ExtensionAccessController } from './extensions/extension-access-controller.js';
 import {
   BOOKMARKS_URL,
@@ -89,8 +89,14 @@ import { WorkspaceStore } from './library/workspaces.js';
 import { FavoriteStore } from './library/favorites.js';
 import { LiveFolderRefresher, LiveFolderStore } from './library/live-folders.js';
 import { installWorkspaceHandlers } from './library/workspace-handlers.js';
-import { WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
+import { spaceForUrl } from '../shared/space-rules.js';
+import { DEFAULT_SPACE_ID, WorkspaceChannel, WORKSPACES_URL } from '../shared/workspaces.js';
 import { WebAppStore } from './library/web-apps.js';
+import { BoostStore, boostOrigin } from './library/boosts.js';
+import { installBoosts } from './library/boost-handlers.js';
+import { EaselStore } from './library/easels.js';
+import { installEasels } from './library/easel-handlers.js';
+import { captureClip, pickedSelector } from './tabs/tab-picker.js';
 import { WebAppController } from './app/web-app-controller.js';
 import { webAppContains } from '../shared/web-apps.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
@@ -232,11 +238,29 @@ function startBrowser(): void {
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
     changed: readingListChanged,
   });
+  const regularPage = (contents: WebContents) =>
+    contents.session === daily &&
+    windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents));
+  const owned = (contents: WebContents) => windows.some((window) => window.tabs.hasContents(contents));
+  const boosts = installBoosts({
+    store: new BoostStore(userData),
+    owned,
+    writable: regularPage,
+    styled: regularPage,
+  });
+  const easels = installEasels({
+    store: new EaselStore(userData),
+    owned,
+    writable: regularPage,
+    defaultName: () => t('easels.defaultName'),
+  });
   const storageOrigins = new StorageOrigins(userData);
   const workspacesChanged = () => {
     for (const contents of webContents.getAllWebContents())
       if (!contents.isDestroyed() && contents.getURL().startsWith(WORKSPACES_URL))
         contents.send(WorkspaceChannel.changed);
+    for (const window of windows) window.spacesChanged();
+    broadcastSettings(settingsView());
   };
   installWorkspaceHandlers({
     store: workspaces,
@@ -244,7 +268,10 @@ function startBrowser(): void {
     writable: (contents) =>
       contents.session === daily &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
-    snapshot: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.tabs.toSavedWindow() ?? null,
+    snapshot: (contents) => {
+      const tabs = windows.find((window) => window.tabs.hasContents(contents))?.tabs;
+      return tabs?.toSavedWindow(tabs.activeSpaceId) ?? null;
+    },
     open: (saved) => {
       openWindow({ saved });
     },
@@ -574,6 +601,7 @@ function startBrowser(): void {
       version: app.getVersion(),
       update: updater.status(),
       threatLists: threatLists.view(),
+      spaces: [{ id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null }, ...workspaces.spaces()],
     };
   };
   const updater = new Updater({
@@ -647,6 +675,8 @@ function startBrowser(): void {
     liveFolders,
     liveFolderRefresher,
     liveFoldersChanged: pushState,
+    workspaces,
+    spacesChanged: workspacesChanged,
     extensions,
     extensionPopup,
     extensionAccess,
@@ -752,6 +782,8 @@ function startBrowser(): void {
     bookmarks: rendererPath('bookmarks.html'),
     readingList: rendererPath('reading-list.html'),
     workspaces: rendererPath('workspaces.html'),
+    boosts: rendererPath('boosts.html'),
+    easels: rendererPath('easels.html'),
     settings: rendererPath('settings.html'),
   });
   for (const [browsing, isPrivate] of [
@@ -826,6 +858,21 @@ function startBrowser(): void {
         readingListChanged();
         window.tabs.openReadingList();
       } else void dialog.showMessageBox(window.window, { type: 'info', message: t('readingList.saveFailed') });
+    },
+    hideElement: async (window) => {
+      const picked = await window.pickOnPage(pickedSelector);
+      if (!picked) return;
+      const origin = boostOrigin(picked.url);
+      window.showNotice([
+        t(origin && boosts.hide(origin, picked.value) ? 'boosts.elementHidden' : 'boosts.hideFailed'),
+      ]);
+    },
+    clipToEasel: async (window) => {
+      const picked = await window.pickOnPage(captureClip);
+      if (!picked) return;
+      const { url, value: clip } = picked;
+      const name = clip && easels.clip({ ...clip, url, title: window.tabs.activePage()?.title ?? url });
+      window.showNotice([name ? t('easels.clipped', { name }) : t('easels.clipFailed')]);
     },
     deviceId: () => deviceId,
     selectDevice: (id) => {
@@ -1114,28 +1161,40 @@ function startBrowser(): void {
     const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter(
       (window) => window.tabs.length > 0,
     );
-    const openExternal = (urls: string[]) => {
-      const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
-      for (const url of urls) window.tabs.open(url);
+    const routeExternal = (url: string | undefined, external: readonly string[]) =>
+      url !== undefined && external.includes(url)
+        ? (spaceForUrl(settings.get().spaceRules, url, [
+            DEFAULT_SPACE_ID,
+            ...workspaces.spaces().map((space) => space.id),
+          ]) ?? undefined)
+        : undefined;
+    const openExternal = (urls: string[], external: readonly string[] = [...urls]) => {
+      const reusable = current && !current.window.isDestroyed() ? current : null;
+      const first = reusable ? undefined : urls.shift();
+      const window = reusable ?? openWindow({ url: first, space: routeExternal(first, external) });
+      for (const url of urls) window.tabs.open(url, { space: routeExternal(url, external) });
       window.focus();
     };
+    const external = externalUrls.deliverTo(openExternal);
     const launchUrls = [
       ...startupPages(settings.get().startupBehavior, settings.get().startupUrls, saved?.resume === true),
-      ...externalUrls.deliverTo(openExternal),
+      ...external,
     ];
     const [first, ...rest] = launchUrls;
-    if (restored.length === 0) openWindow(first ? { url: first } : {});
-    restored.forEach((window, index) =>
+    if (restored.length === 0) openWindow(first ? { url: first, space: routeExternal(first, external) } : {});
+    restored.forEach((window, index) => {
+      const url = !restoring && index === restored.length - 1 ? first : undefined;
       openWindow({
         saved: window,
         webApp: webAppStore
           .list()
           .find((app) => app.id === window.webAppId && window.tabs.every((tab) => webAppContains(app.scope, tab.url))),
-        url: !restoring && index === restored.length - 1 ? first : undefined,
-      }),
-    );
-    if (restoring && restored.length > 0 && first) openExternal([first, ...rest]);
-    else if (rest.length > 0) openExternal(rest);
+        url,
+        space: routeExternal(url, external),
+      });
+    });
+    if (restoring && restored.length > 0 && first) openExternal([first, ...rest], external);
+    else if (rest.length > 0) openExternal(rest, external);
     showInvitation();
   };
 

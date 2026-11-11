@@ -51,6 +51,7 @@ app
       defaultBrowser: true,
       engines: [{ id: 'google', label: 'Google' }],
       customTemplateValid: true,
+      spaces: [],
       update: { state: 'unavailable' },
     });
     controller = new controllers.ProfileController(

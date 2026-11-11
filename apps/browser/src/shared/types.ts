@@ -150,6 +150,9 @@ export interface BrowserState {
   splitTabIds: TabId[];
   tabGroups?: import('./tab-groups').TabGroup[];
   liveFolders?: import('./live-folders').LiveFolderView[];
+  // Empty where spaces do not apply (private, developer and web-app windows).
+  spaces: import('./workspaces').SpaceView[];
+  activeSpaceId: string;
   pageFullScreen: boolean;
   windowFullScreen: boolean;
   addressPlaceholder: string;
@@ -168,6 +171,7 @@ export interface BrowserState {
   material: WindowMaterial;
   glassTint: number;
   accent: string;
+  windowColor: string | null;
   device: DeviceFrame | null;
   zoom: number;
   defaultZoom: number;
@@ -429,6 +433,10 @@ export type UiAction =
   | { type: 'refresh-live-folder'; id: string }
   | { type: 'open-live-folder-menu'; id: string }
   | { type: 'open-live-item'; id: string; itemId: string }
+  | { type: 'switch-space'; id: string }
+  | { type: 'create-space' }
+  | { type: 'rename-space'; id: string; name: string }
+  | { type: 'open-space-menu'; id: string }
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }
@@ -832,6 +840,7 @@ export interface SettingsValues {
   glassTint: number;
   startupBehavior: 'restore' | 'new-tab' | 'pages';
   startupUrls: string[];
+  spaceRules: import('./space-rules').SpaceRule[];
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
@@ -861,6 +870,7 @@ export interface SettingsValues {
   invitationSeen: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
+  windowColor: import('./window-color').WindowColor;
   newTabBackground: string;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
@@ -917,6 +927,7 @@ export interface SettingsView {
   version: string;
   update: UpdateStatus;
   threatLists?: ThreatListsView;
+  spaces: import('./workspaces').SpaceView[];
 }
 
 export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
@@ -1037,11 +1048,14 @@ export interface SavedLoginsView {
   chooseLabel: string;
 }
 
+export type PasswordIssue = 'weak' | 'reused' | 'old';
+
 export interface SavedPasswordInfo {
   id: string;
   origin: string;
   username: string;
   updatedAt: number;
+  issues: PasswordIssue[];
 }
 
 export interface PasswordsView {
@@ -1114,6 +1128,7 @@ export const PasswordsChannel = {
   list: 'yalqen-passwords:list',
   reveal: 'yalqen-passwords:reveal',
   copy: 'yalqen-passwords:copy',
+  copyUsername: 'yalqen-passwords:copy-username',
   remove: 'yalqen-passwords:remove',
   allowSaving: 'yalqen-passwords:allow-saving',
   changed: 'yalqen-passwords:changed',
@@ -1174,6 +1189,7 @@ export interface SettingsApi {
   transferPasswords(mode: 'import' | 'export'): Promise<PasswordTransferResult>;
   revealPassword(id: string): Promise<string | null>;
   copyPassword(id: string): Promise<boolean>;
+  copyUsername(id: string): Promise<boolean>;
   removePassword(id: string): Promise<void>;
   allowSaving(origin: string): Promise<void>;
   onPasswordsChange(listener: (view: PasswordsView) => void): () => void;

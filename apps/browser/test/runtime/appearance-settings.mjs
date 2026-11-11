@@ -50,6 +50,7 @@ app
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
+        spaces: [],
         update: { state: 'unavailable' },
       }),
       profiles: { view: () => ({ currentId: 'default', profiles: [] }) },
