@@ -48,6 +48,7 @@ test('unknown or mistyped fields fall back', () => {
       panelCollapsed: true,
       panelSide: 'left',
       pinnedDisplay: 'always',
+      pinnedTabsStayHome: false,
       sidebarVisible: true,
       sidebarWidgets: ['media'],
       toolbarVisible: true,
@@ -116,6 +117,12 @@ test('pinned extensions are kept by id next to the built-in buttons', () => {
     }).toolbarButtons,
     [`extension:${id}`, 'settings'],
   );
+});
+
+test('keeping pinned tabs on their site is off by default and kept once turned on', () => {
+  assert.equal(sanitizeSettings(null).pinnedTabsStayHome, false);
+  assert.equal(sanitizeSettings({ pinnedTabsStayHome: true }).pinnedTabsStayHome, true);
+  assert.equal(sanitizeSettings({ pinnedTabsStayHome: 'yes' }).pinnedTabsStayHome, false);
 });
 
 test('the sidebar media player is on by default and stays off once turned off', () => {

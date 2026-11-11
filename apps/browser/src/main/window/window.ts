@@ -392,6 +392,7 @@ export class YalqenWindow {
         );
       },
       freezeBackground: () => app.settings.get().discardAfterMinutes > 0,
+      pinnedTabsStayHome: () => app.settings.get().pinnedTabsStayHome,
       pictureInPicture: () => app.settings.get().pictureInPicture,
       spaceIds: () => this.spaces().map((space) => space.id),
       spaceSeed: (id) => app.workspaces.open(id),

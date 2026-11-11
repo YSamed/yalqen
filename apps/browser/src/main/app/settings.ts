@@ -48,6 +48,7 @@ const DEFAULTS: Settings = {
   panelCollapsed: true,
   panelSide: 'left',
   pinnedDisplay: 'always',
+  pinnedTabsStayHome: false,
   sidebarVisible: true,
   sidebarWidgets: ['media'],
   toolbarVisible: true,
@@ -128,6 +129,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     panelCollapsed,
     panelSide,
     pinnedDisplay,
+    pinnedTabsStayHome,
     sidebarVisible,
     sidebarWidgets,
     toolbarVisible,
@@ -195,6 +197,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
       typeof pinnedDisplay === 'string' && PINNED_DISPLAYS.has(pinnedDisplay)
         ? (pinnedDisplay as PinnedDisplay)
         : base.pinnedDisplay,
+    pinnedTabsStayHome: typeof pinnedTabsStayHome === 'boolean' ? pinnedTabsStayHome : base.pinnedTabsStayHome,
     sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
     sidebarWidgets: sanitizeSidebarWidgets(sidebarWidgets, base.sidebarWidgets),
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,

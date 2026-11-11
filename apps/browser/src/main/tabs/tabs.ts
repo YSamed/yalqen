@@ -27,6 +27,7 @@ import { withoutHash } from '../address-bar/url.js';
 import { signInUserAgent } from '../app/page-preferences.js';
 import { authRedirectExtension } from '../../shared/extension-bridge.js';
 import { unreadCount } from '../../shared/unread.js';
+import { leavesPinnedSite } from './pinned-home.js';
 import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
@@ -126,6 +127,8 @@ interface TabManagerOptions {
   privateSession: Session;
   onPrivateEnded: () => void;
   freezeBackground: () => boolean;
+  // "Keep pinned tabs on their site": pinned tabs load at their pinned address and send other sites to new tabs.
+  pinnedTabsStayHome?: () => boolean;
   pictureInPicture?: () => boolean;
   onChange: (persist: PersistChange) => void;
   spaceIds?: () => string[];
@@ -1147,6 +1150,18 @@ export class TabManager {
     }
   }
 
+  private keepsPinnedHome(tab: Tab, url: string): boolean {
+    return (
+      tab.pinnedUrl !== null && this.options.pinnedTabsStayHome?.() === true && leavesPinnedSite(tab.pinnedUrl, url)
+    );
+  }
+
+  // The other site opens next to the pinned tab and in front of it; closing it comes back to the pinned tab.
+  private openFromPinned(pinned: Tab, url: string): void {
+    const opened = this.find(this.open(url, { activate: true, isPrivate: false }));
+    if (opened && opened !== pinned) opened.openerId = pinned.id;
+  }
+
   private unloadPinned(tab: Tab, pinnedUrl: string, neighbor: TabId | null): void {
     this.destroyView(tab);
     tab.url = pinnedUrl;
@@ -1192,6 +1207,10 @@ export class TabManager {
   navigate(url: string): void {
     const tab = this.active();
     if (!tab) return;
+    if (this.keepsPinnedHome(tab, url)) {
+      this.openFromPinned(tab, url);
+      return;
+    }
     if (this.routeAppNavigation(tab, url)) return;
     const upgraded = this.options.upgradeHttp(url);
     tab.upgrade = upgraded ? { https: upgraded, http: url } : null;
@@ -1876,6 +1895,13 @@ export class TabManager {
 
   private ensureLive(tab: Tab): WebContentsView {
     if (tab.view) return tab.view;
+    // A pinned tab coming back after a restart or after memory saving starts again at its pinned address.
+    if (tab.pinnedUrl && this.options.pinnedTabsStayHome?.() && tab.url !== tab.pinnedUrl) {
+      tab.url = tab.pinnedUrl;
+      tab.history = null;
+      tab.failed = false;
+      tab.upgrade = null;
+    }
 
     const view = this.createPageView(tab.isPrivate);
     const emulated = this.mount(tab, view);
@@ -2085,6 +2111,11 @@ export class TabManager {
     listen('will-navigate', (event) => {
       if (this.routeAppNavigation(tab, event.url)) {
         event.preventDefault();
+        return;
+      }
+      if (this.keepsPinnedHome(tab, event.url)) {
+        event.preventDefault();
+        this.openFromPinned(tab, event.url);
         return;
       }
       const navigation = internalNavigation(event.url);
