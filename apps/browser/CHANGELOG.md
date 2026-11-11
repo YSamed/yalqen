@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.97](https://github.com/YSamed/yalqen/compare/v0.3.96...v0.3.97) (2026-11-11)
+
+
+### Features
+
+* preview gmail and calendar when hovering their tabs ([#383](https://github.com/YSamed/yalqen/issues/383)) ([feb5c92](https://github.com/YSamed/yalqen/commit/feb5c922c1bbd6eec74dfb7be2abc0af62bb4a7d))
+* redesign sidebar bottom row and space switcher ([#387](https://github.com/YSamed/yalqen/issues/387)) ([b52458c](https://github.com/YSamed/yalqen/commit/b52458c965e15563893615c06b5022083fdb57de))
+
+## [0.3.96](https://github.com/YSamed/yalqen/compare/v0.3.95...v0.3.96) (2026-11-11)
+
+
+### Features
+
+* add live folders for rss, atom and github feeds ([#381](https://github.com/YSamed/yalqen/issues/381)) ([286372b](https://github.com/YSamed/yalqen/commit/286372b2e69b3028c1b4d997a70c9f16b546ab77))
+* add mini window for outside links and mini player ([#379](https://github.com/YSamed/yalqen/issues/379)) ([621c2de](https://github.com/YSamed/yalqen/commit/621c2de51685804770760cca526cbb345d5bb19a))
+* add sidebar spaces and space routing rules ([#376](https://github.com/YSamed/yalqen/issues/376)) ([d5de750](https://github.com/YSamed/yalqen/commit/d5de750e2524818e0bcbd26bd12b1c0b36ec53fa))
+* add site styling boosts and easels ([#380](https://github.com/YSamed/yalqen/issues/380)) ([8e8ffab](https://github.com/YSamed/yalqen/commit/8e8ffab3116a0f94cecf8cd704dcb05e72389b88))
+* add window color theme setting ([#377](https://github.com/YSamed/yalqen/issues/377)) ([36eef82](https://github.com/YSamed/yalqen/commit/36eef82e9e0643fdfbeaae4fc1cc415be943b05a))
+* flag weak, reused and old passwords in settings ([#378](https://github.com/YSamed/yalqen/issues/378)) ([05f62fa](https://github.com/YSamed/yalqen/commit/05f62fa5a71a3887d6bc905c98c1eeca23e159c5))
+
 ## [0.3.95](https://github.com/YSamed/yalqen/compare/v0.3.94...v0.3.95) (2026-11-10)
 
 

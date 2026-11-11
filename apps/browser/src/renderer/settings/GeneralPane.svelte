@@ -171,8 +171,6 @@
   </SettingRow>
 {/if}
 
-<SpaceRules {view} {update} />
-
 <h2>{t('settings.downloads')}</h2>
 <SettingRow title={t('settings.downloadDirectory')} hint={view.downloadDirectory}>
   <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDownloadDirectory}>
@@ -231,6 +229,8 @@
     onchange={(checked) => update({ pictureInPicture: checked })}
   />
 </SettingRow>
+
+<SpaceRules {view} {update} />
 
 <h2>{t('settings.updates')}</h2>
 <div class="row">

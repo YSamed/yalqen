@@ -28,6 +28,8 @@ import { signInUserAgent } from '../app/page-preferences.js';
 import { authRedirectExtension } from '../../shared/extension-bridge.js';
 import { unreadCount } from '../../shared/unread.js';
 import { leavesPinnedSite } from './pinned-home.js';
+import { previewKind } from '../../shared/previews.js';
+import { PREVIEW_WORLD_ID, type PreviewTab } from './previews.js';
 import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
@@ -1430,6 +1432,32 @@ export class TabManager {
         this.changed();
         this.applyOverrides(tab, contents).catch(() => undefined);
       });
+  }
+
+  // The tab a hover preview reads from: the hovered tab, or for a favourite an open tab on the same site.
+  // Private tabs are never read.
+  previewTab(id: TabId | null, url: string): PreviewTab | null {
+    const kind = previewKind(url);
+    if (!kind) return null;
+    const host = new URL(url).host;
+    const tab = id
+      ? this.find(id)
+      : this.tabs.find((candidate) => previewKind(candidate.url) === kind && new URL(candidate.url).host === host);
+    if (tab?.isPrivate || (id && !tab)) return null;
+    return tab ? { id: tab.id, url: tab.url, contents: liveContents(tab) } : { id: null, url, contents: null };
+  }
+
+  // Previews read from background tabs, which may be frozen; the tab is woken for the read like pageText.
+  async readForPreview(contents: WebContents, code: string): Promise<unknown> {
+    const tab = this.tabs.find((candidate) => liveContents(candidate) === contents);
+    if (!tab || contents.isDestroyed()) return null;
+    const wasFrozen = tab.frozen;
+    this.freezer.unfreeze(tab);
+    try {
+      return await contents.executeJavaScriptInIsolatedWorld(PREVIEW_WORLD_ID, [{ code }]);
+    } finally {
+      if (wasFrozen) this.freezer.maybeFreeze(tab);
+    }
   }
 
   // A frozen background tab never runs the script, so it is woken for the read.
