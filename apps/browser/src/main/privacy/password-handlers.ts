@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import {
   clipboard,
   dialog,
@@ -21,8 +20,6 @@ import { passwordOrigin, sanitizeCredential, type Cipher, type PasswordStore, ty
 // A login that succeeds navigates or removes its form; one that does neither in time most likely failed.
 const SUBMISSION_WAIT_MS = 10_000;
 const CLIPBOARD_CLEAR_MS = 30_000;
-
-const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 
 export const safeStorageCipher: Cipher = {
   available: () => safeStorage.isEncryptionAvailable(),
@@ -230,12 +227,11 @@ export function installPasswordHandlers({
     const password = store.reveal(id);
     if (password === null) return false;
     clipboard.writeText(password);
-    const copied = digest(password);
     clearTimeout(clipboardTimer);
     clipboardTimer = setTimeout(() => {
       void Promise.resolve(clipboard.readText())
         .then((current) => {
-          if (digest(current) === copied) clipboard.clear();
+          if (current === store.reveal(id)) clipboard.clear();
         })
         .catch(() => {});
     }, CLIPBOARD_CLEAR_MS);
