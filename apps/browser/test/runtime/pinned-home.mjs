@@ -18,7 +18,8 @@ process.on('uncaughtException', (error) => {
 const server = http.createServer((req, res) => {
   const port = server.address().port;
   res.setHeader('Content-Type', 'text/html');
-  res.end(`<title>${req.url}</title>
+  // The same page for every path; the request is never written back into it.
+  res.end(`<title>Pinned home test</title>
     <a id="same" href="/inbox/1">same site</a>
     <a id="away" href="http://localhost:${port}/elsewhere">other site</a>`);
 });
