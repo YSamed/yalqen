@@ -222,6 +222,7 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     passwords: () => ipcRenderer.invoke(PasswordsChannel.list) as Promise<PasswordsView>,
     revealPassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.reveal, id) as Promise<string | null>,
     copyPassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.copy, id) as Promise<boolean>,
+    copyUsername: (id: string) => ipcRenderer.invoke(PasswordsChannel.copyUsername, id) as Promise<boolean>,
     removePassword: (id: string) => ipcRenderer.invoke(PasswordsChannel.remove, id) as Promise<void>,
     allowSaving: (origin: string) => ipcRenderer.invoke(PasswordsChannel.allowSaving, origin) as Promise<void>,
     onPasswordsChange: (listener) => subscribe<PasswordsView>(PasswordsChannel.changed, listener),
