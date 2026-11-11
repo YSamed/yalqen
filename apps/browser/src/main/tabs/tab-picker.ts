@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import type { WebContents } from 'electron';
+import { MAX_CLIP_CHARS } from '../../shared/easels.js';
 import { componentInfo, needsInlineMap, NO_COMPONENT, type ComponentInfo } from '../agent-bridge/component-source.js';
 import type { ComponentInspection, InspectedSource } from '../../shared/component-inspection.js';
 import { pageScriptPath } from '../app/paths.js';
@@ -269,6 +270,49 @@ async function elementShot(send: Send, box: Box | null): Promise<string | null> 
     },
   })) as { data: string };
   return data;
+}
+
+export async function pickedSelector(contents: WebContents, backendNodeId: number): Promise<string> {
+  const send: Send = (method, params) => contents.debugger.sendCommand(method, params);
+  return (await describeInPage(send, backendNodeId)).selector;
+}
+
+export interface ClipImage {
+  src: string;
+  w: number;
+  h: number;
+}
+
+// `view` is the page view's bounds in window pixels, which differ from CSS pixels when the page is zoomed.
+export async function captureClip(
+  contents: WebContents,
+  backendNodeId: number,
+  view: { width: number; height: number },
+): Promise<ClipImage | null> {
+  const send: Send = (method, params) => contents.debugger.sendCommand(method, params);
+  const { model } = (await send('DOM.getBoxModel', { backendNodeId })) as { model: { border: number[] } };
+  const { cssVisualViewport } = (await send('Page.getLayoutMetrics')) as {
+    cssVisualViewport: { clientWidth: number };
+  };
+  const box = boxFromQuad(model.border);
+  if (!box || !cssVisualViewport.clientWidth) return null;
+  const scale = view.width / cssVisualViewport.clientWidth;
+  const left = Math.max(0, Math.floor(box.x * scale)),
+    top = Math.max(0, Math.floor(box.y * scale)),
+    right = Math.min(view.width, Math.ceil((box.x + box.width) * scale)),
+    bottom = Math.min(view.height, Math.ceil((box.y + box.height) * scale));
+  if (right - left < 8 || bottom - top < 8) return null;
+  const image = await contents.capturePage({ x: left, y: top, width: right - left, height: bottom - top });
+  if (image.isEmpty()) return null;
+  for (const width of [1000, 700, 450]) {
+    const scaled = image.getSize().width > width ? image.resize({ width }) : image;
+    const src = `data:image/jpeg;base64,${scaled.toJPEG(85).toString('base64')}`;
+    if (src.length > MAX_CLIP_CHARS) continue;
+    const size = scaled.getSize(),
+      shown = Math.min(size.width, 600);
+    return { src, w: shown, h: Math.max(20, Math.round((size.height * shown) / size.width)) };
+  }
+  return null;
 }
 
 const optional = <T>(promise: Promise<T>, fallback: T) => promise.catch(() => fallback);

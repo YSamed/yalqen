@@ -41,6 +41,8 @@ import { setupTabTransition } from './tab-transition.js';
 import { setupMediaSession } from './media-session.js';
 import { SiteStorageChannel } from '../shared/site-storage.js';
 import { READING_LIST_URL, ReadingListChannel, type ReadingListApi } from '../shared/reading-list.js';
+import { BOOSTS_URL, BoostChannel, type BoostApi } from '../shared/boosts.js';
+import { EASELS_URL, EaselChannel, type EaselApi } from '../shared/easels.js';
 import { WORKSPACES_URL, WorkspaceChannel, type WorkspaceApi } from '../shared/workspaces.js';
 
 setupAutofill();
@@ -54,6 +56,31 @@ if (location.href.startsWith(READING_LIST_URL) && window === window.top) {
     onChange: (listener) => subscribe(ReadingListChannel.changed, listener),
   };
   contextBridge.exposeInMainWorld('yalqenReadingList', api);
+}
+
+if (location.href.startsWith(BOOSTS_URL) && window === window.top) {
+  const api: BoostApi = {
+    list: () => ipcRenderer.invoke(BoostChannel.list),
+    save: (origin, boost) => ipcRenderer.invoke(BoostChannel.save, origin, boost),
+    remove: (origin) => ipcRenderer.invoke(BoostChannel.remove, origin),
+    onChange: (listener) => subscribe(BoostChannel.changed, listener),
+  };
+  contextBridge.exposeInMainWorld('yalqenBoosts', api);
+}
+
+if (location.href.startsWith(EASELS_URL) && window === window.top) {
+  const api: EaselApi = {
+    list: () => ipcRenderer.invoke(EaselChannel.list),
+    open: (id) => ipcRenderer.invoke(EaselChannel.open, id),
+    create: (name) => ipcRenderer.invoke(EaselChannel.create, name),
+    rename: (id, name) => ipcRenderer.invoke(EaselChannel.rename, id, name),
+    remove: (id) => ipcRenderer.invoke(EaselChannel.remove, id),
+    add: (id, item) => ipcRenderer.invoke(EaselChannel.add, id, item),
+    patch: (id, itemId, patch) => ipcRenderer.invoke(EaselChannel.patch, id, itemId, patch),
+    removeItem: (id, itemId) => ipcRenderer.invoke(EaselChannel.removeItem, id, itemId),
+    onChange: (listener) => subscribe(EaselChannel.changed, listener),
+  };
+  contextBridge.exposeInMainWorld('yalqenEasels', api);
 }
 
 const THRESHOLD = 90;
