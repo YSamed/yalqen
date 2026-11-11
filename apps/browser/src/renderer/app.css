@@ -85,6 +85,24 @@
   }
 }
 
+/* The interface sets data-window-color and the --tint-* values only while a window color is chosen. */
+:root[data-window-color]:not([data-material='glass']) {
+  --bg: light-dark(var(--tint-bg-light), var(--tint-bg-dark));
+  --text-muted: light-dark(var(--tint-muted-light), var(--tint-muted-dark));
+}
+
+:root:where([data-window-color])[data-material='glass'] {
+  --chrome-base: rgb(from var(--tint-glass-light) r g b / calc(var(--glass-tint, 0.25) * 0.88));
+  --text-muted: var(--tint-muted-light);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where([data-window-color])[data-material='glass'] {
+    --chrome-base: rgb(from var(--tint-glass-dark) r g b / min(0.96, calc(var(--glass-tint, 0.25) * 1.28)));
+    --text-muted: var(--tint-muted-dark);
+  }
+}
+
 @media (prefers-contrast: more) {
   :root[data-material='glass'] {
     --chrome-base: rgb(246 245 243 / 0.94);

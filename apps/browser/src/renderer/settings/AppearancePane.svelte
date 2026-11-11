@@ -7,6 +7,8 @@
     type ToolbarExtension,
   } from '../../shared/types';
   import { t } from '../../shared/i18n';
+  import { ACCENT_COLORS } from '../../shared/accent';
+  import type { WindowColor } from '../../shared/window-color';
   import AccentPicker from '../ui/AccentPicker.svelte';
   import Button from '../ui/Button.svelte';
   import AdvancedGroup from './AdvancedGroup.svelte';
@@ -45,6 +47,12 @@
     { value: 'light', label: t('settings.themeLight') },
     { value: 'dark', label: t('settings.themeDark') },
   ] as const;
+
+  const windowColors: { id: WindowColor; hex: string; label: string; ring?: boolean }[] = [
+    { id: 'none', hex: 'transparent', label: t('windowColor.none'), ring: true },
+    { id: 'accent', hex: 'var(--accent)', label: t('windowColor.accent') },
+    ...ACCENT_COLORS.map(({ id, hex }) => ({ id, hex, label: t(`accent.${id}`) })),
+  ];
 
   // Sidebar visibility, width and side are three settings, but people pick them as one layout.
   type Layout = 'left-wide' | 'left-narrow' | 'right-wide' | 'right-narrow' | 'hidden';
@@ -159,6 +167,15 @@
     label={t('settings.accent')}
     value={values.accentColor}
     onchange={(value) => update({ accentColor: value })}
+  />
+</SettingRow>
+
+<SettingRow title={t('settings.windowColor')} hint={t('settings.windowColorHint')}>
+  <AccentPicker
+    label={t('settings.windowColor')}
+    value={values.windowColor}
+    colors={windowColors}
+    onchange={(value) => update({ windowColor: value })}
   />
 </SettingRow>
 

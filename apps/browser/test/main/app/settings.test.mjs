@@ -72,6 +72,7 @@ test('unknown or mistyped fields fall back', () => {
       invitationSeen: false,
       displayName: '',
       accentColor: 'orange',
+      windowColor: 'none',
       newTabBackground: '',
       dismissedAnnouncement: '',
       dismissedFeedback: '',
