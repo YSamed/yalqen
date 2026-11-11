@@ -58,6 +58,37 @@ export const MEDIA_TOGGLE_SCRIPT = `(() => {${FIND_MEDIA}
   return Promise.race([started, new Promise((resolve) => setTimeout(resolve, 1000))]).then(() => undefined);
 })()`;
 
+// Runs with a user gesture, which requestPictureInPicture needs, and settles to whether the video floats.
+export const PIP_ENTER_SCRIPT = `(() => {${FIND_MEDIA}
+  const video = audible.find(
+    (item) => item.tagName === 'VIDEO' && !item.paused && !item.ended && item.readyState > 1 && !item.disablePictureInPicture,
+  );
+  if (!video || !document.pictureInPictureEnabled || document.pictureInPictureElement) return false;
+  return video.requestPictureInPicture().then(() => true, () => false);
+})()`;
+
+export const PIP_EXIT_SCRIPT = `(() => {
+  if (document.pictureInPictureElement) return document.exitPictureInPicture().then(() => undefined, () => undefined);
+})()`;
+
+export interface PipTab {
+  id: string;
+  playingMedia: number;
+  pip: boolean;
+}
+
+// A tab that plays media floats its video when the user leaves it, and gets it back when the user returns.
+export function pipSwitch(
+  enabled: boolean,
+  previous: PipTab | undefined,
+  next: PipTab,
+): { enter: boolean; exit: boolean } {
+  return {
+    enter: enabled && !!previous && previous.id !== next.id && previous.playingMedia > 0 && !previous.pip,
+    exit: next.pip,
+  };
+}
+
 export function mediaSeekScript(seconds: number): string {
   return `(() => {${FIND_MEDIA}
   if (!main) return;

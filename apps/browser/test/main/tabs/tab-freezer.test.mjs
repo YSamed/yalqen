@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import freezerModule from '../../../dist/main/tabs/tab-freezer.js';
 import tabModule from '../../../dist/main/tabs/tab.js';
 
-const { TabFreezer, FREEZE_IDLE_MS } = freezerModule;
+const { TabFreezer, FREEZE_IDLE_MS, keepsPlaying } = freezerModule;
 const { createTab } = tabModule;
 
 function fixture(t) {
@@ -97,4 +97,11 @@ test('disposing a view cancels its pending freeze', (t) => {
   f.freezer.cancel(f.tab);
   t.mock.timers.tick(FREEZE_IDLE_MS);
   assert.deepEqual(f.commands, []);
+});
+
+test('a floating video keeps its muted tab awake', () => {
+  const tab = createTab({ url: 'https://example.com/' });
+  assert.equal(keepsPlaying(tab), false);
+  tab.pip = true;
+  assert.equal(keepsPlaying(tab), true);
 });

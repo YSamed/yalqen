@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import media from '../../../dist/main/tabs/media.js';
 
-const { parsePageMedia, mediaSeekScript, mediaSkipScript } = media;
+const { parsePageMedia, mediaSeekScript, mediaSkipScript, pipSwitch } = media;
 
 test('page media keeps the trimmed title, the times and the track actions', () => {
   assert.deepEqual(
@@ -47,4 +47,24 @@ test('the seek script embeds only the given number', () => {
 test('the skip script runs only the two track actions', () => {
   assert.match(mediaSkipScript('next'), /detail: 'nexttrack'/);
   assert.match(mediaSkipScript('previous'), /detail: 'previoustrack'/);
+});
+
+test('leaving a tab that plays media floats its video, and coming back brings it home', () => {
+  const playing = { id: 'a', playingMedia: 1, pip: false };
+  const idle = { id: 'b', playingMedia: 0, pip: false };
+  assert.deepEqual(pipSwitch(true, playing, idle), { enter: true, exit: false });
+  assert.deepEqual(pipSwitch(true, idle, { ...playing, pip: true }), { enter: false, exit: true });
+});
+
+test('the video stays put when the setting is off, nothing plays, or the tab already floats', () => {
+  const idle = { id: 'b', playingMedia: 0, pip: false };
+  assert.equal(pipSwitch(false, { id: 'a', playingMedia: 1, pip: false }, idle).enter, false);
+  assert.equal(pipSwitch(true, { id: 'a', playingMedia: 0, pip: false }, idle).enter, false);
+  assert.equal(pipSwitch(true, { id: 'a', playingMedia: 1, pip: true }, idle).enter, false);
+  assert.equal(pipSwitch(true, undefined, idle).enter, false);
+  assert.equal(pipSwitch(true, idle, idle).enter, false);
+});
+
+test('a floating video still comes home after the setting is turned off', () => {
+  assert.equal(pipSwitch(false, undefined, { id: 'a', playingMedia: 1, pip: true }).exit, true);
 });

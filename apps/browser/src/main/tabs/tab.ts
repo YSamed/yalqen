@@ -36,6 +36,7 @@ export interface Tab {
   loading: boolean;
   frozen: boolean;
   playingMedia: number;
+  pip: boolean;
   soundAt: number;
   history: SavedHistory | null;
   emulation: Emulation | null;
@@ -86,6 +87,7 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     loading: false,
     frozen: false,
     playingMedia: 0,
+    pip: false,
     soundAt: 0,
     history: saved.history ?? null,
     emulation: null,

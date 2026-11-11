@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isPeekable } from '../tabs/popups.js';
 
 export function externalUrls(args: readonly string[], cwd: string, isFile: (file: string) => boolean): string[] {
   const urls: string[] = [];
@@ -15,4 +16,8 @@ export function externalUrls(args: readonly string[], cwd: string, isFile: (file
     if (isFile(file)) urls.push(pathToFileURL(file).toString());
   }
   return urls;
+}
+
+export function miniWindowUrl(urls: readonly string[], enabled: boolean): string | null {
+  return enabled && urls.length === 1 && isPeekable(urls[0]) ? urls[0] : null;
 }

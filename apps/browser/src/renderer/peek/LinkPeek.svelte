@@ -11,10 +11,11 @@
   let width = $state(window.innerWidth);
   let height = $state(window.innerHeight);
 
-  const card = $derived(peekLayout(width, height).card);
+  const docked = new URLSearchParams(location.search).has('docked');
+  const card = $derived(peekLayout(width, height, docked ? 0 : undefined).card);
 
   function onKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Escape') return;
+    if (docked || event.key !== 'Escape') return;
     event.preventDefault();
     api.send('close');
   }
@@ -31,9 +32,10 @@
 <svelte:window onkeydown={onKeydown} bind:innerWidth={width} bind:innerHeight={height} />
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<div class="scrim" onclick={() => api.send('close')}></div>
+<div class="scrim" class:docked onclick={() => api.send('close')}></div>
 <div
   class="card"
+  class:docked
   role="dialog"
   aria-label={t('linkPeek.pageTitle')}
   style:left="{card.x}px"
@@ -46,7 +48,11 @@
       <span class="title">{current.title}</span>
       <span class="url">{current.url}</span>
     </div>
-    <IconButton icon="external" label={t('linkPeek.promote')} onclick={() => api.send('promote')} />
+    <IconButton
+      icon="external"
+      label={t(docked ? 'linkPeek.moveToMain' : 'linkPeek.promote')}
+      onclick={() => api.send('promote')}
+    />
     <IconButton
       icon="close"
       label={t('linkPeek.close')}
@@ -80,6 +86,15 @@
       0 0 0 0.5px var(--hair),
       0 30px 80px rgb(0 0 0 / 0.35),
       0 2px 6px rgb(0 0 0 / 0.15);
+  }
+
+  .scrim.docked {
+    display: none;
+  }
+
+  .card.docked {
+    border-radius: 0;
+    box-shadow: none;
   }
 
   @media (prefers-color-scheme: dark) {
