@@ -92,3 +92,48 @@ test('workspace saves, renames and removes atomically; independent opens have fr
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+test('spaces start empty, survive a restart, keep their icon and list in creation order; old files still load', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-spaces-'));
+  try {
+    const legacy = {
+      id: 'legacy',
+      name: 'Old',
+      savedAt: 1,
+      window: {
+        activeTabId: 'x',
+        tabs: [{ id: 'x', url: 'https://old.example/', title: 'Old', faviconUrl: null, history: null }],
+      },
+    };
+    fs.writeFileSync(path.join(dir, 'workspaces.json'), JSON.stringify([legacy]));
+    const store = new WorkspaceStore(dir);
+    assert.deepEqual(store.spaces(), [{ id: 'legacy', name: 'Old', icon: null }]);
+    assert.equal(store.open('legacy').tabs.length, 1);
+
+    const id = store.create('Work');
+    assert.ok(id);
+    assert.equal(store.create('Work'), null);
+    assert.equal(store.create(' '), null);
+    assert.equal(store.setIcon(id, '💼'), true);
+    assert.equal(store.setIcon(id, 'x'.repeat(20)), false);
+    assert.equal(store.setIcon('missing', '💼'), false);
+
+    const reloaded = new WorkspaceStore(dir);
+    assert.deepEqual(
+      reloaded.spaces().map((space) => [space.name, space.icon]),
+      [
+        ['Old', null],
+        ['Work', '💼'],
+      ],
+    );
+    assert.deepEqual(reloaded.open(id), { activeTabId: null, tabs: [], collapsedGroups: [], groupParents: {} });
+    assert.equal(reloaded.list().find((entry) => entry.id === id).count, 0);
+    assert.equal(reloaded.save('Empty', { tabs: [], activeTabId: null }), false);
+
+    fs.rmSync(reloaded.file);
+    fs.mkdirSync(reloaded.file);
+    assert.equal(reloaded.create('Home'), null);
+    assert.equal(reloaded.spaces().length, 2);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

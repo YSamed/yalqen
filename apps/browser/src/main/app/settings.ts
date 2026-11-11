@@ -19,6 +19,7 @@ import {
   toolbarExtensionId,
 } from '../../shared/types.js';
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
+import { sanitizeSpaceRules } from '../../shared/space-rules.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
 import { JsonFile } from '../storage/json-file.js';
@@ -42,6 +43,7 @@ const DEFAULTS: Settings = {
   glassTint: DEFAULT_GLASS_TINT,
   startupBehavior: 'restore',
   startupUrls: [],
+  spaceRules: [],
   panelCollapsed: true,
   panelSide: 'left',
   pinnedDisplay: 'always',
@@ -118,6 +120,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     glassTint,
     startupBehavior,
     startupUrls,
+    spaceRules,
     panelCollapsed,
     panelSide,
     pinnedDisplay,
@@ -178,6 +181,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? (startupBehavior as Settings['startupBehavior'])
         : base.startupBehavior,
     startupUrls: Array.isArray(startupUrls) ? sanitizeStartupUrls(startupUrls) : base.startupUrls,
+    spaceRules: Array.isArray(spaceRules) ? sanitizeSpaceRules(spaceRules) : base.spaceRules,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
     panelSide: typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
     pinnedDisplay:

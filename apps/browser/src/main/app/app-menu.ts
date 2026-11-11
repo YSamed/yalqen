@@ -57,6 +57,7 @@ export function installAppMenu(host: AppMenuHost): void {
       selectNextTab: inWindow((window) => window.tabs.selectRelative(1)),
       selectPreviousTab: inWindow((window) => window.tabs.selectRelative(-1)),
       selectTab: (index) => current()?.tabs.selectByIndex(index),
+      switchSpace: (index) => current()?.tabs.switchSpaceByIndex(index),
       focusAddress: inWindow((window) => window.openAddress()),
       find: () => current()?.openFind(),
       findNext: (forward) => current()?.openFind(forward),

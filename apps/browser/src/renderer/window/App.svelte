@@ -54,6 +54,8 @@
     panelSide: 'left',
     pinnedDisplay: 'always',
     favorites: [],
+    spaces: [],
+    activeSpaceId: '',
     sidebarVisible: true,
     media: null,
     toolbarVisible: true,
@@ -113,6 +115,8 @@
   const media = $derived(browser.media);
   const pinnedDisplay = $derived(browser.pinnedDisplay);
   const favorites = $derived(browser.favorites);
+  const spaces = $derived(browser.spaces);
+  const activeSpaceId = $derived(browser.activeSpaceId);
   const sidebarVisible = $derived(browser.sidebarVisible);
   const toolbarVisible = $derived(browser.toolbarVisible);
   const toolbarButtons = $derived(browser.toolbarButtons);
@@ -355,6 +359,8 @@
         {profileName}
         {pinnedDisplay}
         {favorites}
+        {spaces}
+        {activeSpaceId}
         {media}
       />
     {/if}

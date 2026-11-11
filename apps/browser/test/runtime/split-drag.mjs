@@ -46,6 +46,8 @@ app
       panelSide: 'left',
       pinnedDisplay: 'always',
       favorites: [],
+      spaces: [],
+      activeSpaceId: '',
       sidebarVisible: true,
       media: null,
       toolbarVisible: true,

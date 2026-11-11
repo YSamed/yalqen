@@ -3,16 +3,17 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { readingUrl } from '../../shared/reading-list.js';
 import { parseGroupParents, pruneGroupParents, tabGroupName } from '../../shared/tab-groups.js';
-import type { WorkspaceSummary } from '../../shared/workspaces.js';
+import { MAX_SPACES, workspaceIcon, type SpaceView, type WorkspaceSummary } from '../../shared/workspaces.js';
 import type { SavedWindow, SavedTab } from '../tabs/persistence.js';
 
 interface Workspace {
   id: string;
   name: string;
+  icon: string | null;
   savedAt: number;
   window: SavedWindow;
 }
-export function workspaceSnapshot(value: SavedWindow): SavedWindow | null {
+export function workspaceSnapshot(value: SavedWindow, allowEmpty = false): SavedWindow | null {
   if (!value || !Array.isArray(value.tabs) || value.tabs.length > 500) return null;
   const ids = new Map<string, string>();
   const tabs: SavedTab[] = [];
@@ -31,12 +32,12 @@ export function workspaceSnapshot(value: SavedWindow): SavedWindow | null {
       group: tabGroupName(entry.group),
     });
   }
-  if (!tabs.length || tabs.length > 200) return null;
+  if ((!tabs.length && !allowEmpty) || tabs.length > 200) return null;
   const groups = new Set(tabs.flatMap((tab) => (tab.group ? [tab.group] : [])));
   if (groups.size > 50) return null;
   return {
     tabs,
-    activeTabId: ids.get(value.activeTabId ?? '') ?? tabs[0].id,
+    activeTabId: ids.get(value.activeTabId ?? '') ?? tabs[0]?.id ?? null,
     collapsedGroups: Array.isArray(value.collapsedGroups)
       ? value.collapsedGroups.filter((name) => groups.has(name)).slice(0, 50)
       : [],
@@ -52,11 +53,11 @@ export class WorkspaceStore {
       if (fs.statSync(this.file).size > 8 * 1024 * 1024) return;
       const values: unknown = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       if (!Array.isArray(values)) return;
-      for (const value of values.slice(0, 50)) {
+      for (const value of values.slice(0, MAX_SPACES)) {
         if (!value || typeof value !== 'object') continue;
         const entry = value as Workspace,
           name = tabGroupName(entry.name),
-          window = workspaceSnapshot(entry.window);
+          window = workspaceSnapshot(entry.window, true);
         if (
           name &&
           window &&
@@ -65,23 +66,40 @@ export class WorkspaceStore {
           Number.isFinite(entry.savedAt) &&
           !this.entries.some((item) => item.id === entry.id || item.name === name)
         )
-          this.entries.push({ id: entry.id, name, window, savedAt: entry.savedAt });
+          this.entries.push({ id: entry.id, name, icon: workspaceIcon(entry.icon), window, savedAt: entry.savedAt });
       }
     } catch {}
   }
   list(): WorkspaceSummary[] {
-    return this.entries.map(({ id, name, savedAt, window }) => ({ id, name, savedAt, count: window.tabs.length }));
+    return this.entries.map(({ id, name, icon, savedAt, window }) => ({
+      id,
+      name,
+      icon,
+      savedAt,
+      count: window.tabs.length,
+    }));
+  }
+  spaces(): SpaceView[] {
+    return this.entries.toSorted((a, b) => a.savedAt - b.savedAt).map(({ id, name, icon }) => ({ id, name, icon }));
   }
   save(name: unknown, window: SavedWindow): boolean {
-    const valid = tabGroupName(name),
-      snapshot = workspaceSnapshot(window);
-    if (!valid || !snapshot || this.entries.length >= 50 || this.entries.some((item) => item.name === valid))
-      return false;
-    return this.replace([{ id: randomUUID(), name: valid, window: snapshot, savedAt: Date.now() }, ...this.entries]);
+    const snapshot = workspaceSnapshot(window);
+    return !!snapshot && this.add(name, snapshot) !== null;
+  }
+  create(name: unknown): string | null {
+    return this.add(name, { activeTabId: null, tabs: [] });
   }
   open(id: string): SavedWindow | null {
     const entry = this.entries.find((item) => item.id === id);
-    return entry ? workspaceSnapshot(entry.window) : null;
+    return entry ? workspaceSnapshot(entry.window, true) : null;
+  }
+  setIcon(id: string, icon: unknown): boolean {
+    const valid = workspaceIcon(icon);
+    return (
+      !!valid &&
+      this.entries.some((item) => item.id === id) &&
+      this.replace(this.entries.map((item) => (item.id === id ? { ...item, icon: valid } : item)))
+    );
   }
   rename(id: string, name: unknown): boolean {
     const valid = tabGroupName(name);
@@ -95,6 +113,12 @@ export class WorkspaceStore {
   }
   remove(id: string): boolean {
     return this.entries.some((item) => item.id === id) && this.replace(this.entries.filter((item) => item.id !== id));
+  }
+  private add(name: unknown, window: SavedWindow): string | null {
+    const valid = tabGroupName(name);
+    if (!valid || this.entries.length >= MAX_SPACES || this.entries.some((item) => item.name === valid)) return null;
+    const id = randomUUID();
+    return this.replace([{ id, name: valid, icon: null, window, savedAt: Date.now() }, ...this.entries]) ? id : null;
   }
   private replace(entries: Workspace[]): boolean {
     const data = JSON.stringify(entries);

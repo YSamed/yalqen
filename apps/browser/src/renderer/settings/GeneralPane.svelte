@@ -8,6 +8,7 @@
   import TextField from '../ui/TextField.svelte';
   import SettingRow from './SettingRow.svelte';
   import Profiles from './Profiles.svelte';
+  import SpaceRules from './SpaceRules.svelte';
   import { webPageUrl } from '../../shared/startup-pages';
 
   let {
@@ -169,6 +170,8 @@
     {#if pagesInvalid}<span class="error" role="alert">{t('settings.pageUrlError')}</span>{/if}
   </SettingRow>
 {/if}
+
+<SpaceRules {view} {update} />
 
 <h2>{t('settings.downloads')}</h2>
 <SettingRow title={t('settings.downloadDirectory')} hint={view.downloadDirectory}>
