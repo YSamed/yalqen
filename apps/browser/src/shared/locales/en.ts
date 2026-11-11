@@ -847,6 +847,13 @@ export const en = {
   'settings.pageTranslation': 'Page translation',
   'settings.pageTranslationHint':
     'A translate button appears when the page is in a different language. The page text is sent to Google Translate only when you press the button.',
+  'settings.miniSection': 'Mini windows',
+  'settings.miniWindow': 'Open outside links in a mini window',
+  'settings.miniWindowHint':
+    'A link you open from another app, such as Slack or Mail, opens in a small window. A button moves it into the main window as a tab.',
+  'settings.pictureInPicture': 'Mini player',
+  'settings.pictureInPictureHint':
+    'When you leave a tab that plays a video, the video keeps playing in a small floating window. It closes when you return to the tab.',
   'settings.updates': 'Updates',
   'settings.download': 'Download',
   'settings.restart': 'Restart',
@@ -1080,6 +1087,7 @@ export const en = {
   'contextMenu.peekLink': 'Peek Link',
   'linkPeek.pageTitle': 'Link preview',
   'linkPeek.promote': 'Open in tab',
+  'linkPeek.moveToMain': 'Move to main window',
   'linkPeek.close': 'Close',
   'linkPeek.closeTitle': 'Close (Esc)',
   'contextMenu.downloadLink': 'Download Linked File',

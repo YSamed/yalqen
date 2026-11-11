@@ -381,6 +381,7 @@ export class YalqenWindow {
         );
       },
       freezeBackground: () => app.settings.get().discardAfterMinutes > 0,
+      pictureInPicture: () => app.settings.get().pictureInPicture,
       onChange: (persist) => {
         this.syncAgentProjectWithTab();
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {

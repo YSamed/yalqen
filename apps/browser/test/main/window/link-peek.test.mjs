@@ -95,6 +95,12 @@ test('the card keeps its margin, its width limit and the header above the page',
   assert.equal(tiny.body.height, 0);
 });
 
+test('a docked card fills the whole window below its header', () => {
+  const { card, body } = peekLayout(480, 680, 0);
+  assert.deepEqual(card, { x: 0, y: 0, width: 480, height: 680 });
+  assert.deepEqual(body, { x: 0, y: PEEK_HEADER, width: 480, height: 680 - PEEK_HEADER });
+});
+
 test('only a feature-less new window on a web address peeks', () => {
   assert.equal(opensPeek('new-window', '', 'https://example.com/'), true);
   assert.equal(opensPeek('new-window', 'width=500,height=400', 'https://example.com/'), false);

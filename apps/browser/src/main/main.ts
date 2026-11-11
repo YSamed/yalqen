@@ -71,6 +71,7 @@ import { HttpsOnly, hostResolverOptions } from './privacy/https-only.js';
 import { chromeUserAgent } from './app/page-preferences.js';
 import { FindBar } from './window/find-bar.js';
 import { ExternalUrlInbox } from './app/external-urls.js';
+import { miniWindowUrl } from './app/launch.js';
 import { startAutoArchive } from './tabs/auto-archive.js';
 import { startMemorySaver } from './tabs/memory-saver.js';
 import { LAZY_SAVE_DELAY_MS } from './storage/json-file.js';
@@ -126,6 +127,9 @@ import { Updater, loadAutoUpdater } from './app/updater.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
 import { YalqenWindow, glassAtLaunch, type AppContext, type WindowOptions } from './window/window.js';
+import { createPageView } from './tabs/tabs.js';
+import { createOverlayView } from './window/overlay-view.js';
+import { openMiniWindow } from './window/mini-window.js';
 import { ZoomStore } from './tabs/zoom.js';
 
 // AppImage launchers can silently add this flag when user namespaces are unavailable.
@@ -294,7 +298,7 @@ function startBrowser(): void {
     { automatic: () => settings.get().autoUpdateExtensions },
   );
   const extensionPopup = new ExtensionPopup();
-  const extensionTabWindow = () =>
+  const mainWindow = () =>
     focusedFirst().find((window) => !window.isPrivate && !window.isDeveloper && window.webApp === null) ?? null;
   const tabsWindowOf = (contents: Electron.WebContents) => windows.find((window) => window.tabs.hasContents(contents));
   const extensionWindows = () => focusedFirst().filter((window) => !window.isPrivate && !window.window.isDestroyed());
@@ -302,7 +306,7 @@ function startBrowser(): void {
     daily,
     {
       open: (url, active) => {
-        const window = extensionTabWindow() ?? openWindow({});
+        const window = mainWindow() ?? openWindow({});
         if (active) window.focus();
         return window.tabs.openContents(url, active);
       },
@@ -1101,6 +1105,19 @@ function startBrowser(): void {
     const restored = (restoring ? savedWindows : savedWindows.map(pinnedOnly)).filter(
       (window) => window.tabs.length > 0,
     );
+    const openMini = (url: string) =>
+      openMiniWindow(url, {
+        page: rendererPath('peek.html'),
+        icon: appIcon,
+        createPageView: () => createPageView(preloadPath('page-preload'), daily),
+        createOverlay: () => createOverlayView(preloadPath('peek-preload')),
+        upgradeHttp: (target) => httpsOnly.upgrade(target),
+        onPromote: (page) => {
+          const window = mainWindow() ?? openWindow({});
+          window.tabs.adoptView(page.view, page);
+          window.focus();
+        },
+      });
     const openExternal = (urls: string[]) => {
       const window = current && !current.window.isDestroyed() ? current : openWindow({ url: urls.shift() });
       for (const url of urls) window.tabs.open(url);
@@ -1108,7 +1125,11 @@ function startBrowser(): void {
     };
     const launchUrls = [
       ...startupPages(settings.get().startupBehavior, settings.get().startupUrls, saved?.resume === true),
-      ...externalUrls.deliverTo(openExternal),
+      ...externalUrls.deliverTo((urls) => {
+        const mini = miniWindowUrl(urls, settings.get().miniWindow);
+        if (mini) openMini(mini);
+        else openExternal(urls);
+      }),
     ];
     const [first, ...rest] = launchUrls;
     if (restored.length === 0) openWindow(first ? { url: first } : {});

@@ -24,6 +24,7 @@ export interface PeekOwner {
 export interface LinkPeekHost {
   window: BaseWindow;
   page: string;
+  docked?: boolean;
   area: () => Rectangle;
   createOverlay: () => WebContentsView;
   createPageView: (isPrivate: boolean) => WebContentsView;
@@ -76,7 +77,7 @@ export class LinkPeek {
     const contents = page.webContents;
     this.go(current, url);
     void overlay.webContents
-      .loadFile(this.host.page, { query: { lang: getLocale() } })
+      .loadFile(this.host.page, { query: { lang: getLocale(), ...(this.host.docked && { docked: '1' }) } })
       .then(() => {
         if (this.current !== current || this.host.window.isDestroyed()) return;
         current.ready = true;
@@ -157,7 +158,7 @@ export class LinkPeek {
     const onOverlay = listenOn(current.overlay.webContents);
 
     onPage('before-input-event', (event, input) => {
-      if (input.type !== 'keyDown' || input.key !== 'Escape') return;
+      if (this.host.docked || input.type !== 'keyDown' || input.key !== 'Escape') return;
       event.preventDefault();
       this.close();
     });
@@ -200,9 +201,9 @@ export class LinkPeek {
     const current = this.current;
     if (!current?.ready) return;
     const area = this.host.area();
-    const { body } = peekLayout(area.width, area.height);
+    const { body } = peekLayout(area.width, area.height, this.host.docked ? 0 : undefined);
     current.overlay.setBounds(area);
-    current.page.setBorderRadius(PAGE_RADIUS);
+    current.page.setBorderRadius(this.host.docked ? 0 : PAGE_RADIUS);
     current.page.setBounds({ x: area.x + body.x, y: area.y + body.y, width: body.width, height: body.height });
   }
 

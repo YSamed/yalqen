@@ -854,6 +854,13 @@ export const tr: Record<MessageKey, string> = {
   'settings.pageTranslation': 'Sayfa çevirisi',
   'settings.pageTranslationHint':
     "Sayfa dili farklıysa çevir düğmesi görünür. Çevirirken sayfa metni Google Çeviri'ye gönderilir; yalnızca düğmeye bastığınızda.",
+  'settings.miniSection': 'Mini pencereler',
+  'settings.miniWindow': 'Dış bağlantıları mini pencerede aç',
+  'settings.miniWindowHint':
+    'Slack veya Mail gibi başka bir uygulamadan açtığınız bağlantı küçük bir pencerede açılır. Bir düğme onu sekme olarak ana pencereye taşır.',
+  'settings.pictureInPicture': 'Mini oynatıcı',
+  'settings.pictureInPictureHint':
+    'Video oynatan bir sekmeden ayrıldığınızda video küçük bir yüzen pencerede oynamaya devam eder. Sekmeye döndüğünüzde pencere kapanır.',
   'settings.updates': 'Güncellemeler',
   'settings.download': 'İndirme',
   'settings.restart': 'Yeniden başlat',
@@ -1088,6 +1095,7 @@ export const tr: Record<MessageKey, string> = {
   'contextMenu.peekLink': 'Bağlantıya göz at',
   'linkPeek.pageTitle': 'Bağlantı önizleme',
   'linkPeek.promote': 'Sekmede aç',
+  'linkPeek.moveToMain': 'Ana pencereye taşı',
   'linkPeek.close': 'Kapat',
   'linkPeek.closeTitle': 'Kapat (Esc)',
   'contextMenu.downloadLink': 'Bağlantıyı indir',

@@ -81,6 +81,9 @@ import {
   MEDIA_READ_SCRIPT,
   MEDIA_TOGGLE_SCRIPT,
   MEDIA_WORLD_ID,
+  PIP_ENTER_SCRIPT,
+  PIP_EXIT_SCRIPT,
+  pipSwitch,
   mediaSeekScript,
   mediaSkipScript,
   parsePageMedia,
@@ -120,6 +123,7 @@ interface TabManagerOptions {
   privateSession: Session;
   onPrivateEnded: () => void;
   freezeBackground: () => boolean;
+  pictureInPicture?: () => boolean;
   onChange: (persist: PersistChange) => void;
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
@@ -161,6 +165,12 @@ interface TabManagerOptions {
 }
 
 export type DetachedTab = Tab;
+
+export function createPageView(preload: string, session: Session): WebContentsView {
+  return new WebContentsView({
+    webPreferences: { preload, session, sandbox: true, contextIsolation: true, nodeIntegration: false },
+  });
+}
 
 export const MAX_SPLIT_PANES = 4;
 export type SplitSide = 'left' | 'right';
@@ -343,6 +353,7 @@ export class TabManager {
     }
 
     this.activeId = id;
+    this.switchPip(previous, next);
     if (next.pinnedUrl && !this.openedPinned.has(id)) {
       this.openedPinned.set(id, this.tabs.findLast((tab) => !tab.pinnedUrl)?.id ?? null);
     }
@@ -858,6 +869,27 @@ export class TabManager {
       canNext: info?.canNext ?? false,
       updatedAt: this.media.updatedAt,
     };
+  }
+
+  private switchPip(previous: Tab | undefined, next: Tab): void {
+    const { enter, exit } = pipSwitch(this.options.pictureInPicture?.() ?? false, previous, next);
+    if (exit) {
+      next.pip = false;
+      void liveContents(next)
+        ?.executeJavaScriptInIsolatedWorld(MEDIA_WORLD_ID, [{ code: PIP_EXIT_SCRIPT }], false)
+        .catch(() => {});
+    }
+    const contents = enter ? liveContents(previous) : undefined;
+    if (!previous || !contents) return;
+    previous.pip = true;
+    void contents
+      .executeJavaScriptInIsolatedWorld(MEDIA_WORLD_ID, [{ code: PIP_ENTER_SCRIPT }], true)
+      .then((entered) => {
+        if (entered !== true) previous.pip = false;
+      })
+      .catch(() => {
+        previous.pip = false;
+      });
   }
 
   // A paused background tab gets frozen once it falls silent, and a frozen page runs no script,
@@ -1668,15 +1700,7 @@ export class TabManager {
   }
 
   createPageView(isPrivate: boolean): WebContentsView {
-    return new WebContentsView({
-      webPreferences: {
-        preload: this.options.pagePreload,
-        session: isPrivate ? this.options.privateSession : this.options.session,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
+    return createPageView(this.options.pagePreload, isPrivate ? this.options.privateSession : this.options.session);
   }
 
   adoptView(
@@ -1976,6 +2000,7 @@ export class TabManager {
     listen('did-navigate', () => {
       tab.playingMedia = 0;
       tab.soundAt = 0;
+      tab.pip = false;
     });
     listen('devtools-closed', () => this.freezer.maybeFreeze(tab));
     listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
@@ -2179,6 +2204,7 @@ export class TabManager {
     tab.frozen = false;
     tab.playingMedia = 0;
     tab.soundAt = 0;
+    tab.pip = false;
     tab.overrides = NO_OVERRIDES;
     tab.agent = null;
     this.translation.reset(tab);

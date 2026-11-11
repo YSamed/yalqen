@@ -845,6 +845,8 @@ export interface SettingsValues {
   defaultZoom: number;
   interfaceLanguage: InterfaceLanguage;
   pageTranslation: boolean;
+  miniWindow: boolean;
+  pictureInPicture: boolean;
   autoUpdate: boolean;
   autoUpdateExtensions: boolean;
   usageCounting: boolean;

@@ -213,6 +213,22 @@
   />
 </SettingRow>
 
+<h2>{t('settings.miniSection')}</h2>
+<SettingRow title={t('settings.miniWindow')} hint={t('settings.miniWindowHint')}>
+  <Switch
+    label={t('settings.miniWindow')}
+    checked={values.miniWindow}
+    onchange={(checked) => update({ miniWindow: checked })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.pictureInPicture')} hint={t('settings.pictureInPictureHint')}>
+  <Switch
+    label={t('settings.pictureInPicture')}
+    checked={values.pictureInPicture}
+    onchange={(checked) => update({ pictureInPicture: checked })}
+  />
+</SettingRow>
+
 <h2>{t('settings.updates')}</h2>
 <div class="row">
   <span class="label">

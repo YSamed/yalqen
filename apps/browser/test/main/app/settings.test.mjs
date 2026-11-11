@@ -63,6 +63,8 @@ test('unknown or mistyped fields fall back', () => {
       defaultZoom: 1,
       interfaceLanguage: 'system',
       pageTranslation: true,
+      miniWindow: false,
+      pictureInPicture: false,
       autoUpdate: true,
       autoUpdateExtensions: true,
       usageCounting: false,

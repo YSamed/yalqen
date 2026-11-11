@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import launch from '../../../dist/main/app/launch.js';
 
-const { externalUrls } = launch;
+const { externalUrls, miniWindowUrl } = launch;
 const files = new Set(['/home/a/doc.pdf', '/home/a/sayfa ben.html']);
 const isFile = (file) => files.has(file);
 
@@ -33,4 +33,16 @@ test('file addresses are kept', () => {
     externalUrls(['file:///tmp/x.html'], '/', () => false),
     ['file:///tmp/x.html'],
   );
+});
+
+test('one web link goes to the mini window when the setting is on', () => {
+  assert.equal(miniWindowUrl(['https://example.com/a'], true), 'https://example.com/a');
+  assert.equal(miniWindowUrl(['http://example.com/'], true), 'http://example.com/');
+});
+
+test('files, several links, or a turned-off setting keep the normal tab', () => {
+  assert.equal(miniWindowUrl(['https://example.com/a'], false), null);
+  assert.equal(miniWindowUrl(['file:///home/a/doc.pdf'], true), null);
+  assert.equal(miniWindowUrl(['https://a.example/', 'https://b.example/'], true), null);
+  assert.equal(miniWindowUrl([], true), null);
 });
