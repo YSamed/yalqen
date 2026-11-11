@@ -56,6 +56,9 @@ import type { HttpsOnly } from '../privacy/https-only.js';
 import { canViewSource, formatAddress, type AddressFormat } from '../devtools/page-export.js';
 import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
 import { TooltipOverlay } from './tooltip-overlay.js';
+import { HoverPreview, type PreviewChoice } from './hover-preview.js';
+import { previewView, validPreviewRequest, type PreviewContent } from '../../shared/previews.js';
+import { readPreview, CALENDAR_OPEN_SCRIPT, type PreviewTab } from '../tabs/previews.js';
 import { LinkPeek, type PeekOwner } from './link-peek.js';
 import { createOverlayView } from './overlay-view.js';
 import { validTooltip } from '../../shared/tooltip.js';
@@ -252,6 +255,8 @@ export class YalqenWindow {
   private findTarget: { tabId: string; url: string } | null = null;
   private readonly navigationHint: NavigationHint;
   private readonly tooltip: TooltipOverlay;
+  private readonly preview: HoverPreview;
+  private previewShown: { tab: PreviewTab; content: PreviewContent } | null = null;
   private readonly notice: PageNotice;
   private readonly agentControl: AgentControl;
   private readonly peek: LinkPeek;
@@ -497,6 +502,7 @@ export class YalqenWindow {
     });
     this.navigationHint = new NavigationHint({ window: this.window, area: () => this.pageArea });
     this.tooltip = new TooltipOverlay(this.window);
+    this.preview = new HoverPreview(this.window, (choice) => this.openFromPreview(choice));
     this.notice = new PageNotice({ window: this.window, area: () => this.pageArea });
     this.agentControl = new AgentControl({
       window: this.window,
@@ -523,8 +529,14 @@ export class YalqenWindow {
     this.uiContents.on('input-event', (_event, input) => {
       if (input.type === 'mouseDown') this.peek.close();
     });
-    this.window.on('blur', () => this.tooltip.hide());
-    this.window.on('resize', () => this.tooltip.hide());
+    this.window.on('blur', () => {
+      this.tooltip.hide();
+      this.preview.hide();
+    });
+    this.window.on('resize', () => {
+      this.tooltip.hide();
+      this.preview.hide();
+    });
     this.window.on('enter-full-screen', syncFullScreen);
     this.window.on('leave-full-screen', syncFullScreen);
     this.applyLayout();
@@ -569,6 +581,7 @@ export class YalqenWindow {
       this.findBar.release(this.window);
       this.navigationHint.destroy();
       this.tooltip.destroy();
+      this.preview.destroy();
       this.notice.destroy();
       this.agentControl.destroy();
       app.extensionPopup.close(this.window);
@@ -1590,6 +1603,15 @@ export class YalqenWindow {
         if (tooltip) this.tooltip.show(tooltip);
         break;
       }
+      case 'show-preview':
+        this.showPreview(action.preview);
+        break;
+      case 'leave-preview':
+        this.preview.release();
+        break;
+      case 'hide-preview':
+        this.preview.hide();
+        break;
       case 'hide-tooltip':
         this.tooltip.hide();
         break;
@@ -1803,6 +1825,57 @@ export class YalqenWindow {
       });
     } else if (action?.optionsUrl) {
       this.tabs.open(action.optionsUrl, { isPrivate: false });
+    }
+  }
+
+  // Hovering a Gmail or Calendar tile or row shows its unread mail or next events beside it.
+  private showPreview(value: unknown): void {
+    const request = validPreviewRequest(value);
+    if (!request || this.isPrivate || this.isDeveloper) return;
+    const key = `${request.tabId ?? ''} ${request.url}`;
+    if (this.preview.isShowing(key)) {
+      this.preview.keep();
+      return;
+    }
+    const tab = this.tabs.previewTab(request.tabId, request.url);
+    const read = tab
+      ? readPreview(tab, {
+          session: this.app.daily,
+          readInTab: (contents, code) => this.tabs.readForPreview(contents, code),
+        })
+      : null;
+    if (!tab || !read) return;
+    const ticket = this.preview.begin();
+    void read.then((content) => {
+      if (!this.preview.isCurrent(ticket)) return;
+      this.previewShown = { tab, content };
+      this.preview.show(ticket, key, previewView(content, Date.now(), getLocale(), t), request.anchor, request.theme);
+    });
+  }
+
+  // A click on a message opens its conversation in the Gmail tab, a click on an event opens its details in
+  // the Calendar tab, and anything else in the preview switches to the tab.
+  private openFromPreview(choice: PreviewChoice): void {
+    const shown = this.previewShown;
+    this.previewShown = null;
+    if (!shown) return;
+    const { tab, content } = shown;
+    const open = (url: string) => {
+      if (tab.id) {
+        this.tabs.activate(tab.id);
+        if (url !== tab.url) this.tabs.navigate(url);
+      } else {
+        this.tabs.open(url, { isPrivate: false });
+      }
+    };
+    if (content.kind === 'mail' && typeof choice === 'number') {
+      open(content.messages[choice]?.link ?? tab.url);
+    } else if (content.kind === 'calendar' && typeof choice === 'number' && tab.id && tab.contents) {
+      const event = content.events[choice];
+      this.tabs.activate(tab.id);
+      if (event) void this.tabs.readForPreview(tab.contents, CALENDAR_OPEN_SCRIPT(event.id)).catch(() => {});
+    } else {
+      open(tab.url);
     }
   }
 

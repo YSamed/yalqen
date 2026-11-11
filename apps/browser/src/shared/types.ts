@@ -432,6 +432,9 @@ export type UiAction =
   | { type: 'toggle-media'; id: TabId }
   | { type: 'show-tooltip'; tooltip: import('./tooltip').TooltipRequest }
   | { type: 'hide-tooltip' }
+  | { type: 'show-preview'; preview: import('./previews').PreviewRequest }
+  | { type: 'leave-preview' }
+  | { type: 'hide-preview' }
   | { type: 'seek-media'; id: TabId; seconds: number }
   | { type: 'skip-media'; id: TabId; direction: import('./sidebar-widgets').MediaSkip }
   | { type: 'open-tab-menu'; id: TabId }
