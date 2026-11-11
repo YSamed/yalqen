@@ -115,7 +115,6 @@
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
   const developer = $derived(browser.developer);
   const profile = $derived(browser.profile);
-  const profileName = $derived(browser.profileName);
   const media = $derived(browser.media);
   const pinnedDisplay = $derived(browser.pinnedDisplay);
   const favorites = $derived(browser.favorites);
@@ -365,7 +364,6 @@
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={PANEL_WIDTH}
         {profile}
-        {profileName}
         {pinnedDisplay}
         {favorites}
         liveFolders={browser.liveFolders ?? NO_LIVE_FOLDERS}

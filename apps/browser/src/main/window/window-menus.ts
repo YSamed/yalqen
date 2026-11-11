@@ -1,6 +1,6 @@
 import type { MenuItemConstructorOptions, Session } from 'electron';
 import { t } from '../../shared/i18n.js';
-import type { TabSnapshot } from '../../shared/types.js';
+import type { ProfileKind, TabSnapshot } from '../../shared/types.js';
 import { bookmarksMenuTemplate, type BookmarkStore } from '../library/bookmarks.js';
 import { arcSidebarSources, chromiumProfiles, firefoxProfiles, historyImportMenu } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
@@ -127,6 +127,12 @@ interface ProfileMenuActions {
   openSettings(): void;
 }
 
+const PROFILE_KINDS: { id: ProfileKind; label: Parameters<typeof t>[0] }[] = [
+  { id: 'personal', label: 'tabPanel.profilePersonal' },
+  { id: 'developer', label: 'tabPanel.profileDeveloper' },
+  { id: 'private', label: 'tabPanel.profilePrivate' },
+];
+
 export function profileMenuTemplate(
   actions: ProfileMenuActions,
   persistent?: {
@@ -135,6 +141,7 @@ export function profileMenuTemplate(
     open(id: string): void;
     manage(): void;
   },
+  kind?: { current: ProfileKind; switch(kind: ProfileKind): void },
 ): MenuItemConstructorOptions[] {
   return [
     { label: t('window.profileMenuTitle'), enabled: false },
@@ -147,6 +154,17 @@ export function profileMenuTemplate(
             click: () => persistent.open(profile.id),
           })),
           { label: t('profiles.manage'), click: persistent.manage },
+        ]
+      : []),
+    ...(kind
+      ? [
+          { type: 'separator' as const },
+          ...PROFILE_KINDS.map((item) => ({
+            label: t(item.label),
+            type: 'radio' as const,
+            checked: item.id === kind.current,
+            click: () => kind.switch(item.id),
+          })),
         ]
       : []),
     { type: 'separator' },

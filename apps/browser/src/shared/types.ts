@@ -478,7 +478,6 @@ export type UiAction =
   | { type: 'toggle-agent-panel' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
-  | { type: 'switch-profile'; profile: ProfileKind }
   | { type: 'open-downloads' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-extension-store' }

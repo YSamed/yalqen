@@ -1790,9 +1790,6 @@ export class YalqenWindow {
       case 'open-address':
         this.openAddress();
         break;
-      case 'switch-profile':
-        if (action.profile !== this.profile) app.switchProfile(action.profile, this);
-        break;
       case 'open-profile-menu':
         this.popup(
           profileMenuTemplate(
@@ -1813,6 +1810,12 @@ export class YalqenWindow {
                 });
               },
               manage: () => tabs.openSettings('#profiles'),
+            },
+            {
+              current: this.profile,
+              switch: (profile) => {
+                if (profile !== this.profile) app.switchProfile(profile, this);
+              },
             },
           ),
         );

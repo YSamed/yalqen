@@ -5,11 +5,10 @@
   import Select from '../ui/Select.svelte';
   import TextField from '../ui/TextField.svelte';
 
-  let { folders }: { folders: LiveFolderView[] } = $props();
+  let { folders, adding = $bindable(false) }: { folders: LiveFolderView[]; adding?: boolean } = $props();
 
   const send = window.yalqen.send;
 
-  let adding = $state(false);
   let kind = $state<LiveFolderKind>('feed');
   let input = $state('');
 
@@ -80,7 +79,10 @@
 
   {#if adding}
     <div class="add" use:focusField>
-      <Select bind:value={kind} options={kinds} placement="up" aria-label={t('liveFolders.add')} />
+      <div class="add-head">
+        <Select bind:value={kind} options={kinds} variant="ghost" placement="up" aria-label={t('liveFolders.add')} />
+        <IconButton size="sm" tone="muted" icon="close" label={t('spaces.cancel')} onclick={() => (adding = false)} />
+      </div>
       <TextField
         bind:value={input}
         maxlength={2048}
@@ -93,12 +95,6 @@
         }}
       />
     </div>
-  {:else}
-    <button class="new" onclick={() => (adding = true)}>
-      <span>{t('liveFolders.title')}</span>
-      <span aria-hidden="true">+</span>
-      <span class="sr">{t('liveFolders.add')}</span>
-    </button>
   {/if}
 </section>
 
@@ -120,7 +116,6 @@
     margin-top: 4px;
   }
   .toggle,
-  .new,
   .item {
     display: flex;
     align-items: center;
@@ -138,11 +133,7 @@
     flex: 1;
     background: var(--surface);
   }
-  .new {
-    justify-content: space-between;
-  }
   .toggle:hover,
-  .new:hover,
   .item:hover {
     background: var(--surface-hover);
   }
@@ -182,12 +173,16 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    margin-top: 4px;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
   }
-  .sr {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
+  .add-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
   }
 </style>
