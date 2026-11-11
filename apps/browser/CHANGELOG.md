@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.98](https://github.com/YSamed/yalqen/compare/v0.3.97...v0.3.98) (2026-11-11)
+
+
+### Features
+
+* keep pinned tabs on their site ([#384](https://github.com/YSamed/yalqen/issues/384)) ([a18c55e](https://github.com/YSamed/yalqen/commit/a18c55e53528f404da3316cd6b2d17b02ee84021))
+
 ## [0.3.97](https://github.com/YSamed/yalqen/compare/v0.3.96...v0.3.97) (2026-11-11)
 
 
