@@ -213,6 +213,13 @@
       onchange={(value) => update({ pinnedDisplay: value })}
     />
   </SettingRow>
+  <SettingRow title={t('settings.pinnedTabsStayHome')} hint={t('settings.pinnedTabsStayHomeHint')}>
+    <Switch
+      label={t('settings.pinnedTabsStayHome')}
+      checked={values.pinnedTabsStayHome}
+      onchange={(checked) => update({ pinnedTabsStayHome: checked })}
+    />
+  </SettingRow>
   <SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
     <Switch
       label={t('settings.mediaPlayer')}

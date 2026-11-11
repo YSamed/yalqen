@@ -32,6 +32,7 @@ for (const test of [
   'media-controls.mjs',
   'media-skip.mjs',
   'pinning.mjs',
+  'pinned-home.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
   'profile-settings.mjs',

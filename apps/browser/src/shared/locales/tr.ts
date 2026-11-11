@@ -980,6 +980,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.glassTint': 'Cam yoğunluğu',
   'settings.glassTintHint': 'Pencerenin arkasını ne kadar örttüğünü belirler. Düşük değer daha şeffaftır.',
   'settings.pinnedTabs': 'Sabitlenmiş sekmeler',
+  'settings.pinnedTabsStayHome': 'Sabitlenmiş sekmeleri kendi sitelerinde tut',
+  'settings.pinnedTabsStayHomeHint':
+    'Sabitlenmiş sekmeler sabitlendikleri adreste yeniden açılır. Başka sitelere giden bağlantılar ve yazılan adresler yeni sekmede açılır.',
   'settings.pinnedAlways': 'Her zaman',
   'settings.pinnedExpanded': 'Sadece geniş menüde',
   'settings.pinnedNever': 'Hiçbir zaman',

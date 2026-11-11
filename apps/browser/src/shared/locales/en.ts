@@ -971,6 +971,9 @@ export const en = {
   'settings.glassTint': 'Glass tint',
   'settings.glassTintHint': 'How much the window covers what is behind it. Lower is clearer.',
   'settings.pinnedTabs': 'Pinned tabs',
+  'settings.pinnedTabsStayHome': 'Keep pinned tabs on their site',
+  'settings.pinnedTabsStayHomeHint':
+    'Pinned tabs reopen at the address they were pinned at. Links and typed addresses for other sites open in a new tab.',
   'settings.pinnedAlways': 'Always',
   'settings.pinnedExpanded': 'Wide sidebar only',
   'settings.pinnedNever': 'Never',

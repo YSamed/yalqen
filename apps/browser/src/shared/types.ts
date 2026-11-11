@@ -846,6 +846,8 @@ export interface SettingsValues {
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
+  // Pinned tabs reopen at their pinned address, and links or typed addresses for other sites open new tabs.
+  pinnedTabsStayHome: boolean;
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;
