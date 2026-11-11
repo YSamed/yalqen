@@ -45,17 +45,24 @@ export interface SavedTab {
   faviconUrl: string | null;
   pinnedUrl?: string | null;
   group?: string | null;
+  space?: string;
   keepAlive?: boolean;
   closedAt?: number;
   inactiveSince?: number;
   history: SavedHistory | null;
 }
 
-export interface SavedWindow {
-  activeTabId: TabId | null;
-  tabs: SavedTab[];
+export interface SavedGroups {
   collapsedGroups?: string[];
   groupParents?: Record<string, string>;
+}
+
+// Folder state of the default space stays at the top level so older sessions keep loading.
+export interface SavedWindow extends SavedGroups {
+  activeTabId: TabId | null;
+  tabs: SavedTab[];
+  spaceGroups?: Record<string, SavedGroups>;
+  seededSpaces?: string[];
   webAppId?: string;
 }
 
@@ -79,6 +86,8 @@ export function pinnedOnly(window: SavedWindow): SavedWindow {
     tabs,
     ...(window.collapsedGroups && { collapsedGroups: window.collapsedGroups }),
     ...(window.groupParents && { groupParents: window.groupParents }),
+    ...(window.spaceGroups && { spaceGroups: window.spaceGroups }),
+    ...(window.seededSpaces && { seededSpaces: window.seededSpaces }),
     ...(window.webAppId && { webAppId: window.webAppId }),
   };
 }

@@ -34,6 +34,8 @@ interface InternalPageFiles {
   bookmarks: string;
   readingList?: string;
   workspaces?: string;
+  boosts?: string;
+  easels?: string;
   settings: string;
 }
 
@@ -50,6 +52,8 @@ interface InternalPages {
   bookmarks: BookmarksPageAssets;
   readingList?: { template: string; script: string };
   workspaces?: { template: string; script: string };
+  boosts?: { template: string; script: string };
+  easels?: { template: string; script: string };
   settings: { template: string; asset: (name: string) => Buffer<ArrayBuffer> | null };
 }
 
@@ -84,6 +88,12 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
     workspaces: files.workspaces
       ? { template: readPage(files.workspaces), script: readScript(files.workspaces, 'workspaces.js') }
       : undefined,
+    boosts: files.boosts
+      ? { template: readPage(files.boosts), script: readScript(files.boosts, 'boosts.js') }
+      : undefined,
+    easels: files.easels
+      ? { template: readPage(files.easels), script: readScript(files.easels, 'easels.js') }
+      : undefined,
     settings: {
       template: localizePage(fs.readFileSync(files.settings, 'utf8')),
       asset: (name) => {
@@ -108,6 +118,14 @@ function serveSettings(pathname: string, settings: InternalPages['settings']): R
   if (!type || name !== path.basename(name)) return notFound();
   const content = settings.asset(name);
   return content ? new Response(content, { headers: { 'content-type': type } }) : notFound();
+}
+
+const PAGE_CSP = "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'";
+
+function servePage(url: URL, name: string, page: { template: string; script: string } | undefined, csp: string) {
+  if (!page) return notFound();
+  if (url.pathname === `/${name}.js`) return scriptResponse(page.script);
+  return url.pathname === '/' ? htmlResponse(page.template, csp) : notFound();
 }
 
 export function serveInternalPages(session: Session, pages: InternalPages, sources: InternalPageSources): void {
@@ -142,6 +160,10 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
               "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'none'",
             )
           : notFound();
+      case 'boosts':
+        return servePage(url, 'boosts', pages.boosts, PAGE_CSP);
+      case 'easels':
+        return servePage(url, 'easels', pages.easels, `${PAGE_CSP}; img-src data:`);
       default:
         return notFound();
     }

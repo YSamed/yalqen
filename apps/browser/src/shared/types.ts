@@ -149,6 +149,9 @@ export interface BrowserState {
   selectedTabIds: TabId[];
   splitTabIds: TabId[];
   tabGroups?: import('./tab-groups').TabGroup[];
+  // Empty where spaces do not apply (private, developer and web-app windows).
+  spaces: import('./workspaces').SpaceView[];
+  activeSpaceId: string;
   pageFullScreen: boolean;
   windowFullScreen: boolean;
   addressPlaceholder: string;
@@ -167,6 +170,7 @@ export interface BrowserState {
   material: WindowMaterial;
   glassTint: number;
   accent: string;
+  windowColor: string | null;
   device: DeviceFrame | null;
   zoom: number;
   defaultZoom: number;
@@ -423,6 +427,10 @@ export type UiAction =
   | { type: 'move-tab-to-group'; id: TabId; name: string | null }
   | { type: 'move-tab-group'; name: string; parent: string | null }
   | { type: 'open-folder-menu'; name: string }
+  | { type: 'switch-space'; id: string }
+  | { type: 'create-space' }
+  | { type: 'rename-space'; id: string; name: string }
+  | { type: 'open-space-menu'; id: string }
   | { type: 'close-tab'; id: TabId }
   | { type: 'discard-tab'; id: TabId }
   | { type: 'toggle-pin'; id: TabId }
@@ -829,6 +837,7 @@ export interface SettingsValues {
   glassTint: number;
   startupBehavior: 'restore' | 'new-tab' | 'pages';
   startupUrls: string[];
+  spaceRules: import('./space-rules').SpaceRule[];
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
@@ -858,6 +867,7 @@ export interface SettingsValues {
   invitationSeen: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
+  windowColor: import('./window-color').WindowColor;
   newTabBackground: string;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
@@ -914,6 +924,7 @@ export interface SettingsView {
   version: string;
   update: UpdateStatus;
   threatLists?: ThreatListsView;
+  spaces: import('./workspaces').SpaceView[];
 }
 
 export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{boosts.title}}</title>
+    <style>
+      __YALQEN_STYLES_SLOT__
+    </style>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page: var(--bg);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        font: 14px/1.5 system-ui;
+      }
+      main {
+        max-width: 700px;
+        margin: auto;
+        padding: 40px 24px 80px;
+      }
+      h1 {
+        font-size: 30px;
+        margin: 0 0 12px;
+      }
+      p {
+        color: var(--text-muted);
+      }
+      form {
+        display: grid;
+        gap: 14px;
+      }
+      label {
+        display: grid;
+        gap: 4px;
+      }
+      .inline {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      textarea {
+        width: 100%;
+        min-height: 90px;
+        font:
+          13px/1.4 ui-monospace,
+          Menlo,
+          monospace;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+      .error {
+        color: var(--danger);
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+    <script src="/boosts.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>{{boosts.title}}</h1>
+      <p>{{boosts.intro}}</p>
+      <p data-readonly hidden>{{boosts.readOnly}}</p>
+      <p role="alert" class="error" hidden>{{boosts.failed}}</p>
+      <p data-empty hidden>{{boosts.empty}}</p>
+      <form hidden>
+        <label
+          >{{boosts.site}}
+          <select class="field" name="site"></select>
+        </label>
+        <label class="inline"><input type="checkbox" name="enabled" /> {{boosts.enabled}}</label>
+        <div class="inline">
+          <input type="checkbox" name="useAccent" aria-label="{{boosts.accent}}" />
+          <label class="inline">{{boosts.accent}} <input type="color" name="accent" value="#2563eb" /></label>
+        </div>
+        <div class="inline">
+          <input type="checkbox" name="useBackground" aria-label="{{boosts.background}}" />
+          <label class="inline">{{boosts.background}} <input type="color" name="background" value="#ffffff" /></label>
+        </div>
+        <label
+          >{{boosts.font}}
+          <select class="field" name="font">
+            <option value="">{{boosts.fontDefault}}</option>
+            <option value="system">{{boosts.fontSystem}}</option>
+            <option value="serif">{{boosts.fontSerif}}</option>
+            <option value="mono">{{boosts.fontMono}}</option>
+          </select>
+        </label>
+        <label
+          >{{boosts.hidden}}
+          <textarea name="hidden" spellcheck="false"></textarea>
+        </label>
+        <label
+          >{{boosts.css}}
+          <textarea name="css" spellcheck="false" maxlength="20000"></textarea>
+        </label>
+        <div class="actions">
+          <button class="btn tonal" type="submit">{{boosts.save}}</button>
+          <button class="btn" type="button" data-remove>{{boosts.remove}}</button>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

@@ -31,6 +31,8 @@ import {
 } from '../../shared/types.js';
 import type { BookmarkStore } from '../library/bookmarks.js';
 import type { FavoriteStore } from '../library/favorites.js';
+import type { WorkspaceStore } from '../library/workspaces.js';
+import { DEFAULT_SPACE_ID, SPACE_ICONS, type SpaceView } from '../../shared/workspaces.js';
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
 import type { CommandBar, CommandBarHost } from '../address-bar/command-bar.js';
@@ -90,7 +92,7 @@ import type { SettingsStore } from '../app/settings.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
 import { EMPTY_HISTORY_INDEX, suggest } from '../address-bar/suggestions.js';
-import { MAX_SPLIT_PANES, TabManager, type DetachedTab } from '../tabs/tabs.js';
+import { MAX_SPLIT_PANES, TabManager, type DetachedTab, type PageReader } from '../tabs/tabs.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
@@ -116,6 +118,7 @@ import { readingUrl } from '../../shared/reading-list.js';
 import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
 import { accentHex } from '../../shared/accent.js';
+import { windowColorHex } from '../../shared/window-color.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -164,6 +167,8 @@ export interface AppContext {
   bookmarks: BookmarkStore;
   favorites: FavoriteStore;
   favoritesChanged(): void;
+  workspaces: WorkspaceStore;
+  spacesChanged(): void;
   extensions: ExtensionManager;
   extensionPopup: ExtensionPopup;
   extensionAccess: import('../extensions/extension-access-controller.js').ExtensionAccessController;
@@ -205,6 +210,7 @@ export interface WindowOptions {
   developer?: boolean;
   saved?: SavedWindow;
   url?: string;
+  space?: string;
   tab?: DetachedTab;
   from?: YalqenWindow;
 }
@@ -386,6 +392,8 @@ export class YalqenWindow {
         );
       },
       freezeBackground: () => app.settings.get().discardAfterMinutes > 0,
+      spaceIds: () => this.spaces().map((space) => space.id),
+      spaceSeed: (id) => app.workspaces.open(id),
       onChange: (persist) => {
         this.syncAgentProjectWithTab();
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
@@ -592,8 +600,9 @@ export class YalqenWindow {
 
     this.updateProfileName();
     if (options.tab) this.tabs.adopt(options.tab);
-    else if (options.saved && options.saved.tabs.length > 0) this.tabs.restore(options.saved, options.url);
-    else this.tabs.open(options.url);
+    else if (options.saved && options.saved.tabs.length > 0)
+      this.tabs.restore(options.saved, options.url, options.space);
+    else this.tabs.open(options.url, { space: options.space });
 
     app.onWindowFocus(this);
   }
@@ -653,10 +662,10 @@ export class YalqenWindow {
 
   state(): BrowserState {
     const tabState = this.tabs.state();
-    const tabIds = new Set(tabState.tabs.map((tab) => tab.id));
-    for (const project of this.agentProjects) project.retainTabs(tabIds);
+    for (const project of this.agentProjects) project.retainTabs(this.tabs.tabIds);
     return {
       ...tabState,
+      spaces: this.isPrivate || this.webApp ? [] : [this.defaultSpace(), ...this.spaces()],
       developer: this.isDeveloper,
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
@@ -674,6 +683,7 @@ export class YalqenWindow {
       material: this.material(),
       glassTint: this.app.settings.get().glassTint,
       accent: accentHex(this.app.settings.get().accentColor),
+      windowColor: windowColorHex(this.app.settings.get().windowColor, this.app.settings.get().accentColor),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
@@ -1521,6 +1531,24 @@ export class YalqenWindow {
     }
   }
 
+  showNotice(lines: string[]): void {
+    this.notice.show(lines);
+  }
+
+  async pickOnPage<T>(read: PageReader<T>): Promise<{ url: string; value: T } | null> {
+    if (this.tabs.isPicking) {
+      this.tabs.cancelPicking();
+      return null;
+    }
+    const picking = this.tabs.pickPage(read);
+    if (this.tabs.isPicking) this.notice.show([t('pagePicker.start'), t('picker.cancelHint')]);
+    const outcome = await picking;
+    if (outcome.status === 'picked') return outcome;
+    if (outcome.status === 'failed') this.notice.show([t('picker.failed')]);
+    if (outcome.status === 'unavailable') this.notice.show([t('pagePicker.unavailable')]);
+    return null;
+  }
+
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
     if (page && canViewSource(page.url)) clipboard.writeText(formatAddress(format, page.url, page.title));
   }
@@ -1552,6 +1580,20 @@ export class YalqenWindow {
         break;
       case 'activate-tab':
         tabs.activate(action.id, action.animate === true);
+        break;
+      case 'switch-space':
+        tabs.switchSpace(action.id);
+        break;
+      case 'create-space':
+        this.createSpace();
+        break;
+      case 'rename-space':
+        if (action.id === DEFAULT_SPACE_ID || !app.workspaces.rename(action.id, action.name)) {
+          this.notice.show([t('spaces.failed')]);
+        } else app.spacesChanged();
+        break;
+      case 'open-space-menu':
+        this.openSpaceMenu(action.id);
         break;
       case 'select-tab':
         tabs.selectTab(action.id, action.mode);
@@ -1973,6 +2015,65 @@ export class YalqenWindow {
         },
       ),
     );
+  }
+
+  private spaces(): SpaceView[] {
+    return this.isPrivate || this.webApp ? [] : this.app.workspaces.spaces();
+  }
+
+  private defaultSpace(): SpaceView {
+    return { id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null };
+  }
+
+  spacesChanged(): void {
+    this.tabs.syncSpaces();
+  }
+
+  private createSpace(): void {
+    const names = new Set(this.spaces().map((space) => space.name));
+    let number = 1;
+    while (names.has(t('spaces.newName', { number }))) number++;
+    const id = this.app.workspaces.create(t('spaces.newName', { number }));
+    if (!id) {
+      this.notice.show([t('spaces.failed')]);
+      return;
+    }
+    this.app.spacesChanged();
+    this.tabs.switchSpace(id);
+  }
+
+  private openSpaceMenu(id: string): void {
+    const space = this.spaces().find((item) => item.id === id);
+    if (!space) return;
+    this.popup([
+      {
+        label: t('spaces.icon'),
+        submenu: SPACE_ICONS.map((icon) => ({
+          label: icon,
+          type: 'radio',
+          checked: icon === space.icon,
+          click: () => {
+            if (this.app.workspaces.setIcon(id, icon)) this.app.spacesChanged();
+          },
+        })),
+      },
+      {
+        label: t('spaces.delete'),
+        click: () => {
+          const confirmed =
+            dialog.showMessageBoxSync(this.window, {
+              type: 'question',
+              message: t('spaces.deleteConfirm', { name: space.name }),
+              detail: t('spaces.deleteDetail'),
+              buttons: [t('spaces.cancel'), t('spaces.delete')],
+              defaultId: 0,
+              cancelId: 0,
+              noLink: true,
+            }) === 1;
+          if (confirmed && this.app.workspaces.remove(id)) this.app.spacesChanged();
+        },
+      },
+    ]);
   }
 
   private openFolderMenu(name: string): void {

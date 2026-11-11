@@ -21,6 +21,7 @@ interface MenuActions {
   selectNextTab(): void;
   selectPreviousTab(): void;
   selectTab(index: number): void;
+  switchSpace(index: number): void;
   focusAddress(): void;
   find(): void;
   findNext(forward: boolean): void;
@@ -43,6 +44,10 @@ interface MenuActions {
   showBookmarks(): void;
   saveReadingPage(): void;
   showWorkspaces(): void;
+  showBoosts(): void;
+  hideElement(): void;
+  showEasels(): void;
+  clipToEasel(): void;
   installWebApp(): void;
   manageWebApps(): void;
   showReadingList(): void;
@@ -160,6 +165,10 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.moveTabToNewWindow'), click: actions.moveTabToNewWindow },
         { type: 'separator' },
         { label: t('workspaces.title'), click: actions.showWorkspaces },
+        { label: t('boosts.title'), click: actions.showBoosts },
+        { label: t('boosts.hideElement'), click: actions.hideElement },
+        { label: t('easels.title'), click: actions.showEasels },
+        { label: t('easels.clip'), click: actions.clipToEasel },
         { label: t('webApps.installPage'), click: actions.installWebApp },
         { label: t('webApps.manage'), click: actions.manageWebApps },
         ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({
@@ -168,6 +177,14 @@ export function buildMenu(actions: MenuActions): Menu {
           visible: false,
           acceleratorWorksWhenHidden: true,
           click: () => actions.selectTab(i === 8 ? -1 : i),
+        })),
+        ...Array.from({ length: 9 }, (_, i): MenuItemConstructorOptions => ({
+          label: t('menu.spaceNumber', { number: i + 1 }),
+          // CmdOrCtrl+number already selects tabs, so only macOS has Ctrl+number free.
+          accelerator: `${isMac ? 'Ctrl' : 'Ctrl+Shift'}+${i + 1}`,
+          visible: false,
+          acceleratorWorksWhenHidden: true,
+          click: () => actions.switchSpace(i),
         })),
       ],
     },

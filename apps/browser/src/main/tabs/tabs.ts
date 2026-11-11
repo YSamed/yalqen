@@ -62,7 +62,7 @@ import { shouldArchive } from './auto-archive.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
 import { PagePlacement, type PaneSlot } from './page-placement.js';
-import type { PersistChange, SavedTab, SavedWindow } from './persistence.js';
+import type { PersistChange, SavedGroups, SavedTab, SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, opensInPlace, opensPeek, recordBlocked } from './popups.js';
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
 import { checkBeforeUnload } from './before-unload.js';
@@ -97,7 +97,10 @@ import {
   tabGroupName,
   type TabGroup,
 } from '../../shared/tab-groups.js';
-import { WORKSPACES_URL } from '../../shared/workspaces.js';
+import { DEFAULT_SPACE_ID, WORKSPACES_URL } from '../../shared/workspaces.js';
+import { BOOSTS_URL } from '../../shared/boosts.js';
+import { EASELS_URL } from '../../shared/easels.js';
+import { boostOrigin } from '../library/boosts.js';
 import { webAppContains } from '../../shared/web-apps.js';
 import { bulkCloseTargets, type BulkCloseMode } from './bulk-tabs.js';
 import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../shared/tab-selection.js';
@@ -123,6 +126,8 @@ interface TabManagerOptions {
   onPrivateEnded: () => void;
   freezeBackground: () => boolean;
   onChange: (persist: PersistChange) => void;
+  spaceIds?: () => string[];
+  spaceSeed?: (id: string) => SavedWindow | null;
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
   onRepoPrompt: (action: RepoPromptAction) => void;
@@ -164,8 +169,18 @@ interface TabManagerOptions {
 
 export type DetachedTab = Tab;
 
+interface GroupState {
+  collapsed: Set<string>;
+  parents: Map<string, string>;
+}
+
 export const MAX_SPLIT_PANES = 4;
 export type SplitSide = 'left' | 'right';
+
+export type PageReader<T> = (contents: WebContents, backendNodeId: number, view: Rectangle) => Promise<T>;
+
+export type PagePick<T> =
+  { status: 'picked'; url: string; value: T } | { status: 'cancelled' | 'failed' | 'unavailable' };
 
 type PickOutcome =
   | { status: 'picked'; selection: ElementSelection }
@@ -177,8 +192,10 @@ export class TabManager {
   private activeId: TabId | null = null;
   private readonly openedPinned = new Map<TabId, TabId | null>();
   private readonly favoriteTabs = new Map<string, TabId>();
-  private readonly collapsedGroups = new Set<string>();
-  private groupParents = new Map<string, string>();
+  private space = DEFAULT_SPACE_ID;
+  private readonly seeded = new Set([DEFAULT_SPACE_ID]);
+  private readonly spaceActive = new Map<string, TabId>();
+  private readonly groupStates = new Map<string, GroupState>();
   private readonly placement = new PagePlacement((tab) => this.slotOf(tab));
   private readonly splits: TabId[][] = [];
   private shown: Tab[] = [];
@@ -224,13 +241,103 @@ export class TabManager {
     return this.tabs.length;
   }
 
+  get tabIds(): Set<TabId> {
+    return new Set(this.tabs.map((tab) => tab.id));
+  }
+
+  private get here(): Tab[] {
+    return this.tabs.filter((tab) => tab.space === this.space);
+  }
+
+  private get groups(): GroupState {
+    let state = this.groupStates.get(this.space);
+    if (!state) this.groupStates.set(this.space, (state = { collapsed: new Set(), parents: new Map() }));
+    return state;
+  }
+
+  private get collapsedGroups(): Set<string> {
+    return this.groups.collapsed;
+  }
+
+  private get groupParents(): Map<string, string> {
+    return this.groups.parents;
+  }
+
+  private set groupParents(parents: Map<string, string>) {
+    this.groups.parents = parents;
+  }
+
+  get activeSpaceId(): string {
+    return this.space;
+  }
+
+  private spaceIds(): string[] {
+    return [DEFAULT_SPACE_ID, ...(this.options.spaceIds?.() ?? [])];
+  }
+
+  switchSpace(id: string): void {
+    if (id === this.space || !this.spaceIds().includes(id)) return;
+    this.enterSpace(id);
+    const remembered = this.spaceActive.get(id);
+    const target = this.here.find((tab) => tab.id === remembered) ?? this.listOrder()[0];
+    if (target) {
+      this.activate(target.id);
+    } else {
+      this.activeId = null;
+      this.open();
+    }
+  }
+
+  switchSpaceByIndex(index: number): void {
+    const id = this.spaceIds()[index];
+    if (id !== undefined) this.switchSpace(id);
+  }
+
+  syncSpaces(): void {
+    const ids = this.spaceIds();
+    for (const tab of this.tabs) if (!ids.includes(tab.space)) tab.space = DEFAULT_SPACE_ID;
+    if (!ids.includes(this.space)) this.space = DEFAULT_SPACE_ID;
+    for (const state of [this.groupStates, this.spaceActive])
+      for (const id of state.keys()) if (!ids.includes(id)) state.delete(id);
+    for (const id of this.seeded) if (!ids.includes(id)) this.seeded.delete(id);
+    this.changed(true);
+  }
+
+  private enterSpace(id: string): void {
+    if (id === this.space) return;
+    if (this.activeId) this.spaceActive.set(this.space, this.activeId);
+    this.space = id;
+    this.selected.clear();
+    this.selectionAnchor = null;
+    if (this.seeded.has(id)) return;
+    this.seeded.add(id);
+    const seed = this.options.spaceSeed?.(id);
+    if (!seed?.tabs.length) return;
+    this.loadGroups(id, seed);
+    const added = seed.tabs.map((saved) => this.createRecord({ ...saved, space: id }));
+    this.tabs.push(...added);
+    const first = added.find((tab) => tab.id === seed.activeTabId) ?? added[0];
+    this.spaceActive.set(id, first.id);
+  }
+
+  private loadGroups(space: string, saved: SavedGroups): void {
+    const collapsed = new Set<string>();
+    if (Array.isArray(saved.collapsedGroups))
+      for (const name of saved.collapsedGroups.slice(0, 50)) {
+        const valid = tabGroupName(name);
+        if (valid) collapsed.add(valid);
+      }
+    this.groupStates.set(space, { collapsed, parents: parseGroupParents(saved.groupParents) });
+  }
+
   state(): Pick<
     BrowserState,
     'tabs' | 'listOrder' | 'activeTabId' | 'selectedTabIds' | 'splitTabIds' | 'tabGroups' | 'device' | 'zoom'
-  > {
+  > & { activeSpaceId: string } {
     const contents = liveContents(this.active());
     return {
-      tabs: this.tabs.map((tab) => this.snapshot(tab)),
+      activeSpaceId: this.space,
+      tabs: this.here.map((tab) => this.snapshot(tab)),
       listOrder: this.listOrder().map((tab) => tab.id),
       activeTabId: this.activeId,
       selectedTabIds: this.selectedTabIds,
@@ -308,11 +415,12 @@ export class TabManager {
     if (tab?.emulation) this.updateDeviceMetrics(tab, scaleEmulation(tab.emulation, scaleFactor));
   }
 
-  open(url = NEW_TAB_URL, { activate = true, isPrivate = this.options.privateWindow } = {}): TabId {
+  open(url = NEW_TAB_URL, { activate = true, isPrivate = this.options.privateWindow, space = this.space } = {}): TabId {
     if (this.routeAppNavigation(null, url)) return this.activeId ?? '';
     const upgraded = this.options.upgradeHttp(url);
     const tab = this.createRecord({ url: upgraded ?? url }, isPrivate);
-    tab.group = this.active()?.group ?? null;
+    tab.space = this.spaceIds().includes(space) ? space : this.space;
+    tab.group = tab.space === this.space ? (this.active()?.group ?? null) : null;
     if (upgraded) tab.upgrade = { https: upgraded, http: url };
     this.insertAfterActive(tab);
     if (activate) {
@@ -327,6 +435,8 @@ export class TabManager {
   activate(id: TabId, animate = false): void {
     const next = this.find(id);
     if (!next) return;
+    if (!this.spaceIds().includes(next.space)) next.space = DEFAULT_SPACE_ID;
+    this.enterSpace(next.space);
     if (next.group) this.expandGroup(next.group);
     this.selected.clear();
     this.selectionAnchor = id;
@@ -346,7 +456,7 @@ export class TabManager {
 
     this.activeId = id;
     if (next.pinnedUrl && !this.openedPinned.has(id)) {
-      this.openedPinned.set(id, this.tabs.findLast((tab) => !tab.pinnedUrl)?.id ?? null);
+      this.openedPinned.set(id, this.here.findLast((tab) => !tab.pinnedUrl)?.id ?? null);
     }
     const wasLive = next.view !== null;
     this.showVisible();
@@ -499,7 +609,7 @@ export class TabManager {
   private selectionOrder(): Tab[] {
     const ordered = this.listOrder();
     const seen = new Set(ordered.map((tab) => tab.id));
-    return [...this.tabs.filter((tab) => tab.pinnedUrl && !seen.has(tab.id)), ...ordered];
+    return [...this.here.filter((tab) => tab.pinnedUrl && !seen.has(tab.id)), ...ordered];
   }
 
   selectTab(id: TabId, mode: TabSelectionMode): void {
@@ -534,7 +644,7 @@ export class TabManager {
   }
 
   private listOrder(): Tab[] {
-    return tabListOrder(this.tabs, this.openedPinned, this.liveParents());
+    return tabListOrder(this.here, this.openedPinned, this.liveParents());
   }
 
   private liveParents(): Map<string, string> {
@@ -542,7 +652,7 @@ export class TabManager {
     return this.groupParents;
   }
 
-  private usedGroups(tabs: readonly Tab[] = this.tabs): string[] {
+  private usedGroups(tabs: readonly Tab[] = this.here): string[] {
     return tabs.flatMap((tab) => (tab.group ? [tab.group] : []));
   }
 
@@ -625,7 +735,7 @@ export class TabManager {
     const name = tabGroupName(value),
       next = tabGroupName(nextValue);
     if (!name || !next || !this.hasGroup(name) || (name !== next && this.hasGroup(next))) return false;
-    for (const tab of this.tabs) if (tab.group === name) tab.group = next;
+    for (const tab of this.here) if (tab.group === name) tab.group = next;
     const rename = (group: string) => (group === name ? next : group);
     this.groupParents = new Map([...this.groupParents].map(([child, parent]) => [rename(child), rename(parent)]));
     if (this.collapsedGroups.delete(name)) this.collapsedGroups.add(next);
@@ -644,7 +754,7 @@ export class TabManager {
     const name = tabGroupName(value);
     if (!name) return;
     const parent = this.liveParents().get(name) ?? null;
-    for (const tab of this.tabs) if (tab.group === name) tab.group = parent;
+    for (const tab of this.here) if (tab.group === name) tab.group = parent;
     this.groupParents.delete(name);
     for (const [child, owner] of this.groupParents)
       if (owner === name) {
@@ -686,6 +796,7 @@ export class TabManager {
       source.isPrivate,
     );
     copy.muted = source.muted;
+    copy.space = source.space;
     this.tabs.splice(this.indexOf(id) + 1, 0, copy);
     this.activate(copy.id);
     return copy.id;
@@ -823,7 +934,7 @@ export class TabManager {
     const saved = this.options.closed.pop();
     if (!saved) return;
     this.options.onClosedChanged?.();
-    const tab = this.createRecord({ ...saved, id: undefined });
+    const tab = this.createRecord({ ...saved, id: undefined, space: this.space });
     this.insertAfterActive(tab);
     this.activate(tab.id);
   }
@@ -892,16 +1003,18 @@ export class TabManager {
   }
 
   move(id: TabId, toIndex: number): void {
-    const from = this.indexOf(id);
+    const here = this.here;
+    const from = here.findIndex((tab) => tab.id === id);
     if (from < 0) return;
     const selected = this.selectedTabIds;
     if (
       selected.includes(id) &&
-      this.tabs.some((tab) => this.selected.has(tab.id) && !!tab.pinnedUrl !== !!this.tabs[from].pinnedUrl)
+      here.some((tab) => this.selected.has(tab.id) && !!tab.pinnedUrl !== !!here[from].pinnedUrl)
     )
       return;
-    const ordered = moveTabSelection(this.tabs, selected, id, toIndex);
-    this.tabs.splice(0, this.tabs.length, ...ordered);
+    const ordered = moveTabSelection(here, selected, id, toIndex);
+    const slots = this.tabs.flatMap((tab, index) => (tab.space === this.space ? [index] : []));
+    slots.forEach((slot, index) => (this.tabs[slot] = ordered[index]));
     this.changed(true);
   }
 
@@ -985,7 +1098,16 @@ export class TabManager {
   }
 
   private previousUnpinnedId(id: TabId): TabId | null {
-    return this.tabs.slice(0, this.indexOf(id)).findLast((tab) => !tab.pinnedUrl)?.id ?? null;
+    const space = this.find(id)?.space;
+    const mates = this.tabs.filter((tab) => tab.space === space);
+    return (
+      mates
+        .slice(
+          0,
+          mates.findIndex((tab) => tab.id === id),
+        )
+        .findLast((tab) => !tab.pinnedUrl)?.id ?? null
+    );
   }
 
   private reanchorOpenedPinned(id: TabId): void {
@@ -1072,6 +1194,21 @@ export class TabManager {
     this.openSingle(WORKSPACES_URL);
   }
 
+  openBoosts(): void {
+    const site = boostOrigin(this.active()?.url);
+    const url = site ? `${BOOSTS_URL}?site=${encodeURIComponent(site)}` : BOOSTS_URL;
+    const existing = this.tabs.find((tab) => tab.url.startsWith(BOOSTS_URL));
+    if (!existing) this.open(url);
+    else {
+      this.activate(existing.id);
+      if (site) this.navigate(url);
+    }
+  }
+
+  openEasels(): void {
+    this.openSingle(EASELS_URL);
+  }
+
   openSettings(pane?: string): void {
     this.openSingle(pane ? `${SETTINGS_URL}${pane}` : SETTINGS_URL);
   }
@@ -1118,13 +1255,15 @@ export class TabManager {
   openOrActivate(url: string): void {
     const remembered = this.favoriteTabs.get(url);
     const existing =
-      (remembered && this.find(remembered)) || this.tabs.find((tab) => tab.url === url && !tab.isPrivate);
-    if (existing) this.activate(existing.id);
-    else this.favoriteTabs.set(url, this.open(url));
+      (remembered && this.find(remembered)) || this.here.find((tab) => tab.url === url && !tab.isPrivate);
+    if (existing) {
+      existing.space = this.space;
+      this.activate(existing.id);
+    } else this.favoriteTabs.set(url, this.open(url));
   }
 
   private openSingle(url: string): void {
-    const existing = this.tabs.find((tab) => tab.url.startsWith(url));
+    const existing = this.here.find((tab) => tab.url.startsWith(url));
     if (existing) this.activate(existing.id);
     else this.open(url);
   }
@@ -1424,6 +1563,34 @@ export class TabManager {
     }
   }
 
+  // Lets the user click an element of the current web page; `read` turns the pick into a value.
+  async pickPage<T>(read: PageReader<T>): Promise<PagePick<T>> {
+    const tab = this.active();
+    const contents = liveContents(tab);
+    if (!tab?.view || !contents) return { status: 'cancelled' };
+    if (tab.isPrivate || !/^https?:/.test(tab.url)) return { status: 'unavailable' };
+    this.picking?.cancel();
+    try {
+      attachDebugger(contents);
+    } catch {
+      return { status: 'failed' };
+    }
+    const session = startPicking(contents);
+    this.picking = session;
+    contents.focus();
+    try {
+      const backendNodeId = await session.result;
+      if (backendNodeId === null || contents.isDestroyed()) return { status: 'cancelled' };
+      return { status: 'picked', url: tab.url, value: await read(contents, backendNodeId, tab.view.getBounds()) };
+    } catch (error) {
+      console.warn(`[picker] could not read the page: ${(error as Error).message}`);
+      return { status: 'failed' };
+    } finally {
+      if (this.picking === session) this.picking = null;
+      if (!contents.isDestroyed()) releaseDebugger(tab, contents);
+    }
+  }
+
   async highlightSelection(selectionId: string): Promise<boolean> {
     for (const tab of this.observedTabs()) {
       const selection = [...(tab.agent?.selections.values() ?? [])].find((item) => item.id === selectionId);
@@ -1540,44 +1707,62 @@ export class TabManager {
   }
 
   selectRelative(offset: number): void {
-    if (this.tabs.length < 2 || !this.activeId) return;
-    const count = this.tabs.length;
-    const index = (((this.indexOf(this.activeId) + offset) % count) + count) % count;
-    this.activate(this.tabs[index].id);
+    const here = this.here;
+    if (here.length < 2 || !this.activeId) return;
+    const count = here.length;
+    const index = (((here.findIndex((tab) => tab.id === this.activeId) + offset) % count) + count) % count;
+    this.activate(here[index].id);
   }
 
-  restore(session: SavedWindow, url?: string): void {
-    this.groupParents = parseGroupParents(session.groupParents);
-    if (Array.isArray(session.collapsedGroups))
-      for (const name of session.collapsedGroups.slice(0, 50)) {
-        const valid = tabGroupName(name);
-        if (valid) this.collapsedGroups.add(valid);
-      }
+  restore(session: SavedWindow, url?: string, space?: string): void {
+    const ids = this.spaceIds();
+    this.loadGroups(DEFAULT_SPACE_ID, session);
+    for (const [id, saved] of Object.entries(session.spaceGroups ?? {}).slice(0, 50))
+      if (ids.includes(id)) this.loadGroups(id, saved);
+    for (const id of session.seededSpaces ?? []) if (ids.includes(id)) this.seeded.add(id);
     for (const saved of session.tabs) {
-      this.tabs.push(this.createRecord(saved));
+      const tab = this.createRecord(saved);
+      if (!ids.includes(tab.space)) tab.space = DEFAULT_SPACE_ID;
+      this.tabs.push(tab);
     }
     const active = session.activeTabId ? this.find(session.activeTabId) : undefined;
     if (active) {
       this.activate(active.id);
     } else {
-      this.open(url);
+      this.open(url, { space });
     }
   }
 
-  toSavedWindow(): SavedWindow {
-    const kept = this.tabs.filter((tab) => !tab.isPrivate);
-    const parents = pruneGroupParents(this.groupParents, this.usedGroups(kept));
-    const names = new Set(groupOrder(this.usedGroups(kept), parents));
+  toSavedWindow(only?: string): SavedWindow {
+    const kept = this.tabs.filter((tab) => !tab.isPrivate && (only === undefined || tab.space === only));
+    const groupsOf = (space: string): SavedGroups => {
+      const used = this.usedGroups(kept.filter((tab) => tab.space === space));
+      const state = this.groupStates.get(space);
+      const parents = pruneGroupParents(state?.parents ?? new Map(), used);
+      const names = new Set(groupOrder(used, parents));
+      return {
+        ...(state?.collapsed.size && {
+          collapsedGroups: Array.from(state.collapsed).filter((name) => names.has(name)),
+        }),
+        ...(parents.size && { groupParents: Object.fromEntries(parents) }),
+      };
+    };
+    const active = only === undefined || only === this.space ? this.activeId : this.spaceActive.get(only);
+    const spaceGroups = Object.fromEntries(
+      [...new Set(kept.map((tab) => tab.space))]
+        .filter((space) => space !== DEFAULT_SPACE_ID)
+        .map((space) => [space, groupsOf(space)]),
+    );
+    const seeded = [...this.seeded].filter((id) => id !== DEFAULT_SPACE_ID);
     return {
-      activeTabId: kept.some((tab) => tab.id === this.activeId) ? this.activeId : (kept[0]?.id ?? null),
+      activeTabId: kept.some((tab) => tab.id === active) ? active! : (kept[0]?.id ?? null),
       tabs: kept.map((tab) => ({
         ...savedTab(tab),
         inactiveSince: this.isVisible(tab) ? Date.now() : tab.inactiveSince,
       })),
-      ...(this.collapsedGroups.size && {
-        collapsedGroups: Array.from(this.collapsedGroups).filter((name) => names.has(name)),
-      }),
-      ...(parents.size && { groupParents: Object.fromEntries(parents) }),
+      ...groupsOf(only ?? DEFAULT_SPACE_ID),
+      ...(only === undefined && Object.keys(spaceGroups).length && { spaceGroups }),
+      ...(only === undefined && seeded.length && { seededSpaces: seeded }),
     };
   }
 
@@ -1611,7 +1796,7 @@ export class TabManager {
   }
 
   get pinnedPages(): RecentPage[] {
-    return this.tabs.flatMap((tab) =>
+    return this.here.flatMap((tab) =>
       tab.pinnedUrl ? [{ url: tab.pinnedUrl, title: tab.title, faviconUrl: tab.faviconUrl }] : [],
     );
   }
@@ -1624,6 +1809,7 @@ export class TabManager {
     const index = this.indexOf(id);
     const tab = this.tabs[index];
     if (!tab || this.tabs.length < 2) return null;
+    const position = this.here.indexOf(tab);
     const partner = this.leaveSplit(id);
     this.shown = this.shown.filter((item) => item !== tab);
     if (this.fullScreenId === id) this.fullScreenId = null;
@@ -1640,7 +1826,10 @@ export class TabManager {
     this.autoReloader.sync();
     if (this.activeId === id) {
       this.activeId = null;
-      this.activate(partner ?? this.tabs[Math.min(index, this.tabs.length - 1)].id);
+      const mates = this.here;
+      const next = partner ?? mates[Math.min(position, mates.length - 1)]?.id;
+      if (next) this.activate(next);
+      else this.open();
     } else {
       if (partner) this.showVisible();
       this.changed(true);
@@ -1649,6 +1838,7 @@ export class TabManager {
   }
 
   adopt(tab: DetachedTab): void {
+    tab.space = this.space;
     this.insertAfterActive(tab);
     if (tab.view) this.attachListeners(tab, tab.view);
     this.autoReloader.sync();

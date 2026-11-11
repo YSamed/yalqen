@@ -12,6 +12,7 @@
   import IconButton from '../ui/IconButton.svelte';
   import { createHoverPreviews } from './hover-previews';
   import type { TabGroup } from '../../shared/tab-groups';
+  import type { SpaceView } from '../../shared/workspaces';
 
   let {
     tabs,
@@ -32,6 +33,8 @@
     profileName,
     pinnedDisplay,
     favorites,
+    spaces,
+    activeSpaceId,
     media,
     pageRect,
     onSplitDrop,
@@ -54,6 +57,8 @@
     profileName?: string;
     pinnedDisplay: PinnedDisplay;
     favorites: Favorite[];
+    spaces: SpaceView[];
+    activeSpaceId: string;
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
@@ -96,6 +101,7 @@
   let dropFolder: string | null = $state(null);
   let renaming: string | null = $state(null);
   let renameValue = $state('');
+  let renamingSpace: string | null = $state(null);
 
   const send = window.yalqen.send;
   const previews = createHoverPreviews(send);
@@ -211,6 +217,20 @@
     const name = renaming;
     renaming = null;
     if (renameValue.trim() && renameValue !== name) send({ type: 'rename-tab-group', name, next: renameValue });
+  }
+
+  function startSpaceRename(space: SpaceView): void {
+    if (collapsed || !space.id) return;
+    renamingSpace = space.id;
+    renameValue = space.name;
+  }
+
+  function commitSpaceRename(): void {
+    if (renamingSpace === null) return;
+    const id = renamingSpace;
+    renamingSpace = null;
+    if (renameValue.trim() && renameValue !== spaces.find((space) => space.id === id)?.name)
+      send({ type: 'rename-space', id, name: renameValue });
   }
 
   function focusSelect(node: HTMLInputElement): void {
@@ -777,6 +797,54 @@
         <MediaPlayer {media} compact={collapsed} />
       {/if}
 
+      {#if spaces.length > 0}
+        <div class="spaces" class:compact={collapsed}>
+          {#if renamingSpace !== null}
+            <input
+              class="group-rename"
+              aria-label={t('spaces.rename')}
+              maxlength="80"
+              bind:value={renameValue}
+              use:focusSelect
+              onblur={commitSpaceRename}
+              onkeydown={(e) => {
+                if (e.key === 'Enter') commitSpaceRename();
+                else if (e.key === 'Escape') renamingSpace = null;
+                e.stopPropagation();
+              }}
+            />
+          {:else}
+            <div class="profiles" role="group" aria-label={t('spaces.switcher')}>
+              {#each spaces as space (space.id)}
+                <button
+                  class="profile"
+                  aria-pressed={space.id === activeSpaceId}
+                  aria-label={space.name}
+                  title={space.name}
+                  onclick={() => send({ type: 'switch-space', id: space.id })}
+                  ondblclick={() => startSpaceRename(space)}
+                  oncontextmenu={(e) => {
+                    e.preventDefault();
+                    if (space.id) send({ type: 'open-space-menu', id: space.id });
+                  }}
+                  onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
+                >
+                  {space.icon ?? ([...space.name][0] ?? '').toUpperCase()}
+                </button>
+              {/each}
+              <button
+                class="profile"
+                aria-label={t('spaces.add')}
+                title={t('spaces.add')}
+                onclick={() => send({ type: 'create-space' })}
+              >
+                <Icon name="plus" size={14} />
+              </button>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       <footer class="footer" class:compact={collapsed}>
         {#if selectedTabIds.length > 1}
           <div
@@ -1303,6 +1371,16 @@
     flex-direction: column;
     gap: 6px;
     padding: 8px 0 0;
+  }
+
+  .spaces {
+    display: flex;
+    flex: none;
+    padding-top: 8px;
+  }
+
+  .spaces.compact {
+    justify-content: center;
   }
 
   .profiles {
