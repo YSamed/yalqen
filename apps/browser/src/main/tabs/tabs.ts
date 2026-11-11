@@ -435,7 +435,7 @@ export class TabManager {
     tab.space = this.spaceIds().includes(space) ? space : this.space;
     tab.group = tab.space === this.space ? (this.active()?.group ?? null) : null;
     if (upgraded) tab.upgrade = { https: upgraded, http: url };
-    this.insertAfterActive(tab);
+    this.tabs.push(tab);
     if (activate) {
       this.activate(tab.id);
     } else {
