@@ -15,6 +15,7 @@
   import type { TabGroup } from '../../shared/tab-groups';
   import type { LiveFolderView } from '../../shared/live-folders';
   import type { SpaceView } from '../../shared/workspaces';
+  import { createSwipeTracker } from '../../shared/swipe';
 
   let {
     tabs,
@@ -32,7 +33,6 @@
     edgeInset,
     fullWidth,
     profile,
-    profileName,
     pinnedDisplay,
     favorites,
     liveFolders,
@@ -57,7 +57,6 @@
     edgeInset: number;
     fullWidth: number;
     profile: ProfileKind;
-    profileName?: string;
     pinnedDisplay: PinnedDisplay;
     favorites: Favorite[];
     liveFolders: LiveFolderView[];
@@ -106,6 +105,9 @@
   let renaming: string | null = $state(null);
   let renameValue = $state('');
   let renamingSpace: string | null = $state(null);
+  let addingLiveFolder = $state(false);
+  const swipe = createSwipeTracker();
+  let addMenu: HTMLDivElement | undefined = $state();
 
   const send = window.yalqen.send;
   const previews = createHoverPreviews(send);
@@ -125,6 +127,10 @@
   );
   const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
+  const activeSpaceName = $derived(
+    spaces.length > 1 ? spaces.find((space) => space.id === activeSpaceId)?.name : undefined,
+  );
+  const inSpaceRow = $derived(!collapsed && spaces.length > 0);
   const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
   const entries = $derived(
     listOrder
@@ -223,6 +229,12 @@
     if (renameValue.trim() && renameValue !== name) send({ type: 'rename-tab-group', name, next: renameValue });
   }
 
+  function switchSpaceBySwipe(event: WheelEvent): void {
+    const direction = swipe(event.deltaX, event.deltaY, event.timeStamp);
+    const next = direction && spaces[spaces.findIndex((space) => space.id === activeSpaceId) + direction];
+    if (next) send({ type: 'switch-space', id: next.id });
+  }
+
   function startSpaceRename(space: SpaceView): void {
     if (collapsed || !space.id) return;
     renamingSpace = space.id;
@@ -241,11 +253,6 @@
     node.focus();
     node.select();
   }
-  const profiles: { id: ProfileKind; name: string }[] = $derived([
-    { id: 'personal', name: profileName ?? t('tabPanel.profilePersonal') },
-    { id: 'developer', name: t('tabPanel.profileDeveloper') },
-    { id: 'private', name: t('tabPanel.profilePrivate') },
-  ]);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function reveal(node: Element) {
@@ -536,6 +543,25 @@
   </span>
 {/snippet}
 
+{#snippet panelToggle()}
+  <IconButton
+    size="lg"
+    variant="surface"
+    tone="muted"
+    icon={side === 'left'
+      ? collapsed
+        ? 'panel-expand'
+        : 'panel-close'
+      : collapsed
+        ? 'panel-expand-right'
+        : 'panel-close-right'}
+    label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
+    title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
+    aria-expanded={!collapsed}
+    onclick={() => send({ type: 'toggle-panel' })}
+  />
+{/snippet}
+
 {#snippet compactTab(tab: TabSnapshot)}
   <IconButton
     size="lg"
@@ -624,6 +650,7 @@
   class:fading
   class:right={side === 'right'}
   aria-label={t('tabPanel.tabs')}
+  onwheel={switchSpaceBySwipe}
   style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px; --panel-full-width: ${fullWidth}px`}
 >
   <div class="top" style:height="{topInset}px"></div>
@@ -658,6 +685,10 @@
             {/each}
           </ul>
           {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
+        {/if}
+
+        {#if !collapsed && activeSpaceName}
+          <p class="space-name">{activeSpaceName}</p>
         {/if}
 
         {#if showPinned && pinned.length > 0}
@@ -706,7 +737,9 @@
           </ul>
         {/if}
 
-        {#if showPinned && collapsed && pinned.length > 0 && listed.length > 0}
+        {#if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
+          <span class="section-divider" aria-hidden="true"></span>
+        {:else if collapsed && showPinned && pinned.length > 0 && listed.length > 0}
           <span class="divider" aria-hidden="true"></span>
         {/if}
 
@@ -798,8 +831,10 @@
       </div>
 
       {#if !collapsed && profile !== 'private'}
-        <LiveFolders folders={liveFolders} />
+        <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} />
       {/if}
+
+      <div class="spacer"></div>
 
       {#if media}
         <MediaPlayer {media} compact={collapsed} />
@@ -807,6 +842,7 @@
 
       {#if spaces.length > 0}
         <div class="spaces" class:compact={collapsed}>
+          {#if inSpaceRow}{@render panelToggle()}{/if}
           {#if renamingSpace !== null}
             <input
               class="group-rename"
@@ -822,10 +858,10 @@
               }}
             />
           {:else}
-            <div class="profiles" role="group" aria-label={t('spaces.switcher')}>
-              {#each spaces as space (space.id)}
+            <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
+              {#each spaces.length > 1 ? spaces : [] as space (space.id)}
                 <button
-                  class="profile"
+                  class="space-dot"
                   aria-pressed={space.id === activeSpaceId}
                   aria-label={space.name}
                   title={space.name}
@@ -837,76 +873,86 @@
                   }}
                   onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
                 >
-                  {space.icon ?? ([...space.name][0] ?? '').toUpperCase()}
+                  {#if space.icon}{space.icon}{:else}<span class="dot" aria-hidden="true"></span>{/if}
                 </button>
               {/each}
+            </div>
+            {#if !collapsed}
+              <IconButton
+                size="lg"
+                variant="surface"
+                tone="muted"
+                icon="plus"
+                class="space-add"
+                label={t('tabPanel.addMenu')}
+                aria-haspopup="true"
+                popovertarget="sidebar-add-menu"
+              />
+            {/if}
+            <div bind:this={addMenu} id="sidebar-add-menu" class="select-content up add-menu" popover="auto">
               <button
-                class="profile"
-                aria-label={t('spaces.add')}
-                title={t('spaces.add')}
-                onclick={() => send({ type: 'create-space' })}
+                type="button"
+                class="select-item"
+                onclick={() => {
+                  addMenu?.hidePopover();
+                  send({ type: 'new-tab' });
+                }}
               >
-                <Icon name="plus" size={14} />
+                {t('newTabButton.label')}
               </button>
+              <button
+                type="button"
+                class="select-item"
+                onclick={() => {
+                  addMenu?.hidePopover();
+                  send({ type: 'create-space' });
+                }}
+              >
+                {t('spaces.add')}
+              </button>
+              {#if !collapsed && profile !== 'private'}
+                <button
+                  type="button"
+                  class="select-item"
+                  onclick={() => {
+                    addMenu?.hidePopover();
+                    addingLiveFolder = true;
+                  }}
+                >
+                  {t('liveFolders.add')}
+                </button>
+              {/if}
             </div>
           {/if}
         </div>
       {/if}
 
-      <footer class="footer" class:compact={collapsed}>
-        {#if selectedTabIds.length > 1}
-          <div
-            class="selection"
-            aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
-            title={t('tabPanel.selectionHint')}
-          >
-            {#if !collapsed}<span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span
-              >{/if}
-            <IconButton
-              icon="close"
-              size="sm"
-              label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
-              onclick={() => send({ type: 'close-selected-tabs' })}
-            />
-            <button
-              class="clear-selection"
-              aria-label={t('tabPanel.clearSelection')}
-              onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
+      {#if selectedTabIds.length > 1 || !inSpaceRow}
+        <footer class="footer" class:compact={collapsed}>
+          {#if selectedTabIds.length > 1}
+            <div
+              class="selection"
+              aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
+              title={t('tabPanel.selectionHint')}
             >
-          </div>
-        {/if}
-        <div class="profiles" role="group" aria-label={t('tabPanel.profiles')}>
-          {#each profiles as item (item.id)}
-            <button
-              class="profile {item.id}"
-              aria-pressed={item.id === profile}
-              aria-label={t('tabPanel.profileLabel', { name: item.name })}
-              title={item.id === profile
-                ? t('tabPanel.profileCurrent', { name: item.name })
-                : t('tabPanel.profileSwitch', { name: item.name })}
-              onclick={() => send({ type: 'switch-profile', profile: item.id })}
-            >
-              <Icon name={item.id === 'developer' ? 'code' : item.id === 'private' ? 'private' : 'profile'} size={14} />
-            </button>
-          {/each}
-        </div>
-        <IconButton
-          size="lg"
-          variant="surface"
-          tone="muted"
-          icon={side === 'left'
-            ? collapsed
-              ? 'panel-expand'
-              : 'panel-close'
-            : collapsed
-              ? 'panel-expand-right'
-              : 'panel-close-right'}
-          label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
-          title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
-          aria-expanded={!collapsed}
-          onclick={() => send({ type: 'toggle-panel' })}
-        />
-      </footer>
+              {#if !collapsed}<span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span
+                >{/if}
+              <IconButton
+                icon="close"
+                size="sm"
+                label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
+                onclick={() => send({ type: 'close-selected-tabs' })}
+              />
+              <button
+                class="clear-selection"
+                aria-label={t('tabPanel.clearSelection')}
+                onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
+              >
+            </div>
+          {/if}
+          {#if !inSpaceRow}{@render panelToggle()}{/if}
+        </footer>
+      {/if}
     </div>
   {/key}
 </aside>
@@ -1048,9 +1094,26 @@
     display: grid;
     grid-template-columns: repeat(4, var(--chrome-control-size));
     gap: 6px;
-    margin: 0 0 12px;
+    margin: 0 0 8px;
     padding: 0;
     list-style: none;
+  }
+
+  .space-name {
+    margin: 0 0 6px;
+    padding: 0 10px;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .section-divider {
+    flex: none;
+    height: 1px;
+    margin: 0 10px 6px;
+    background: var(--page-divider);
   }
 
   .divider {
@@ -1371,82 +1434,92 @@
     padding-top: 8px;
   }
 
-  :global(.player) + .footer {
-    margin-top: 0;
-  }
-
   .footer.compact {
     flex-direction: column;
     gap: 6px;
     padding: 8px 0 0;
   }
 
+  .spacer {
+    flex: 1;
+  }
+
   .spaces {
     display: flex;
     flex: none;
+    align-items: center;
     padding-top: 8px;
   }
 
   .spaces.compact {
-    justify-content: center;
-  }
-
-  .profiles {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    height: var(--chrome-control-size);
-    padding: 3px;
-    border-radius: 999px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-  }
-
-  :global([data-material='glass']) .profiles {
-    box-shadow: var(--shadow), var(--rim);
-  }
-
-  .compact .profiles {
     flex-direction: column;
-    width: var(--chrome-control-size);
-    height: auto;
+    align-items: center;
   }
 
-  .profile {
-    --profile-color: var(--accent);
+  .space-dots {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: safe center;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .compact .space-dots {
+    flex-direction: column;
+  }
+
+  .space-dot {
+    width: 16px;
+  }
+
+  .spaces :global(.space-add) {
+    anchor-name: --sidebar-add;
+  }
+
+  .space-dot {
     display: grid;
     flex: none;
     place-items: center;
-    width: var(--control-md);
-    height: var(--control-md);
+    height: var(--control-sm);
     padding: 0;
     border: 0;
     border-radius: 999px;
     background: transparent;
     color: var(--text-muted);
     font-size: var(--font-size-small);
-    font-weight: 600;
-    transition:
-      background var(--transition),
-      color var(--transition);
   }
 
-  .profile.developer {
-    --profile-color: var(--profile-developer);
-  }
-
-  .profile.private {
-    --profile-color: var(--text);
-  }
-
-  .profile:hover {
+  .space-dot:hover {
     background: var(--surface-hover);
     color: var(--text);
   }
 
-  .profile[aria-pressed='true'] {
-    background: color-mix(in srgb, var(--profile-color) 18%, transparent);
-    color: var(--profile-color);
+  .space-dot .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .space-dot[aria-pressed='true'] {
+    color: var(--accent);
     cursor: default;
+  }
+
+  .space-dot[aria-pressed='true'] .dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .add-menu {
+    position-anchor: --sidebar-add;
+    left: auto;
+    right: anchor(right);
+  }
+
+  .add-menu .select-item {
+    padding-inline: 8px;
   }
 </style>

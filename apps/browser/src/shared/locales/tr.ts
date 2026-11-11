@@ -847,6 +847,7 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.privateTabTitle': '{title} (gizli)',
 
   'tabPanel.profilePersonal': 'Kişisel',
+  'tabPanel.addMenu': 'Ekle',
   'tabPanel.profileDeveloper': 'Geliştirici',
   'tabPanel.profilePrivate': 'Gizli',
   'tabPanel.stateActive': 'aktif',
@@ -877,10 +878,6 @@ export const tr: Record<MessageKey, string> = {
   'tabPanel.tabs': 'Sekmeler',
   'tabPanel.pinned': 'Sabitlenenler',
   'tabPanel.favorites': 'Favoriler',
-  'tabPanel.profiles': 'Profiller',
-  'tabPanel.profileLabel': '{name} profili',
-  'tabPanel.profileCurrent': '{name} (açık)',
-  'tabPanel.profileSwitch': '{name} profiline geç',
   'tabPanel.expandSidebar': 'Yan paneli genişlet',
   'tabPanel.collapseSidebar': 'Yan paneli daralt',
   'tabPanel.expandSidebarTitle': 'Yan paneli genişlet (⇧⌘P)',

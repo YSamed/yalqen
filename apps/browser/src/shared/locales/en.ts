@@ -839,6 +839,7 @@ export const en = {
   'toolbar.privateTabTitle': '{title} (private)',
 
   'tabPanel.profilePersonal': 'Personal',
+  'tabPanel.addMenu': 'Add',
   'tabPanel.profileDeveloper': 'Developer',
   'tabPanel.profilePrivate': 'Private',
   'tabPanel.stateActive': 'active',
@@ -868,10 +869,6 @@ export const en = {
   'tabPanel.tabs': 'Tabs',
   'tabPanel.pinned': 'Pinned',
   'tabPanel.favorites': 'Favorites',
-  'tabPanel.profiles': 'Profiles',
-  'tabPanel.profileLabel': '{name} profile',
-  'tabPanel.profileCurrent': '{name} (current)',
-  'tabPanel.profileSwitch': 'Switch to {name} profile',
   'tabPanel.expandSidebar': 'Expand sidebar',
   'tabPanel.collapseSidebar': 'Collapse sidebar',
   'tabPanel.expandSidebarTitle': 'Expand sidebar (⇧⌘P)',
