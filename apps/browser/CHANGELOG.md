@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/YSamed/yalqen/compare/v0.4.0...v0.4.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* show scroll-animated content in full-page screenshots ([#399](https://github.com/YSamed/yalqen/issues/399)) ([74dbd67](https://github.com/YSamed/yalqen/commit/74dbd677e1efad551f9d3f330d6c0b14fa01ded3))
+
 ## [0.4.0](https://github.com/YSamed/yalqen/compare/v0.3.101...v0.4.0) (2026-11-12)
 
 
