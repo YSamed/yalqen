@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.101](https://github.com/YSamed/yalqen/compare/v0.3.100...v0.3.101) (2026-11-12)
+
+
+### Features
+
+* add manual tab cleanup to the sidebar ([#393](https://github.com/YSamed/yalqen/issues/393)) ([0faa02b](https://github.com/YSamed/yalqen/commit/0faa02bbb5ed7bda6f27a3bbcbc49e5d253a2afd))
+
+
+### Bug Fixes
+
+* keep tooltip and preview shadows inside their overlay ([#394](https://github.com/YSamed/yalqen/issues/394)) ([f6e1090](https://github.com/YSamed/yalqen/commit/f6e1090cb230dd12eee1e9df8df674a1431341f0))
+
 ## [0.3.100](https://github.com/YSamed/yalqen/compare/v0.3.99...v0.3.100) (2026-11-12)
 
 
