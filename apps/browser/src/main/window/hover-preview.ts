@@ -1,11 +1,15 @@
 import type { BaseWindow, WebContentsView } from 'electron';
-import { placePreview, type PreviewSize, type PreviewView } from '../../shared/previews.js';
+import {
+  placePreview,
+  PREVIEW_PAD as PAD,
+  PREVIEW_SHADOW as SHADOW,
+  type PreviewSize,
+  type PreviewView,
+} from '../../shared/previews.js';
 import type { AnchorRect } from '../../shared/types.js';
 import type { TooltipTheme } from '../../shared/tooltip.js';
 import { createOverlayView, raiseToTop } from './overlay-view.js';
 
-// Room around the card for its shadow; the view is this much larger than the card on every side.
-const PAD = 14;
 const CARD_WIDTH = 300;
 const MAX_HEIGHT = 360;
 // Long enough to move the pointer from the tile across the gap onto the card.
@@ -28,7 +32,7 @@ const PAGE = `<!doctype html>
   .card {
     box-sizing: border-box; width: ${CARD_WIDTH}px; padding: 6px; border-radius: 14px;
     background: var(--surface); color: var(--text);
-    box-shadow: 0 0 0 0.5px var(--border), 0 10px 30px var(--drop);
+    box-shadow: 0 0 0 0.5px var(--border), 0 ${SHADOW.y}px ${SHADOW.blur}px var(--drop);
     font: 13px/1.3 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
     user-select: none; cursor: default;
     opacity: 0; transform: translateY(-2px) scale(0.985); transform-origin: top left;

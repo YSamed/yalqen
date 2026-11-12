@@ -21,6 +21,21 @@ export interface TooltipSize {
 }
 
 export const TOOLTIP_GAP = 6;
+
+// Overlays are views a little larger than the surface they draw, so it has room for its shadow. A shadow that
+// reaches past that room is cut off by the view's edge into a hard line.
+export interface OverlayShadow {
+  y: number;
+  blur: number;
+}
+
+export function shadowFits(shadow: OverlayShadow, pad: number): boolean {
+  return shadow.blur + Math.abs(shadow.y) <= pad;
+}
+
+// The tooltip view is this much larger than the tooltip on every side.
+export const TOOLTIP_PAD = 10;
+export const TOOLTIP_SHADOW: OverlayShadow = { y: 3, blur: 7 };
 export const TOOLTIP_EDGE = 8;
 export const TOOLTIP_MAX_TEXT = 200;
 
