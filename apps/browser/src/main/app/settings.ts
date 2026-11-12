@@ -4,6 +4,7 @@ import type {
   AgentActionPolicy,
   InterfaceLanguage,
   PanelSide,
+  PromptPermission,
   PinnedDisplay,
   SecureDnsSetting,
   SettingsValues,
@@ -62,6 +63,8 @@ const DEFAULTS: Settings = {
   thirdPartyCookieExceptions: [],
   httpsOnly: false,
   blockThirdPartyCookies: false,
+  clearOnExit: false,
+  blockedPermissionRequests: [],
   secureDns: 'automatic',
   defaultZoom: 1,
   interfaceLanguage: 'system',
@@ -95,6 +98,13 @@ const PINNED_DISPLAYS = new Set<string>(['always', 'expanded', 'never'] satisfie
 const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab', 'pages'] satisfies Settings['startupBehavior'][]);
+
+const PROMPT_PERMISSIONS: readonly PromptPermission[] = ['camera', 'microphone', 'geolocation', 'notifications'];
+
+function sanitizeBlockedPermissions(value: unknown, fallback: PromptPermission[]): PromptPermission[] {
+  if (!Array.isArray(value)) return fallback;
+  return PROMPT_PERMISSIONS.filter((kind) => value.includes(kind));
+}
 
 const TOOLBAR_BUTTONS = new Set<string>(TOOLBAR_BUTTON_IDS);
 const AGENT_ACTIONS = new Set<string>(['off', 'ask', 'allow'] satisfies AgentActionPolicy[]);
@@ -144,6 +154,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     thirdPartyCookieExceptions,
     httpsOnly,
     blockThirdPartyCookies,
+    clearOnExit,
+    blockedPermissionRequests,
     secureDns,
     defaultZoom,
     interfaceLanguage,
@@ -218,6 +230,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,
     blockThirdPartyCookies:
       typeof blockThirdPartyCookies === 'boolean' ? blockThirdPartyCookies : base.blockThirdPartyCookies,
+    clearOnExit: typeof clearOnExit === 'boolean' ? clearOnExit : base.clearOnExit,
+    blockedPermissionRequests: sanitizeBlockedPermissions(blockedPermissionRequests, base.blockedPermissionRequests),
     secureDns:
       typeof secureDns === 'string' && SECURE_DNS.has(secureDns) ? (secureDns as SecureDnsSetting) : base.secureDns,
     defaultZoom:

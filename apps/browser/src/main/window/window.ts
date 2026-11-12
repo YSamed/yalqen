@@ -1814,7 +1814,7 @@ export class YalqenWindow {
                     void dialog.showMessageBox(this.window, { type: 'error', message: t(`profiles.${error}`) });
                 });
               },
-              manage: () => tabs.openSettings('#profiles'),
+              manage: () => tabs.openSettings('profiles'),
             },
             {
               current: this.profile,

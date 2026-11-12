@@ -227,8 +227,7 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 6px 0 14px;
-    border-bottom: 1px solid var(--border);
+    padding: 6px 0 0;
   }
 
   .bar {

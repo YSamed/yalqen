@@ -4,7 +4,6 @@
   import Button from '../ui/Button.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
-  import AdvancedGroup from './AdvancedGroup.svelte';
   import SettingRow from './SettingRow.svelte';
 
   let {
@@ -106,6 +105,13 @@
 <SettingRow title={t('settings.clearBrowsingData')} hint={t('settings.clearBrowsingDataRowHint')}>
   <Button variant="tonal" onclick={openClear}>{t('settings.clearDataEllipsis')}</Button>
 </SettingRow>
+<SettingRow title={t('settings.clearOnExit')} hint={t('settings.clearOnExitHint')}>
+  <Switch
+    label={t('settings.clearOnExit')}
+    checked={values.clearOnExit}
+    onchange={(checked) => update({ clearOnExit: checked })}
+  />
+</SettingRow>
 
 <dialog
   class="clear-dialog"
@@ -141,44 +147,43 @@
   </div>
 </dialog>
 
-<AdvancedGroup>
-  <SettingRow title={t('settings.secureDns')} hint={t('settings.secureDnsHint')} labelFor="secure-dns">
-    <Select
-      id="secure-dns"
-      options={dnsOptions}
-      value={values.secureDns}
-      onchange={(value) => update({ secureDns: value })}
-    />
-  </SettingRow>
-  {#if threatLists}
-    <SettingRow
-      title={t('threats.lists')}
-      hint={t('threats.counts', { domains: threatLists.domains, hashes: threatLists.hashes })}
+<h2>{t('settings.advanced')}</h2>
+<SettingRow title={t('settings.secureDns')} hint={t('settings.secureDnsHint')} labelFor="secure-dns">
+  <Select
+    id="secure-dns"
+    options={dnsOptions}
+    value={values.secureDns}
+    onchange={(value) => update({ secureDns: value })}
+  />
+</SettingRow>
+{#if threatLists}
+  <SettingRow
+    title={t('threats.lists')}
+    detail={t('threats.counts', { domains: threatLists.domains, hashes: threatLists.hashes })}
+  >
+    <Button
+      variant="tonal"
+      disabled={!values.threatProtection || threatLists.updating}
+      onclick={() => api.updateThreatLists()}
+      >{threatLists.updating ? t('threats.updating') : t('threats.update')}</Button
     >
-      <Button
-        variant="tonal"
-        disabled={!values.threatProtection || threatLists.updating}
-        onclick={() => api.updateThreatLists()}
-        >{threatLists.updating ? t('threats.updating') : t('threats.update')}</Button
-      >
-    </SettingRow>
-    <p class="hint sources" aria-live="polite">
-      {t('threats.updated', {
-        date: lastUpdated ? new Date(lastUpdated).toLocaleString() : t('threats.notLoaded'),
-      })}
-      {#if threatLists.failed}<br /><span class="error">{t('threats.updateFailed')}</span>{/if}
-      <br />{t('threats.coverage')}
-      <a href="https://cert.pl/lista-ostrzezen/" target="_blank" rel="noreferrer">CERT Polska</a> ·
-      <a href="https://github.com/Neo23x0/signature-base" target="_blank" rel="noreferrer"
-        >Signature-Base · Florian Roth / Nextron Systems</a
-      >
-      ·
-      <a href="https://raw.githubusercontent.com/Neo23x0/signature-base/master/LICENSE" target="_blank" rel="noreferrer"
-        >DRL 1.1</a
-      >
-    </p>
-  {/if}
-</AdvancedGroup>
+  </SettingRow>
+  <p class="hint sources" aria-live="polite">
+    {t('threats.updated', {
+      date: lastUpdated ? new Date(lastUpdated).toLocaleString() : t('threats.notLoaded'),
+    })}
+    {#if threatLists.failed}<br /><span class="error">{t('threats.updateFailed')}</span>{/if}
+    <br />{t('threats.coverage')}
+    <a href="https://cert.pl/lista-ostrzezen/" target="_blank" rel="noreferrer">CERT Polska</a> ·
+    <a href="https://github.com/Neo23x0/signature-base" target="_blank" rel="noreferrer"
+      >Signature-Base · Florian Roth / Nextron Systems</a
+    >
+    ·
+    <a href="https://raw.githubusercontent.com/Neo23x0/signature-base/master/LICENSE" target="_blank" rel="noreferrer"
+      >DRL 1.1</a
+    >
+  </p>
+{/if}
 
 <style>
   .check {

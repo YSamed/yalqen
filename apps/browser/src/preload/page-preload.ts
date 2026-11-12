@@ -212,6 +212,8 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
     chooseNewTabBackground: () => ipcRenderer.invoke(settingsChannel.chooseNewTabBackground) as Promise<SettingsView>,
     removeNewTabBackground: () => ipcRenderer.invoke(settingsChannel.removeNewTabBackground) as Promise<SettingsView>,
+    showImportMenu: (kind: 'bookmarks' | 'history') =>
+      ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,
     updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,
     profiles: () => ipcRenderer.invoke(settingsChannel.profiles) as Promise<ProfilesView>,
     profileAction: (action, id, name) =>

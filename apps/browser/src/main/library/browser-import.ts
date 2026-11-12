@@ -616,7 +616,7 @@ export async function importFirefoxHistory(store: HistoryStore, file: string): P
 export function historyImportMenu(
   sources: readonly ImportSource[],
   importFrom: (file?: string) => void,
-): MenuItemConstructorOptions {
+): MenuItemConstructorOptions & { submenu: MenuItemConstructorOptions[] } {
   return {
     label: t('browserImport.historyMenu'),
     submenu: [

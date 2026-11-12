@@ -864,6 +864,8 @@ export interface SettingsValues {
   thirdPartyCookieExceptions: string[];
   httpsOnly: boolean;
   blockThirdPartyCookies: boolean;
+  clearOnExit: boolean;
+  blockedPermissionRequests: PromptPermission[];
   secureDns: SecureDnsSetting;
   defaultZoom: number;
   interfaceLanguage: InterfaceLanguage;
@@ -967,6 +969,7 @@ export const SettingsChannel = {
   profiles: 'yalqen-settings:profiles',
   profileAction: 'yalqen-settings:profile-action',
   siteIcons: 'yalqen-settings:site-icons',
+  showImportMenu: 'yalqen-settings:show-import-menu',
 } as const;
 
 export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
@@ -990,6 +993,7 @@ export interface ProcessUsage {
 }
 
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
+export type PromptPermission = Exclude<SitePermission, 'popups'>;
 export type PermissionDecision = 'allow' | 'deny';
 export type SystemDevice = 'camera' | 'microphone' | 'screen';
 export type SystemAccess = 'granted' | 'denied' | 'restricted' | 'not-determined' | 'unknown';
@@ -1165,6 +1169,7 @@ export interface SettingsApi {
   chooseDownloadDirectory(): Promise<SettingsView>;
   chooseNewTabBackground(): Promise<SettingsView>;
   removeNewTabBackground(): Promise<SettingsView>;
+  showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;
   updateThreatLists(): Promise<SettingsView>;
   profiles(): Promise<ProfilesView>;
   profileAction(

@@ -1,4 +1,4 @@
-import { dialog, type OpenDialogOptions } from 'electron';
+import { dialog, type OpenDialogOptions, type WebContents } from 'electron';
 import { t } from '../../shared/i18n.js';
 import {
   RequestRulesChannel,
@@ -23,6 +23,7 @@ export interface SettingsIpcHost {
   view(): SettingsView;
   update(patch: unknown): void;
   clearData(request: ClearDataRequest): Promise<void>;
+  showImportMenu(kind: 'bookmarks' | 'history', contents: WebContents): void;
   updater: Updater;
   relaunch(): void;
   requestRules: RequestRuleStore;
@@ -52,6 +53,9 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
   handleSettingsCall(SettingsChannel.clearData, async (_event, value) => {
     const request = sanitizeClearRequest(value);
     if (request) await host.clearData(request);
+  });
+  handleSettingsCall(SettingsChannel.showImportMenu, (event, kind) => {
+    if (kind === 'bookmarks' || kind === 'history') host.showImportMenu(kind, event.sender);
   });
   handleSettingsCall(SettingsChannel.makeDefault, () => {
     makeDefaultBrowser();

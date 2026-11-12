@@ -6,6 +6,7 @@
   import type { IconName } from '../ui/Icon.svelte';
   import Button from '../ui/Button.svelte';
   import SearchField from '../ui/SearchField.svelte';
+  import AboutPane from './AboutPane.svelte';
   import AgentBridge from './AgentBridge.svelte';
   import AppearancePane from './AppearancePane.svelte';
   import Extensions from './Extensions.svelte';
@@ -14,22 +15,34 @@
   import Autofill from './Autofill.svelte';
   import PerformancePane from './PerformancePane.svelte';
   import PrivacyPane from './PrivacyPane.svelte';
+  import ProfilesPane from './ProfilesPane.svelte';
   import RequestRules from './RequestRules.svelte';
   import Sites from './Sites.svelte';
 
   const api = window.yalqenSettings;
 
   type PaneId =
-    'general' | 'appearance' | 'privacy' | 'sites' | 'passwords' | 'performance' | 'extensions' | 'developer';
+    | 'general'
+    | 'appearance'
+    | 'profiles'
+    | 'privacy'
+    | 'sites'
+    | 'passwords'
+    | 'performance'
+    | 'extensions'
+    | 'developer'
+    | 'about';
   const panes: { id: PaneId; label: string; icon: IconName }[] = [
     { id: 'general', label: t('settings.paneGeneral'), icon: 'settings' },
     { id: 'appearance', label: t('settings.paneAppearance'), icon: 'appearance' },
+    { id: 'profiles', label: t('settings.paneProfiles'), icon: 'profile' },
     { id: 'privacy', label: t('settings.panePrivacy'), icon: 'lock' },
     { id: 'sites', label: t('settings.paneSites'), icon: 'globe' },
     { id: 'passwords', label: t('settings.panePasswordsAutofill'), icon: 'key' },
     { id: 'performance', label: t('settings.panePerformance'), icon: 'gauge' },
     { id: 'extensions', label: t('settings.paneExtensions'), icon: 'extensions' },
     { id: 'developer', label: t('settings.paneDeveloper'), icon: 'sparkle' },
+    { id: 'about', label: t('settings.paneAbout'), icon: 'info' },
   ];
   // Addresses and cards used to have their own pane; older links still land next to passwords.
   const aliases: Record<string, PaneId> = { '/autofill': 'passwords' };
@@ -75,8 +88,6 @@
         }
         const visible = headingMatches || matches(child);
         child.hidden = !visible;
-        // Settings folded under Advanced open up when they match, or the result would look empty.
-        if (visible && child instanceof HTMLDetailsElement) child.open = true;
         if (visible) sectionFound = true;
       }
       closeGroup();
@@ -131,6 +142,10 @@
 {#snippet content(id: PaneId, view: SettingsView)}
   {#if id === 'general'}
     <GeneralPane {view} {update} {makeDefault} />
+  {:else if id === 'profiles'}
+    <ProfilesPane {view} {update} />
+  {:else if id === 'about'}
+    <AboutPane {view} {update} />
   {:else if id === 'appearance'}
     <AppearancePane values={view.values} {update} />
   {:else if id === 'privacy'}
@@ -300,7 +315,8 @@
   }
 
   .pane :global(h2) {
-    margin: 30px 0 8px;
+    margin: 28px 0 8px;
+    padding-inline: 4px;
     color: var(--text-muted);
     font-size: 13px;
     font-weight: 600;
@@ -310,14 +326,27 @@
     margin-top: 6px;
   }
 
+  /* Consecutive rows read as one card: the first rounds its top, the last its bottom. */
   .pane :global(.row) {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    min-height: 58px;
-    padding: 9px 0;
+    min-height: 48px;
+    padding: 8px 16px;
     border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .pane :global(.row:not(.row + .row)) {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  .pane :global(.row:not(:has(+ .row))) {
+    border-bottom: none;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
   }
 
   .pane :global(.row.stacked) {

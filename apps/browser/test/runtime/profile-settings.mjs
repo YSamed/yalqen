@@ -103,7 +103,7 @@ app
       if (level === 'error') console.error(message);
     });
     await window.loadURL('yalqen://settings/');
-    await eventually("document.querySelectorAll('section li').length === 1");
+    await eventually('document.querySelectorAll(\'[role="option"]\').length > 0');
     await window.webContents.executeJavaScript(`(() => {
       Array.from(document.querySelectorAll('[role="option"]')).find(node => node.textContent.trim() === 'Open specific pages').click();
     })()`);
@@ -116,6 +116,8 @@ app
     await eventually('(async () => (await window.yalqenSettings.get()).values.startupUrls.length === 2)()');
     assert.equal(store.get().startupBehavior, 'pages');
     assert.deepEqual(store.get().startupUrls, ['https://first.example/', 'https://second.example/']);
+    await window.loadURL('yalqen://settings/profiles');
+    await eventually("document.querySelectorAll('section li').length === 1");
     await window.webContents.executeJavaScript(`(() => {
     const form = document.getElementById('persistent-profiles-title').closest('section').querySelector('form');
     const input = form.querySelector('input'); input.value = 'Work'; input.dispatchEvent(new Event('input', { bubbles: true })); form.requestSubmit();
