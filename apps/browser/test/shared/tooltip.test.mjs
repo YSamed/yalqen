@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import tooltip from '../../dist/shared/tooltip.js';
+import previews from '../../dist/shared/previews.js';
 
 const { splitShortcut, placeTooltip, validTooltip, TOOLTIP_EDGE, TOOLTIP_GAP } = tooltip;
 
@@ -71,4 +72,13 @@ test('malformed tooltip requests are dropped', () => {
   assert.equal(validTooltip({ ...request, anchor: { x: 1, y: 2, width: Infinity, height: 4 } }), null);
   assert.equal(validTooltip({ ...request, theme: { ...request.theme, dark: 'no' } }), null);
   assert.equal(validTooltip({ ...request, theme: { ...request.theme, accent: 'x'.repeat(121) } }), null);
+});
+
+test('overlay shadows stay inside the room around their surface', () => {
+  const { shadowFits, TOOLTIP_PAD, TOOLTIP_SHADOW } = tooltip;
+  // A shadow that reaches past the view is cut off into a hard edge.
+  assert.equal(shadowFits(TOOLTIP_SHADOW, TOOLTIP_PAD), true);
+  assert.equal(shadowFits(previews.PREVIEW_SHADOW, previews.PREVIEW_PAD), true);
+  assert.equal(shadowFits({ y: 6, blur: 18 }, 10), false);
+  assert.equal(shadowFits({ y: -3, blur: 8 }, 10), false);
 });
