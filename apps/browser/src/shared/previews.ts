@@ -1,6 +1,10 @@
-import { validAnchor, validTheme, type TooltipTheme } from './tooltip.js';
+import { validAnchor, validTheme, type OverlayShadow, type TooltipTheme } from './tooltip.js';
 import type { AnchorRect } from './types.js';
 import type { MessageKey } from './locales/en.js';
+
+// The preview view is this much larger than the card on every side, room for its shadow.
+export const PREVIEW_PAD = 14;
+export const PREVIEW_SHADOW: OverlayShadow = { y: 4, blur: 10 };
 
 // Hover previews: a glance at a site's unread mail or next events from its tab, without switching to it.
 export type PreviewKind = 'mail' | 'calendar';

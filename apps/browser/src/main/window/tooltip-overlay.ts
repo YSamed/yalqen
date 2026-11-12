@@ -1,9 +1,13 @@
 import type { BaseWindow, WebContentsView } from 'electron';
-import { placeTooltip, type TooltipRequest, type TooltipSize } from '../../shared/tooltip.js';
+import {
+  placeTooltip,
+  TOOLTIP_PAD as PAD,
+  TOOLTIP_SHADOW as SHADOW,
+  type TooltipRequest,
+  type TooltipSize,
+} from '../../shared/tooltip.js';
 import { createOverlayView, raiseToTop } from './overlay-view.js';
 
-// Room around the tooltip for its shadow; the view is this much larger than the tooltip on every side.
-const PAD = 10;
 const MAX_WIDTH = 380;
 const MAX_HEIGHT = 64;
 
@@ -25,7 +29,7 @@ const PAGE = `<!doctype html>
     max-width: ${MAX_WIDTH - PAD * 2}px; box-sizing: border-box;
     padding: 5px 10px; border-radius: 9px;
     background: var(--surface); color: var(--text);
-    box-shadow: 0 0 0 0.5px var(--border), 0 6px 18px var(--drop);
+    box-shadow: 0 0 0 0.5px var(--border), 0 ${SHADOW.y}px ${SHADOW.blur}px var(--drop);
     font: 500 12px/16px -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Helvetica Neue', sans-serif;
     white-space: nowrap; user-select: none; cursor: default;
     opacity: 0; transform: translateY(-2px);
