@@ -2,7 +2,7 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain, nativeTheme, net, webContents, type WebContents } from 'electron';
+import { app, dialog, ipcMain, Menu, nativeTheme, net, webContents, type WebContents } from 'electron';
 import { ExtensionAccessController } from './extensions/extension-access-controller.js';
 import {
   BOOKMARKS_URL,
@@ -36,17 +36,19 @@ import { isInScope } from './agent-bridge/tab-scope.js';
 import { parseOtlpTraces } from './agent-bridge/tracing.js';
 import { AgentTokenStore } from './agent-bridge/token-store.js';
 import { benchPlanFromEnv, prepareBenchApp, runBench } from './bench/bench-driver.js';
-import { BookmarkStore, runBookmarksCommand } from './library/bookmarks.js';
+import { BookmarkStore, bookmarkImportMenu, runBookmarksCommand } from './library/bookmarks.js';
 import {
   arcSidebarSources,
   chromiumProfiles,
   firefoxProfiles,
+  historyImportMenu,
   importBookmarkFile,
   importChromiumHistory,
   importFirefoxHistory,
   isFirefoxPlaces,
 } from './library/browser-import.js';
 import { WelcomeCard } from './window/welcome-card.js';
+import { importBookmarksWithDialog, importHistoryWithDialog } from './window/import-dialogs.js';
 import { ConfirmDialog } from './window/confirm-dialog.js';
 import { appearancePatch, invitationSources, invitationTabs } from './app/invitation.js';
 import { setPageAccent } from './pages/responses.js';
@@ -409,6 +411,7 @@ function startBrowser(): void {
     ],
     storeFor: permissionsFor,
     parentOf: (contents) => windowOf(contents)?.window,
+    blockedRequests: () => settings.get().blockedPermissionRequests,
   });
   installDisplayMediaHandler({
     sessions: [daily, privateBrowsing, developer],
@@ -617,6 +620,7 @@ function startBrowser(): void {
       if (!(await confirmQuit())) return false;
       quitting = true;
       store.saveNow({ version: 2, windows: windowsToSave(), resume: true });
+      await forgetOnExit();
       return true;
     },
   });
@@ -1049,18 +1053,41 @@ function startBrowser(): void {
     }
     if (request.cache) await daily.clearCache();
   };
+  const forgetOnExit = async () => {
+    if (!settings.get().clearOnExit) return;
+    storageOrigins.clear();
+    await Promise.allSettled([daily.clearStorageData(), daily.clearCache()]);
+  };
+  const showImportMenu = (kind: 'bookmarks' | 'history', contents: WebContents) => {
+    const window = windowOf(contents);
+    if (!window) return;
+    const firefox = firefoxProfiles();
+    const menu =
+      kind === 'bookmarks'
+        ? bookmarkImportMenu(
+            [...chromiumProfiles('Bookmarks'), ...arcSidebarSources(), ...firefox],
+            (file) => void importBookmarksWithDialog(window.window, context.importBookmarks, file),
+          )
+        : historyImportMenu(
+            [...chromiumProfiles('History'), ...firefox],
+            (file) => void importHistoryWithDialog(window.window, context.importHistory, file),
+          );
+    Menu.buildFromTemplate(menu.submenu).popup({ window: window.window });
+  };
   registerSettingsIpc({
     view: settingsView,
     updateThreatLists: () => threatLists.update(true),
     profiles: persistentProfiles,
     update: updateSettings,
     clearData,
+    showImportMenu,
     updater,
     relaunch: () => {
-      void confirmQuit().then((allowed) => {
+      void confirmQuit().then(async (allowed) => {
         if (!allowed) return;
         quitting = true;
         store.saveNow(sessionSnapshot());
+        await forgetOnExit();
         // Release only after consent: cancelling must not schedule a later relaunch.
         app.releaseSingleInstanceLock();
         app.relaunch({ args: profileArguments(process.argv.slice(1), persistentProfiles.id) });
@@ -1098,11 +1125,12 @@ function startBrowser(): void {
     event.preventDefault();
     if (quitPending) return;
     quitPending = true;
-    void confirmQuit().then((allowed) => {
+    void confirmQuit().then(async (allowed) => {
       quitPending = false;
       if (!allowed) return;
       quitting = true;
       store.saveNow(sessionSnapshot());
+      await forgetOnExit();
       app.quit();
     });
   });

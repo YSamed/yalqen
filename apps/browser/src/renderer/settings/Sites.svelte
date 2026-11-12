@@ -4,6 +4,7 @@
   import type { SiteStorageEntry, SiteStorageView } from '../../shared/site-storage';
   import type {
     PermissionDecision,
+    PromptPermission,
     SettingsValues,
     SitePermission,
     SitePermissionsView,
@@ -14,6 +15,7 @@
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
+  import SettingRow from './SettingRow.svelte';
 
   let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
     $props();
@@ -61,6 +63,16 @@
     { value: 'allow', label: t('siteInfo.allow') },
     { value: 'deny', label: t('siteInfo.block') },
   ];
+
+  const promptKinds: PromptPermission[] = ['notifications', 'geolocation', 'camera', 'microphone'];
+  const defaultChoices = [
+    { value: 'ask' as const, label: t('siteInfo.ask') },
+    { value: 'deny' as const, label: t('siteInfo.block') },
+  ];
+  function setDefault(kind: PromptPermission, choice: 'ask' | 'deny'): void {
+    const others = values.blockedPermissionRequests.filter((item) => item !== kind);
+    void update({ blockedPermissionRequests: choice === 'deny' ? [...others, kind] : others });
+  }
 
   let permissions = $state<SitePermissionsView | null>(null);
   let storage = $state<SiteStorageView | null>(null);
@@ -244,6 +256,19 @@
   </div>
 {/if}
 
+<h2>{t('sites.defaultPermissions')}</h2>
+{#each promptKinds as kind (kind)}
+  <SettingRow title={t(`permissions.${kind}`)} hint={t('sites.defaultPermissionsHint')} labelFor={`default-${kind}`}>
+    <Select
+      id={`default-${kind}`}
+      options={defaultChoices}
+      value={values.blockedPermissionRequests.includes(kind) ? 'deny' : 'ask'}
+      onchange={(choice) => setDefault(kind, choice)}
+    />
+  </SettingRow>
+{/each}
+
+<h2>{t('sites.list')}</h2>
 <section class="sites-section" aria-label={t('sites.list')} aria-busy={busy}>
   <div class="tools">
     <TextField

@@ -473,16 +473,23 @@ export function bookmarksMenuTemplate(
     ...(entries.length > 0 ? entries : [{ label: t('bookmarks.menuNone'), enabled: false }]),
     { type: 'separator' },
     { label: t('bookmarks.menuAll'), click: actions.showAll },
-    {
-      label: t('bookmarks.menuImport'),
-      submenu: [
-        ...importSources.map((source): MenuItemConstructorOptions => ({
-          label: menuTitle(source.label),
-          click: () => actions.importFrom(source.file),
-        })),
-        ...(importSources.length > 0 ? [{ type: 'separator' as const }] : []),
-        { label: t('bookmarks.menuImportFile'), click: () => actions.importFrom() },
-      ],
-    },
+    bookmarkImportMenu(importSources, actions.importFrom),
   ];
+}
+
+export function bookmarkImportMenu(
+  sources: readonly ImportSource[],
+  importFrom: (file?: string) => void,
+): MenuItemConstructorOptions & { submenu: MenuItemConstructorOptions[] } {
+  return {
+    label: t('bookmarks.menuImport'),
+    submenu: [
+      ...sources.map((source): MenuItemConstructorOptions => ({
+        label: menuTitle(source.label),
+        click: () => importFrom(source.file),
+      })),
+      ...(sources.length > 0 ? [{ type: 'separator' as const }] : []),
+      { label: t('bookmarks.menuImportFile'), click: () => importFrom() },
+    ],
+  };
 }

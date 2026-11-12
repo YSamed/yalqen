@@ -90,9 +90,10 @@
       {/if}
     </span>
     <div class="details">
-      <span class="name">{extension.name} <span class="hint">{extension.version}</span></span>
-      {#if extension.description}<span class="hint">{extension.description}</span>{/if}
-      <span class="hint path" title={extension.path}>{extension.path}</span>
+      <span class="name" title={extension.path}>{extension.name} <span class="hint">{extension.version}</span></span>
+      {#if extension.description}<span class="hint description" title={extension.description}
+          >{extension.description}</span
+        >{/if}
       {#if extension.error}<span class="error" role="alert"
           >{t('extensionsPanel.loadFailed', { error: extension.error })}</span
         >{/if}
@@ -164,8 +165,10 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
+    margin-top: 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--surface);
   }
 
   .extension.disabled .icon,
@@ -199,7 +202,7 @@
     font-weight: 500;
   }
 
-  .path {
+  .description {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

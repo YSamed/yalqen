@@ -1,14 +1,12 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import type { SettingsValues, SettingsView, UpdateStatus } from '../../shared/types';
+  import type { SettingsValues, SettingsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
   import SettingRow from './SettingRow.svelte';
-  import Profiles from './Profiles.svelte';
-  import SpaceRules from './SpaceRules.svelte';
   import { webPageUrl } from '../../shared/startup-pages';
 
   let {
@@ -83,25 +81,6 @@
       choosingDirectory = false;
     }
   }
-
-  function updateMessage(status: UpdateStatus): string {
-    switch (status.state) {
-      case 'unavailable':
-        return t('settings.updateUnavailable');
-      case 'idle':
-        return t('settings.updateIdle');
-      case 'checking':
-        return t('settings.updateChecking');
-      case 'up-to-date':
-        return t('settings.updateUpToDate');
-      case 'downloading':
-        return t('settings.updateDownloading', { version: status.version, percent: status.percent });
-      case 'ready':
-        return t('settings.updateReady', { version: status.version });
-      case 'failed':
-        return t('settings.updateFailed');
-    }
-  }
 </script>
 
 {#if !view.defaultBrowser}
@@ -172,7 +151,7 @@
 {/if}
 
 <h2>{t('settings.downloads')}</h2>
-<SettingRow title={t('settings.downloadDirectory')} hint={view.downloadDirectory}>
+<SettingRow title={t('settings.downloadDirectory')} detail={view.downloadDirectory}>
   <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDownloadDirectory}>
     {t('settings.changeDownloadDirectory')}
   </Button>
@@ -188,6 +167,14 @@
     checked={values.askBeforeDownload}
     onchange={(checked) => update({ askBeforeDownload: checked })}
   />
+</SettingRow>
+
+<h2>{t('settings.importData')}</h2>
+<SettingRow title={t('settings.importBookmarks')} hint={t('settings.importBookmarksHint')}>
+  <Button variant="tonal" onclick={() => api.showImportMenu('bookmarks')}>{t('settings.importEllipsis')}</Button>
+</SettingRow>
+<SettingRow title={t('settings.importHistory')} hint={t('settings.importHistoryHint')}>
+  <Button variant="tonal" onclick={() => api.showImportMenu('history')}>{t('settings.importEllipsis')}</Button>
 </SettingRow>
 
 <h2>{t('settings.language')}</h2>
@@ -230,41 +217,6 @@
   />
 </SettingRow>
 
-<SpaceRules {view} {update} />
-
-<h2>{t('settings.updates')}</h2>
-<div class="row">
-  <span class="label">
-    <span>Yalqen {view.version}</span>
-    <span class="hint" class:ready={view.update.state === 'ready'} aria-live="polite">
-      {updateMessage(view.update)}
-    </span>
-    {#if view.update.state === 'downloading'}
-      <span class="progress" role="progressbar" aria-valuenow={view.update.percent} aria-label={t('settings.download')}>
-        <span style:width="{Math.max(2, view.update.percent)}%"></span>
-      </span>
-    {/if}
-  </span>
-  {#if view.update.state === 'ready'}
-    <Button variant="primary" onclick={() => api.installUpdate()}>{t('settings.restart')}</Button>
-  {:else if view.update.state !== 'unavailable'}
-    <Button
-      variant="tonal"
-      disabled={view.update.state === 'checking' || view.update.state === 'downloading'}
-      onclick={() => api.checkForUpdates()}>{t('settings.checkNow')}</Button
-    >
-  {/if}
-</div>
-<SettingRow title={t('settings.autoUpdate')} hint={t('settings.autoUpdateHint')}>
-  <Switch
-    label={t('settings.autoUpdate')}
-    checked={values.autoUpdate}
-    onchange={(checked) => update({ autoUpdate: checked })}
-  />
-</SettingRow>
-
-<Profiles />
-
 <style>
   .banner {
     display: flex;
@@ -285,26 +237,5 @@
     padding: 8px 10px;
     resize: vertical;
     box-sizing: border-box;
-  }
-
-  .label .hint.ready {
-    color: var(--text);
-  }
-
-  .progress {
-    width: 220px;
-    height: 4px;
-    margin-top: 4px;
-    overflow: hidden;
-    border-radius: 2px;
-    background: var(--well);
-  }
-
-  .progress > span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--accent);
-    transition: width 0.25s linear;
   }
 </style>

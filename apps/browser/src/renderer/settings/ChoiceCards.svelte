@@ -51,7 +51,6 @@
     grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
     gap: 12px;
     padding: 6px 0 14px;
-    border-bottom: 1px solid var(--border);
   }
 
   .choice {

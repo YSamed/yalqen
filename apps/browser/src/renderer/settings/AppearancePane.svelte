@@ -11,7 +11,6 @@
   import type { WindowColor } from '../../shared/window-color';
   import AccentPicker from '../ui/AccentPicker.svelte';
   import Button from '../ui/Button.svelte';
-  import AdvancedGroup from './AdvancedGroup.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
@@ -50,7 +49,6 @@
 
   const windowColors: { id: WindowColor; hex: string; label: string; ring?: boolean }[] = [
     { id: 'none', hex: 'transparent', label: t('windowColor.none'), ring: true },
-    { id: 'accent', hex: 'var(--accent)', label: t('windowColor.accent') },
     ...ACCENT_COLORS.map(({ id, hex }) => ({ id, hex, label: t(`accent.${id}`) })),
   ];
 
@@ -173,7 +171,7 @@
 <SettingRow title={t('settings.windowColor')} hint={t('settings.windowColorHint')}>
   <AccentPicker
     label={t('settings.windowColor')}
-    value={values.windowColor}
+    value={values.windowColor === 'accent' ? values.accentColor : values.windowColor}
     colors={windowColors}
     onchange={(value) => update({ windowColor: value })}
   />
@@ -198,74 +196,80 @@
 />
 
 <h2>{t('settings.toolbar')}</h2>
+<SettingRow title={t('settings.showToolbar')} hint={t('settings.showToolbarHint')}>
+  <Switch
+    label={t('settings.showToolbar')}
+    checked={values.toolbarVisible}
+    onchange={(checked) => update({ toolbarVisible: checked })}
+  />
+</SettingRow>
 <ToolbarEditor
   shown={values.toolbarButtons}
   extensions={toolbarExtensions}
   onchange={(buttons) => update({ toolbarButtons: buttons })}
 />
 
-<AdvancedGroup>
-  <SettingRow title={t('settings.pinnedTabs')}>
-    <SegmentedControl
-      label={t('settings.pinnedTabs')}
-      options={pinnedOptions}
-      value={values.pinnedDisplay}
-      onchange={(value) => update({ pinnedDisplay: value })}
-    />
-  </SettingRow>
-  <SettingRow title={t('settings.pinnedTabsStayHome')} hint={t('settings.pinnedTabsStayHomeHint')}>
-    <Switch
-      label={t('settings.pinnedTabsStayHome')}
-      checked={values.pinnedTabsStayHome}
-      onchange={(checked) => update({ pinnedTabsStayHome: checked })}
-    />
-  </SettingRow>
-  <SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
-    <Switch
-      label={t('settings.tabCleanup')}
-      checked={values.manualTabCleanup}
-      onchange={(checked) => update({ manualTabCleanup: checked })}
-    />
-  </SettingRow>
-  <SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
-    <Switch
-      label={t('settings.mediaPlayer')}
-      checked={values.sidebarWidgets.includes('media')}
-      onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
-    />
-  </SettingRow>
-  <SettingRow title={t('settings.transparency')} hint={t('settings.transparencyHint')}>
-    <Switch
-      label={t('settings.transparency')}
-      checked={values.transparency}
-      onchange={(checked) => update({ transparency: checked })}
-    />
-    {#if transparencyChanged}
-      <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
-    {/if}
-  </SettingRow>
-  {#if startupTransparency}
-    <SettingRow title={t('settings.glassTint')} hint={t('settings.glassTintHint')} labelFor="glass-tint">
-      <input
-        id="glass-tint"
-        class="tint"
-        type="range"
-        min="0"
-        max="100"
-        value={values.glassTint}
-        oninput={(event) => update({ glassTint: event.currentTarget.valueAsNumber })}
-      />
-    </SettingRow>
+<h2>{t('settings.advanced')}</h2>
+<SettingRow title={t('settings.pinnedTabs')}>
+  <SegmentedControl
+    label={t('settings.pinnedTabs')}
+    options={pinnedOptions}
+    value={values.pinnedDisplay}
+    onchange={(value) => update({ pinnedDisplay: value })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.pinnedTabsStayHome')} hint={t('settings.pinnedTabsStayHomeHint')}>
+  <Switch
+    label={t('settings.pinnedTabsStayHome')}
+    checked={values.pinnedTabsStayHome}
+    onchange={(checked) => update({ pinnedTabsStayHome: checked })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
+  <Switch
+    label={t('settings.tabCleanup')}
+    checked={values.manualTabCleanup}
+    onchange={(checked) => update({ manualTabCleanup: checked })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
+  <Switch
+    label={t('settings.mediaPlayer')}
+    checked={values.sidebarWidgets.includes('media')}
+    onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
+  />
+</SettingRow>
+<SettingRow title={t('settings.transparency')} hint={t('settings.transparencyHint')}>
+  <Switch
+    label={t('settings.transparency')}
+    checked={values.transparency}
+    onchange={(checked) => update({ transparency: checked })}
+  />
+  {#if transparencyChanged}
+    <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
   {/if}
-  <SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
-    <Select
-      id="default-zoom"
-      options={zoomOptions}
-      value={values.defaultZoom}
-      onchange={(value) => update({ defaultZoom: value })}
+</SettingRow>
+{#if startupTransparency}
+  <SettingRow title={t('settings.glassTint')} hint={t('settings.glassTintHint')} labelFor="glass-tint">
+    <input
+      id="glass-tint"
+      class="tint"
+      type="range"
+      min="0"
+      max="100"
+      value={values.glassTint}
+      oninput={(event) => update({ glassTint: event.currentTarget.valueAsNumber })}
     />
   </SettingRow>
-</AdvancedGroup>
+{/if}
+<SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
+  <Select
+    id="default-zoom"
+    options={zoomOptions}
+    value={values.defaultZoom}
+    onchange={(value) => update({ defaultZoom: value })}
+  />
+</SettingRow>
 
 <style>
   .tint {

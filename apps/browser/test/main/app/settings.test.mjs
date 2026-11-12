@@ -62,6 +62,8 @@ test('unknown or mistyped fields fall back', () => {
       thirdPartyCookieExceptions: [],
       httpsOnly: false,
       blockThirdPartyCookies: false,
+      clearOnExit: false,
+      blockedPermissionRequests: [],
       secureDns: 'automatic',
       defaultZoom: 1,
       interfaceLanguage: 'system',
@@ -136,6 +138,23 @@ test('the sidebar media player is on by default and stays off once turned off', 
   assert.deepEqual(sanitizeSettings({}).sidebarWidgets, ['media']);
   assert.deepEqual(sanitizeSettings({ sidebarWidgets: [] }).sidebarWidgets, []);
   assert.deepEqual(sanitizeSettings({ sidebarWidgets: ['clock', 'media', 'media', 3] }).sidebarWidgets, ['media']);
+});
+
+test('clearing site data on quit is off by default and kept once turned on', () => {
+  assert.equal(sanitizeSettings(null).clearOnExit, false);
+  assert.equal(sanitizeSettings({ clearOnExit: true }).clearOnExit, true);
+  assert.equal(sanitizeSettings({ clearOnExit: 'yes' }).clearOnExit, false);
+});
+
+test('blocked permission requests keep known prompt kinds once, never popups', () => {
+  assert.deepEqual(sanitizeSettings(null).blockedPermissionRequests, []);
+  assert.deepEqual(
+    sanitizeSettings({
+      blockedPermissionRequests: ['notifications', 'popups', 'notifications', 'midi', 3, 'geolocation'],
+    }).blockedPermissionRequests,
+    ['geolocation', 'notifications'],
+  );
+  assert.deepEqual(sanitizeSettings({ blockedPermissionRequests: 'camera' }).blockedPermissionRequests, []);
 });
 
 test('the removed ask-where-to-save option keeps downloads prompting', () => {

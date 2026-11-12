@@ -20,9 +20,16 @@ interface PermissionHandlerOptions {
   sessions: readonly (readonly [Session, boolean])[];
   storeFor: (isPrivate: boolean) => PermissionStore;
   parentOf: (contents: WebContents) => BaseWindow | undefined;
+  // Kinds the user chose never to be asked about; undecided requests for them are refused silently.
+  blockedRequests: () => readonly SitePermission[];
 }
 
-export function installPermissionHandlers({ sessions, storeFor, parentOf }: PermissionHandlerOptions): void {
+export function installPermissionHandlers({
+  sessions,
+  storeFor,
+  parentOf,
+  blockedRequests,
+}: PermissionHandlerOptions): void {
   let prompts: Promise<unknown> = Promise.resolve();
   // Prompts are shown one at a time; a queued request is decided again once its turn comes,
   // since an earlier answer may already cover it.
@@ -36,6 +43,7 @@ export function installPermissionHandlers({ sessions, storeFor, parentOf }: Perm
       const store = storeFor(isPrivate);
       const decided = store.decide(origin, kinds);
       if (decided !== 'ask') return decided === 'allow';
+      if (kinds.some((kind) => blockedRequests().includes(kind))) return false;
       const parent = parentOf(contents);
       const options: MessageBoxOptions = {
         type: 'question',

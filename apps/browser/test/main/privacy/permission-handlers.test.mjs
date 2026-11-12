@@ -5,7 +5,7 @@ import permissions from '../../../dist/main/privacy/permissions.js';
 
 const SITE = 'https://meet.example.com';
 
-function fixture(isPrivate = false) {
+function fixture(isPrivate = false, blocked = []) {
   let request;
   let check;
   const store = new permissions.PermissionStore(null);
@@ -24,6 +24,7 @@ function fixture(isPrivate = false) {
       return store;
     },
     parentOf: () => undefined,
+    blockedRequests: () => blocked,
   });
   const contents = { getURL: () => `${SITE}/room` };
   return {
@@ -60,4 +61,13 @@ test('display permission does not bypass web origin checks', async () => {
   assert.equal(f.check('display-capture', 'https://other.example.com'), false);
   assert.equal(f.check('display-capture', 'file:///tmp/test.html'), false);
   assert.equal(f.check('display-capture', SITE, { embeddingOrigin: 'https://other.example.com' }), false);
+});
+
+test('blocked kinds are refused without a prompt unless the site was allowed', async () => {
+  const f = fixture(false, ['notifications', 'camera']);
+  assert.equal(await f.request('notifications'), false);
+  assert.equal(await f.request('media', { mediaTypes: ['video', 'audio'] }), false);
+  assert.equal(f.store.decide(SITE, ['notifications']), 'ask');
+  f.store.set(SITE, ['notifications'], 'allow');
+  assert.equal(await f.request('notifications'), true);
 });

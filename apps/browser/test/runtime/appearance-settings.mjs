@@ -190,20 +190,18 @@ app
       `Array.from(document.querySelectorAll('#pane dialog button')).find(item=>item.textContent.trim()==='Close').click()`,
     );
     await eventually(`!document.querySelector('#pane dialog').open`);
-    assert.equal(await run(`document.querySelector('#pane details').open`), false);
-    assert.equal(await run(`!!document.querySelector('#pane details #secure-dns')`), true);
+    assert.equal(await run(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`), true);
 
     assert.deepEqual(rendererErrors, []);
 
-    // Searching opens the Advanced group when a setting inside it matches.
-    assert.equal(await run(`document.querySelector('#pane details').open`), false);
+    // Searching keeps an advanced setting that matches.
     await run(
       `(() => {const input=document.querySelector('input[type=search], .search input');input.value='DNS';input.dispatchEvent(new Event('input',{bubbles:true}))})()`,
     );
-    await eventually(`[...document.querySelectorAll('#pane details')].some(item=>item.open&&!item.hidden)`);
+    await eventually(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`);
 
     console.log(
-      'PASS: appearance settings pick theme and sidebar layout from cards, edit toolbar buttons from the preview and open Advanced for matching searches, and clear browsing data from a dialog',
+      'PASS: appearance settings pick theme and sidebar layout from cards, edit toolbar buttons from the preview and show advanced settings for matching searches, and clear browsing data from a dialog',
     );
   })
   .then(() => app.quit())

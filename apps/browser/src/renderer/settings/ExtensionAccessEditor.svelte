@@ -4,6 +4,7 @@
   import type { ExtensionInfo, ExtensionSiteAccess } from '../../shared/types';
   import Button from '../ui/Button.svelte';
   import Select from '../ui/Select.svelte';
+  import SettingRow from './SettingRow.svelte';
 
   let { extension }: { extension: ExtensionInfo } = $props();
   let mode = $state<ExtensionSiteAccess['mode']>('all');
@@ -12,6 +13,11 @@
   let status = $state<string | null>(null);
   let error = $state(false);
   const policy = $derived(JSON.stringify(extension.access));
+  const changed = $derived.by(() => {
+    const access: ExtensionSiteAccess = JSON.parse(policy);
+    return mode !== access.mode || (mode === 'sites' && sites.trim() !== access.sites.join('\n'));
+  });
+  const clearsSession = $derived(!changed && mode === 'click' && extension.sessionSites.length > 0);
   const uid = $props.id();
   const options = [
     { value: 'all' as const, label: t('extensionsPanel.accessAll') },
@@ -54,9 +60,19 @@
 
 <form class="access" onsubmit={save}>
   <fieldset disabled={saving || extension.updating}>
-    <legend>{t('extensionsPanel.siteAccess')}</legend>
-    <Select value={mode} {options} onchange={(value) => (mode = value)} aria-label={t('extensionsPanel.siteAccess')} />
-    <p class="hint">{t('extensionsPanel.accessHint')}</p>
+    <SettingRow
+      title={t('extensionsPanel.siteAccess')}
+      hint={mode === 'click'
+        ? `${t('extensionsPanel.accessHint')} ${t('extensionsPanel.accessClickHint')}`
+        : t('extensionsPanel.accessHint')}
+    >
+      <Select
+        value={mode}
+        {options}
+        onchange={(value) => (mode = value)}
+        aria-label={t('extensionsPanel.siteAccess')}
+      />
+    </SettingRow>
     {#if mode === 'sites'}
       <label for={uid}>{t('extensionsPanel.accessSitesLabel')}</label>
       <textarea
@@ -67,28 +83,37 @@
         spellcheck="false"
         placeholder="https://example.com"></textarea>
     {:else if mode === 'click'}
-      <p class="hint">{t('extensionsPanel.accessClickHint')}</p>
       {#if extension.sessionSites.length}
         <p class="hint">{t('extensionsPanel.accessSession')}: {extension.sessionSites.join(', ')}</p>
       {/if}
     {/if}
-    <Button type="submit" size="sm" variant="tonal">{t('extensionsPanel.accessSave')}</Button>
+    {#if changed || clearsSession}
+      <Button type="submit" size="sm" variant="tonal"
+        >{clearsSession ? t('extensionsPanel.accessClearSession') : t('extensionsPanel.accessSave')}</Button
+      >
+    {/if}
     {#if status}<p class:error role={error ? 'alert' : 'status'}>{status}</p>{/if}
   </fieldset>
 </form>
 
 <style>
   .access {
-    margin-top: 8px;
+    margin-top: 6px;
+  }
+  /* Doubled class outranks the settings page's card row style, which has the same specificity and loads later. */
+  .access :global(.row.row) {
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
   }
   fieldset {
     border: 0;
     padding: 0;
     min-width: 0;
-  }
-  legend {
-    font-weight: 500;
-    margin-bottom: 6px;
   }
   p {
     margin: 6px 0;
