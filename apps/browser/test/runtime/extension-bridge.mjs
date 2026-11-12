@@ -188,6 +188,17 @@ app
         `focus:${window.id},focus:-1,removed:${window.id}`,
     );
 
+    // An idle worker stops and starts again later; attaching it the second time used to throw and crash the app.
+    const [versionId] = Object.keys(browsing.serviceWorkers.getAllRunning()).map(Number);
+    assert.equal(typeof versionId, 'number');
+    for (const runningStatus of ['stopping', 'stopped', 'starting', 'running']) {
+      browsing.serviceWorkers.emit('running-status-changed', { versionId, runningStatus });
+    }
+    assert.equal(
+      await page.webContents.executeJavaScript(`chrome.runtime.sendMessage({ type: 'currentWindow' })`),
+      window.id,
+    );
+
     const cookieUrl = `http://127.0.0.1:${server.address().port}/`;
     assert.deepEqual(await page.webContents.executeJavaScript(`cookieRoundTrip(${JSON.stringify(cookieUrl)})`), {
       set: 'token',

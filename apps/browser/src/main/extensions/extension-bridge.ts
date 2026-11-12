@@ -38,6 +38,8 @@ interface Receiver {
 // redirect and then read the account cookie.
 export class ExtensionBridge {
   private readonly workers = new Map<number, Receiver>();
+  // A worker that stops and starts again keeps its ServiceWorkerMain and the IPC handlers on it.
+  private readonly handled = new WeakSet<ServiceWorkerMain>();
   private readonly frames = new Map<WebContents, Receiver>();
   private readonly keepAlive = new Map<number, () => void>();
   private readonly watched = new Set<WebContents>();
@@ -134,6 +136,9 @@ export class ExtensionBridge {
         if (!worker.isDestroyed()) worker.send(ExtensionBridgeChannel.event, name, args);
       },
     });
+    // Registering the handlers again would throw and crash the app the second time the worker starts.
+    if (this.handled.has(worker)) return;
+    this.handled.add(worker);
     worker.ipc.handle(ExtensionBridgeChannel.createTab, (_event, properties) =>
       this.create(extensionId, properties, worker),
     );
