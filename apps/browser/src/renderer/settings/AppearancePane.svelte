@@ -220,6 +220,13 @@
       onchange={(checked) => update({ pinnedTabsStayHome: checked })}
     />
   </SettingRow>
+  <SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
+    <Switch
+      label={t('settings.tabCleanup')}
+      checked={values.manualTabCleanup}
+      onchange={(checked) => update({ manualTabCleanup: checked })}
+    />
+  </SettingRow>
   <SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
     <Switch
       label={t('settings.mediaPlayer')}

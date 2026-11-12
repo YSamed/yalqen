@@ -680,6 +680,7 @@ export class YalqenWindow {
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
+      tabCleanup: !this.webApp && this.app.settings.get().manualTabCleanup,
       favorites: this.webApp ? [] : this.app.favorites.list(),
       liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
       sidebarVisible: this.webApp ? false : this.app.settings.get().sidebarVisible,
@@ -1611,6 +1612,9 @@ export class YalqenWindow {
         break;
       case 'close-selected-tabs':
         void tabs.closeSelected();
+        break;
+      case 'clean-tabs':
+        void tabs.closeIdle();
         break;
       case 'set-tab-group':
         if (!tabs.setSelectedGroup(action.name)) this.notice.show([t('tabGroups.failed')]);

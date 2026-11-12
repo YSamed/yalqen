@@ -365,6 +365,7 @@
         fullWidth={PANEL_WIDTH}
         {profile}
         {pinnedDisplay}
+        tabCleanup={browser.tabCleanup ?? false}
         {favorites}
         liveFolders={browser.liveFolders ?? NO_LIVE_FOLDERS}
         {spaces}

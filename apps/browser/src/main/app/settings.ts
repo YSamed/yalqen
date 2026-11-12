@@ -49,6 +49,7 @@ const DEFAULTS: Settings = {
   panelSide: 'left',
   pinnedDisplay: 'always',
   pinnedTabsStayHome: false,
+  manualTabCleanup: false,
   sidebarVisible: true,
   sidebarWidgets: ['media'],
   toolbarVisible: true,
@@ -130,6 +131,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     panelSide,
     pinnedDisplay,
     pinnedTabsStayHome,
+    manualTabCleanup,
     sidebarVisible,
     sidebarWidgets,
     toolbarVisible,
@@ -198,6 +200,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? (pinnedDisplay as PinnedDisplay)
         : base.pinnedDisplay,
     pinnedTabsStayHome: typeof pinnedTabsStayHome === 'boolean' ? pinnedTabsStayHome : base.pinnedTabsStayHome,
+    manualTabCleanup: typeof manualTabCleanup === 'boolean' ? manualTabCleanup : base.manualTabCleanup,
     sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
     sidebarWidgets: sanitizeSidebarWidgets(sidebarWidgets, base.sidebarWidgets),
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
