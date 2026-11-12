@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.100](https://github.com/YSamed/yalqen/compare/v0.3.99...v0.3.100) (2026-11-12)
+
+
+### Bug Fixes
+
+* stop crashing when an extension worker restarts ([#391](https://github.com/YSamed/yalqen/issues/391)) ([91500f5](https://github.com/YSamed/yalqen/commit/91500f50dae23884021a91ac6f7f957b19f45911))
+
 ## [0.3.99](https://github.com/YSamed/yalqen/compare/v0.3.98...v0.3.99) (2026-11-11)
 
 
