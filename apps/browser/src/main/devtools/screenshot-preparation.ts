@@ -53,7 +53,8 @@ async function prepareScreenshot(maxWaitMs = 10000): Promise<void> {
 
 export const PREPARE_SCREENSHOT_SCRIPT = `(${prepareScreenshot.toString()})()`;
 
-// Chromium can skip painting these sections again after preparation restores the scroll position.
+// Chromium can skip painting content-visibility sections again after preparation restores the scroll position,
+// and scroll-driven animations keep off-screen elements in their hidden start state.
 function revealDeferredContent(): void {
   const restore: Array<() => void> = [];
   const world = globalThis as typeof globalThis & { restoreScreenshotContent?: () => void };
@@ -62,26 +63,34 @@ function revealDeferredContent(): void {
     for (const reset of restore) reset();
   };
 
-  const deferred = Array.from(document.querySelectorAll<HTMLElement | SVGElement>('*')).filter(
-    (element) => getComputedStyle(element).contentVisibility === 'auto',
-  );
-  for (const element of deferred) {
+  const override = (element: Element, property: string, forced: string) => {
+    const style = (element as HTMLElement | SVGElement).style;
+    if (!style) return;
     const hadStyle = element.hasAttribute('style');
-    const { style } = element;
-    if (!style) continue;
-    const value = style.getPropertyValue('content-visibility');
-    const priority = style.getPropertyPriority('content-visibility');
+    const value = style.getPropertyValue(property);
+    const priority = style.getPropertyPriority(property);
     restore.push(() => {
-      if (
-        style.getPropertyValue('content-visibility') === 'visible' &&
-        style.getPropertyPriority('content-visibility') === 'important'
-      ) {
-        style.setProperty('content-visibility', value, priority);
+      if (style.getPropertyValue(property) === forced && style.getPropertyPriority(property) === 'important') {
+        style.setProperty(property, value, priority);
         if (!hadStyle && element.getAttribute('style') === '') element.removeAttribute('style');
       }
     });
-    style.setProperty('content-visibility', 'visible', 'important');
+    style.setProperty(property, forced, 'important');
+  };
+
+  for (const element of document.querySelectorAll('*')) {
+    if (getComputedStyle(element).contentVisibility === 'auto') override(element, 'content-visibility', 'visible');
   }
+
+  if (typeof ScrollTimeline === 'undefined') return;
+  const scrollAnimated = new Set<Element>();
+  for (const animation of document.getAnimations()) {
+    const target = (animation.effect as KeyframeEffect | null)?.target;
+    if (animation instanceof CSSAnimation && animation.timeline instanceof ScrollTimeline && target) {
+      scrollAnimated.add(target);
+    }
+  }
+  for (const element of scrollAnimated) override(element, 'animation-name', 'none');
 }
 
 export const REVEAL_SCREENSHOT_CONTENT_SCRIPT = `(${revealDeferredContent.toString()})()`;
