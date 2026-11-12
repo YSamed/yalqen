@@ -18,6 +18,7 @@ interface MenuActions {
   closeWindow(): void;
   moveTabToNewWindow(): void;
   reopenClosedTab(): void;
+  cleanTabs(): void;
   selectNextTab(): void;
   selectPreviousTab(): void;
   selectTab(index: number): void;
@@ -159,6 +160,7 @@ export function buildMenu(actions: MenuActions): Menu {
           accelerator: 'CmdOrCtrl+Shift+T',
           click: actions.reopenClosedTab,
         },
+        { label: t('menu.cleanTabs'), accelerator: 'CmdOrCtrl+Shift+K', click: actions.cleanTabs },
         { type: 'separator' },
         { label: t('menu.nextTab'), accelerator: 'Ctrl+Tab', click: actions.selectNextTab },
         { label: t('menu.previousTab'), accelerator: 'Ctrl+Shift+Tab', click: actions.selectPreviousTab },

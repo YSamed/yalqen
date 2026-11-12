@@ -159,6 +159,8 @@ export interface BrowserState {
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
+  // Shows the button that cleans unpinned idle tabs out of the sidebar.
+  tabCleanup?: boolean;
   favorites: Favorite[];
   sidebarVisible: boolean;
   // Filled only while the sidebar media player is on and a tab has played sound.
@@ -421,6 +423,7 @@ export type UiAction =
   | { type: 'select-tab'; id: TabId; mode: 'toggle' | 'range' }
   | { type: 'clear-tab-selection' }
   | { type: 'close-selected-tabs' }
+  | { type: 'clean-tabs' }
   | { type: 'set-tab-group'; name: string | null }
   | { type: 'rename-tab-group'; name: string; next: string }
   | { type: 'toggle-tab-group'; name: string }
@@ -848,6 +851,7 @@ export interface SettingsValues {
   pinnedDisplay: PinnedDisplay;
   // Pinned tabs reopen at their pinned address, and links or typed addresses for other sites open new tabs.
   pinnedTabsStayHome: boolean;
+  manualTabCleanup: boolean;
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;

@@ -34,6 +34,7 @@
     fullWidth,
     profile,
     pinnedDisplay,
+    tabCleanup = false,
     favorites,
     liveFolders,
     spaces,
@@ -58,6 +59,7 @@
     fullWidth: number;
     profile: ProfileKind;
     pinnedDisplay: PinnedDisplay;
+    tabCleanup?: boolean;
     favorites: Favorite[];
     liveFolders: LiveFolderView[];
     spaces: SpaceView[];
@@ -124,6 +126,10 @@
   const tabsById = $derived(new Map(tabs.map((tab) => [tab.id, tab])));
   const listed = $derived(
     listOrder.map((id) => tabsById.get(id)).filter((tab): tab is TabSnapshot => !!tab && !tab.pinned),
+  );
+  // The tabs the clean button closes: unpinned ones memory saving has put to sleep, as main counts them.
+  const idleCount = $derived(
+    tabCleanup ? listed.filter((tab) => !tab.live && !tab.isPrivate && tab.id !== activeTabId).length : 0,
   );
   const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
@@ -737,7 +743,23 @@
           </ul>
         {/if}
 
-        {#if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
+        {#if tabCleanup && listed.length > 0}
+          <div class="tab-cleanup" class:compact={collapsed}>
+            {#if !collapsed}<span class="cleanup-line" aria-hidden="true"></span>{/if}
+            <IconButton
+              size="sm"
+              icon="broom"
+              tone="muted"
+              class="tab-cleanup-button"
+              label={idleCount > 0 ? t('tabPanel.cleanTabs', { count: idleCount }) : t('tabPanel.noTabsToClean')}
+              title={idleCount > 0 ? t('tabPanel.cleanTabsTitle', { count: idleCount }) : t('tabPanel.noTabsToClean')}
+              aria-disabled={idleCount === 0}
+              onclick={() => {
+                if (idleCount > 0) send({ type: 'clean-tabs' });
+              }}
+            />
+          </div>
+        {:else if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
           <span class="section-divider" aria-hidden="true"></span>
         {:else if collapsed && showPinned && pinned.length > 0 && listed.length > 0}
           <span class="divider" aria-hidden="true"></span>
@@ -1114,6 +1136,28 @@
     height: 1px;
     margin: 0 10px 6px;
     background: var(--page-divider);
+  }
+
+  .tab-cleanup {
+    display: flex;
+    flex: none;
+    gap: 6px;
+    align-items: center;
+    margin: -4px 4px 2px 10px;
+  }
+
+  .tab-cleanup.compact {
+    margin: 2px 0;
+  }
+
+  .cleanup-line {
+    flex: 1;
+    height: 1px;
+    background: var(--page-divider);
+  }
+
+  .tab-cleanup :global(.tab-cleanup-button[aria-disabled='true']) {
+    opacity: 0.4;
   }
 
   .divider {

@@ -49,6 +49,7 @@ test('unknown or mistyped fields fall back', () => {
       panelSide: 'left',
       pinnedDisplay: 'always',
       pinnedTabsStayHome: false,
+      manualTabCleanup: false,
       sidebarVisible: true,
       sidebarWidgets: ['media'],
       toolbarVisible: true,
@@ -123,6 +124,12 @@ test('keeping pinned tabs on their site is off by default and kept once turned o
   assert.equal(sanitizeSettings(null).pinnedTabsStayHome, false);
   assert.equal(sanitizeSettings({ pinnedTabsStayHome: true }).pinnedTabsStayHome, true);
   assert.equal(sanitizeSettings({ pinnedTabsStayHome: 'yes' }).pinnedTabsStayHome, false);
+});
+
+test('the button to close idle tabs is off by default and kept once turned on', () => {
+  assert.equal(sanitizeSettings(null).manualTabCleanup, false);
+  assert.equal(sanitizeSettings({ manualTabCleanup: true }).manualTabCleanup, true);
+  assert.equal(sanitizeSettings({ manualTabCleanup: 1 }).manualTabCleanup, false);
 });
 
 test('the sidebar media player is on by default and stays off once turned off', () => {

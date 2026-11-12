@@ -796,6 +796,21 @@ export class TabManager {
     });
   }
 
+  // Unpinned tabs in this space that memory saving has unloaded, the ones the sidebar dims.
+  private idleTabs(): Tab[] {
+    return this.listOrder().filter(
+      (tab) => !tab.pinnedUrl && !tab.isPrivate && tab.view === null && tab.id !== this.activeId,
+    );
+  }
+
+  async closeIdle(): Promise<boolean> {
+    const targets = this.idleTabs();
+    return this.closeGroup(targets, undefined, () => {
+      const current = this.idleTabs();
+      return current.length === targets.length && current.every((tab, index) => tab === targets[index]);
+    });
+  }
+
   duplicate(id: TabId): TabId | null {
     const source = this.find(id);
     if (!source) return null;
