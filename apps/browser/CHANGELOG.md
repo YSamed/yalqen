@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/YSamed/yalqen/compare/v0.3.101...v0.4.0) (2026-11-12)
+
+
+### Features
+
+* add missing settings and simplify the settings page ([#396](https://github.com/YSamed/yalqen/issues/396)) ([02b59cb](https://github.com/YSamed/yalqen/commit/02b59cb70f0b58e8f1ffe199e363176c63f3cbd4))
+
 ## [0.3.101](https://github.com/YSamed/yalqen/compare/v0.3.100...v0.3.101) (2026-11-12)
 
 
