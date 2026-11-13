@@ -1737,6 +1737,9 @@ export class YalqenWindow {
       case 'toggle-devtools':
         tabs.toggleDevTools();
         break;
+      case 'resize-devtools':
+        tabs.resizeDevTools(action.x);
+        break;
       case 'open-dev-menu': {
         const tab = tabs.snapshotFor();
         if (!tab) break;
@@ -2186,7 +2189,7 @@ export class YalqenWindow {
       goBack: () => history.goBack(),
       goForward: () => history.goForward(),
       reload: () => contents.reload(),
-      inspect: () => contents.inspectElement(params.x, params.y),
+      inspect: () => this.tabs.inspect(contents, params.x, params.y),
       print: () => this.print(contents),
       fullPageScreenshot: () => void this.saveScreenshot(true),
       viewSource: () => {
