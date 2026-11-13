@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.4](https://github.com/YSamed/yalqen/compare/v0.4.3...v0.4.4) (2026-11-13)
+
+
+### Bug Fixes
+
+* keep the autofill button focused and report runtime test results ([#411](https://github.com/YSamed/yalqen/issues/411)) ([4ef9eae](https://github.com/YSamed/yalqen/commit/4ef9eae32d9d0be0c96665b84a0df905f66e6afd))
+* stop runtime test flakes from failing ci ([#410](https://github.com/YSamed/yalqen/issues/410)) ([75ddbea](https://github.com/YSamed/yalqen/commit/75ddbea81ac73becf11c92b5b914b61dcce44d86))
+* wait for closed tabs in the tab modes test ([#408](https://github.com/YSamed/yalqen/issues/408)) ([65c9a28](https://github.com/YSamed/yalqen/commit/65c9a28283a372e97177ba964b975d64abd49423))
+
 ## [0.4.3](https://github.com/YSamed/yalqen/compare/v0.4.2...v0.4.3) (2026-11-13)
 
 
