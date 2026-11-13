@@ -12,6 +12,7 @@ export interface PeekedPage {
   url: string;
   title: string;
   isPrivate: boolean;
+  developer?: boolean;
   interacted: boolean;
   edited: boolean;
 }
@@ -27,7 +28,7 @@ export interface LinkPeekHost {
   docked?: boolean;
   area: () => Rectangle;
   createOverlay: () => WebContentsView;
-  createPageView: (isPrivate: boolean) => WebContentsView;
+  createPageView: (isPrivate: boolean, developer?: boolean) => WebContentsView;
   upgradeHttp: (url: string) => string | null;
   onPromote: (page: PeekedPage) => void;
   onClosed: () => void;
@@ -37,6 +38,7 @@ interface OpenPeek {
   owner: PeekOwner;
   url: string;
   isPrivate: boolean;
+  developer: boolean;
   interacted: boolean;
   edited: boolean;
   page: WebContentsView;
@@ -55,15 +57,17 @@ export class LinkPeek {
     return this.current !== null;
   }
 
-  open(url: string, isPrivate: boolean, owner: PeekOwner): void {
+  // A peek from a developer tab browses in the developer session and becomes a developer tab when kept.
+  open(url: string, isPrivate: boolean, owner: PeekOwner, developer = false): void {
     if (!isPeekable(url) || this.host.window.isDestroyed()) return;
     this.close();
-    const page = this.host.createPageView(isPrivate);
+    const page = this.host.createPageView(isPrivate, developer);
     const overlay = this.host.createOverlay();
     const current: OpenPeek = {
       owner,
       url,
       isPrivate,
+      developer,
       interacted: false,
       edited: false,
       page,
@@ -111,6 +115,7 @@ export class LinkPeek {
       url: webContents.getURL() || current.url,
       title: webContents.getTitle() || current.title,
       isPrivate: current.isPrivate,
+      developer: current.developer,
       interacted: current.interacted,
       edited: current.edited,
     });

@@ -131,6 +131,8 @@ interface TabManagerOptions {
   // Developer tabs in an ordinary window browse here; developer windows pass it as their private session too.
   developerSession?: Session;
   developerWindow?: boolean;
+  // The "Tab modes" setting: the mode slider, new tabs taking the mode in front and the modes' looks.
+  tabModes?: () => boolean;
   onPrivateEnded: () => void;
   onDeveloperEnded?: () => void;
   freezeBackground: () => boolean;
@@ -168,7 +170,7 @@ interface TabManagerOptions {
   onProceedHttp: (token: string, currentUrl: string) => string | null;
   confirmHttpRedirect: (url: string) => Promise<boolean>;
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
-  onPeek: (url: string, isPrivate: boolean) => void;
+  onPeek: (url: string, isPrivate: boolean, developer: boolean) => void;
   requestRules: () => readonly RequestRule[];
   translation: () => { enabled: boolean; language: PageLanguage };
   agentScope: (tab: { url: string; isPrivate: boolean }) => boolean;
@@ -1905,7 +1907,11 @@ export class TabManager {
 
   // Ordinary windows switch tabs between modes; private and developer windows keep theirs, and web apps have one.
   get canSwitchMode(): boolean {
-    return !this.options.privateWindow && !this.options.webAppScope;
+    return this.modesOn && !this.options.privateWindow && !this.options.webAppScope;
+  }
+
+  private get modesOn(): boolean {
+    return this.options.tabModes?.() ?? false;
   }
 
   get activeMode(): TabMode {
@@ -1917,7 +1923,15 @@ export class TabManager {
 
   // The plus button and Cmd+T open the new tab in the mode of the tab the user is on.
   openInActiveMode(url?: string): TabId {
-    return this.open(url, modeFlags(this.activeMode));
+    return this.modesOn ? this.open(url, modeFlags(this.activeMode)) : this.open(url);
+  }
+
+  // The mode of the tab showing these contents, for pages it opens; the window's mode for anything else.
+  modeOfContents(contents: WebContents): TabMode {
+    const tab = this.tabs.find((item) => item.view?.webContents === contents);
+    if (tab) return modeOf(tab);
+    if (this.options.developerWindow) return 'developer';
+    return this.options.privateWindow ? 'private' : 'normal';
   }
 
   activeSession(): Session {
@@ -2014,7 +2028,10 @@ export class TabManager {
   }
 
   private createRecord(saved: Partial<SavedTab> & { url: string }, isPrivate = false, developer = false): Tab {
-    return createTab(saved, isPrivate, developer);
+    const tab = createTab(saved, isPrivate, developer);
+    // DevTools opens by itself in developer tabs only while tab modes are on.
+    if (!this.modesOn) tab.devToolsOnLoad = false;
+    return tab;
   }
 
   private insertAfterActive(tab: Tab): void {
@@ -2033,12 +2050,6 @@ export class TabManager {
     }
 
     const view = this.createPageView(tab.isPrivate, tab.developer);
-    if (tab.devToolsOnLoad) {
-      tab.devToolsOnLoad = false;
-      view.webContents.once('dom-ready', () => {
-        if (tab.view === view && !view.webContents.isDevToolsOpened()) view.webContents.openDevTools();
-      });
-    }
     const emulated = this.mount(tab, view);
     if (emulated) {
       void emulated.then(() => {
@@ -2054,6 +2065,17 @@ export class TabManager {
     return createPageView(this.options.pagePreload, this.sessionFor(isPrivate, developer));
   }
 
+  // New developer tabs, popups from them and kept peeks open DevTools once their page is there.
+  private openDevToolsWhenReady(tab: Tab, view: WebContentsView): void {
+    tab.devToolsOnLoad = false;
+    const open = () => {
+      if (tab.view === view && !view.webContents.isDevToolsOpened()) view.webContents.openDevTools();
+    };
+    // A page that is already there, a kept peek or a popup, joins the window right after; DevTools follows it.
+    if (view.webContents.getURL()) setImmediate(open);
+    else view.webContents.once('dom-ready', open);
+  }
+
   private sessionFor(isPrivate: boolean, developer: boolean): Session {
     if (developer) return this.options.developerSession ?? this.options.privateSession;
     return isPrivate ? this.options.privateSession : this.options.session;
@@ -2061,10 +2083,10 @@ export class TabManager {
 
   adoptView(
     view: WebContentsView,
-    page: { url: string; title: string; isPrivate: boolean; interacted: boolean; edited: boolean },
+    page: { url: string; title: string; isPrivate: boolean; developer?: boolean; interacted: boolean; edited: boolean },
   ): void {
     const opener = this.active();
-    const tab = this.createRecord({ url: page.url, title: page.title }, page.isPrivate);
+    const tab = this.createRecord({ url: page.url, title: page.title }, page.isPrivate, page.developer ?? false);
     tab.openerId = opener?.id ?? null;
     tab.group = opener?.group ?? null;
     tab.loading = view.webContents.isLoading();
@@ -2081,6 +2103,7 @@ export class TabManager {
     if (tab.muted) view.webContents.setAudioMuted(true);
     tab.view = view;
     this.attachListeners(tab, view);
+    if (tab.devToolsOnLoad) this.openDevToolsWhenReady(tab, view);
     this.syncAgentFor(tab, tab.url);
     return this.placement.place(tab, view);
   }
@@ -2281,7 +2304,7 @@ export class TabManager {
       if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
         tab.activatedAt = 0;
         if (opensPeek(disposition, features, url)) {
-          this.options.onPeek(url, tab.isPrivate);
+          this.options.onPeek(url, tab.isPrivate, tab.developer);
           return { action: 'deny' };
         }
         if (opensInPlace(url) && !this.options.upgradeHttp(url)) {

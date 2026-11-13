@@ -232,6 +232,13 @@
     onchange={(checked) => update({ manualTabCleanup: checked })}
   />
 </SettingRow>
+<SettingRow title={t('settings.tabModes')} hint={t('settings.tabModesHint')}>
+  <Switch
+    label={t('settings.tabModes')}
+    checked={values.tabModes}
+    onchange={(checked) => update({ tabModes: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
   <Switch
     label={t('settings.mediaPlayer')}

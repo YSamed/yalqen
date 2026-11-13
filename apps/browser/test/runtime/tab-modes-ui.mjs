@@ -35,6 +35,8 @@ async function click(selector, modifiers = []) {
   window.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, modifiers, ...rect });
 }
 
+let modesOn = true;
+
 app
   .whenReady()
   .then(async () => {
@@ -56,7 +58,8 @@ app
       panelCollapsed: false,
       panelSide: 'left',
       pinnedDisplay: 'always',
-      modeSwitch: true,
+      tabModes: modesOn,
+      modeSwitch: modesOn,
       favorites: [],
       spaces: [],
       activeSpaceId: '',
@@ -120,6 +123,27 @@ app
     assert.equal(await checked(), 'Normal');
     assert.equal(await js('document.documentElement.dataset.mode'), 'normal');
 
+    // On a web page the picked Normal icon says what it does next.
+    assert.equal(await js(`document.querySelector('.modes .mode.normal').title`), 'Site information');
+
+    // Arrow keys move between the modes without switching; Enter picks one.
+    await js(`document.querySelector('.modes .mode.normal').focus()`);
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Right' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Right' });
+    await eventually(`document.activeElement?.getAttribute('aria-label') === 'Developer'`);
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'End' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'End' });
+    await eventually(`document.activeElement?.getAttribute('aria-label') === 'Private'`);
+    assert.deepEqual(actions, []);
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Return' });
+    window.webContents.sendInputEvent({ type: 'char', keyCode: 'Return' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Return' });
+    await eventually(`document.documentElement.dataset.mode === 'private'`);
+    actions.length = 0;
+    Object.assign(manager.find('a'), tabModes.modeFlags('normal'));
+    changed();
+    await eventually(`document.documentElement.dataset.mode === 'normal'`);
+
     // Normal again opens the site information, as the lock did.
     await click('.modes .mode.normal');
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -147,8 +171,15 @@ app
     await eventually(`document.documentElement.dataset.mode === 'normal'`);
     assert.equal(await js(`getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()`), '#0a84ff');
     assert.deepEqual(actions, ['open-site-info', 'mode:developer', 'mode:private', 'mode:normal']);
+
+    // With the setting off there is no slider, and a private tab leaves the window's look alone.
+    modesOn = false;
+    Object.assign(manager.find('a'), tabModes.modeFlags('private'));
+    changed();
+    await eventually(`!document.querySelector('.modes')`);
+    assert.equal(await js('document.documentElement.dataset.mode'), 'normal');
     console.log(
-      'PASS: the address bar mode slider switches the tab between normal, developer and private, restyles the window and keeps the site information on the normal icon',
+      'PASS: the address bar mode slider switches the tab between normal, developer and private by click or keyboard, restyles the window, keeps the site information on the normal icon and follows its setting',
     );
   })
   .then(() => app.quit())

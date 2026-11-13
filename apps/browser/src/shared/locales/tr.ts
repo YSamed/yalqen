@@ -1001,6 +1001,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.tabCleanup': 'Elle sekme temizliği',
   'settings.tabCleanupHint':
     'Kenar çubuğuna bir düğme ve ⌘⇧K kısayolunu ekler; bellek tasarrufunun uyuttuğu sabitlenmemiş sekmeleri kapatır. Onları Geçmiş’ten yeniden açabilirsiniz.',
+  'settings.tabModes': 'Sekme modları',
+  'settings.tabModesHint':
+    'Adres çubuğuna Normal, Geliştirici ve Gizli seçicisi ekler. Sekme seçilen modda aynı pencerede yeniden yüklenir ve pencere onun görünümünü alır.',
   'settings.pinnedAlways': 'Her zaman',
   'settings.pinnedExpanded': 'Sadece geniş menüde',
   'settings.pinnedNever': 'Hiçbir zaman',

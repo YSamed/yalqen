@@ -116,7 +116,15 @@
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
   const developer = $derived(browser.developer);
   // The window takes the look of the tab in front: developer and private tabs restyle it while they are shown.
-  const mode = $derived(developer || activeTab?.developer ? 'developer' : activeTab?.isPrivate ? 'private' : 'normal');
+  const mode = $derived(
+    !browser.tabModes
+      ? 'normal'
+      : developer || activeTab?.developer
+        ? 'developer'
+        : activeTab?.isPrivate
+          ? 'private'
+          : 'normal',
+  );
   const profile = $derived(browser.profile);
   const media = $derived(browser.media);
   const pinnedDisplay = $derived(browser.pinnedDisplay);

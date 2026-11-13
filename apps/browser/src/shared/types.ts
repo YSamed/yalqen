@@ -163,6 +163,8 @@ export interface BrowserState {
   pinnedDisplay: PinnedDisplay;
   // Shows the button that cleans unpinned idle tabs out of the sidebar.
   tabCleanup?: boolean;
+  // The "Tab modes" setting: the window takes the look of the active tab's mode.
+  tabModes?: boolean;
   // Whether tabs in this window can switch between normal, developer and private.
   modeSwitch?: boolean;
   favorites: Favorite[];
@@ -857,6 +859,8 @@ export interface SettingsValues {
   // Pinned tabs reopen at their pinned address, and links or typed addresses for other sites open new tabs.
   pinnedTabsStayHome: boolean;
   manualTabCleanup: boolean;
+  // Tabs switch between normal, developer and private from the address bar.
+  tabModes: boolean;
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;

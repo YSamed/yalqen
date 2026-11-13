@@ -30,7 +30,7 @@ import {
   type UiAction,
   type WindowMaterial,
 } from '../../shared/types.js';
-import { isTabMode } from '../../shared/tab-modes.js';
+import { isTabMode, modeFlags } from '../../shared/tab-modes.js';
 import type { BookmarkStore } from '../library/bookmarks.js';
 import type { FavoriteStore } from '../library/favorites.js';
 import type { LiveFolderRefresher, LiveFolderStore } from '../library/live-folders.js';
@@ -385,6 +385,7 @@ export class YalqenWindow {
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
       developerSession: app.developer,
       developerWindow: this.isDeveloper,
+      tabModes: () => app.settings.get().tabModes,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       onDeveloperEnded: () => app.onDeveloperTabsClosed(),
       confirmUnload: (tab) => {
@@ -496,14 +497,15 @@ export class YalqenWindow {
         return response === 1;
       },
       onContextMenu: (contents, params) => this.showContextMenu(contents, params),
-      onPeek: (url, isPrivate) => this.peek.open(url, isPrivate, this.peekOwner()),
+      onPeek: (url, isPrivate, developer) => this.peek.open(url, isPrivate, this.peekOwner(), developer),
       requestRules: () => app.requestRules.list(),
       translation: () => ({
         enabled: app.settings.get().pageTranslation,
         language: getLocale(),
       }),
       // Developer windows are private only to keep their session apart; they are meant for local work.
-      agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate),
+      // Developer windows are private only to keep their session apart; they are meant for local work.
+      agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate && !this.isDeveloper),
       agentTracing: () => app.settings.get().agentBridge && app.settings.get().agentTracing,
     });
 
@@ -512,7 +514,7 @@ export class YalqenWindow {
       page: rendererPath('peek.html'),
       area: () => this.pageArea,
       createOverlay: () => createOverlayView(preloadPath('peek-preload')),
-      createPageView: (isPrivate) => this.tabs.createPageView(isPrivate),
+      createPageView: (isPrivate, developer) => this.tabs.createPageView(isPrivate, developer),
       upgradeHttp: (url) => app.httpsOnly.upgrade(url),
       onPromote: (page) => this.tabs.adoptView(page.view, page),
       onClosed: () => {
@@ -687,6 +689,7 @@ export class YalqenWindow {
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
+      tabModes: this.app.settings.get().tabModes,
       modeSwitch: this.tabs.canSwitchMode,
       tabCleanup: !this.webApp && this.app.settings.get().manualTabCleanup,
       favorites: this.webApp ? [] : this.app.favorites.list(),
@@ -1877,9 +1880,6 @@ export class YalqenWindow {
   }
 
   private async openSiteInfo(): Promise<void> {
-    const tabs = this.tabs;
-    const id = tabs.activeTabId;
-    if (tabs.snapshotFor()?.security === 'local') return;
     const template = await siteInfoMenu({
       tabs: this.tabs,
       permissions: (isPrivate) => this.app.permissionsFor(isPrivate),
@@ -1900,7 +1900,7 @@ export class YalqenWindow {
       },
       clearSiteData: () => this.runDevCommand('clear-site-data'),
     });
-    if (template && tabs.activeTabId === id && !this.window.isDestroyed()) this.popup(template);
+    if (template && !this.window.isDestroyed()) this.popup(template);
   }
 
   // A pinned extension's toolbar button does what its entry in the extensions menu does.
@@ -2170,7 +2170,8 @@ export class YalqenWindow {
   private showContextMenu(contents: Electron.WebContents, params: Electron.ContextMenuParams): void {
     const tabs = this.tabs;
     const history = contents.navigationHistory;
-    const isPrivate = tabs.isPrivateContents(contents);
+    // Pages opened from this one keep its mode, so a developer tab's links stay in the developer session.
+    const mode = modeFlags(tabs.modeOfContents(contents));
     const translation = tabs.snapshotFor()?.translation;
     const template = contextMenuTemplate(params, {
       translation:
@@ -2184,13 +2185,19 @@ export class YalqenWindow {
       canGoBack: history.canGoBack(),
       canGoForward: history.canGoForward(),
       canViewSource: canViewSource(contents.getURL()),
-      openInNewTab: (url) => tabs.open(url, { activate: false, isPrivate }),
-      openInNewWindow: (url) => this.app.openWindow({ url, isPrivate, developer: this.isDeveloper, from: this }),
-      peekLink: (url) => this.peek.open(url, isPrivate, this.peekOwner()),
+      openInNewTab: (url) => tabs.open(url, { activate: false, ...mode }),
+      openInNewWindow: (url) =>
+        this.app.openWindow({
+          url,
+          isPrivate: mode.isPrivate,
+          developer: this.isDeveloper || mode.developer,
+          from: this,
+        }),
+      peekLink: (url) => this.peek.open(url, mode.isPrivate, this.peekOwner(), mode.developer),
       copyText: (text) => clipboard.writeText(text),
       copyImage: () => contents.copyImageAt(params.x, params.y),
       download: (url) => contents.downloadURL(url),
-      search: (text) => tabs.open(buildSearchUrl(this.app.searchEngine(), text), { isPrivate }),
+      search: (text) => tabs.open(buildSearchUrl(this.app.searchEngine(), text), mode),
       goBack: () => history.goBack(),
       goForward: () => history.goForward(),
       reload: () => contents.reload(),
@@ -2198,7 +2205,7 @@ export class YalqenWindow {
       print: () => this.print(contents),
       fullPageScreenshot: () => void this.saveScreenshot(true),
       viewSource: () => {
-        if (canViewSource(contents.getURL())) tabs.open(`view-source:${contents.getURL()}`, { isPrivate });
+        if (canViewSource(contents.getURL())) tabs.open(`view-source:${contents.getURL()}`, mode);
       },
       copyAddress: (format) => this.copyAddress(format, { url: contents.getURL(), title: contents.getTitle() }),
       replaceMisspelling: (word) => contents.replaceMisspelling(word),

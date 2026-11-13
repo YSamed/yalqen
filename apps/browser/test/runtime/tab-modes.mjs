@@ -31,6 +31,8 @@ async function eventually(predicate, label) {
 
 let sessions;
 const ended = { private: 0, developer: 0 };
+let modesOn = true;
+const agentAsks = [];
 
 function manager(window, options = {}) {
   return new tabs.TabManager({
@@ -41,7 +43,11 @@ function manager(window, options = {}) {
     closed: [],
     isBookmarked: () => false,
     hasCertificateException: () => false,
-    agentScope: () => false,
+    agentScope: (tab) => {
+      agentAsks.push(tab);
+      return false;
+    },
+    tabModes: () => modesOn,
     upgradeHttp: () => null,
     onChange() {},
     onHtmlFullScreenChange() {},
@@ -121,6 +127,30 @@ app
     assert.equal(ended.private, 1);
     assert.equal(await tabManager.setMode(work, 'normal'), false);
 
+    // Pages a developer tab opens from its menu or a peek keep developer mode, and the agent bridge sees them.
+    assert.equal(await tabManager.setMode(work, 'developer'), true);
+    await loaded(work);
+    assert.equal(tabManager.modeOfContents(contentsOf(work)), 'developer');
+    assert.equal(tabManager.modeOfContents(contentsOf(mail)), 'normal');
+    assert.equal(agentAsks.filter((tab) => tab.url === page).at(-1).isPrivate, false);
+    const peeked = tabManager.createPageView(true, true);
+    assert.equal(peeked.webContents.session, sessions.developer);
+    await peeked.webContents.loadURL(page);
+    tabManager.adoptView(peeked, {
+      url: page,
+      title: 'Peek',
+      isPrivate: true,
+      developer: true,
+      interacted: false,
+      edited: false,
+    });
+    const kept = tabManager.activeId;
+    assert.equal(tabManager.snapshotFor(kept).developer, true);
+    await eventually(() => contentsOf(kept).isDevToolsOpened(), 'DevTools in a kept developer peek');
+    tabManager.close(kept);
+    assert.equal(await tabManager.setMode(work, 'normal'), true);
+    await loaded(work);
+
     // A pinned tab keeps its mode; the page opens in a new tab of the chosen mode instead.
     tabManager.togglePin(mail);
     tabManager.activate(mail);
@@ -129,6 +159,16 @@ app
     await eventually(() => tabManager.tabs.length === count + 1, 'a private copy of the pinned tab');
     assert.equal(tabManager.snapshotFor(mail).isPrivate, false);
     assert.equal(tabManager.snapshotFor(tabManager.activeId).isPrivate, true);
+
+    // With the setting off nothing switches, and the plus button opens a normal tab as before.
+    modesOn = false;
+    assert.equal(tabManager.canSwitchMode, false);
+    assert.equal(await tabManager.setMode(work, 'private'), false);
+    const privateFront = tabManager.activeId;
+    assert.equal(tabManager.snapshotFor(privateFront).isPrivate, true);
+    const plain = tabManager.openInActiveMode(page);
+    assert.equal(tabManager.snapshotFor(plain).isPrivate, false);
+    modesOn = true;
 
     // Private windows keep every tab private.
     const privateWindow = new BaseWindow({ show: false });
@@ -139,7 +179,7 @@ app
     privateTabs.destroyAll();
 
     console.log(
-      'PASS: tabs switch between normal, developer and private in place, each in its own session, with DevTools in developer mode, new tabs taking the mode in front and pinned tabs kept',
+      'PASS: tabs switch between normal, developer and private in place, each in its own session, with DevTools in developer mode, new tabs, menu links and peeks keeping the mode, pinned tabs kept and the setting turning it off',
     );
   })
   .then(() => app.quit())

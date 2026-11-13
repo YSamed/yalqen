@@ -27,6 +27,21 @@
     private: 'tabModes.private',
   };
 
+  // Roving focus inside the mode slider.
+  function moveModeFocus(event: KeyboardEvent): void {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    const radios = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    const index = radios.indexOf(document.activeElement as HTMLButtonElement);
+    let next = -1;
+    if (step !== undefined) next = (Math.max(index, 0) + step + radios.length) % radios.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = radios.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    for (const [position, radio] of radios.entries()) radio.tabIndex = position === next ? 0 : -1;
+    radios[next].focus();
+  }
+
   // On a web page the normal icon is the site's lock, so the site information stays one click away.
   function modeIcon(mode: TabMode, tab: TabSnapshot): IconName {
     if (mode === 'developer') return 'code';
@@ -329,11 +344,14 @@
                 {@const mode = modeOf(tab)}
                 <!-- Normal, developer and private: the tab reloads in the mode picked. Picking normal again opens
                      the site information, as the lock did. -->
+                <!-- Arrow keys move between the modes; Space or Enter picks one, since picking reloads the tab. -->
                 <div
                   class="modes {mode}"
                   role="radiogroup"
+                  tabindex="-1"
                   aria-label={t('tabModes.title')}
                   style:--mode-index={TAB_MODES.indexOf(mode)}
+                  onkeydown={moveModeFocus}
                 >
                   <span class="mode-thumb" aria-hidden="true"></span>
                   {#each TAB_MODES as item (item)}
@@ -342,8 +360,11 @@
                       class={['mode', item, item === 'normal' && tab.security]}
                       role="radio"
                       aria-checked={current}
+                      tabindex={current ? 0 : -1}
                       aria-label={t(MODE_LABEL[item])}
-                      title={t(MODE_LABEL[item])}
+                      title={current && item === 'normal' && tab.security !== 'local'
+                        ? t('toolbar.siteInfo')
+                        : t(MODE_LABEL[item])}
                       onclick={() => {
                         if (!current) send({ type: 'set-tab-mode', mode: item });
                         else if (item === 'normal' && tab.security !== 'local') send({ type: 'open-site-info' });
