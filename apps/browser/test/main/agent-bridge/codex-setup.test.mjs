@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import codex from '../../../dist/main/agent-bridge/codex-setup.js';
+import { IS_POSIX } from '../../../dist/main/platform.js';
 
 const { addToCodex, codexConfigPath, codexConnection, codexRegistration, removeFromCodex, withYalqen, withoutYalqen } =
   codex;
@@ -66,7 +67,7 @@ test('connecting writes the config with a backup, and removing restores the othe
   assert.equal(await codexConnection(URL, 'secret', file), 'missing');
   assert.deepEqual(await addToCodex(URL, 'secret', file), { ok: true });
   assert.equal(fs.readFileSync(`${file}.yalqen-backup`, 'utf8'), EXISTING);
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  if (IS_POSIX) assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.equal(await codexConnection(URL, 'secret', file), 'connected');
   assert.equal(await codexConnection(URL, 'newer', file), 'stale');
   assert.deepEqual(await removeFromCodex(file), { ok: true });

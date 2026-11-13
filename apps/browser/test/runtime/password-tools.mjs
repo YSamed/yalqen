@@ -12,6 +12,7 @@ import settingsPage from '../../dist/main/app/settings-page.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import tools from '../../dist/main/privacy/password-tools.js';
 import types from '../../dist/shared/types.js';
+import { IS_POSIX } from '../../dist/main/platform.js';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-password-ui-'));
 app.setPath('userData', profile);
@@ -156,7 +157,7 @@ app
     authenticated = true;
     await button('Export CSV…');
     await eventually("document.querySelector('#pane [role=status]')?.textContent.includes('Processed 1')");
-    assert.equal(fs.statSync(csv).mode & 0o777, 0o600);
+    if (IS_POSIX) assert.equal(fs.statSync(csv).mode & 0o777, 0o600);
     const exported = tools.parsePasswordCsv(fs.readFileSync(csv, 'utf8')).records;
     assert.deepEqual(exported, [{ origin: 'https://fixture.example', username: 'grace', password: generated }]);
     fs.writeFileSync(

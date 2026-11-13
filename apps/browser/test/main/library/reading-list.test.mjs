@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import reading from '../../../dist/main/library/reading-list.js';
+import { IS_POSIX } from '../../../dist/main/platform.js';
 const { ReadingListStore, saveReadingPage } = reading;
 function withDir(run) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-reading-list-'));
@@ -27,7 +28,7 @@ test('reading list persists state immediately, deduplicates and searches without
     store.list()[0].title = 'Changed outside';
     assert.equal(store.list()[0].title, entry.title);
     assert.deepEqual(new ReadingListStore(directory).list(), store.list());
-    assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+    if (IS_POSIX) assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
     assert.equal(store.setRead('missing', false), false);
     assert.equal(store.remove(entry.id), true);
     assert.equal(new ReadingListStore(directory).list().length, 0);

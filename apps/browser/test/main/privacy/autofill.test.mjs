@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import stores from '../../../dist/main/privacy/autofill.js';
 import fields from '../../../dist/shared/autofill.js';
+import { IS_POSIX } from '../../../dist/main/platform.js';
 const address = {
   kind: 'address',
   label: 'Home',
@@ -66,7 +67,7 @@ test('autofill records are encrypted, contain no security code, persist edits an
   assert.equal(f.store.save({ id: null, data: { ...card, cvv: '999' } }), true);
   const disk = fs.readFileSync(f.store.file, 'utf8');
   for (const value of ['Ada Lovelace', '4242424242424242', '12 Main Street']) assert.equal(disk.includes(value), false);
-  assert.equal(fs.statSync(f.store.file).mode & 0o777, 0o600);
+  if (IS_POSIX) assert.equal(fs.statSync(f.store.file).mode & 0o777, 0o600);
   const info = f.store.choices('card')[0];
   assert.equal(info.detail, '•••• 4242 · 04/2035');
   assert.equal(JSON.stringify(f.store.view()).includes('4242424242424242'), false);
