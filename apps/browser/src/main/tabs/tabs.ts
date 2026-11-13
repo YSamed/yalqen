@@ -1866,6 +1866,7 @@ export class TabManager {
     const wasShown = tab.devToolsShown;
     tab.devTools = null;
     tab.devToolsShown = false;
+    if (this.options.window.isDestroyed()) return;
     this.options.window.contentView.removeChildView(tools);
     const contents = tools.webContents as WebContents | undefined;
     if (contents && !contents.isDestroyed()) contents.close();

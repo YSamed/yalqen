@@ -104,6 +104,7 @@ app
     assert.equal(contentsOf(extra).session, sessions.developer);
     assert.equal(tabManager.snapshotFor(extra).developer, true);
     tabManager.close(extra);
+    await eventually(() => !tabManager.snapshotFor(extra), 'the extra tab closed');
 
     // Going back to another tab gives its own mode back.
     tabManager.activate(mail);
@@ -148,6 +149,7 @@ app
     assert.equal(tabManager.snapshotFor(kept).developer, true);
     await eventually(() => tabManager.find(kept).devToolsShown, 'DevTools in a kept developer peek');
     tabManager.close(kept);
+    await eventually(() => !tabManager.snapshotFor(kept), 'the kept tab closed');
     assert.equal(await tabManager.setMode(work, 'normal'), true);
     await loaded(work);
 
