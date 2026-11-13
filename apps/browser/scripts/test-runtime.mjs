@@ -37,6 +37,8 @@ for (const test of [
   'tab-cleanup.mjs',
   'tab-modes.mjs',
   'tab-modes-ui.mjs',
+  'devtools-view.mjs',
+  'devtools-divider.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
   'profile-settings.mjs',

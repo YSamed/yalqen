@@ -48,6 +48,10 @@ export interface Tab {
   openerId: TabId | null;
   agent: TabRuntime | null;
   agentReadAt: number | null;
+  // DevTools draws in its own view beside the page, rounded like it, instead of Electron's square docked panel.
+  // The view lives as long as the page does; devToolsShown says whether DevTools is open right now.
+  devTools: WebContentsView | null;
+  devToolsShown: boolean;
   // Unread items a mail or chat site shows in its title; null on other pages.
   unread: number | null;
 }
@@ -101,6 +105,8 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     openerId: null,
     agent: null,
     agentReadAt: null,
+    devTools: null,
+    devToolsShown: false,
     unread: null,
   };
 }

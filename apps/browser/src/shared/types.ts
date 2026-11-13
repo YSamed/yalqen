@@ -150,6 +150,8 @@ export interface BrowserState {
   activeTabId: TabId | null;
   selectedTabIds: TabId[];
   splitTabIds: TabId[];
+  // The gap between the active page and its DevTools, a resize handle; null or absent while DevTools is closed.
+  devToolsDivider?: { x: number; y: number; width: number; height: number; value: number } | null;
   tabGroups?: import('./tab-groups').TabGroup[];
   liveFolders?: import('./live-folders').LiveFolderView[];
   // Empty where spaces do not apply (private, developer and web-app windows).
@@ -471,6 +473,7 @@ export type UiAction =
   | { type: 'reload' }
   | { type: 'open-devtools' }
   | { type: 'toggle-devtools' }
+  | { type: 'resize-devtools'; x: number }
   | { type: 'open-extension-action'; id: string; anchor: AnchorRect }
   | { type: 'open-dev-menu' }
   | { type: 'dev-command'; id: DevCommandId }

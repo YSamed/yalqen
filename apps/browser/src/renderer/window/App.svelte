@@ -9,6 +9,7 @@
   import { windowTintVars } from '../../shared/window-color';
   import { isNewTab } from './format';
   import DeviceControls from './DeviceControls.svelte';
+  import DevToolsDivider from './DevToolsDivider.svelte';
   import TabPanel from './TabPanel.svelte';
   import Toolbar from './Toolbar.svelte';
   import type AgentPanel from './AgentPanel.svelte';
@@ -417,6 +418,7 @@
       <div class="titlebar-drag" aria-hidden="true"></div>
     {/if}
   {/if}
+  {#if browser.devToolsDivider}<DevToolsDivider rect={browser.devToolsDivider} />{/if}
   <section
     bind:this={pageElement}
     class="page"

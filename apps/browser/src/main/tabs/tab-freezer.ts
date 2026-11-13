@@ -28,7 +28,7 @@ export class TabFreezer {
     const contents = tab.view?.webContents;
     if (!contents || contents.isDestroyed() || tab.frozen || tab.loading) return;
     if (!this.host.enabled() || this.host.isActive(tab) || tab.pinnedUrl || tab.autoReload) return;
-    if (contents.isCurrentlyAudible() || keepsPlaying(tab) || contents.isDevToolsOpened()) return;
+    if (contents.isCurrentlyAudible() || keepsPlaying(tab) || tab.devToolsShown) return;
     // A frozen opener misses the messages its sign-in popup posts back.
     if (this.host.hasLiveChild(tab)) return;
     // Keep recently used pages warm while the user compares tabs. Chromium still

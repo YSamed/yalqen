@@ -95,7 +95,7 @@ app
       { isPrivate: tabManager.snapshotFor(work).isPrivate, developer: tabManager.snapshotFor(work).developer },
       { isPrivate: true, developer: true },
     );
-    await eventually(() => contentsOf(work).isDevToolsOpened(), 'DevTools open in the developer tab');
+    await eventually(() => tabManager.find(work).devToolsShown, 'DevTools open in the developer tab');
     assert.equal(tabManager.activeMode, 'developer');
 
     // A new tab from the plus button takes the mode of the tab in front.
@@ -146,7 +146,7 @@ app
     });
     const kept = tabManager.activeId;
     assert.equal(tabManager.snapshotFor(kept).developer, true);
-    await eventually(() => contentsOf(kept).isDevToolsOpened(), 'DevTools in a kept developer peek');
+    await eventually(() => tabManager.find(kept).devToolsShown, 'DevTools in a kept developer peek');
     tabManager.close(kept);
     assert.equal(await tabManager.setMode(work, 'normal'), true);
     await loaded(work);
