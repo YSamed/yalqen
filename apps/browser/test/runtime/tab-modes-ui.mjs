@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import tabModes from '../../dist/shared/tab-modes.js';
 import types from '../../dist/shared/types.js';
@@ -182,20 +183,18 @@ app
       'PASS: the address bar mode slider switches the tab between normal, developer and private by click or keyboard, restyles the window, keeps the site information on the normal icon and follows its setting',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.destroyAll();
   window?.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

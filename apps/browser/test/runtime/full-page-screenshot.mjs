@@ -14,7 +14,7 @@ void run();
 async function run() {
   try {
     await app.whenReady();
-    const window = new BrowserWindow({ width: 600, height: 400, show: false });
+    const window = new BrowserWindow({ width: 600, height: 400, show: true });
     const { webContents } = window;
     const sectionCount = 16;
     await webContents.loadURL(
@@ -42,6 +42,7 @@ async function run() {
     console.log('PASS: full-page screenshots paint deferred sections and restore the page');
   } catch (error) {
     console.error(error);
+    process.exitCode = 1;
   } finally {
     app.quit();
   }

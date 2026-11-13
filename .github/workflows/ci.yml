@@ -2,8 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+    - main
+    - windows
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  electron:
+  darwin:
     runs-on: macos-latest
     defaults:
       run:
@@ -56,3 +59,30 @@ jobs:
       - run: npm run package:linux -- --publish never
       - name: Verify the packaged Chromium sandbox
         run: xvfb-run -a node scripts/test-linux-appimage.mjs release/Yalqen-*.AppImage
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/browser
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/browser/package-lock.json
+      - shell: pwsh # niubash - lightweight bash for Windows
+        run: |
+          winget install --id Unixwin.Niubash --silent --accept-package-agreements --accept-source-agreements | Out-Null
+          Set-Location ~\AppData\Local\Programs\Niubash | Out-Null
+          New-Item -Type HardLink -Path .\bash.exe -Target .\niu.exe | Out-Null
+          bash --version
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:runtime
+      - run: npm run package:win -- --publish never
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: yalqen-win
+          path: apps/browser/release/*.exe

@@ -81,7 +81,7 @@ app
     assert.ok(exportAction);
     exportAction.click();
     assert.equal(exported, true);
-    fs.rmSync(destination);
+    await fs.promises.rm(destination, { retryDelay: 250, maxRetries: 10 });
     fs.mkdirSync(destination);
     await importDialogs.exportBookmarksWithDialog(window, store);
     assert.equal(messages.at(-1).type, 'error');
