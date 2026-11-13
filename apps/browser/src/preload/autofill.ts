@@ -136,7 +136,7 @@ export function setupAutofill(): void {
             url = location.href;
           if (!codeField(input)) return;
           picking = true;
-          button!.disabled = true;
+          button!.ariaDisabled = 'true';
           try {
             const code = (await ipcRenderer.invoke(PageChannel.chooseOneTimeCode)) as string | null;
             if (typeof code !== 'string' || !/^\d{4,8}$/.test(code)) return;
@@ -149,7 +149,7 @@ export function setupAutofill(): void {
             /* A dismissed menu or navigation leaves the field as it was. */
           } finally {
             picking = false;
-            if (button) button.disabled = false;
+            if (button) button.ariaDisabled = null;
             position();
           }
           return;
@@ -166,7 +166,8 @@ export function setupAutofill(): void {
         }));
         if (!description || !entries.length) return;
         picking = true;
-        button!.disabled = true;
+        // Not `disabled`: Chromium moves focus off a disabled button, and the focusout would hide it.
+        button!.ariaDisabled = 'true';
         try {
           const record = (await ipcRenderer.invoke(
             PageChannel.chooseAutofill,
@@ -206,7 +207,7 @@ export function setupAutofill(): void {
           /* A dismissed picker or navigation keeps the form intact. */
         } finally {
           picking = false;
-          if (button) button.disabled = false;
+          if (button) button.ariaDisabled = null;
           position();
         }
       });

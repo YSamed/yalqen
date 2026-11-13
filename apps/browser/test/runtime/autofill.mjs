@@ -42,7 +42,7 @@ async function focus(id) {
     "!!document.querySelector('[data-yalqen-autofill]') && getComputedStyle(document.querySelector('[data-yalqen-autofill]')).display!=='none'",
   );
 }
-// The button stays disabled until the previous pick's IPC reply reaches the page,
+// The button stays busy until the previous pick's IPC reply reaches the page,
 // so a single synthetic click can be dropped on slow CI runners.
 async function click() {
   const before = picks;
