@@ -77,7 +77,7 @@ app
     assert.ok(children().includes(tools));
     assert.deepEqual(tools.getBounds(), { x: 700, y: 50, width: 400, height: 700 });
     assert.deepEqual(tab.view.getBounds(), { x: 100, y: 50, width: 594, height: 700 });
-    assert.deepEqual(tabManager.state().devToolsDivider, { x: 694, y: 50, width: 6, height: 700 });
+    assert.deepEqual(tabManager.state().devToolsDivider, { x: 694, y: 50, width: 6, height: 700, value: 40 });
     await eventually(() => tools.webContents.getURL().startsWith('devtools://'), 'the DevTools frontend in its view');
 
     // Dragging the gap resizes DevTools and the page together.
@@ -103,15 +103,31 @@ app
     assert.equal(tab.devTools, tools);
     assert.equal(window.contentView.children.length, children().length);
 
+    // When the DevTools page closes or crashes by itself, the tab lets it go and gets its full area back.
+    tools.webContents.close();
+    await eventually(() => !tab.devToolsShown && tab.devTools === null, 'DevTools forgotten once its page closed');
+    assert.equal(children().includes(tools), false);
+    assert.deepEqual(tab.view.getBounds(), { x: 100, y: 50, width: 1000, height: 700 });
+    assert.equal(tabManager.state().devToolsDivider, null);
+    tabManager.toggleDevTools();
+    const fresh = tab.devTools;
+    assert.notEqual(fresh, tools);
+    await eventually(() => fresh.webContents.getURL().startsWith('devtools://'), 'a new DevTools page');
+    fresh.webContents.forcefullyCrashRenderer();
+    await eventually(() => !tab.devToolsShown && tab.devTools === null, 'DevTools forgotten once its page crashed');
+    assert.deepEqual(tab.view.getBounds(), { x: 100, y: 50, width: 1000, height: 700 });
+    tabManager.toggleDevTools();
+    const last = tab.devTools;
+
     // Closing the tab closes its DevTools too.
     tabManager.close(inspected);
     // A closed view drops its contents altogether.
     await eventually(
-      () => !tools.webContents || tools.webContents.isDestroyed(),
+      () => !last.webContents || last.webContents.isDestroyed(),
       'the DevTools view closed with its tab',
     );
     console.log(
-      'PASS: DevTools opens in its own rounded view beside the page, resizes from the gap, follows its tab and closes with it',
+      'PASS: DevTools opens in its own rounded view beside the page, resizes from the gap, follows its tab, resets when its page closes or crashes and closes with the tab',
     );
   })
   .then(() => app.quit())

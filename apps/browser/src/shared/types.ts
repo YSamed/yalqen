@@ -149,7 +149,7 @@ export interface BrowserState {
   selectedTabIds: TabId[];
   splitTabIds: TabId[];
   // The gap between the active page and its DevTools, a resize handle; null or absent while DevTools is closed.
-  devToolsDivider?: { x: number; y: number; width: number; height: number } | null;
+  devToolsDivider?: { x: number; y: number; width: number; height: number; value: number } | null;
   tabGroups?: import('./tab-groups').TabGroup[];
   liveFolders?: import('./live-folders').LiveFolderView[];
   // Empty where spaces do not apply (private, developer and web-app windows).

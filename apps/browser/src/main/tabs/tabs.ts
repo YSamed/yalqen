@@ -1784,8 +1784,15 @@ export class TabManager {
     const contents = liveContents(tab);
     if (!tab || !contents) return;
     if (!tab.devTools) {
-      tab.devTools = new WebContentsView();
-      contents.setDevToolsWebContents(tab.devTools.webContents);
+      const tools = new WebContentsView();
+      tab.devTools = tools;
+      contents.setDevToolsWebContents(tools.webContents);
+      // The DevTools page can close or crash on its own; the tab then lets it go and makes a new one next time.
+      const gone = () => {
+        if (tab.devTools === tools) this.devToolsEnded(tab);
+      };
+      tools.webContents.once('destroyed', gone);
+      tools.webContents.on('render-process-gone', gone);
     }
     if (tab.devToolsShown) return;
     tab.devToolsShown = true;
@@ -1821,9 +1828,28 @@ export class TabManager {
     this.changed();
   }
 
-  get devToolsDivider(): Rectangle | null {
+  get devToolsDivider(): (Rectangle & { value: number }) | null {
     const tab = this.active();
     return tab && this.isVisible(tab) ? this.placement.devToolsDivider(tab) : null;
+  }
+
+  // DevTools can end without closeDevTools: its own page closes or crashes, which Electron reports to the page as
+  // devtools-closed. (A crashed page drops its whole view, DevTools included.) The tab forgets it, so no empty
+  // DevTools view is left beside the page. Electron sends no event when closeDevTools() is called on a page with a
+  // DevTools view of its own, so closing goes through closeDevTools above.
+  private devToolsEnded(tab: Tab): void {
+    const tools = tab.devTools;
+    if (!tools) return;
+    const wasShown = tab.devToolsShown;
+    tab.devTools = null;
+    tab.devToolsShown = false;
+    this.options.window.contentView.removeChildView(tools);
+    const contents = tools.webContents as WebContents | undefined;
+    if (contents && !contents.isDestroyed()) contents.close();
+    if (!wasShown) return;
+    if (tab.view) void this.placement.place(tab, tab.view, true);
+    this.freezer.maybeFreeze(tab);
+    this.changed();
   }
 
   private showDevTools(tab: Tab): void {
@@ -2332,7 +2358,10 @@ export class TabManager {
       tab.soundAt = 0;
       tab.pip = false;
     });
-    listen('devtools-closed', () => this.freezer.maybeFreeze(tab));
+    listen('devtools-closed', () => {
+      this.devToolsEnded(tab);
+      this.freezer.maybeFreeze(tab);
+    });
     listen('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
       if (isMainFrame) this.options.threatGuard?.navigating(contents, url);
       if (!isMainFrame || isSameDocument) return;
@@ -2539,13 +2568,14 @@ export class TabManager {
     tab.agent = null;
     this.translation.reset(tab);
     this.options.window.contentView.removeChildView(view);
-    if (tab.devTools) {
-      this.options.window.contentView.removeChildView(tab.devTools);
-      const tools = tab.devTools.webContents as WebContents | undefined;
-      if (tools && !tools.isDestroyed()) tools.close();
-      tab.devTools = null;
-    }
+    const tools = tab.devTools;
+    tab.devTools = null;
     tab.devToolsShown = false;
+    if (tools) {
+      this.options.window.contentView.removeChildView(tools);
+      const toolsContents = tools.webContents as WebContents | undefined;
+      if (toolsContents && !toolsContents.isDestroyed()) toolsContents.close();
+    }
     // A view drops its contents once a page closes itself, despite the typings.
     const contents = view.webContents as WebContents | undefined;
     if (contents && !contents.isDestroyed()) contents.close();

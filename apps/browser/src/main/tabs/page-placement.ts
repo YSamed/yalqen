@@ -83,10 +83,13 @@ export class PagePlacement {
   }
 
   // The gap between the page and DevTools, which the interface turns into a resize handle.
-  devToolsDivider(tab: Tab): Rectangle | null {
+  // value is the share of the area DevTools takes, in percent, for assistive technology.
+  devToolsDivider(tab: Tab): (Rectangle & { value: number }) | null {
     if (!tab.devToolsShown || !tab.devTools) return null;
-    const { page } = devToolsSplit(this.area(tab), this.devToolsWidth);
-    return { x: page.x + page.width, y: page.y, width: SPLIT_GAP, height: page.height };
+    const area = this.area(tab);
+    const { page, tools } = devToolsSplit(area, this.devToolsWidth);
+    const value = area.width > 0 ? Math.round((tools.width / area.width) * 100) : 0;
+    return { x: page.x + page.width, y: page.y, width: SPLIT_GAP, height: page.height, value };
   }
 
   clearDevice(tab: Tab, view: WebContentsView): Promise<void> {
