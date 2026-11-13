@@ -743,6 +743,11 @@ function startBrowser(): void {
       downloadsChanged();
       forgetSessionData(privateBrowsing);
     },
+    // Developer windows and developer tabs share one session; it is forgotten once neither is left.
+    onDeveloperTabsClosed: () => {
+      if (windows.some((window) => window.isDeveloper || window.tabs.hasDeveloperTabs)) return;
+      forgetSessionData(developer);
+    },
     onWindowFocus: (window) => {
       current = window;
     },
@@ -769,7 +774,8 @@ function startBrowser(): void {
     onWindowClosed: (window) => {
       const index = windows.indexOf(window);
       if (index >= 0) windows.splice(index, 1);
-      if (window.isDeveloper && !windows.some((other) => other.isDeveloper)) forgetSessionData(developer);
+      if (window.isDeveloper && !windows.some((other) => other.isDeveloper || other.tabs.hasDeveloperTabs))
+        forgetSessionData(developer);
       if (current === window) current = windows.at(-1) ?? null;
     },
   };

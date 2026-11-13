@@ -815,6 +815,10 @@ export const en = {
   'toolbar.reload': 'Reload',
   'toolbar.reloadTitle': 'Reload (⌘R)',
   'toolbar.openTabs': 'Open tabs',
+  'tabModes.title': 'Browsing mode',
+  'tabModes.normal': 'Normal',
+  'tabModes.developer': 'Developer',
+  'tabModes.private': 'Private',
   'toolbar.siteInfo': 'Site information',
   'toolbar.siteInfoSecure': 'Connection is secure, site information',
   'toolbar.siteInfoNotSecure': 'Not secure, site information',
@@ -989,6 +993,9 @@ export const en = {
   'settings.tabCleanup': 'Manual tab cleanup',
   'settings.tabCleanupHint':
     'Adds a button to the sidebar, and the ⌘⇧K shortcut, to close unpinned tabs memory saving has put to sleep. Reopen them from History.',
+  'settings.tabModes': 'Tab modes',
+  'settings.tabModesHint':
+    'Adds a Normal, Developer and Private switch to the address bar. The tab reloads in the mode picked, in the same window, and the window takes its look.',
   'settings.pinnedAlways': 'Always',
   'settings.pinnedExpanded': 'Wide sidebar only',
   'settings.pinnedNever': 'Never',

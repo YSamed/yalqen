@@ -20,6 +20,10 @@ export interface Tab {
   space: string;
   muted: boolean;
   isPrivate: boolean;
+  // Developer tabs browse in the developer session; isPrivate is set too.
+  developer: boolean;
+  // Open DevTools once the page view exists: new developer tabs and tabs just switched to developer.
+  devToolsOnLoad: boolean;
   detachListeners: (() => void) | null;
   upgrade: { https: string; http: string } | null;
   failed: boolean;
@@ -63,7 +67,7 @@ function restoredInactiveSince(saved: unknown): number {
   return typeof saved === 'number' && Number.isFinite(saved) && saved > 0 && saved <= now ? saved : now;
 }
 
-export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate = false): Tab {
+export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate = false, developer = false): Tab {
   return {
     id: saved.id ?? randomUUID(),
     view: null,
@@ -74,7 +78,9 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     group: tabGroupName(saved.group),
     space: typeof saved.space === 'string' ? saved.space : DEFAULT_SPACE_ID,
     muted: false,
-    isPrivate,
+    isPrivate: isPrivate || developer,
+    developer,
+    devToolsOnLoad: developer,
     detachListeners: null,
     upgrade: null,
     failed: false,

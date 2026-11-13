@@ -823,6 +823,10 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.reload': 'Yenile',
   'toolbar.reloadTitle': 'Yenile (⌘R)',
   'toolbar.openTabs': 'Açık sekmeler',
+  'tabModes.title': 'Gezinme modu',
+  'tabModes.normal': 'Normal',
+  'tabModes.developer': 'Geliştirici',
+  'tabModes.private': 'Gizli',
   'toolbar.siteInfo': 'Site bilgisi',
   'toolbar.siteInfoSecure': 'Bağlantı güvenli, site bilgisi',
   'toolbar.siteInfoNotSecure': 'Güvenli değil, site bilgisi',
@@ -998,6 +1002,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.tabCleanup': 'Elle sekme temizliği',
   'settings.tabCleanupHint':
     'Kenar çubuğuna bir düğme ve ⌘⇧K kısayolunu ekler; bellek tasarrufunun uyuttuğu sabitlenmemiş sekmeleri kapatır. Onları Geçmiş’ten yeniden açabilirsiniz.',
+  'settings.tabModes': 'Sekme modları',
+  'settings.tabModesHint':
+    'Adres çubuğuna Normal, Geliştirici ve Gizli seçicisi ekler. Sekme seçilen modda aynı pencerede yeniden yüklenir ve pencere onun görünümünü alır.',
   'settings.pinnedAlways': 'Her zaman',
   'settings.pinnedExpanded': 'Sadece geniş menüde',
   'settings.pinnedNever': 'Hiçbir zaman',

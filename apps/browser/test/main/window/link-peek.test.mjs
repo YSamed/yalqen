@@ -45,7 +45,7 @@ function fakeView() {
 
 function fixture(overlayLoads = []) {
   const children = [];
-  const calls = { promoted: [], closed: 0, created: [] };
+  const calls = { promoted: [], closed: 0, created: [], developerViews: [] };
   const window = {
     isDestroyed: () => false,
     contentView: {
@@ -69,8 +69,9 @@ function fixture(overlayLoads = []) {
       views.overlay.webContents.loading = overlayLoads.shift();
       return views.overlay;
     },
-    createPageView: (isPrivate) => {
+    createPageView: (isPrivate, developer = false) => {
       calls.created.push(isPrivate);
+      calls.developerViews.push(developer);
       return (views.page = fakeView());
     },
     upgradeHttp: (url) => (url.startsWith('http:') ? url.replace('http:', 'https:') : null),
@@ -211,9 +212,20 @@ test('promoting hands the loaded view to a tab with its privacy and drops the pe
     url: 'https://example.com/',
     title: 'Example',
     isPrivate: true,
+    developer: false,
     interacted: true,
     edited: true,
   });
+});
+
+test('a peek from a developer tab browses and is kept in developer mode', async () => {
+  const { peek, calls, views } = fixture();
+  peek.open('https://example.com/', true, owner('tab-1'), true);
+  await settle();
+  assert.deepEqual(calls.created.at(-1), true);
+  assert.deepEqual(calls.developerViews, [true]);
+  views.overlay.webContents.emit('ipc-message', {}, 'yalqen-peek:action', 'promote');
+  assert.equal(calls.promoted[0].developer, true);
 });
 
 test('an adopted peek becomes a tab that keeps its privacy and skips history when private', () => {

@@ -112,6 +112,7 @@ import { TabTranslation } from './tab-translation.js';
 import { certificateChainFor, type CertificateDetails } from '../privacy/certificate-details.js';
 import { stepZoom } from './zoom.js';
 import { MAX_CLOSED_TABS } from './closed-tabs.js';
+import { modeFlags, modeOf, type TabMode } from '../../shared/tab-modes.js';
 
 const STORAGE_WORLD_ID = 1001;
 const MAX_PINCH_ZOOM = 3;
@@ -127,7 +128,13 @@ interface TabManagerOptions {
   privateWindow: boolean;
   session: Session;
   privateSession: Session;
+  // Developer tabs in an ordinary window browse here; developer windows pass it as their private session too.
+  developerSession?: Session;
+  developerWindow?: boolean;
+  // The "Tab modes" setting: the mode slider, new tabs taking the mode in front and the modes' looks.
+  tabModes?: () => boolean;
   onPrivateEnded: () => void;
+  onDeveloperEnded?: () => void;
   freezeBackground: () => boolean;
   // "Keep pinned tabs on their site": pinned tabs load at their pinned address and send other sites to new tabs.
   pinnedTabsStayHome?: () => boolean;
@@ -163,7 +170,7 @@ interface TabManagerOptions {
   onProceedHttp: (token: string, currentUrl: string) => string | null;
   confirmHttpRedirect: (url: string) => Promise<boolean>;
   onContextMenu: (contents: WebContents, params: ContextMenuParams) => void;
-  onPeek: (url: string, isPrivate: boolean) => void;
+  onPeek: (url: string, isPrivate: boolean, developer: boolean) => void;
   requestRules: () => readonly RequestRule[];
   translation: () => { enabled: boolean; language: PageLanguage };
   agentScope: (tab: { url: string; isPrivate: boolean }) => boolean;
@@ -437,10 +444,24 @@ export class TabManager {
     if (tab?.emulation) this.updateDeviceMetrics(tab, scaleEmulation(tab.emulation, scaleFactor));
   }
 
-  open(url = NEW_TAB_URL, { activate = true, isPrivate = this.options.privateWindow, space = this.space } = {}): TabId {
+  open(
+    url = NEW_TAB_URL,
+    {
+      activate = true,
+      isPrivate,
+      developer,
+      space = this.space,
+    }: { activate?: boolean; isPrivate?: boolean; developer?: boolean; space?: string } = {},
+  ): TabId {
     if (this.routeAppNavigation(null, url)) return this.activeId ?? '';
     const upgraded = this.options.upgradeHttp(url);
-    const tab = this.createRecord({ url: upgraded ?? url }, isPrivate);
+    // Without a mode the tab takes the window's; asking for a private or normal tab in a developer window gets one.
+    const windowMode = isPrivate === undefined && developer === undefined;
+    const tab = this.createRecord(
+      { url: upgraded ?? url },
+      isPrivate ?? this.options.privateWindow,
+      developer ?? (windowMode && (this.options.developerWindow ?? false)),
+    );
     tab.space = this.spaceIds().includes(space) ? space : this.space;
     tab.group = tab.space === this.space ? (this.active()?.group ?? null) : null;
     if (upgraded) tab.upgrade = { https: upgraded, http: url };
@@ -836,6 +857,7 @@ export class TabManager {
         history: structuredClone(captureHistory(source)),
       },
       source.isPrivate,
+      source.developer,
     );
     copy.muted = source.muted;
     copy.space = source.space;
@@ -949,7 +971,7 @@ export class TabManager {
     }
     this.destroyView(tab);
     this.autoReloader.sync();
-    if (tab.isPrivate && !this.tabs.some((item) => item.isPrivate)) this.options.onPrivateEnded();
+    this.endMode(modeOf(tab));
 
     const opener = tab.openerId ? this.find(tab.openerId) : undefined;
     if (this.activeId === id) {
@@ -1216,7 +1238,7 @@ export class TabManager {
     const tab = this.active();
     if (!tab) return;
     tab.blockedPopups = tab.blockedPopups.filter((item) => item !== url);
-    this.open(url, { isPrivate: tab.isPrivate });
+    this.open(url, { isPrivate: tab.isPrivate, developer: tab.developer });
   }
 
   clearBlockedPopups(): void {
@@ -1314,7 +1336,8 @@ export class TabManager {
 
   viewSource(): void {
     const tab = this.active();
-    if (tab && canViewSource(tab.url)) this.open(`view-source:${tab.url}`, { isPrivate: tab.isPrivate });
+    if (tab && canViewSource(tab.url))
+      this.open(`view-source:${tab.url}`, { isPrivate: tab.isPrivate, developer: tab.developer });
   }
 
   activePage(): { url: string; title: string } | null {
@@ -1725,7 +1748,7 @@ export class TabManager {
   private syncAgentFor(tab: Tab, url: string): void {
     const contents = liveContents(tab);
     if (!contents) return;
-    const inScope = this.options.agentScope({ url, isPrivate: tab.isPrivate });
+    const inScope = this.options.agentScope({ url, isPrivate: tab.isPrivate && !tab.developer });
     if (inScope === (tab.agent !== null)) return;
     const done = inScope ? observeTab(tab, contents) : unobserveTab(tab, contents);
     this.changed();
@@ -1958,8 +1981,85 @@ export class TabManager {
     );
   }
 
+  // Private tabs, not counting developer tabs, which keep their data in the developer session.
   get hasPrivateTabs(): boolean {
-    return this.tabs.some((tab) => tab.isPrivate);
+    return this.tabs.some((tab) => tab.isPrivate && !tab.developer);
+  }
+
+  get hasDeveloperTabs(): boolean {
+    return this.tabs.some((tab) => tab.developer);
+  }
+
+  // When the last tab of a mode goes, that mode's cookies, cache and permissions are forgotten.
+  private endMode(mode: TabMode): void {
+    if (mode === 'developer' && !this.hasDeveloperTabs) this.options.onDeveloperEnded?.();
+    if (mode === 'private' && !this.hasPrivateTabs) this.options.onPrivateEnded();
+  }
+
+  // Ordinary windows switch tabs between modes; private and developer windows keep theirs, and web apps have one.
+  get canSwitchMode(): boolean {
+    return this.modesOn && !this.options.privateWindow && !this.options.webAppScope;
+  }
+
+  private get modesOn(): boolean {
+    return this.options.tabModes?.() ?? false;
+  }
+
+  get activeMode(): TabMode {
+    const tab = this.active();
+    if (tab) return modeOf(tab);
+    if (this.options.developerWindow) return 'developer';
+    return this.options.privateWindow ? 'private' : 'normal';
+  }
+
+  // The plus button and Cmd+T open the new tab in the mode of the tab the user is on.
+  openInActiveMode(url?: string): TabId {
+    return this.modesOn ? this.open(url, modeFlags(this.activeMode)) : this.open(url);
+  }
+
+  // The mode of the tab showing these contents, for pages it opens; the window's mode for anything else.
+  modeOfContents(contents: WebContents): TabMode {
+    const tab = this.tabs.find((item) => item.view?.webContents === contents);
+    if (tab) return modeOf(tab);
+    if (this.options.developerWindow) return 'developer';
+    return this.options.privateWindow ? 'private' : 'normal';
+  }
+
+  activeSession(): Session {
+    const tab = this.active();
+    return this.sessionFor(
+      tab?.isPrivate ?? this.options.privateWindow,
+      tab?.developer ?? this.options.developerWindow ?? false,
+    );
+  }
+
+  // The tab reloads its page in the new mode's session. Back and forward history stays behind, since it belongs
+  // to the old session. A pinned tab keeps its mode and the page opens in a new tab instead.
+  async setMode(id: TabId, mode: TabMode): Promise<boolean> {
+    const tab = this.find(id);
+    if (!tab || !this.canSwitchMode || modeOf(tab) === mode) return false;
+    const url = liveContents(tab)?.getURL() || tab.url;
+    if (tab.pinnedUrl) {
+      this.open(url, modeFlags(mode));
+      return true;
+    }
+    if (!(await this.confirmClose(tab)) || !this.tabs.includes(tab) || modeOf(tab) === mode) return false;
+    const previous = modeOf(tab);
+    this.destroyView(tab);
+    Object.assign(tab, modeFlags(mode));
+    tab.devToolsOnLoad = mode === 'developer';
+    tab.url = url;
+    tab.history = null;
+    tab.failed = false;
+    tab.upgrade = null;
+    tab.edited = false;
+    tab.interacted = false;
+    tab.blockedPopups = [];
+    tab.visitId = null;
+    if (this.visibleIds().includes(tab.id)) this.showVisible();
+    this.endMode(previous);
+    this.changed(true);
+    return true;
   }
 
   detach(id: TabId): DetachedTab | null {
@@ -2019,8 +2119,11 @@ export class TabManager {
     this.autoReloader.sync();
   }
 
-  private createRecord(saved: Partial<SavedTab> & { url: string }, isPrivate = false): Tab {
-    return createTab(saved, isPrivate);
+  private createRecord(saved: Partial<SavedTab> & { url: string }, isPrivate = false, developer = false): Tab {
+    const tab = createTab(saved, isPrivate, developer);
+    // DevTools opens by itself in developer tabs only while tab modes are on.
+    if (!this.modesOn) tab.devToolsOnLoad = false;
+    return tab;
   }
 
   private insertAfterActive(tab: Tab): void {
@@ -2038,7 +2141,7 @@ export class TabManager {
       tab.upgrade = null;
     }
 
-    const view = this.createPageView(tab.isPrivate);
+    const view = this.createPageView(tab.isPrivate, tab.developer);
     const emulated = this.mount(tab, view);
     if (emulated) {
       void emulated.then(() => {
@@ -2050,16 +2153,32 @@ export class TabManager {
     return view;
   }
 
-  createPageView(isPrivate: boolean): WebContentsView {
-    return createPageView(this.options.pagePreload, isPrivate ? this.options.privateSession : this.options.session);
+  createPageView(isPrivate: boolean, developer = false): WebContentsView {
+    return createPageView(this.options.pagePreload, this.sessionFor(isPrivate, developer));
+  }
+
+  // New developer tabs, popups from them and kept peeks open DevTools once their page is there.
+  private openDevToolsWhenReady(tab: Tab, view: WebContentsView): void {
+    tab.devToolsOnLoad = false;
+    const open = () => {
+      if (tab.view === view) this.openDevTools(tab);
+    };
+    // A page that is already there, a kept peek or a popup, joins the window right after; DevTools follows it.
+    if (view.webContents.getURL()) setImmediate(open);
+    else view.webContents.once('dom-ready', open);
+  }
+
+  private sessionFor(isPrivate: boolean, developer: boolean): Session {
+    if (developer) return this.options.developerSession ?? this.options.privateSession;
+    return isPrivate ? this.options.privateSession : this.options.session;
   }
 
   adoptView(
     view: WebContentsView,
-    page: { url: string; title: string; isPrivate: boolean; interacted: boolean; edited: boolean },
+    page: { url: string; title: string; isPrivate: boolean; developer?: boolean; interacted: boolean; edited: boolean },
   ): void {
     const opener = this.active();
-    const tab = this.createRecord({ url: page.url, title: page.title }, page.isPrivate);
+    const tab = this.createRecord({ url: page.url, title: page.title }, page.isPrivate, page.developer ?? false);
     tab.openerId = opener?.id ?? null;
     tab.group = opener?.group ?? null;
     tab.loading = view.webContents.isLoading();
@@ -2076,6 +2195,7 @@ export class TabManager {
     if (tab.muted) view.webContents.setAudioMuted(true);
     tab.view = view;
     this.attachListeners(tab, view);
+    if (tab.devToolsOnLoad) this.openDevToolsWhenReady(tab, view);
     this.syncAgentFor(tab, tab.url);
     return this.placement.place(tab, view);
   }
@@ -2084,7 +2204,7 @@ export class TabManager {
   // so the tab must host the contents Chromium created for the popup instead of a fresh load.
   // Electron omits the contents for noopener popups, so those get a regular view.
   private openChild(url: string, opener: Tab, webContents: WebContents | undefined): WebContents {
-    const tab = this.createRecord({ url }, opener.isPrivate);
+    const tab = this.createRecord({ url }, opener.isPrivate, opener.developer);
     tab.openerId = opener.id;
     this.insertAfterActive(tab);
     let view: WebContentsView;
@@ -2276,7 +2396,7 @@ export class TabManager {
       if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
         tab.activatedAt = 0;
         if (opensPeek(disposition, features, url)) {
-          this.options.onPeek(url, tab.isPrivate);
+          this.options.onPeek(url, tab.isPrivate, tab.developer);
           return { action: 'deny' };
         }
         if (opensInPlace(url) && !this.options.upgradeHttp(url)) {
@@ -2287,7 +2407,7 @@ export class TabManager {
             createWindow: (options) => this.openChild(url, tab, (options as { webContents?: WebContents }).webContents),
           };
         }
-        this.open(url, { isPrivate: tab.isPrivate });
+        this.open(url, { isPrivate: tab.isPrivate, developer: tab.developer });
         return { action: 'deny' };
       }
       tab.blockedPopups = recordBlocked(tab.blockedPopups, url);
@@ -2594,6 +2714,7 @@ export class TabManager {
       pinned: tab.pinnedUrl !== null,
       group: tab.group,
       isPrivate: tab.isPrivate,
+      developer: tab.developer,
       bookmarked: this.options.isBookmarked(tab.url),
       security: tab.failed ? 'local' : securityState(tab.url, this.options.hasCertificateException(tab.url)),
       blockedPopups: tab.blockedPopups.length,
