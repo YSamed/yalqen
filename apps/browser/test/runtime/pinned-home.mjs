@@ -64,10 +64,13 @@ app
     });
     const urlOf = (id) => tabManager.snapshotFor(id)?.url ?? '';
     const loaded = (id, url) => eventually(() => urlOf(id) === url && !tabManager.snapshotFor(id).loading, url);
+    // The click runs after the script returns: a link to another site swaps the renderer, which would drop the reply.
     const click = (id, link) =>
       tabManager
         .find(id)
-        .view.webContents.executeJavaScript(`document.getElementById(${JSON.stringify(link)}).click()`);
+        .view.webContents.executeJavaScript(
+          `setTimeout(() => document.getElementById(${JSON.stringify(link)}).click())`,
+        );
 
     const other = tabManager.open(`http://127.0.0.1:${port}/other`);
     await loaded(other, `http://127.0.0.1:${port}/other`);
