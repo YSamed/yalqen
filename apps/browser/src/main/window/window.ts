@@ -12,6 +12,7 @@ import {
   type Rectangle,
   type Session,
 } from 'electron';
+import { watchInterfaceBridge } from './interface-bridge.js';
 import { getLocale, t } from '../../shared/i18n.js';
 import { preloadPath, rendererPath } from '../app/paths.js';
 import {
@@ -295,6 +296,7 @@ export class YalqenWindow {
     if (this.glassApplied) this.ui.setBackgroundColor('#00000000');
     this.uiContents.on('will-navigate', (event) => event.preventDefault());
     this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    watchInterfaceBridge(this.uiContents);
     // The first native window takes about 40 ms to create, so the interface loads meanwhile.
     void this.uiContents.loadFile(rendererPath('index.html'), { query: { lang: getLocale() } });
 
