@@ -28,6 +28,7 @@ for (const test of [
   'unread-dot.mjs',
   'toolbar-buttons.mjs',
   'tooltips.mjs',
+  'interface-bridge.mjs',
   'hover-previews.mjs',
   'media-controls.mjs',
   'media-skip.mjs',

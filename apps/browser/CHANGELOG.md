@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/YSamed/yalqen/compare/v0.4.1...v0.4.2) (2026-11-13)
+
+
+### Bug Fixes
+
+* reload the window interface when it starts without its bridge ([#404](https://github.com/YSamed/yalqen/issues/404)) ([a5c3933](https://github.com/YSamed/yalqen/commit/a5c393357599db75182510602328abcc35b96c33))
+
 ## [0.4.1](https://github.com/YSamed/yalqen/compare/v0.4.0...v0.4.1) (2026-11-12)
 
 
