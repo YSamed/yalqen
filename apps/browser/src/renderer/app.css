@@ -165,3 +165,59 @@ button:not(:disabled) {
     --transition: 0ms;
   }
 }
+
+/* Developer mode frames the whole window in the accent colour, with a soft neon glow breathing along its edges.
+   The frame sits above the interface but lets every click through. */
+:root[data-mode='developer'] body::after {
+  position: fixed;
+  z-index: 2147483000;
+  inset: 0;
+  border-radius: var(--window-radius, 16px);
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    inset 0 0 14px 1px color-mix(in srgb, var(--accent) 50%, transparent),
+    inset 0 0 56px color-mix(in srgb, var(--accent) 16%, transparent);
+  content: '';
+  pointer-events: none;
+  animation: developer-glow 3.6s ease-in-out infinite alternate;
+}
+
+@keyframes developer-glow {
+  from {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-mode='developer'] body::after {
+    animation: none;
+  }
+}
+
+/* Private mode is dark whatever the theme, and flat: no glass, no shadows, no colour, so it reads as a quieter
+   browser with less going on. The doubled :root outranks the glass and window colour rules above. */
+:root:root[data-mode='private'] {
+  --window: #111113;
+  --bg: #111113;
+  --chrome-base: #111113;
+  --surface: #1b1b1e;
+  --surface-strong: #242428;
+  --surface-menu: #242428;
+  --surface-hover: rgb(255 255 255 / 0.06);
+  --well: #0a0a0b;
+  --border: #2a2a2e;
+  --text: #ececee;
+  --text-muted: #8b8c93;
+  --on-accent: #111113;
+  --shadow: none;
+  --rim: none;
+  --page: #0e0e10;
+  --page-shadow: 0 0 0 1px #232327;
+  --page-divider: rgb(255 255 255 / 0.07);
+  --page-empty: #0e0e10;
+  --badge: #242428;
+  color-scheme: dark;
+}

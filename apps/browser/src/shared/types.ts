@@ -37,6 +37,8 @@ export interface TabSnapshot {
   group?: string | null;
   security: SecurityState;
   isPrivate: boolean;
+  // A developer tab; it is private too.
+  developer?: boolean;
   bookmarked: boolean;
   blockedPopups: number;
   overrides: PageOverrides;
@@ -161,6 +163,8 @@ export interface BrowserState {
   pinnedDisplay: PinnedDisplay;
   // Shows the button that cleans unpinned idle tabs out of the sidebar.
   tabCleanup?: boolean;
+  // Whether tabs in this window can switch between normal, developer and private.
+  modeSwitch?: boolean;
   favorites: Favorite[];
   sidebarVisible: boolean;
   // Filled only while the sidebar media player is on and a tab has played sound.
@@ -473,6 +477,7 @@ export type UiAction =
   | { type: 'stop' }
   | { type: 'reset-zoom' }
   | { type: 'open-site-info' }
+  | { type: 'set-tab-mode'; mode: import('./tab-modes').TabMode }
   | { type: 'open-blocked-popups' }
   | { type: 'toggle-bookmark' }
   | { type: 'open-bookmarks-menu' }

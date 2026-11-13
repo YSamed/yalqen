@@ -29,6 +29,7 @@ import {
   type UiAction,
   type WindowMaterial,
 } from '../../shared/types.js';
+import { isTabMode } from '../../shared/tab-modes.js';
 import type { BookmarkStore } from '../library/bookmarks.js';
 import type { FavoriteStore } from '../library/favorites.js';
 import type { LiveFolderRefresher, LiveFolderStore } from '../library/live-folders.js';
@@ -201,6 +202,7 @@ export interface AppContext {
   switchProfile(profile: ProfileKind, from: YalqenWindow): void;
   onWindowChange(persist: PersistChange): void;
   onPrivateTabsClosed(): void;
+  onDeveloperTabsClosed(): void;
   onWindowFocus(window: YalqenWindow): void;
   onWindowClosing(window: YalqenWindow): void;
   onWindowClosed(window: YalqenWindow): void;
@@ -314,9 +316,7 @@ export class YalqenWindow {
     this.activeProjectId = this.addProject().id;
     this.window.contentView.addChildView(this.ui);
 
-    this.preconnector = new Preconnector((origin) =>
-      this.sessionFor(this.tabs.activeIsPrivate).preconnect({ url: origin }),
-    );
+    this.preconnector = new Preconnector((origin) => this.tabs.activeSession().preconnect({ url: origin }));
 
     this.commandHost = {
       window: this.window,
@@ -381,7 +381,10 @@ export class YalqenWindow {
       },
       session: app.daily,
       privateSession: this.isDeveloper ? app.developer : app.privateBrowsing,
+      developerSession: app.developer,
+      developerWindow: this.isDeveloper,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
+      onDeveloperEnded: () => app.onDeveloperTabsClosed(),
       confirmUnload: (tab) => {
         this.tabs.activate(tab.id);
         return (
@@ -498,7 +501,7 @@ export class YalqenWindow {
         language: getLocale(),
       }),
       // Developer windows are private only to keep their session apart; they are meant for local work.
-      agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate && !this.isDeveloper),
+      agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate),
       agentTracing: () => app.settings.get().agentBridge && app.settings.get().agentTracing,
     });
 
@@ -590,6 +593,7 @@ export class YalqenWindow {
       for (const scan of this.responsiveScans.values()) void scan.clear();
       this.responsiveScans.clear();
       const hadPrivate = this.tabs.hasPrivateTabs;
+      const hadDeveloper = this.tabs.hasDeveloperTabs;
       this.peek.close();
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -603,6 +607,7 @@ export class YalqenWindow {
       if (!this.uiContents.isDestroyed()) this.uiContents.close();
       app.onWindowClosed(this);
       if (hadPrivate) app.onPrivateTabsClosed();
+      if (hadDeveloper) app.onDeveloperTabsClosed();
     });
 
     this.updateProfileName();
@@ -680,6 +685,7 @@ export class YalqenWindow {
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
+      modeSwitch: this.tabs.canSwitchMode,
       tabCleanup: !this.webApp && this.app.settings.get().manualTabCleanup,
       favorites: this.webApp ? [] : this.app.favorites.list(),
       liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
@@ -1115,7 +1121,7 @@ export class YalqenWindow {
       tabId,
       url: tab.url,
       title: tab.title,
-      isPrivate: tab.isPrivate && !this.isDeveloper,
+      isPrivate: tab.isPrivate && !tab.developer && !this.isDeveloper,
       observed: tab.agentObserved,
     };
   }
@@ -1370,7 +1376,7 @@ export class YalqenWindow {
 
   runDevCommand(id: DevCommandId): void {
     const tabs = this.tabs;
-    const browsing = this.sessionFor(tabs.activeIsPrivate);
+    const browsing = tabs.activeSession();
     const seconds = autoReloadSeconds(id);
     if (seconds) {
       tabs.setAutoReload(seconds);
@@ -1585,7 +1591,10 @@ export class YalqenWindow {
     const app = this.app;
     switch (action.type) {
       case 'new-tab':
-        tabs.open(action.url);
+        tabs.openInActiveMode(action.url);
+        break;
+      case 'set-tab-mode':
+        if (isTabMode(action.mode) && tabs.activeTabId) void tabs.setMode(tabs.activeTabId, action.mode);
         break;
       case 'activate-tab':
         tabs.activate(action.id, action.animate === true);
@@ -1866,17 +1875,21 @@ export class YalqenWindow {
   }
 
   private async openSiteInfo(): Promise<void> {
+    const tabs = this.tabs;
+    const id = tabs.activeTabId;
+    if (tabs.snapshotFor()?.security === 'local') return;
     const template = await siteInfoMenu({
       tabs: this.tabs,
       permissions: (isPrivate) => this.app.permissionsFor(isPrivate),
-      session: (isPrivate) => this.sessionFor(isPrivate),
+      session: () => this.tabs.activeSession(),
       certificates: this.app.certificates,
-      protections: this.isDeveloper
-        ? undefined
-        : {
-            preferences: this.app.siteProtections,
-            settings: () => this.app.settings.get(),
-          },
+      protections:
+        this.isDeveloper || this.tabs.activeMode === 'developer'
+          ? undefined
+          : {
+              preferences: this.app.siteProtections,
+              settings: () => this.app.settings.get(),
+            },
       showCertificateDetails: () => {
         const id = this.tabs.activeTabId;
         const url = this.tabs.activeUrl;
@@ -1885,7 +1898,7 @@ export class YalqenWindow {
       },
       clearSiteData: () => this.runDevCommand('clear-site-data'),
     });
-    if (template && !this.window.isDestroyed()) this.popup(template);
+    if (template && tabs.activeTabId === id && !this.window.isDestroyed()) this.popup(template);
   }
 
   // A pinned extension's toolbar button does what its entry in the extensions menu does.
@@ -1997,11 +2010,6 @@ export class YalqenWindow {
       x: Math.round(anchor.x),
       y: Math.round(anchor.y + anchor.height + 4),
     });
-  }
-
-  private sessionFor(isPrivate: boolean): Session {
-    if (!isPrivate) return this.app.daily;
-    return this.isDeveloper ? this.app.developer : this.app.privateBrowsing;
   }
 
   private openTabMenu(id: TabId): void {

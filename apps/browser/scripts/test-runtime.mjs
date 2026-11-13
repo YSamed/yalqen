@@ -34,6 +34,8 @@ for (const test of [
   'pinning.mjs',
   'pinned-home.mjs',
   'tab-cleanup.mjs',
+  'tab-modes.mjs',
+  'tab-modes-ui.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
   'profile-settings.mjs',

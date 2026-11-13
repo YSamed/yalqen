@@ -17,6 +17,22 @@
   import NewTabButton from './NewTabButton.svelte';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
+  import { modeOf, TAB_MODES, type TabMode } from '../../shared/tab-modes';
+  import type { MessageKey } from '../../shared/i18n';
+  import type { IconName } from '../ui/Icon.svelte';
+
+  const MODE_LABEL: Record<TabMode, MessageKey> = {
+    normal: 'tabModes.normal',
+    developer: 'tabModes.developer',
+    private: 'tabModes.private',
+  };
+
+  // On a web page the normal icon is the site's lock, so the site information stays one click away.
+  function modeIcon(mode: TabMode, tab: TabSnapshot): IconName {
+    if (mode === 'developer') return 'code';
+    if (mode === 'private') return 'private';
+    return tab.security === 'local' ? 'profile' : 'lock';
+  }
 
   let {
     tabs,
@@ -36,6 +52,7 @@
     agentAvailable,
     agentPanelOpen,
     agentStatus,
+    modeSwitch = false,
   }: {
     tabs: TabSnapshot[];
     developer: boolean;
@@ -54,6 +71,7 @@
     agentAvailable: boolean;
     agentPanelOpen: boolean;
     agentStatus: AgentSessionState['status'];
+    modeSwitch?: boolean;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -307,28 +325,58 @@
         <li class="chip" class:active>
           {#if active}
             <div class="pill">
-              {#if tab.security !== 'local'}
-                <IconButton
-                  size="sm"
-                  icon="lock"
-                  class={['site', tab.security]}
-                  label={tab.security === 'secure' ? t('toolbar.siteInfoSecure') : t('toolbar.siteInfoNotSecure')}
-                  title={t('toolbar.siteInfo')}
-                  onclick={() => send({ type: 'open-site-info' })}
-                />
-              {/if}
-              {#if developer}
-                <span class="private-badge developer" title={t('toolbar.developerWindow')}>
-                  <Icon name="gauge" size={14} />
-                </span>
-              {:else if tab.isPrivate}
-                <span class="private-badge" title={t('toolbar.privateTab')}>
-                  <Icon name="private" size={14} />
-                </span>
+              {#if modeSwitch}
+                {@const mode = modeOf(tab)}
+                <!-- Normal, developer and private: the tab reloads in the mode picked. Picking normal again opens
+                     the site information, as the lock did. -->
+                <div
+                  class="modes {mode}"
+                  role="radiogroup"
+                  aria-label={t('tabModes.title')}
+                  style:--mode-index={TAB_MODES.indexOf(mode)}
+                >
+                  <span class="mode-thumb" aria-hidden="true"></span>
+                  {#each TAB_MODES as item (item)}
+                    {@const current = item === mode}
+                    <button
+                      class={['mode', item, item === 'normal' && tab.security]}
+                      role="radio"
+                      aria-checked={current}
+                      aria-label={t(MODE_LABEL[item])}
+                      title={t(MODE_LABEL[item])}
+                      onclick={() => {
+                        if (!current) send({ type: 'set-tab-mode', mode: item });
+                        else if (item === 'normal' && tab.security !== 'local') send({ type: 'open-site-info' });
+                      }}
+                    >
+                      <Icon name={modeIcon(item, tab)} size={13} />
+                    </button>
+                  {/each}
+                </div>
+              {:else}
+                {#if tab.security !== 'local'}
+                  <IconButton
+                    size="sm"
+                    icon="lock"
+                    class={['site', tab.security]}
+                    label={tab.security === 'secure' ? t('toolbar.siteInfoSecure') : t('toolbar.siteInfoNotSecure')}
+                    title={t('toolbar.siteInfo')}
+                    onclick={() => send({ type: 'open-site-info' })}
+                  />
+                {/if}
+                {#if developer}
+                  <span class="private-badge developer" title={t('toolbar.developerWindow')}>
+                    <Icon name="gauge" size={14} />
+                  </span>
+                {:else if tab.isPrivate}
+                  <span class="private-badge" title={t('toolbar.privateTab')}>
+                    <Icon name="private" size={14} />
+                  </span>
+                {/if}
               {/if}
               <button
                 class="address"
-                class:after-site={tab.security !== 'local' || tab.isPrivate}
+                class:after-site={modeSwitch || tab.security !== 'local' || tab.isPrivate}
                 title={t('toolbar.addressTitle')}
                 aria-current="page"
                 onclick={() => send({ type: 'open-address' })}
@@ -695,6 +743,100 @@
   .private-badge.developer {
     background: var(--accent);
     color: #fff;
+  }
+
+  .modes {
+    --mode-size: 24px;
+    --mode-color: var(--text-muted);
+    position: relative;
+    display: flex;
+    flex: none;
+    gap: 2px;
+    margin-left: 4px;
+    padding: 2px;
+    border-radius: 999px;
+    background: var(--well);
+  }
+
+  .modes.developer {
+    --mode-color: var(--accent);
+  }
+
+  .modes.private {
+    --mode-color: var(--text);
+  }
+
+  /* The highlight slides under the picked icon. */
+  .mode-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: var(--mode-size);
+    height: var(--mode-size);
+    border-radius: 999px;
+    background: var(--surface-strong);
+    box-shadow:
+      var(--shadow),
+      inset 0 0 0 1px color-mix(in srgb, var(--mode-color) 40%, transparent);
+    transform: translateX(calc(var(--mode-index) * (var(--mode-size) + 2px)));
+    transition:
+      transform 220ms var(--ease-out),
+      box-shadow var(--transition);
+  }
+
+  .modes.developer .mode-thumb {
+    background: var(--accent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+
+  .modes.private .mode-thumb {
+    background: var(--text);
+  }
+
+  .mode {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--mode-size);
+    height: var(--mode-size);
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: default;
+    transition: color var(--transition);
+  }
+
+  .mode:hover {
+    color: var(--text);
+  }
+
+  .mode[aria-checked='true'] {
+    color: var(--text);
+  }
+
+  .mode.normal.insecure {
+    color: var(--warn);
+  }
+
+  .mode.normal.dangerous {
+    color: #d93025;
+  }
+
+  .modes.developer .mode.developer {
+    color: var(--on-accent, #fff);
+  }
+
+  .modes.private .mode.private {
+    color: var(--surface-strong);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mode-thumb {
+      transition: none;
+    }
   }
 
   .select.private {

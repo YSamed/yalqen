@@ -27,6 +27,7 @@
   const CONTROL_SIZE = 34;
   const CHROME_HEIGHT = 44;
   const PAGE_INSET = 8;
+  const PRIVATE_ACCENT = '#d4d4d8';
   const PANEL_ROW_INSET = PAGE_INSET + 3;
   const PINNED_COLUMNS = 4;
   const PINNED_GAP = 6;
@@ -114,6 +115,8 @@
   const tabGroups = $derived(browser.tabGroups ?? NO_GROUPS);
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
   const developer = $derived(browser.developer);
+  // The window takes the look of the tab in front: developer and private tabs restyle it while they are shown.
+  const mode = $derived(developer || activeTab?.developer ? 'developer' : activeTab?.isPrivate ? 'private' : 'normal');
   const profile = $derived(browser.profile);
   const media = $derived(browser.media);
   const pinnedDisplay = $derived(browser.pinnedDisplay);
@@ -280,7 +283,9 @@
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = material;
-    document.documentElement.style.setProperty('--accent', browser.accent);
+    document.documentElement.dataset.mode = mode;
+    // Private mode is monochrome: the accent steps back along with the colour.
+    document.documentElement.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : browser.accent);
     document.documentElement.style.setProperty('--glass-tint', String(browser.glassTint / 100));
     for (const [name, value] of Object.entries(windowTintVars(browser.windowColor))) {
       if (value) document.documentElement.style.setProperty(name, value);
@@ -376,6 +381,7 @@
     {#if toolbarVisible}
       <Toolbar
         {developer}
+        modeSwitch={browser.modeSwitch ?? false}
         tabs={toolbarTabs}
         {activeTabId}
         {zoom}
@@ -583,6 +589,14 @@
   .page.blank {
     background: transparent;
     box-shadow: none;
+  }
+
+  /* Developer mode lights the page's edge in the accent colour, a neon rim around the site being worked on. */
+  :global(:root[data-mode='developer']) .page {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 85%, transparent),
+      0 0 18px -2px color-mix(in srgb, var(--accent) 60%, transparent),
+      0 0 42px -6px color-mix(in srgb, var(--accent) 35%, transparent);
   }
 
   .page.blank .viewport {

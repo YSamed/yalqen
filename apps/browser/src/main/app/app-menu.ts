@@ -38,7 +38,7 @@ export function installAppMenu(host: AppMenuHost): void {
   };
   Menu.setApplicationMenu(
     buildMenu({
-      newTab: inWindow((window) => window.tabs.open()),
+      newTab: inWindow((window) => window.tabs.openInActiveMode()),
       newWindow: () => host.openWindow({ from: from() }),
       newPrivateWindow: () => host.openWindow({ isPrivate: true, from: from() }),
       newDeveloperWindow: () => host.openWindow({ developer: true, from: from() }),
