@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import { app, BrowserWindow, nativeImage } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import pageDebugger from '../../dist/main/devtools/page-debugger.js';
 
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-screenshot-test-'));
+app.setPath('userData', profile);
 const deadline = setTimeout(() => app.exit(1), 15_000);
 void run();
 
@@ -36,9 +42,15 @@ async function run() {
     console.log('PASS: full-page screenshots paint deferred sections and restore the page');
   } catch (error) {
     console.error(error);
-    process.exitCode = 1;
   } finally {
-    clearTimeout(deadline);
-    app.exit(process.exitCode ?? 0);
+    app.quit();
   }
 }
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});

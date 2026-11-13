@@ -6,10 +6,12 @@ import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import details from '../../dist/main/privacy/certificate-details.js';
 import tabs from '../../dist/main/tabs/tabs.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-certificate-runtime-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-certificate-runtime-'));
+app.setPath('userData', profile);
 const windows = [];
 const managers = [];
 async function eventually(predicate) {
@@ -28,13 +30,13 @@ process.on('uncaughtException', (error) => {
 app
   .whenReady()
   .then(async () => {
-    const config = path.join(root, 'openssl.cnf');
+    const config = path.join(profile, 'openssl.cnf');
     fs.writeFileSync(
       config,
       '[req]\ndistinguished_name=dn\nx509_extensions=ext\nprompt=no\n[dn]\nCN=localhost\nO=Yalqen disposable test\n[ext]\nsubjectAltName=DNS:localhost,IP:127.0.0.1\n',
     );
-    const key = path.join(root, 'key.pem'),
-      cert = path.join(root, 'cert.pem');
+    const key = path.join(profile, 'key.pem'),
+      cert = path.join(profile, 'cert.pem');
     execFileSync(
       'openssl',
       ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-config', config, '-keyout', key, '-out', cert],
@@ -133,21 +135,19 @@ app
       'PASS: real normal/private HTTPS certificate chains match the server fingerprint, issuer and serial; read-only details reject local/stale/malformed data',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   server?.close();
   for (const manager of managers) manager.destroyAll();
   for (const window of windows) if (!window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

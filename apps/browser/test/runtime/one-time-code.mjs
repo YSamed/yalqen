@@ -4,9 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import handlers from '../../dist/main/privacy/one-time-code-handlers.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-one-time-code-runtime-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-one-time-code-runtime-'));
+app.setPath('userData', profile);
 const windows = [];
 let window, mail;
 let offered = [],
@@ -127,19 +129,18 @@ app
       'PASS: code fields offer codes from open mail tabs only on click, fill single and split fields, skip promo fields and other sessions',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   server.close();
   for (const w of windows) if (!w.isDestroyed()) w.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

@@ -5,6 +5,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, WebContentsView, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import { ElectronBlocker } from '@ghostery/adblocker-electron';
 import adblock from '../../dist/main/privacy/adblock.js';
 import lists from '../../dist/main/privacy/threat-lists.js';
@@ -173,7 +174,8 @@ app
     console.error(error);
     app.exit(1);
   });
-app.on('before-quit', () => {
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.destroyAll();
   downloadManager?.destroy();
@@ -181,10 +183,7 @@ app.on('before-quit', () => {
   window?.destroy();
   server.close();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

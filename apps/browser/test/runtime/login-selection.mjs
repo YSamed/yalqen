@@ -4,6 +4,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import passwords from '../../dist/main/privacy/passwords.js';
 import handlers from '../../dist/main/privacy/password-handlers.js';
 
@@ -174,16 +175,13 @@ app
     console.error(error);
     app.exit(1);
   });
-app.on('before-quit', () => {
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   for (const window of windows) window.destroy();
   server.close();
 });
-// A throw here opens Electron's modal error box and the process never exits.
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error('Test profile cleanup failed:', error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

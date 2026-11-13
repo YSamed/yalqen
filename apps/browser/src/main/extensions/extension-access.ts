@@ -64,21 +64,37 @@ export function restrictedManifest(
   return result;
 }
 
+// Chromium derives an unpacked extension's id from the raw bytes of the resolved path. Two details
+// have to match exactly or the id is wrong and the extension refuses to load:
+// - Byte encoding is platform dependent: base::FilePath::StringType is char16_t on Windows
+//   (UTF-16LE) and char on POSIX (UTF-8). Hashing UTF-8 everywhere breaks Windows.
+// - Windows uppercases the drive letter before hashing (`c:\...` and `C:\...` are the same id) while
+//   directory case is preserved. realpathSync keeps whatever case it was handed.
+export function resolvedExtensionPath(directory: string): string {
+  const resolved = path.resolve(directory);
+  return process.platform === 'win32' ? resolved.replace(/^[a-z]:/, (drive) => drive.toUpperCase()) : resolved;
+}
+
+// base64 of the same bytes the id is derived from, so the id stays stable when an extension moves
+// between the direct directory and a restricted runtime copy.
+function pathBytes(directory: string): Buffer {
+  return Buffer.from(resolvedExtensionPath(directory), process.platform === 'win32' ? 'utf16le' : 'utf8');
+}
+
 export function extensionIdentity(directory: string, manifest: Manifest): { id: string; key: string } {
   const key =
-    typeof manifest.key === 'string' && manifest.key.trim()
-      ? manifest.key
-      : Buffer.from(path.resolve(directory)).toString('base64');
+    typeof manifest.key === 'string' && manifest.key.trim() ? manifest.key : pathBytes(directory).toString('base64');
   return { id: extensionIdOfKey(Buffer.from(key, 'base64')), key };
 }
 
 export function runtimeExtensionPath(root: string, directory: string): string {
-  return path.join(root, createHash('sha256').update(path.resolve(directory)).digest('hex'));
+  return path.join(root, createHash('sha256').update(resolvedExtensionPath(directory)).digest('hex'));
 }
 
 export function prepareRestrictedExtension(root: string, directory: string, manifest: Manifest): string {
   const target = runtimeExtensionPath(root, directory);
-  if (target.startsWith(path.resolve(directory) + path.sep)) throw new Error(t('extensions.accessPackageFailed'));
+  if (target.startsWith(resolvedExtensionPath(directory) + path.sep))
+    throw new Error(t('extensions.accessPackageFailed'));
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   if (fs.lstatSync(root).isSymbolicLink()) throw new Error(t('extensions.accessPackageFailed'));
   validatePackage(directory);

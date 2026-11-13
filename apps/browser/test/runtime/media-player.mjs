@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
 
@@ -168,6 +169,10 @@ app
     await drag(['pointerdown', 'pointermove'], 0.25, 0.75);
     await eventually("document.querySelector('.player .time')?.textContent.trim() === '3:00 / 4:00'");
     assert.equal(actions.filter((action) => action.type === 'seek-media').length, seeksBefore);
+    // The position the seek is measured from advances with the wall clock while the drag runs, so
+    // re-report 1:00 right before the release; otherwise the delta drifts a second or two low.
+    push({ media: { ...song, updatedAt: Date.now() } });
+    await new Promise((resolve) => setTimeout(resolve, 50));
     await drag(['pointerup'], 0.75);
     const seek = actions.at(-1);
     assert.equal(seek.type, 'seek-media');
@@ -204,11 +209,17 @@ app
     push({ panelCollapsed: false });
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(await window.webContents.executeJavaScript("!!document.querySelector('.player')"), false);
-
-    clearTimeout(deadline);
-    app.exit(0);
   })
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});

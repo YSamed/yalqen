@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, dialog } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import bookmarks from '../../dist/main/library/bookmarks.js';
 import browserImport from '../../dist/main/library/browser-import.js';
 import importDialogs from '../../dist/main/window/import-dialogs.js';
@@ -94,22 +95,19 @@ app
       'PASS: Electron bookmark HTML export/import, selected file, cancellation, empty folders and export failure',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   store?.saveNow();
   copy?.saveNow();
   window?.destroy();
 });
-// A throw here opens Electron's modal error box and the process never exits.
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error('Test profile cleanup failed:', error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

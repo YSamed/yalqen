@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import bookmarks from '../../dist/main/library/bookmarks.js';
 import pages from '../../dist/main/pages/bookmarks-page.js';
 import internal from '../../dist/main/pages/internal-pages.js';
@@ -149,20 +150,18 @@ app
       'PASS: production bookmark page creates nested folders, excludes cyclic parents, edits URLs, moves selected entries, cancels/confirms bulk deletion and persists the hierarchy',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   store?.saveNow();
   if (window && !window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(directory);
 });

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
 
@@ -134,11 +135,17 @@ app
         .filter((label) => labels.includes(label));
     })()`);
     assert.deepEqual(order, ['Developer tools', 'Grammar Helper', 'Settings']);
-
-    clearTimeout(deadline);
-    app.exit(0);
   })
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});

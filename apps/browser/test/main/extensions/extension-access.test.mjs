@@ -9,6 +9,32 @@ import manifests from '../../../dist/main/extensions/extension-manifest.js';
 import controllers from '../../../dist/main/extensions/extension-access-controller.js';
 
 const { restrictedManifest, prepareRestrictedExtension, extensionIdentity } = access;
+
+test('extension identity matches the id Chromium derives from the resolved path', () => {
+  // Chromium hashes the path bytes (UTF-16LE on Windows, UTF-8 on POSIX) with an uppercased drive
+  // letter, then maps the first 16 SHA-256 bytes onto a-p. These constants are the real ids Electron
+  // assigns to those exact directories, so a change in encoding or normalization fails here.
+  // The fixture must match the host: on POSIX, 'C:\Users\...' is a relative path, not a drive path.
+  if (process.platform === 'win32') {
+    const windows = extensionIdentity('C:\\Users\\test\\extensions\\demo', {});
+    assert.equal(windows.id, 'lfijnockllgbjjdmcncmiighigfefjec');
+    assert.equal(Buffer.from(windows.key, 'base64').toString('utf16le'), 'C:\\Users\\test\\extensions\\demo');
+    // A lowercase drive letter must yield the canonical id, not a distinct one.
+    assert.equal(
+      extensionIdentity('c:\\Users\\test\\extensions\\demo', {}).id,
+      extensionIdentity('C:\\Users\\test\\extensions\\demo', {}).id,
+    );
+  } else {
+    const posix = extensionIdentity('/home/test/extensions/demo', {});
+    assert.equal(posix.id, 'fkcononbajknbcohomcmaljoemgfglhf');
+    assert.equal(Buffer.from(posix.key, 'base64').toString('utf8'), '/home/test/extensions/demo');
+  }
+  // An explicit manifest key always wins over the path-derived one.
+  assert.equal(
+    extensionIdentity('/tmp/ignored', { key: 'fixed' }).id,
+    extensionIdentity('/tmp/other', { key: 'fixed' }).id,
+  );
+});
 test('site access normalizes engine scope, bounds lists and fails closed on malformed saved policies', () => {
   assert.equal(policies.extensionSite('HTTPS://EXAMPLE.COM:8443/path?q=1'), 'https://example.com');
   for (const value of ['javascript:alert(1)', 'file:///tmp/a', 'https://user:pass@example.com', 'example.com', ''])

@@ -11,7 +11,7 @@
   "scripts": {
     "postinstall": "node scripts/prepare-terminal.mjs",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
-    "build:main": "node -e \"for (const dir of ['dist/main', 'dist/shared']) require('node:fs').rmSync(dir, { recursive: true, force: true })\" && tsc -p tsconfig.main.json",
+    "build:main": "rimraf dist/main dist/shared && tsc -p tsconfig.main.json",
     "build:preload": "node scripts/build-preload.mjs",
     "build:renderer": "vite build",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json && svelte-check --tsconfig ./tsconfig.renderer.json",
@@ -27,6 +27,7 @@
     "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
     "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win",
     "package:linux": "npm run build && electron-builder --linux"
   },
   "devDependencies": {
@@ -45,6 +46,7 @@
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
+    "rimraf": "^6.1.4",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",
     "typescript": "^6.0.3",

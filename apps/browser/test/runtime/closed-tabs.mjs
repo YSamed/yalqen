@@ -6,11 +6,13 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { app, BaseWindow, WebContentsView } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import closed from '../../dist/main/tabs/closed-tabs.js';
 import tabs from '../../dist/main/tabs/tabs.js';
+
 const parent = !process.env.YALQEN_CLOSED_TEST_ROOT;
-const root = process.env.YALQEN_CLOSED_TEST_ROOT ?? fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-closed-runtime-'));
-const directory = path.join(root, parent ? 'parent' : 'data');
+const profile = process.env.YALQEN_CLOSED_TEST_ROOT ?? fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-closed-runtime-'));
+const directory = path.join(profile, parent ? 'parent' : 'data');
 fs.mkdirSync(directory, { recursive: true });
 app.setPath('userData', directory);
 const deadline = setTimeout(() => app.exit(1), 30_000);
@@ -31,14 +33,14 @@ app
   .whenReady()
   .then(async () => {
     if (parent) {
-      fs.writeFileSync(path.join(root, 'back.html'), '<title>Previous page</title><p>Back</p>');
-      fs.writeFileSync(path.join(root, 'final.html'), '<title>Final page</title><p>Restored offline</p>');
+      fs.writeFileSync(path.join(profile, 'back.html'), '<title>Previous page</title><p>Back</p>');
+      fs.writeFileSync(path.join(profile, 'final.html'), '<title>Final page</title><p>Restored offline</p>');
       for (const phase of ['write', 'restore', 'empty']) {
         await promisify(execFile)(process.execPath, [fileURLToPath(import.meta.url)], {
           env: {
             ...process.env,
             ELECTRON_RUN_AS_NODE: undefined,
-            YALQEN_CLOSED_TEST_ROOT: root,
+            YALQEN_CLOSED_TEST_ROOT: profile,
             YALQEN_CLOSED_TEST_PHASE: phase,
           },
           timeout: 10_000,
@@ -66,14 +68,17 @@ app
       freezeBackground: () => false,
     });
     if (process.env.YALQEN_CLOSED_TEST_PHASE === 'write') {
-      const sentinel = manager.createRecord({ id: 'sentinel', url: pathToFileURL(path.join(root, 'back.html')).href });
+      const sentinel = manager.createRecord({
+        id: 'sentinel',
+        url: pathToFileURL(path.join(profile, 'back.html')).href,
+      });
       manager.tabs.push(sentinel);
       manager.activeId = sentinel.id;
       for (const isPrivate of [false, true]) {
         const view = new WebContentsView();
         window.contentView.addChildView(view);
-        await view.webContents.loadFile(path.join(root, 'back.html'));
-        await view.webContents.loadFile(path.join(root, 'final.html'));
+        await view.webContents.loadFile(path.join(profile, 'back.html'));
+        await view.webContents.loadFile(path.join(profile, 'final.html'));
         const tab = manager.createRecord(
           { id: isPrivate ? 'private' : 'closed', url: view.webContents.getURL(), title: view.webContents.getTitle() },
           isPrivate,
@@ -105,22 +110,20 @@ app
       store.saveNow();
     }
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.destroyAll();
   if (window && !window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
+
+registerWillQuit(async () => {
   if (parent) {
-    try {
-      fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    } catch (error) {
-      console.error(error);
-    }
+    await removeDirectory(profile);
   }
 });

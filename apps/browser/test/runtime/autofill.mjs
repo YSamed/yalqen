@@ -4,11 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import stores from '../../dist/main/privacy/autofill.js';
 import handlers from '../../dist/main/privacy/autofill-handlers.js';
 import passwords from '../../dist/main/privacy/password-handlers.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-autofill-runtime-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-autofill-runtime-'));
+app.setPath('userData', profile);
 app.commandLine.appendSwitch('host-resolver-rules', 'MAP unsafe.test 127.0.0.1');
 const windows = [];
 let window;
@@ -68,7 +70,7 @@ app
   .then(async () => {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const url = `http://localhost:${server.address().port}/`;
-    const store = new stores.AutofillStore(root, passwords.safeStorageCipher);
+    const store = new stores.AutofillStore(profile, passwords.safeStorageCipher);
     assert.equal(
       store.save({
         id: null,
@@ -243,19 +245,18 @@ app
       'PASS: encrypted address/card selection fills only blank visible same-section fields, preserves typed data, excludes CVV/hidden/readonly fields, requires card authentication and trusted click, rejects navigation/private/insecure pages',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
-  server.close();
+  server?.close();
   for (const w of windows) if (!w.isDestroyed()) w.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

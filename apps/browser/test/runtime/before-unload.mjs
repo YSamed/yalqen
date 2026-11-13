@@ -7,6 +7,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, WebContentsView } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import unload from '../../dist/main/tabs/before-unload.js';
 const { checkBeforeUnload } = unload;
 
@@ -113,13 +114,13 @@ app
     await stalled(fresh.webContents);
     console.log('PASS: native beforeunload stays/leave, clean and loading pages and form contents preserved');
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
 
-app.on('before-quit', () => {
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   for (const view of views) {
     if (!view.webContents.isDestroyed()) view.webContents.close();
@@ -128,11 +129,7 @@ app.on('before-quit', () => {
   server?.closeAllConnections();
   server?.close();
 });
-// A throw here opens Electron's modal error box and the process never exits.
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error('Test profile cleanup failed:', error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

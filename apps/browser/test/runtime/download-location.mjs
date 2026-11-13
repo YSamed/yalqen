@@ -4,12 +4,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import downloads from '../../dist/main/library/download-manager.js';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-download-test-'));
 app.setPath('userData', profile);
 let manager;
-const deadline = setTimeout(() => finish(1), 30_000);
+const deadline = setTimeout(() => app.exit(1), 30_000);
 
 app
   .whenReady()
@@ -51,20 +52,17 @@ app
     assert.equal(fs.readFileSync(destination, 'utf8'), 'download location test');
     console.log('PASS: real paused DownloadItem saved selected name, path and complete bytes');
   })
-  .then(() => finish(0))
   .catch((error) => {
     console.error(error);
-    finish(1);
-  });
-// app.quit() can stall while Chromium flushes the download session's disk cache on
-// CI runners, so the result is reported with an explicit exit after cleanup.
-function finish(code) {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.destroy();
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error('Test profile cleanup failed:', error);
-  }
-  app.exit(code);
-}
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});
