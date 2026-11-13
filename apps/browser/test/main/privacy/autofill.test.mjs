@@ -66,7 +66,7 @@ test('autofill records are encrypted, contain no security code, persist edits an
   assert.equal(f.store.save({ id: null, data: { ...card, cvv: '999' } }), true);
   const disk = fs.readFileSync(f.store.file, 'utf8');
   for (const value of ['Ada Lovelace', '4242424242424242', '12 Main Street']) assert.equal(disk.includes(value), false);
-  assert.equal(fs.statSync(f.store.file).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(f.store.file).mode & 0o777, 0o600);
   const info = f.store.choices('card')[0];
   assert.equal(info.detail, '•••• 4242 · 04/2035');
   assert.equal(JSON.stringify(f.store.view()).includes('4242424242424242'), false);

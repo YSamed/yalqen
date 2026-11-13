@@ -87,7 +87,7 @@ test('the store persists per origin, appends hidden elements and caps its size',
     assert.equal(store.hide('https://b.example/y', 'div.banner'), true);
     assert.deepEqual(store.get('https://b.example').hidden, ['div.banner']);
     assert.equal(store.hide('https://b.example/y', 'a{'), false);
-    assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
     const reopened = new BoostStore(directory);
     assert.deepEqual(
       reopened.list().map((site) => site.origin),

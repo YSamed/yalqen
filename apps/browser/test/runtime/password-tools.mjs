@@ -156,7 +156,7 @@ app
     authenticated = true;
     await button('Export CSV…');
     await eventually("document.querySelector('#pane [role=status]')?.textContent.includes('Processed 1')");
-    assert.equal(fs.statSync(csv).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(csv).mode & 0o777, 0o600);
     const exported = tools.parsePasswordCsv(fs.readFileSync(csv, 'utf8')).records;
     assert.deepEqual(exported, [{ origin: 'https://fixture.example', username: 'grace', password: generated }]);
     fs.writeFileSync(

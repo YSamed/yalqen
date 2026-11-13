@@ -65,7 +65,7 @@ test('store installs once per manifest id, persists atomically with 0600, caps a
     const first = store.install(manifest);
     assert.ok(first.id);
     assert.equal(store.install({ ...manifest, name: 'Again' }).id, first.id);
-    assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
     assert.deepEqual(new WebAppStore(dir).list(), [first]);
     assert.equal(store.install({ ...manifest, scope: 'https://app.example/other/' }), null);
     for (let i = 1; i < 50; i++) assert.ok(store.install({ ...manifest, manifestId: `https://app.example/mail/${i}` }));

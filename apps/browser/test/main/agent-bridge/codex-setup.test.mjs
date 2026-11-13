@@ -66,7 +66,7 @@ test('connecting writes the config with a backup, and removing restores the othe
   assert.equal(await codexConnection(URL, 'secret', file), 'missing');
   assert.deepEqual(await addToCodex(URL, 'secret', file), { ok: true });
   assert.equal(fs.readFileSync(`${file}.yalqen-backup`, 'utf8'), EXISTING);
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.equal(await codexConnection(URL, 'secret', file), 'connected');
   assert.equal(await codexConnection(URL, 'newer', file), 'stale');
   assert.deepEqual(await removeFromCodex(file), { ok: true });
