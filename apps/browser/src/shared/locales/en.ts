@@ -332,6 +332,7 @@ export const en = {
   'threats.blockedFile': 'Malicious file blocked',
   'threats.fileMessage':
     '{name} matches a known malicious file in {source}. Yalqen will not open it. The file remains in your download folder; you can delete it there.',
+  'window.resizeDevTools': 'Resize developer tools',
   'window.unsavedChanges': 'Leave this page?',
   'window.unsavedChangesDetail': 'Changes you made may not be saved.',
   'window.stay': 'Stay',

@@ -339,6 +339,7 @@ export const tr: Record<MessageKey, string> = {
   'threats.blockedFile': 'Zararlı dosya engellendi',
   'threats.fileMessage':
     '{name}, {source} listesindeki bilinen bir zararlı dosyayla eşleşiyor. Yalqen bu dosyayı açmayacak. Dosya indirme klasöründe kalır; oradan silebilirsiniz.',
+  'window.resizeDevTools': 'Geliştirici araçlarını yeniden boyutlandır',
   'window.unsavedChanges': 'Bu sayfadan ayrılmak istiyor musunuz?',
   'window.unsavedChangesDetail': 'Yaptığınız değişiklikler kaydedilmemiş olabilir.',
   'window.stay': 'Kal',
