@@ -62,7 +62,7 @@ import { securityState } from '../privacy/site-info.js';
 import { shouldArchive } from './auto-archive.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
-import { PagePlacement, type PaneSlot } from './page-placement.js';
+import { PagePlacement, SPLIT_GAP, type PaneSlot } from './page-placement.js';
 import type { PersistChange, SavedGroups, SavedTab, SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, opensInPlace, opensPeek, recordBlocked } from './popups.js';
 import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
@@ -345,7 +345,15 @@ export class TabManager {
 
   state(): Pick<
     BrowserState,
-    'tabs' | 'listOrder' | 'activeTabId' | 'selectedTabIds' | 'splitTabIds' | 'tabGroups' | 'device' | 'zoom'
+    | 'tabs'
+    | 'listOrder'
+    | 'activeTabId'
+    | 'selectedTabIds'
+    | 'splitTabIds'
+    | 'tabGroups'
+    | 'device'
+    | 'zoom'
+    | 'devToolsDivider'
   > & { activeSpaceId: string } {
     const contents = liveContents(this.active());
     return {
@@ -357,6 +365,7 @@ export class TabManager {
       splitTabIds: this.splits.flat(),
       tabGroups: this.groupView(),
       device: this.placement.deviceFrame(this.active()),
+      devToolsDivider: this.devToolsDivider,
       zoom: contents ? contents.getZoomFactor() : 1,
     };
   }
@@ -580,6 +589,7 @@ export class TabManager {
       if (next.includes(tab) || !tab.view) continue;
       tab.view.webContents.send(PageChannel.tabTransition, null);
       this.options.window.contentView.removeChildView(tab.view);
+      if (tab.devTools) this.options.window.contentView.removeChildView(tab.devTools);
       tab.inactiveSince = Date.now();
       this.freezer.maybeFreeze(tab);
     }
@@ -588,7 +598,10 @@ export class TabManager {
       this.freezer.unfreeze(tab);
       this.placement.syncNewTabCenter(tab);
       this.placement.place(tab, view);
-      if (!this.shown.includes(tab)) this.options.window.contentView.addChildView(view);
+      if (!this.shown.includes(tab)) {
+        this.options.window.contentView.addChildView(view);
+        if (tab.devToolsShown && tab.devTools) this.options.window.contentView.addChildView(tab.devTools);
+      }
     }
     this.shown = next;
   }
@@ -1089,7 +1102,7 @@ export class TabManager {
         pinned: tab.pinnedUrl !== null,
         loading: tab.loading,
         audible: contents.isCurrentlyAudible() || keepsPlaying(tab),
-        devToolsOpen: contents.isDevToolsOpened(),
+        devToolsOpen: tab.devToolsShown,
         edited: tab.edited,
         inactiveSince: tab.inactiveSince,
       });
@@ -1115,7 +1128,7 @@ export class TabManager {
         private: tab.isPrivate,
         loading: tab.loading,
         playing: !!contents?.isCurrentlyAudible() || keepsPlaying(tab) || tab.playingMedia > 0,
-        devToolsOpen: !!contents?.isDevToolsOpened(),
+        devToolsOpen: tab.devToolsShown,
         edited: tab.edited,
         autoReload: tab.autoReload !== null,
         hasLiveChild: this.tabs.some((item) => item.openerId === tab.id && !!item.view),
@@ -1759,12 +1772,64 @@ export class TabManager {
   }
 
   toggleDevTools(): void {
-    liveContents(this.active())?.toggleDevTools();
+    const tab = this.active();
+    if (tab?.devToolsShown) this.closeDevTools(tab);
+    else this.openDevTools(tab);
   }
 
-  openDevTools(): void {
-    const contents = this.activeContents();
-    if (contents && !contents.isDevToolsOpened()) contents.openDevTools();
+  // Electron's docked DevTools is a square panel inside the page's view, so the page's rounded corners stop
+  // where it starts. DevTools gets its own view instead, placed and rounded by the page placement. Electron
+  // then reports DevTools as closed, so the tab keeps track of it.
+  openDevTools(tab = this.active()): void {
+    const contents = liveContents(tab);
+    if (!tab || !contents) return;
+    if (!tab.devTools) {
+      tab.devTools = new WebContentsView();
+      contents.setDevToolsWebContents(tab.devTools.webContents);
+    }
+    if (tab.devToolsShown) return;
+    tab.devToolsShown = true;
+    contents.openDevTools({ mode: 'detach', activate: false });
+    this.showDevTools(tab);
+    this.changed();
+  }
+
+  closeDevTools(tab: Tab | undefined = this.active()): void {
+    if (!tab?.devToolsShown) return;
+    tab.devToolsShown = false;
+    liveContents(tab)?.closeDevTools();
+    if (tab.devTools) this.options.window.contentView.removeChildView(tab.devTools);
+    if (tab.view) void this.placement.place(tab, tab.view, true);
+    this.freezer.maybeFreeze(tab);
+    this.changed();
+  }
+
+  // The page menu's Inspect: DevTools opens beside the page if it is not open yet, then selects the element.
+  inspect(contents: WebContents, x: number, y: number): void {
+    const tab = this.tabs.find((item) => item.view?.webContents === contents);
+    if (tab) this.openDevTools(tab);
+    contents.inspectElement(x, y);
+  }
+
+  // Dragging the gap between the page and DevTools; x is where the pointer is in the window.
+  resizeDevTools(x: number): void {
+    const tab = this.active();
+    if (!tab?.devToolsShown || !Number.isFinite(x)) return;
+    const area = this.placement.area(tab);
+    this.placement.devToolsWidth = Math.round(area.x + area.width - x - SPLIT_GAP / 2);
+    for (const shown of this.shown) if (shown.view) void this.placement.place(shown, shown.view, true);
+    this.changed();
+  }
+
+  get devToolsDivider(): Rectangle | null {
+    const tab = this.active();
+    return tab && this.isVisible(tab) ? this.placement.devToolsDivider(tab) : null;
+  }
+
+  private showDevTools(tab: Tab): void {
+    if (!tab.devTools || !tab.view || !this.shown.includes(tab)) return;
+    void this.placement.place(tab, tab.view, true);
+    this.options.window.contentView.addChildView(tab.devTools);
   }
 
   selectByIndex(index: number): void {
@@ -1888,6 +1953,7 @@ export class TabManager {
     tab.detachListeners?.();
     tab.detachListeners = null;
     if (tab.view) this.options.window.contentView.removeChildView(tab.view);
+    if (tab.devTools) this.options.window.contentView.removeChildView(tab.devTools);
     this.options.onHtmlFullScreenChange(tab.id, false);
     this.autoReloader.sync();
     if (this.activeId === id) {
@@ -2473,6 +2539,13 @@ export class TabManager {
     tab.agent = null;
     this.translation.reset(tab);
     this.options.window.contentView.removeChildView(view);
+    if (tab.devTools) {
+      this.options.window.contentView.removeChildView(tab.devTools);
+      const tools = tab.devTools.webContents as WebContents | undefined;
+      if (tools && !tools.isDestroyed()) tools.close();
+      tab.devTools = null;
+    }
+    tab.devToolsShown = false;
     // A view drops its contents once a page closes itself, despite the typings.
     const contents = view.webContents as WebContents | undefined;
     if (contents && !contents.isDestroyed()) contents.close();
