@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import passwords from '../../dist/main/privacy/passwords.js';
 import handlers from '../../dist/main/privacy/password-handlers.js';
 import settings from '../../dist/main/app/settings.js';
@@ -11,8 +12,9 @@ import settingsPage from '../../dist/main/app/settings-page.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import tools from '../../dist/main/privacy/password-tools.js';
 import types from '../../dist/shared/types.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-password-ui-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-password-ui-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const windows = [];
 let window;
@@ -20,7 +22,7 @@ const deadline = setTimeout(() => app.exit(1), 30_000);
 let authenticated = true,
   approved = true,
   authentications = 0;
-const csv = path.join(root, 'chosen passwords.csv');
+const csv = path.join(profile, 'chosen passwords.csv');
 process.on('uncaughtException', (error) => {
   console.error(error);
   app.exit(1);
@@ -45,7 +47,7 @@ async function form(values) {
 app
   .whenReady()
   .then(async () => {
-    const store = new passwords.PasswordStore(root, handlers.safeStorageCipher);
+    const store = new passwords.PasswordStore(profile, handlers.safeStorageCipher);
     assert.equal(store.view().available, true);
     handlers.installPasswordHandlers({
       store,
@@ -66,11 +68,11 @@ app
         },
       },
     });
-    const preferences = new settings.SettingsStore(root);
+    const preferences = new settings.SettingsStore(profile);
     const view = () => ({
       values: preferences.get(),
       version: 'test',
-      downloadDirectory: root,
+      downloadDirectory: profile,
       defaultBrowser: true,
       engines: [{ id: 'google', label: 'Google' }],
       customTemplateValid: true,
@@ -167,10 +169,10 @@ app
     await button('Import CSV…');
     await eventually('(async () => (await window.yalqenSettings.passwords()).passwords.length === 2)()');
     assert.equal(
-      new passwords.PasswordStore(root, handlers.safeStorageCipher).logins('https://second.example')[0].password,
+      new passwords.PasswordStore(profile, handlers.safeStorageCipher).logins('https://second.example')[0].password,
       'fixture imported secret',
     );
-    const preload = path.join(root, 'untrusted.js');
+    const preload = path.join(profile, 'untrusted.js');
     fs.writeFileSync(
       preload,
       "const {contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('test',{invoke:(...args)=>ipcRenderer.invoke(...args)});",
@@ -206,19 +208,17 @@ app
       'PASS: production password UI generates/adds/edits encrypted records, CSV export/import requires owner and native consent, preserves cancellation and rejects untrusted IPC',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   for (const item of windows) if (!item.isDestroyed()) item.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

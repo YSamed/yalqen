@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import extensions from '../../dist/main/extensions/extensions.js';
 import { storeIdentity, extensionPackage } from '../helpers/extension-package.mjs';
 
@@ -56,21 +57,17 @@ app
     browsing.extensions.removeExtension(identity.id);
     console.log('PASS: real extension updated with stable identity and restored the prior version after a failed load');
   })
-  .then(() => {
-    manager?.stopUpdates();
-    app.exit(0);
-  })
   .catch((error) => {
     console.error(error);
-    manager?.stopUpdates();
-    app.exit(1);
-  });
-app.on('quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.stopUpdates();
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error('Extension test profile cleanup failed:', error);
-  }
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

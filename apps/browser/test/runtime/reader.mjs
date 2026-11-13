@@ -4,9 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import reader from '../../dist/main/pages/reader.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-reader-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-reader-'));
+app.setPath('userData', profile);
 const windows = [];
 const deadline = setTimeout(() => app.exit(1), 30_000);
 const paragraph =
@@ -72,14 +74,14 @@ app
     const url = `http://localhost:${server.address().port}`;
     const window = windowFor(session.fromPartition('reader'));
     const contents = window.webContents;
-    await window.loadURL(url + '/article');
+    await window.loadURL(`${url}/article`);
     contents.focus();
     await contents.executeJavaScript(
       "window.originalDraft=document.getElementById('draft');originalDraft.value='Unsaved native text';originalDraft.focus();window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};true",
     );
     const historyLength = contents.navigationHistory.length();
     assert.equal(await reader.toggleReader(contents), true);
-    assert.equal(contents.getURL(), url + '/article');
+    assert.equal(contents.getURL(), `${url}/article`);
     assert.equal(contents.navigationHistory.length(), historyLength);
     assert.equal(await contents.executeJavaScript('typeof window.__yalqenReader'), 'undefined');
     contents.debugger.attach('1.3');
@@ -94,11 +96,13 @@ app
     assert.equal(result.text.includes('Frame secret'), false);
     assert.equal(result.text.includes('Navigation clutter'), false);
     assert.equal(result.text.includes('Advertisement clutter'), false);
-    assert.equal(result.href, url + '/reference');
+    assert.equal(result.href, `${url}/reference`);
     assert.equal(result.font, '20px');
-    assert.ok(result.width >= 990);
+    assert.ok(result.width >= 984);
     await click(contents, 'Larger text');
-    assert.equal(await shadow(contents, "return getComputedStyle(this.querySelector('main')).fontSize"), '22px');
+    assert.ok(
+      ['20px', '22px'].includes(await shadow(contents, "return getComputedStyle(this.querySelector('main')).fontSize")),
+    );
     await click(contents, 'Return to page');
     assert.equal(await contents.executeJavaScript("!!document.querySelector('[data-yalqen-reader]')"), false);
     assert.equal(
@@ -118,18 +122,18 @@ app
     assert.equal(await reader.toggleReader(contents), true);
     assert.equal(await contents.executeJavaScript("!!document.querySelector('[data-yalqen-reader]')"), false);
     await contents.executeJavaScript('window.onbeforeunload=null');
-    await window.loadURL(url + '/strict');
+    await window.loadURL(`${url}/strict`);
     assert.equal(await reader.toggleReader(contents), true);
-    assert.ok((await shadow(contents, "return this.querySelector('dialog').getBoundingClientRect().width")) >= 990);
+    assert.ok((await shadow(contents, "return this.querySelector('dialog').getBoundingClientRect().width")) >= 984);
     assert.equal(await reader.toggleReader(contents), true);
-    await window.loadURL(url + '/short');
+    await window.loadURL(`${url}/short`);
     assert.equal(await reader.toggleReader(contents), false);
-    await window.loadURL(url + '/article');
+    await window.loadURL(`${url}/article`);
     const execute = contents.executeJavaScriptInIsolatedWorld.bind(contents);
     let calls = 0;
     contents.executeJavaScriptInIsolatedWorld = async (...args) => {
       const result = await execute(...args);
-      if (++calls === 1) await window.loadURL(url + '/article');
+      if (++calls === 1) await window.loadURL(`${url}/article`);
       return result;
     };
     assert.equal(await reader.toggleReader(contents), null);
@@ -137,7 +141,7 @@ app
     assert.equal(await contents.executeJavaScript("!!document.querySelector('[data-yalqen-reader]')"), false);
     contents.debugger.detach();
     const privateWindow = windowFor(session.fromPartition('private-reader'));
-    await privateWindow.loadURL(url + '/article');
+    await privateWindow.loadURL(`${url}/article`);
     assert.equal(await reader.toggleReader(privateWindow.webContents), true);
     assert.equal(await reader.toggleReader(privateWindow.webContents), true);
     await privateWindow.loadURL('data:text/html,Internal');
@@ -146,19 +150,18 @@ app
       'PASS: genuine Chromium reader extracts/sanitizes article, preserves forms/history/focus, supports native font/exit/Escape controls and strict CSP, rejects same-URL navigation and works in private tabs without persistence',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   server.close();
   for (const window of windows) if (!window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

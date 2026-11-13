@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, WebContentsView } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import media from '../../dist/main/tabs/media.js';
 import freezer from '../../dist/main/tabs/tab-freezer.js';
 
@@ -98,11 +99,17 @@ app
     assert.equal(tab.frozen, false);
     await run(MEDIA_TOGGLE_SCRIPT);
     assert.equal(await page('song.paused'), false);
-
-    clearTimeout(deadline);
-    app.exit(0);
   })
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});

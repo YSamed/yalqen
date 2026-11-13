@@ -4,19 +4,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import profiles from '../../dist/main/app/profiles.js';
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-persistent-profiles-'));
-fs.mkdirSync(path.join(root, 'test-parent'));
-app.setPath('userData', path.join(root, 'test-parent'));
-const registry = new profiles.ProfileRegistry(root, 'Personal');
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-persistent-profiles-'));
+fs.mkdirSync(path.join(profile, 'test-parent'));
+app.setPath('userData', path.join(profile, 'test-parent'));
+const registry = new profiles.ProfileRegistry(profile, 'Personal');
 const worker = path.resolve('test/runtime/fixtures/profile-worker.mjs');
 const children = new Set();
 const deadline = setTimeout(() => app.exit(1), 35_000);
 function launch(id, mode, value) {
   const child = spawn(
     process.execPath,
-    [worker, `--yalqen-profile=${id}`, `--test-root=${root}`, `--test-mode=${mode}`, `--test-value=${value}`],
+    [worker, `--yalqen-profile=${id}`, `--test-root=${profile}`, `--test-mode=${mode}`, `--test-value=${value}`],
     { stdio: 'inherit', env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined } },
   );
   children.add(child);
@@ -45,35 +46,43 @@ app
     await launch(work.id, 'write', 'work').completion;
     await Promise.all([launch('default', 'read', 'personal').completion, launch(work.id, 'read', 'work').completion]);
     const running = launch(work.id, 'stay', 'work');
-    await eventually(() => fs.existsSync(path.join(root, 'stay-work.json')));
+    await eventually(() => fs.existsSync(path.join(profile, 'stay-work.json')));
     const blocked = registry.view('default').profiles.find(({ id }) => id === work.id);
     assert.equal(blocked.running, true);
     assert.throws(() => registry.remove(work.id, 'default'));
     await launch(work.id, 'duplicate', 'work').completion;
-    await eventually(() => JSON.parse(fs.readFileSync(path.join(root, 'stay-work.json'), 'utf8')).activated === true);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'duplicate-work.json'), 'utf8')).primary, false);
+    await eventually(() => {
+      try {
+        return JSON.parse(fs.readFileSync(path.join(profile, 'stay-work.json'), 'utf8')).activated === true;
+      } catch {
+        // The file is rewritten by the second-instance handler; reading between the
+        // create and the write is expected. Poll until the content settles.
+        return false;
+      }
+    });
+    assert.equal(JSON.parse(fs.readFileSync(path.join(profile, 'duplicate-work.json'), 'utf8')).primary, false);
     // A second profile remains usable while the first has its own live single-instance lock.
     await launch('default', 'read', 'personal').completion;
     await running.completion;
     registry.remove(work.id, 'default');
-    assert.equal(fs.existsSync(path.join(root, 'profiles', work.id)), false);
+    assert.equal(fs.existsSync(path.join(profile, 'profiles', work.id)), false);
     assert.equal(registry.view('default').profiles.length, 1);
     console.log(
       'PASS: independent Electron profile locks, persistent cookie/bookmark/history/settings/encrypted password isolation across restart, existing-instance activation and live-profile deletion protection',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(async () => {
   clearTimeout(deadline);
   for (const child of children) child.kill('SIGKILL');
   registry.close();
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error(error);
-  }
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

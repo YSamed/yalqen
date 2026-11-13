@@ -3,14 +3,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
 import settingsPage from '../../dist/main/app/settings-page.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import permissionStores from '../../dist/main/privacy/permissions.js';
 import siteStorage from '../../dist/shared/site-storage.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-sites-ui-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-sites-ui-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const rendererErrors = [];
 const iconRequests = [];
@@ -33,18 +35,18 @@ const labelled = (label) => `document.querySelector('#pane [aria-label=${JSON.st
 app
   .whenReady()
   .then(async () => {
-    const preferences = new settings.SettingsStore(root);
+    const preferences = new settings.SettingsStore(profile);
     preferences.update({
       adBlockExceptions: ['https://example.com'],
       thirdPartyCookieExceptions: ['https://accounts.example.com'],
     });
-    const permissions = new permissionStores.PermissionStore(root);
+    const permissions = new permissionStores.PermissionStore(profile);
     permissions.set('https://meet.example.com', ['camera'], 'allow');
     ipc.registerSettingsIpc({
       view: () => ({
         values: preferences.get(),
         version: 'test',
-        downloadDirectory: root,
+        downloadDirectory: profile,
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
@@ -150,18 +152,17 @@ app
       'PASS: sites settings merge permissions, exceptions and stored data per domain, edit them in place, fall back from broken favicons and search the list',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   if (window && !window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

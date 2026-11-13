@@ -4,11 +4,12 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import extensionBridge from '../../dist/main/extensions/extension-bridge.js';
 import tabs from '../../dist/main/tabs/tabs.js';
 
-const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-tabs-')));
-app.setPath('userData', path.join(root, 'profile'));
+const profile = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-tabs-')));
+app.setPath('userData', path.join(profile, 'profile'));
 const windows = [];
 let tabManager;
 const deadline = setTimeout(() => app.exit(1), 30000);
@@ -89,7 +90,7 @@ app
   .whenReady()
   .then(async () => {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-    const source = path.join(root, 'source');
+    const source = path.join(profile, 'source');
     fs.mkdirSync(source);
     fs.writeFileSync(
       path.join(source, 'manifest.json'),
@@ -222,19 +223,19 @@ app
       'PASS: extension tabs.create/remove/onUpdated/onRemoved, host-scoped cookies, permissions, windows and identity redirect bridge',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   tabManager?.destroyAll();
   server.close();
   for (const w of windows) if (!w.isDestroyed()) w.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

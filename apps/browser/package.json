@@ -11,23 +11,24 @@
   "scripts": {
     "postinstall": "node scripts/prepare-terminal.mjs",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
-    "build:main": "node -e \"for (const dir of ['dist/main', 'dist/shared']) require('node:fs').rmSync(dir, { recursive: true, force: true })\" && tsc -p tsconfig.main.json",
+    "build:main": "npm exec rimraf -- dist/main dist/shared && npm exec tsc -- -p tsconfig.main.json",
     "build:preload": "node scripts/build-preload.mjs",
     "build:renderer": "vite build",
-    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.preload.json && svelte-check --tsconfig ./tsconfig.renderer.json",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "pretest": "install-electron",
-    "test": "npm run build:main && npm run build:preload && node --test 'test/**/*.test.mjs'",
+    "typecheck": "npm exec tsc -- -p tsconfig.main.json --noEmit && npm exec tsc -- -p tsconfig.preload.json && npm exec svelte-check -- --tsconfig ./tsconfig.renderer.json",
+    "lint": "npm exec eslint -- .",
+    "format": "npm exec prettier -- --write .",
+    "format:check": "npm exec prettier -- --check .",
+    "pretest": "npm exec install-electron",
+    "test": "npm run build:main && npm run build:preload && node --test \"test/**/*.test.mjs\"",
     "test:runtime": "npm run build:renderer && node scripts/test-runtime.mjs",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test",
     "bench": "npm run build && node scripts/bench.mjs",
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
     "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
-    "package:mac": "npm run build && electron-builder --mac",
-    "package:linux": "npm run build && electron-builder --linux"
+    "package:mac": "npm run build && npm exec electron-builder -- --mac",
+    "package:win": "npm run build && npm exec electron-builder -- --win",
+    "package:linux": "npm run build && npm exec electron-builder -- --linux"
   },
   "devDependencies": {
     "@electron/osx-sign": "^2.7.2",
@@ -45,6 +46,7 @@
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
     "prettier-plugin-svelte": "^4.1.1",
+    "rimraf": "^6.1.4",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",
     "typescript": "^6.0.3",
@@ -68,7 +70,6 @@
       "dist/renderer/**/*",
       "dist/shared/**/*",
       "!node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
-      "!node_modules/node-pty/prebuilds/win32-*/**/*",
       "!**/*.map",
       "package.json"
     ],
@@ -99,6 +100,9 @@
       }
     ],
     "mac": {
+      "files": [
+        "!node_modules/node-pty/prebuilds/win32-*/**/*"
+      ],
       "target": [
         "dmg",
         "zip"
@@ -117,6 +121,9 @@
       "artifactName": "Yalqen-${version}-${arch}.${ext}"
     },
     "linux": {
+      "files": [
+        "!node_modules/node-pty/prebuilds/win32-*/**/*"
+      ],
       "target": "AppImage",
       "category": "Productivity",
       "icon": "resources/icon-512.png",

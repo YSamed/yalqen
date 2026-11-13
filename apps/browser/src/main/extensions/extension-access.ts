@@ -64,21 +64,33 @@ export function restrictedManifest(
   return result;
 }
 
+// Chromium derives an unpacked extension's id from the resolved path bytes, which are UTF-16LE on
+// Windows and UTF-8 elsewhere, with an uppercased drive letter. Any mismatch changes the id and
+// stops the extension from loading.
+export function resolvedExtensionPath(directory: string): string {
+  const resolved = path.resolve(directory);
+  return process.platform === 'win32' ? resolved.replace(/^[a-z]:/, (drive) => drive.toUpperCase()) : resolved;
+}
+
+// The id derives from these same bytes, so it survives a move into a restricted runtime copy.
+function pathBytes(directory: string): Buffer {
+  return Buffer.from(resolvedExtensionPath(directory), process.platform === 'win32' ? 'utf16le' : 'utf8');
+}
+
 export function extensionIdentity(directory: string, manifest: Manifest): { id: string; key: string } {
   const key =
-    typeof manifest.key === 'string' && manifest.key.trim()
-      ? manifest.key
-      : Buffer.from(path.resolve(directory)).toString('base64');
+    typeof manifest.key === 'string' && manifest.key.trim() ? manifest.key : pathBytes(directory).toString('base64');
   return { id: extensionIdOfKey(Buffer.from(key, 'base64')), key };
 }
 
 export function runtimeExtensionPath(root: string, directory: string): string {
-  return path.join(root, createHash('sha256').update(path.resolve(directory)).digest('hex'));
+  return path.join(root, createHash('sha256').update(resolvedExtensionPath(directory)).digest('hex'));
 }
 
 export function prepareRestrictedExtension(root: string, directory: string, manifest: Manifest): string {
   const target = runtimeExtensionPath(root, directory);
-  if (target.startsWith(path.resolve(directory) + path.sep)) throw new Error(t('extensions.accessPackageFailed'));
+  if (target.startsWith(resolvedExtensionPath(directory) + path.sep))
+    throw new Error(t('extensions.accessPackageFailed'));
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   if (fs.lstatSync(root).isSymbolicLink()) throw new Error(t('extensions.accessPackageFailed'));
   validatePackage(directory);

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, WebContentsView, ipcMain } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import types from '../../dist/shared/types.js';
 import menus from '../../dist/main/window/window-menus.js';
@@ -187,15 +188,13 @@ app
     console.error(error);
     app.exit(1);
   });
-app.on('before-quit', () => {
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.destroyAll();
   window?.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });
