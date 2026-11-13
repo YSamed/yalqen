@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.3](https://github.com/YSamed/yalqen/compare/v0.4.2...v0.4.3) (2026-11-13)
+
+
+### Features
+
+* switch tabs between normal, developer and private in place ([#402](https://github.com/YSamed/yalqen/issues/402)) ([00e4a7c](https://github.com/YSamed/yalqen/commit/00e4a7cea636a416613e6db43027d5fef3da2a34))
+
+
+### Bug Fixes
+
+* give DevTools its own rounded view beside the page ([#403](https://github.com/YSamed/yalqen/issues/403)) ([48ebd35](https://github.com/YSamed/yalqen/commit/48ebd35f2d6f508fc7a89d8fea58d60081c2a5ab))
+
 ## [0.4.2](https://github.com/YSamed/yalqen/compare/v0.4.1...v0.4.2) (2026-11-13)
 
 
