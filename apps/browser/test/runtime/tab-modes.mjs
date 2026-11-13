@@ -21,10 +21,10 @@ const server = http.createServer((_req, res) => {
 });
 
 let tabManager;
-async function eventually(predicate, label) {
+async function eventually(predicate, label, state = () => '') {
   const start = Date.now();
   while (!(await predicate())) {
-    if (Date.now() - start > 5000) throw new Error(`Timed out: ${label}`);
+    if (Date.now() - start > 5000) throw new Error(`Timed out: ${label} ${state()}`);
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
 }
@@ -77,8 +77,31 @@ app
     const window = new BaseWindow({ show: false });
     tabManager = manager(window);
     const contentsOf = (id) => tabManager.find(id).view.webContents;
+    // The first load once timed out on CI only (about 70 ms locally), so a timeout reports where the tab stopped.
+    const loadState = (id) => {
+      try {
+        const contents = tabManager.find(id)?.view?.webContents;
+        const live = contents && !contents.isDestroyed();
+        const { url, loading } = tabManager.snapshotFor(id) ?? {};
+        return JSON.stringify({
+          url,
+          loading,
+          hasView: Boolean(contents),
+          destroyed: contents?.isDestroyed(),
+          contentsUrl: live ? contents.getURL() : undefined,
+          contentsLoading: live ? contents.isLoading() : undefined,
+          crashed: live ? contents.isCrashed() : undefined,
+        });
+      } catch (error) {
+        return `(state unavailable: ${error.message})`;
+      }
+    };
     const loaded = (id) =>
-      eventually(() => tabManager.snapshotFor(id)?.url === page && !tabManager.snapshotFor(id).loading, page);
+      eventually(
+        () => tabManager.snapshotFor(id)?.url === page && !tabManager.snapshotFor(id).loading,
+        page,
+        () => loadState(id),
+      );
 
     const mail = tabManager.open(page);
     await loaded(mail);
