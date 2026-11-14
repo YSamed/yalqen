@@ -37,6 +37,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.9",
     "@types/node": "^24.19.2",
+    "@types/which": "^3.0.4",
     "bippy": "^0.7.3",
     "electron": "^45.3.2",
     "electron-builder": "^26.18.0",
@@ -161,7 +162,9 @@
     "marked": "^18.2.0",
     "node-pty": "^1.1.0",
     "parse5": "^8.1.1",
-    "tldts": "^7.5.2"
+    "tldts": "^7.5.2",
+    "open": "^11.0.4",
+    "which": "^7.0.0"
   },
   "engines": {
     "node": ">=22.12"

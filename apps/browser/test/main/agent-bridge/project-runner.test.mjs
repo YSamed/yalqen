@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import runnerModule from '../../../dist/main/agent-bridge/project-runner.js';
+import { DEFAULT_SHELL } from '../../../dist/main/platform.js';
 
 const { ProjectRunner, detectProjectCommand, findLocalUrl } = runnerModule;
 
@@ -39,8 +40,8 @@ function fixture(t, files = { 'package.json': manifest({ dev: 'vite' }) }) {
       children.push(child);
       return child;
     },
-    shell: '/bin/zsh',
-    env: { PATH: '/usr/bin:/bin', ELECTRON_RUN_AS_NODE: '1', CLAUDECODE: '1' },
+    shell: DEFAULT_SHELL,
+    env: { PATH: process.env.PATH, ELECTRON_RUN_AS_NODE: '1', CLAUDECODE: '1' },
   });
   t.after(() => runner.dispose());
   return { runner, calls, children, directory };
@@ -109,7 +110,7 @@ test('starts the script through the login shell with the script name outside the
   await runner.selectDirectory(directory);
   assert.equal(runner.start(), true);
   const [shell, args, options] = calls.spawn[0];
-  assert.equal(shell, '/bin/zsh');
+  assert.equal(shell, DEFAULT_SHELL);
   assert.equal(args[0], '-ilc');
   assert.ok(!args[1].includes('vite') && !args[1].includes('dev'));
   assert.equal(options.cwd, directory);

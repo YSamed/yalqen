@@ -107,9 +107,10 @@ test('icons prefer the smallest size that is large enough', () => {
 });
 
 test('extension files and pages cannot leave the extension', () => {
-  assert.equal(resolveInside('/ext/a', 'icons/i.png'), '/ext/a/icons/i.png');
-  assert.equal(resolveInside('/ext/a', '/icons/i.png'), '/ext/a/icons/i.png');
-  assert.equal(resolveInside('/ext/a', '../b/secret.png'), null);
+  const root = path.resolve('ext', 'a');
+  assert.equal(resolveInside(root, 'icons/i.png'), path.join(root, 'icons', 'i.png'));
+  assert.equal(resolveInside(root, '/icons/i.png'), path.join(root, 'icons', 'i.png'));
+  assert.equal(resolveInside(root, '../b/secret.png'), null);
   assert.equal(extensionPage('chrome-extension://abc/', '/ui/popup.html'), 'chrome-extension://abc/ui/popup.html');
   assert.equal(extensionPage('chrome-extension://abc/', '../../x.html'), 'chrome-extension://abc/x.html');
   assert.equal(extensionPage('chrome-extension://abc/', null), null);

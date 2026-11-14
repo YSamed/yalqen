@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import setupModule from '../../../dist/main/agent-bridge/claude-setup.js';
+import { DEFAULT_SHELL, IS_POSIX } from '../../../dist/main/platform.js';
 
 const { addToClaudeCode } = setupModule;
 

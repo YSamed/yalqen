@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import type { IPty, IPtyForkOptions } from 'node-pty';
 import { EMPTY_AGENT_SESSION, isAgentTerminalSize } from '../../shared/agent-panel.js';
+import { DEFAULT_SHELL } from '../platform.js';
 import type { AgentSessionState, AgentTerminalOutput, AgentTerminalSnapshot } from '../../shared/types.js';
 
 const MAX_REPLAY_LENGTH = 1024 * 1024;
@@ -152,7 +153,7 @@ export class AgentSession {
     });
     const dimensions = isAgentTerminalSize(size) ? size : { cols: 80, rows: 24 };
     try {
-      const terminal = host.spawn(this.options.shell ?? env.SHELL ?? '/bin/zsh', ['-ilc', SCRIPT], {
+      const terminal = host.spawn(this.options.shell ?? env.SHELL ?? DEFAULT_SHELL, ['-ilc', SCRIPT], {
         name: 'xterm-256color',
         ...dimensions,
         cwd: directory,

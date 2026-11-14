@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -127,6 +126,7 @@ import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
 import { accentHex } from '../../shared/accent.js';
 import { windowColorHex } from '../../shared/window-color.js';
+import { openAsText } from '../platform.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -1107,9 +1107,7 @@ export class YalqenWindow {
       const [real, root] = await Promise.all([fs.realpath(file), fs.realpath(directory)]);
       if (!real.startsWith(root + path.sep) || !(await fs.stat(real)).isFile()) return false;
       // -t opens the file as text, so a script or app bundle Claude wrote is never launched.
-      await new Promise<void>((resolve, reject) =>
-        execFile('/usr/bin/open', ['-t', real], (error) => (error ? reject(error) : resolve())),
-      );
+      await openAsText(real);
       return true;
     } catch {
       return false;

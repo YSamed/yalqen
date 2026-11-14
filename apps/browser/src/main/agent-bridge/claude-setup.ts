@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import type { AgentConnectionState, AgentSetupResult } from '../../shared/types.js';
+import { DEFAULT_SHELL } from '../platform.js';
 
 const TIMEOUT_MS = 20_000;
 const NOT_FOUND = 'command -v claude >/dev/null 2>&1 || { echo "claude-not-found" >&2; exit 127; }';
@@ -24,7 +25,7 @@ interface Run {
 
 // Apps opened from the Dock get a bare PATH, so the user's login shell finds the CLI the way their terminal does.
 function runClaude(script: string, options: ClaudeSetupOptions, extraEnv: NodeJS.ProcessEnv = {}): Promise<Run> {
-  const shell = options.shell ?? process.env.SHELL ?? '/bin/zsh';
+  const shell = options.shell ?? process.env.SHELL ?? DEFAULT_SHELL;
   const env = { ...(options.env ?? process.env), ...extraEnv };
   return new Promise((resolve) => {
     execFile(shell, ['-ilc', script], { env, timeout: TIMEOUT_MS }, (error, stdout, stderr) =>

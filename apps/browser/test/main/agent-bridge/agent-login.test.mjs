@@ -6,6 +6,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { promisify } from 'node:util';
 import login from '../../../dist/main/agent-bridge/agent-login.js';
+import { DEFAULT_SHELL } from '../../../dist/main/platform.js';
 
 const { BROWSER_SCRIPT, loginUrlIn } = login;
 
@@ -26,6 +27,6 @@ test('the browser stand-in records the URL it is asked to open', async (t) => {
   const urlFile = path.join(directory, 'url');
   await fs.writeFile(browser, BROWSER_SCRIPT, { mode: 0o700 });
   const url = 'https://claude.com/cai/oauth/authorize?code=true&redirect_uri=http%3A%2F%2Flocalhost%3A59695%2Fcallback';
-  await promisify(execFile)(browser, [url], { env: { ...process.env, YALQEN_LOGIN_URL_FILE: urlFile } });
+  await promisify(execFile)(DEFAULT_SHELL, [browser, url], { env: { ...process.env, YALQEN_LOGIN_URL_FILE: urlFile } });
   assert.equal(loginUrlIn(await fs.readFile(urlFile, 'utf8')), url);
 });
