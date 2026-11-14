@@ -3,19 +3,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import bridge from '../../dist/main/window/interface-bridge.js';
 
-const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-interface-bridge-')));
-app.setPath('userData', path.join(root, 'profile'));
+const profile = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-interface-bridge-')));
+app.setPath('userData', path.join(profile, 'profile'));
 const deadline = setTimeout(() => app.exit(1), 30000);
 process.on('uncaughtException', (error) => {
   console.error(error);
   app.exit(1);
 });
 
-const preload = path.join(root, 'preload.js');
+const preload = path.join(profile, 'preload.js');
 fs.writeFileSync(preload, "require('electron').contextBridge.exposeInMainWorld('yalqen', { ready: true });");
-const page = path.join(root, 'index.html');
+const page = path.join(profile, 'index.html');
 fs.writeFileSync(page, '<title>Interface</title>');
 const windows = [];
 
@@ -68,17 +69,16 @@ app
       'PASS: the window reloads its interface when it comes up without its preload bridge, at most twice, and leaves a healthy interface alone',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
-  for (const window of windows) if (!window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

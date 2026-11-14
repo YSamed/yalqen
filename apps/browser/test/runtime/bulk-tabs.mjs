@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, WebContentsView } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-bulk-tabs-'));
@@ -80,20 +81,18 @@ app
       'PASS: real selected-tab close cancels atomically, preserves forms and pinned tabs, then closes with private history isolation',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.destroyAll();
   window?.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error('Bulk tabs test profile cleanup failed:', error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

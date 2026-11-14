@@ -63,7 +63,7 @@ test('easels persist items, patch only allowed fields and keep per-easel caps', 
     assert.deepEqual([patched.id, patched.kind, patched.x, patched.text], [added.id, 'note', 50, 'changed']);
     assert.equal(store.patch(easel.id, added.id, { x: 'far' }), false);
     assert.equal(store.patch(easel.id, store.get(easel.id).items[1].id, { x: 1 }), false);
-    assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
 
     const reopened = new EaselStore(directory);
     assert.deepEqual(reopened.list(), [{ id: easel.id, name: 'Research board', count: 2 }]);

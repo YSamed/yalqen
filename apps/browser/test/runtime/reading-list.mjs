@@ -3,13 +3,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session, webContents } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import reading from '../../dist/main/library/reading-list.js';
 import handlers from '../../dist/main/library/reading-list-handlers.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import shared from '../../dist/shared/reading-list.js';
 import i18n from '../../dist/shared/i18n.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-reading-list-ui-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-reading-list-ui-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const windows = [];
 const deadline = setTimeout(() => app.exit(1), 30_000);
@@ -24,7 +26,7 @@ app
   .whenReady()
   .then(async () => {
     i18n.setLocale('tr');
-    const store = new reading.ReadingListStore(root);
+    const store = new reading.ReadingListStore(profile);
     const browsing = session.fromPartition('reading-list');
     const privateSession = session.fromPartition('private-reading-list');
     handlers.installReadingListHandlers({
@@ -80,7 +82,7 @@ app
       contents,
       "document.querySelector('[data-read]').getAttribute('aria-pressed')==='true' && !document.querySelector('[data-read]').disabled",
     );
-    assert.equal(new reading.ReadingListStore(root).list('', 'read')[0].title, title);
+    assert.equal(new reading.ReadingListStore(profile).list('', 'read')[0].title, title);
     await contents.executeJavaScript(
       "document.querySelector('select').value='unread';document.querySelector('select').dispatchEvent(new Event('change'))",
     );
@@ -131,8 +133,8 @@ app
     await contents.executeJavaScript("document.querySelector('[data-remove]').click()");
     await eventually(contents, "document.querySelectorAll('ol li').length===0");
     await eventually(privateContents, "document.querySelectorAll('ol li').length===1");
-    assert.equal(new reading.ReadingListStore(root).list().length, 1);
-    const attackerPreload = path.join(root, 'attacker.cjs');
+    assert.equal(new reading.ReadingListStore(profile).list().length, 1);
+    const attackerPreload = path.join(profile, 'attacker.cjs');
     fs.writeFileSync(
       attackerPreload,
       "const{contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('invoke',(name,...args)=>ipcRenderer.invoke(name,...args));",
@@ -162,12 +164,12 @@ app
     console.error(error);
     app.exit(1);
   });
-app.on('before-quit', () => {
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   for (const window of windows) if (!window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

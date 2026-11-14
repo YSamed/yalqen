@@ -4,11 +4,13 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import extensions from '../../dist/main/extensions/extensions.js';
 import controllers from '../../dist/main/extensions/extension-access-controller.js';
 import tabs from '../../dist/main/tabs/tabs.js';
-const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-access-')));
-app.setPath('userData', path.join(root, 'profile'));
+
+const profile = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-access-')));
+app.setPath('userData', profile);
 const windows = [];
 let manager, tabManager;
 const deadline = setTimeout(() => app.exit(1), 30000);
@@ -31,7 +33,7 @@ app
   .whenReady()
   .then(async () => {
     await new Promise((resolve) => server.listen(0, '0.0.0.0', resolve));
-    const source = path.join(root, 'source');
+    const source = path.join(profile, 'source');
     fs.mkdirSync(source);
     const manifest = {
       manifest_version: 3,
@@ -49,7 +51,7 @@ app
       `globalThis.inject=async(id)=>new Promise(resolve=>chrome.scripting.executeScript({target:{tabId:id},func:()=>{document.documentElement.dataset.injected='yes';return true}},result=>resolve({error:chrome.runtime.lastError?.message??null,result})));globalThis.fetchSite=async(url)=>{try{return {text:await(await fetch(url)).text()}}catch(e){return {error:e.message}}};globalThis.saveValue=()=>chrome.storage.local.set({retained:'keep identity'});globalThis.readValue=()=>chrome.storage.local.get('retained');`,
     );
     const browsing = session.fromPartition('persist:access');
-    manager = new extensions.ExtensionManager(root, browsing, () => {});
+    manager = new extensions.ExtensionManager(profile, browsing, () => {});
     assert.equal(await manager.install(source), null);
     const identity = manager.list()[0].id;
     async function extensionPage() {
@@ -149,7 +151,7 @@ app
     manager.saveNow();
     manager.stopUpdates();
     browsing.extensions.removeExtension(identity);
-    manager = new extensions.ExtensionManager(root, browsing, () => {});
+    manager = new extensions.ExtensionManager(profile, browsing, () => {});
     await manager.loadAll();
     assert.equal(manager.list()[0].id, identity);
     assert.deepEqual(manager.list()[0].sessionSites, []);
@@ -165,22 +167,22 @@ app
       'PASS: native host permissions and content scripts enforced, DOM/network access blocked outside selected sites, stable identity/storage, atomic beforeunload cancellation, session grant/reset',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.stopUpdates();
   tabManager?.destroyAll();
   server.close();
   for (const w of windows) if (!w.isDestroyed()) w.destroy();
 });
-app.on('quit', () => {
+
+registerWillQuit(async () => {
   clearTimeout(deadline);
   manager?.stopUpdates();
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+  await removeDirectory(profile);
 });

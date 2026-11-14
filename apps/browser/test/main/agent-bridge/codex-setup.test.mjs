@@ -66,7 +66,7 @@ test('connecting writes the config with a backup, and removing restores the othe
   assert.equal(await codexConnection(URL, 'secret', file), 'missing');
   assert.deepEqual(await addToCodex(URL, 'secret', file), { ok: true });
   assert.equal(fs.readFileSync(`${file}.yalqen-backup`, 'utf8'), EXISTING);
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   assert.equal(await codexConnection(URL, 'secret', file), 'connected');
   assert.equal(await codexConnection(URL, 'newer', file), 'stale');
   assert.deepEqual(await removeFromCodex(file), { ok: true });
@@ -83,6 +83,7 @@ test('connecting creates the config when Codex has none yet', async (t) => {
 });
 
 test('the config lives in CODEX_HOME when it is set', () => {
-  assert.equal(codexConfigPath({ CODEX_HOME: '/tmp/codex-home' }), '/tmp/codex-home/config.toml');
+  const tmp = path.join('', 'tmp', 'codex-home');
+  assert.equal(codexConfigPath({ CODEX_HOME: tmp }), path.join(tmp, 'config.toml'));
   assert.equal(codexConfigPath({}), path.join(os.homedir(), '.codex', 'config.toml'));
 });

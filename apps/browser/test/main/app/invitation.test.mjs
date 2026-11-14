@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { test } from 'node:test';
 import invitation from '../../../dist/main/app/invitation.js';
 import responses from '../../../dist/main/pages/responses.js';
@@ -6,11 +7,14 @@ import responses from '../../../dist/main/pages/responses.js';
 const { appearancePatch, invitationSources, invitationTabs } = invitation;
 
 test('import sources split the browser from the profile and find history beside the bookmarks', () => {
+  const chrome = '/Users/a/Library/Application Support/Google/Chrome/Profile 1/Bookmarks';
+  const brave = '/Users/a/Library/Application Support/Brave/Default/Bookmarks';
+  const firefox = '/Users/a/Firefox/Profiles/x/places.sqlite';
   const sources = invitationSources(
     [
-      { label: 'Chrome — Work', file: '/Users/a/Library/Application Support/Google/Chrome/Profile 1/Bookmarks' },
-      { label: 'Brave — Default', file: '/Users/a/Library/Application Support/Brave/Default/Bookmarks' },
-      { label: 'Firefox — default-release', file: '/Users/a/Firefox/Profiles/x/places.sqlite' },
+      { label: 'Chrome — Work', file: chrome },
+      { label: 'Brave — Default', file: brave },
+      { label: 'Firefox — default-release', file: firefox },
     ],
     (file) => !file.includes('Brave'),
   );
@@ -19,22 +23,22 @@ test('import sources split the browser from the profile and find history beside 
       id: 0,
       browser: 'Chrome',
       profile: 'Work',
-      bookmarks: '/Users/a/Library/Application Support/Google/Chrome/Profile 1/Bookmarks',
-      history: '/Users/a/Library/Application Support/Google/Chrome/Profile 1/History',
+      bookmarks: chrome,
+      history: path.join(path.dirname(chrome), 'History'),
     },
     {
       id: 1,
       browser: 'Brave',
       profile: 'Default',
-      bookmarks: '/Users/a/Library/Application Support/Brave/Default/Bookmarks',
+      bookmarks: brave,
       history: null,
     },
     {
       id: 2,
       browser: 'Firefox',
       profile: 'default-release',
-      bookmarks: '/Users/a/Firefox/Profiles/x/places.sqlite',
-      history: '/Users/a/Firefox/Profiles/x/places.sqlite',
+      bookmarks: firefox,
+      history: firefox,
     },
   ]);
 });

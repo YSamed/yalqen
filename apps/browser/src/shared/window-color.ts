@@ -28,6 +28,8 @@ export const MIN_CONTRAST = 4.5;
 const mix = (from: Rgb, to: Rgb, amount: number): Rgb =>
   from.map((channel, index) => Math.round(channel + (to[index] - channel) * amount)) as unknown as Rgb;
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
 const parseHex = (hex: string): Rgb =>
   [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16)) as unknown as Rgb;
 
@@ -63,8 +65,10 @@ export function windowTint(hex: string): Record<Scheme, { bg: Rgb; glass: Rgb; m
   return { light: derive(WINDOW_BASES.light), dark: derive(WINDOW_BASES.dark) };
 }
 
-export function windowTintVars(hex: string | null): Record<string, string | null> {
-  const tint = hex === null ? null : windowTint(hex);
+export function windowTintVars(hex: string | null | undefined): Record<string, string | null> {
+  // A missing or malformed color must read as "no tint" rather than crash a render: state snapshots
+  // can arrive without the field, and a hex is the one place a bad value would reach .slice.
+  const tint = typeof hex === 'string' && HEX_COLOR.test(hex) ? windowTint(hex) : null;
   const rgb = (color?: Rgb) => (color ? `rgb(${color.join(' ')})` : null);
   return {
     '--tint-bg-light': rgb(tint?.light.bg),

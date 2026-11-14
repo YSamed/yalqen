@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import storage from '../../dist/main/privacy/site-storage.js';
 import handlers from '../../dist/main/privacy/site-storage-handlers.js';
 import settings from '../../dist/main/app/settings.js';
@@ -11,8 +12,8 @@ import settingsIpc from '../../dist/main/app/settings-ipc.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import types from '../../dist/shared/site-storage.js';
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-site-storage-'));
-app.setPath('userData', root);
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-site-storage-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const windows = [];
 const rendererErrors = [];
@@ -95,7 +96,7 @@ app
     const browsing = session.fromPartition('persist:storage-test'),
       privateSession = session.fromPartition('private-storage-test'),
       otherProfile = session.fromPartition('persist:other-storage-profile');
-    const index = new storage.StorageOrigins(root),
+    const index = new storage.StorageOrigins(profile),
       manager = new storage.SiteStorageManager(browsing, index, () => []);
     handlers.observeStorageOrigins(browsing, index, (contents) =>
       windows.some((window) => window.webContents === contents),
@@ -116,7 +117,7 @@ app
     );
     assert.deepEqual(index.list().sort(), [a, b].sort());
     index.saveNow();
-    assert.deepEqual(new storage.StorageOrigins(root).list().sort(), [a, b].sort());
+    assert.deepEqual(new storage.StorageOrigins(profile).list().sort(), [a, b].sort());
     await aWindow.loadURL('about:blank');
     await bWindow.loadURL('about:blank');
     await browsing.clearStorageData({ storages: ['cookies'] });
@@ -134,12 +135,12 @@ app
         return confirmResult;
       },
     });
-    const preferences = new settings.SettingsStore(root);
+    const preferences = new settings.SettingsStore(profile);
     settingsIpc.registerSettingsIpc({
       view: () => ({
         values: preferences.get(),
         version: 'test',
-        downloadDirectory: root,
+        downloadDirectory: profile,
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
@@ -232,7 +233,7 @@ app
     assert.equal((await stored(bWindow, b)).local, 'normal-b');
     duringConfirm = async () => {};
     stage = 'untrusted IPC';
-    const attackerPreload = path.join(root, 'attacker.cjs');
+    const attackerPreload = path.join(profile, 'attacker.cjs');
     fs.writeFileSync(
       attackerPreload,
       "const{contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('test',{invoke:(...args)=>ipcRenderer.invoke(...args)})",
@@ -274,20 +275,19 @@ app
       'PASS: production site-data settings discover dormant Chromium storage, measure real usage, preserve cancel/navigation, clear scoped/all data and isolate private/other profiles and untrusted IPC',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   server.close();
   privateServer.close();
   for (const window of windows) if (!window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

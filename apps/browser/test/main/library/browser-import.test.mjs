@@ -51,7 +51,7 @@ async function withDir(run) {
   try {
     await run(dir);
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    await fs.promises.rm(dir, { recursive: true, force: true, retryDelay: 250, maxRetries: 20 });
   }
 }
 
@@ -193,11 +193,11 @@ test('installed browser profiles are found with their display names', async () =
     assert.deepEqual(
       chromiumProfiles('Bookmarks', dir).map(({ label, file }) => [label, path.relative(dir, file)]),
       [
-        ['Chrome — Kişisel', 'Google/Chrome/Default/Bookmarks'],
-        ['Chrome — Profile 2', 'Google/Chrome/Profile 2/Bookmarks'],
-        ['Chrome — Profile 10', 'Google/Chrome/Profile 10/Bookmarks'],
-        ['Edge — Default', 'Microsoft Edge/Default/Bookmarks'],
-        ['Arc — Arc Kişisel', 'Arc/User Data/Default/Bookmarks'],
+        ['Chrome — Kişisel', path.join('Google', 'Chrome', 'Default', 'Bookmarks')],
+        ['Chrome — Profile 2', path.join('Google', 'Chrome', 'Profile 2', 'Bookmarks')],
+        ['Chrome — Profile 10', path.join('Google', 'Chrome', 'Profile 10', 'Bookmarks')],
+        ['Edge — Default', path.join('Microsoft Edge', 'Default', 'Bookmarks')],
+        ['Arc — Arc Kişisel', path.join('Arc', 'User Data', 'Default', 'Bookmarks')],
       ],
     );
     assert.deepEqual(chromiumProfiles('History', dir), []);

@@ -27,7 +27,7 @@ test('reading list persists state immediately, deduplicates and searches without
     store.list()[0].title = 'Changed outside';
     assert.equal(store.list()[0].title, entry.title);
     assert.deepEqual(new ReadingListStore(directory).list(), store.list());
-    assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
     assert.equal(store.setRead('missing', false), false);
     assert.equal(store.remove(entry.id), true);
     assert.equal(new ReadingListStore(directory).list().length, 0);

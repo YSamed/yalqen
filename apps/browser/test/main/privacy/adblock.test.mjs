@@ -21,8 +21,10 @@ test('disabled startup leaves the ad blocking engine unloaded until it is reques
       [
         '-e',
         `const assert = require('node:assert/strict');
+        const path = require('node:path');
         const adblock = require(process.argv[1]);
-        const loadedEngines = () => Object.keys(require.cache).filter((file) => file.includes('/@ghostery/'));
+        const ghostery = path.join('node_modules', '@ghostery');
+        const loadedEngines = () => Object.keys(require.cache).filter((file) => file.includes(ghostery));
         const blocker = new adblock.AdBlocker([], process.argv[2]);
         blocker.setEnabled(false);
         assert.deepEqual(loadedEngines(), []);

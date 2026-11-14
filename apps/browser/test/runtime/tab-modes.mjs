@@ -4,10 +4,11 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 
-const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-tab-modes-')));
-app.setPath('userData', path.join(root, 'profile'));
+const profile = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-tab-modes-')));
+app.setPath('userData', path.join(profile, 'profile'));
 const deadline = setTimeout(() => app.exit(1), 30000);
 process.on('uncaughtException', (error) => {
   console.error(error);
@@ -207,18 +208,18 @@ app
       'PASS: tabs switch between normal, developer and private in place, each in its own session, with DevTools in developer mode, new tabs, menu links and peeks keeping the mode, pinned tabs kept and the setting turning it off',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   tabManager?.destroyAll();
   server.close();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

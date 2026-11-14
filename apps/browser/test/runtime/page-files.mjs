@@ -4,9 +4,11 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, WebContentsView } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import files from '../../dist/main/window/page-files.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-page-files-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-page-files-'));
+app.setPath('userData', profile);
 const deadline = setTimeout(() => app.exit(1), 30_000);
 let window;
 const views = [];
@@ -43,8 +45,8 @@ app
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const contents = page();
     await contents.loadURL(`http://127.0.0.1:${server.address().port}/`);
-    const mhtml = path.join(root, 'chosen archive.mhtml');
-    const html = path.join(root, 'chosen page #1.html');
+    const mhtml = path.join(profile, 'chosen archive.mhtml');
+    const html = path.join(profile, 'chosen page #1.html');
     let failures = 0;
     const dialogs = (filePath, canceled = false) => ({
       showSaveDialog: async () => ({ filePath, canceled }),
@@ -86,7 +88,7 @@ app
       assert.ok(!background.includes('page_files/'), `Inline style uses relocated resources: ${background}`);
       offline.debugger.detach();
     }
-    const cancelled = path.join(root, 'cancelled.mhtml');
+    const cancelled = path.join(profile, 'cancelled.mhtml');
     await files.saveOfflinePage(window, contents, dialogs(cancelled, true));
     assert.equal(fs.existsSync(cancelled), false);
     const opened = [];
@@ -98,7 +100,7 @@ app
     });
     assert.equal(opened.length, 2);
     assert.match(opened[1], /%23/);
-    const existing = path.join(root, 'preserved.mhtml');
+    const existing = path.join(profile, 'preserved.mhtml');
     fs.writeFileSync(existing, 'keep existing');
     await assert.rejects(
       files.writeOfflinePage(
@@ -112,14 +114,14 @@ app
     );
     assert.equal(fs.readFileSync(existing, 'utf8'), 'keep existing');
     assert.equal(
-      fs.readdirSync(root).some((name) => name.startsWith('.yalqen-save-')),
+      fs.readdirSync(profile).some((name) => name.startsWith('.yalqen-save-')),
       false,
     );
-    const stale = path.join(root, 'stale.mhtml');
+    const stale = path.join(profile, 'stale.mhtml');
     fs.writeFileSync(stale, 'keep stale');
     await assert.rejects(files.writeOfflinePage(contents, stale, () => false));
     assert.equal(fs.readFileSync(stale, 'utf8'), 'keep stale');
-    const changed = path.join(root, 'changed.mhtml');
+    const changed = path.join(profile, 'changed.mhtml');
     fs.writeFileSync(changed, 'keep changed');
     await files.saveOfflinePage(window, contents, {
       ...dialogs(changed),
@@ -133,21 +135,19 @@ app
       'PASS: real MHTML/complete HTML reopen without the server with CSS/images; native file URL encoding, cancellation and failed/stale saves preserve existing files',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
-  server.close();
+  server?.close();
   for (const view of views) if (!view.webContents.isDestroyed()) view.webContents.close();
   if (window && !window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

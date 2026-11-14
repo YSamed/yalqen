@@ -3,10 +3,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, WebContentsView } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-tab-motion-'));
 app.setPath('userData', profile);
+// Windows native occlusion tracking marks the window hidden as soon as another window covers it,
+// which makes the renderer report document.hidden and suppresses the fade. The fade gate is right
+// to ignore hidden pages, so disable the tracking and let visibility reflect the tab switch.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 let stage = 'Electron ready';
 const deadline = setTimeout(() => {
   console.error(`Timed out waiting for ${stage}`);
@@ -55,10 +60,21 @@ app
     await contents.debugger.sendCommand('Emulation.setEmulatedMedia', {
       features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
     });
-    // Let native focus/visibility changes settle before timing the warm switch.
+    // A freshly attached WebContentsView reports itself hidden until Chromium propagates the
+    // visibility change to its renderer, which on a cold first paint can exceed any fixed delay.
+    // The fade gate legitimately refuses to run while the page is hidden, so wait for the view to
+    // actually report the expected state instead of guessing a timeout before timing the switch.
+    const waitHidden = async (hidden) => {
+      const until = Date.now() + 5000;
+      while ((await contents.executeJavaScript('document.hidden')) !== hidden) {
+        if (Date.now() > until) throw new Error(`Tab view visibility never settled (expected hidden=${hidden})`);
+        await delay(25);
+      }
+    };
     manager.activate('b');
-    await delay(100);
+    await waitHidden(false);
     manager.activate('a');
+    await waitHidden(true);
     await delay(100);
     let paused;
     let resolveStarted;
@@ -78,7 +94,7 @@ app
     stage = 'tab animation to start';
     const animationId = await Promise.race([
       started,
-      delay(2000).then(async () => {
+      delay(5000).then(async () => {
         const state = await contents.executeJavaScript(
           'JSON.stringify({ready:document.readyState,hidden:document.hidden,motion:matchMedia("(prefers-reduced-motion: reduce)").matches})',
         );
@@ -122,13 +138,18 @@ app
       'PASS: real tab switch fades for 140ms, accepts clicks during motion, preserves fixed layout and site opacity, cancels on fast switches and respects reduced motion',
     );
   })
-  .then(() => {
-    clearTimeout(deadline);
-    manager?.destroyAll();
-    window?.destroy();
-    app.quit();
-  })
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+  manager?.destroyAll();
+  window?.destroy();
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});

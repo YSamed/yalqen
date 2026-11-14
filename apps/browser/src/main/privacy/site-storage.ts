@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { getDomain } from 'tldts';
 import type { Cookie, Session, WebContents } from 'electron';
@@ -57,6 +58,16 @@ export class StorageOrigins {
   }
 }
 
+// Chromium holds a write lock on the live QuotaManager for the whole session, so a normal
+// read-only open fails with 'database is locked'. Opening the file URL as immutable tells SQLite
+// the file cannot change underneath it, which skips locking and any journal/sidecar lookups.
+// The database is only SELECTed from, so a stale-free read is all this needs.
+function openQuotaReadOnly(file: string): DatabaseSync {
+  const url = pathToFileURL(file);
+  url.searchParams.set('immutable', '1');
+  return new DatabaseSync(url.href, { readOnly: true, timeout: 100 });
+}
+
 // Chromium's quota database discovers dormant IndexedDB/cache/service-worker origins.
 // Open read-only; if a future engine changes the schema, the observed-origin index still works.
 export function quotaOrigins(directory: string | null): { origins: string[]; limited: boolean } {
@@ -66,7 +77,7 @@ export function quotaOrigins(directory: string | null): { origins: string[]; lim
   for (const relative of ['WebStorage/QuotaManager', 'QuotaManager']) {
     let db: DatabaseSync | undefined;
     try {
-      db = new DatabaseSync(path.join(directory, relative), { readOnly: true, timeout: 100 });
+      db = openQuotaReadOnly(path.join(directory, relative));
       const rows = db.prepare('SELECT DISTINCT storage_key FROM buckets LIMIT ?').all(MAX_ORIGINS + 1);
       limited ||= rows.length > MAX_ORIGINS;
       for (const row of rows.slice(0, MAX_ORIGINS)) {

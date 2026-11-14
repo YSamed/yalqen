@@ -7,6 +7,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, WebContentsView } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import media from '../../dist/main/tabs/media.js';
 
 const { MEDIA_READ_SCRIPT, MEDIA_WORLD_ID, mediaSkipScript, parsePageMedia } = media;
@@ -21,10 +22,12 @@ const PAGE = `<!doctype html><body><script>
   navigator.mediaSession.setActionHandler('play', () => window.ran.push('play'));
 </script>`;
 
+let server;
+
 app
   .whenReady()
   .then(async () => {
-    const server = http.createServer((_request, response) => {
+    server = http.createServer((_request, response) => {
       response.setHeader('content-type', 'text/html');
       response.setHeader('content-security-policy', "script-src 'unsafe-inline'");
       response.end(PAGE);
@@ -61,12 +64,18 @@ app
     await run(mediaSkipScript('next'));
     await run(mediaSkipScript('previous'));
     assert.deepEqual(await contents.executeJavaScript('window.ran'), ['nexttrack', 'previoustrack']);
-
-    server.close();
-    clearTimeout(deadline);
-    app.exit(0);
   })
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+  server?.close();
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});
