@@ -4,8 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import setupModule from '../../../dist/main/agent-bridge/claude-setup.js';
+import { winBash } from '../../helpers/platform.mjs';
 
 const { addToClaudeCode } = setupModule;
+const IS_WIN = process.platform === 'win32';
+const SHELL = IS_WIN ? await winBash() : '/bin/bash';
 
 function sandbox(claudeScript) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-claude-setup-'));
@@ -18,7 +21,7 @@ function sandbox(claudeScript) {
 
 test('replaces the yalqen server in the user scope', async () => {
   const { env, log } = sandbox('echo "$@" >> "$CALLS"');
-  const result = await addToClaudeCode('http://127.0.0.1:47823/mcp', 'secret', { shell: '/bin/bash', env });
+  const result = await addToClaudeCode('http://127.0.0.1:47823/mcp', 'secret', { shell: SHELL, env });
   assert.deepEqual(result, { ok: true });
   assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), [
     'mcp remove yalqen --scope user',
@@ -28,13 +31,13 @@ test('replaces the yalqen server in the user scope', async () => {
 
 test('reports a missing claude command', async () => {
   const { env } = sandbox(null);
-  const result = await addToClaudeCode('http://x', 'secret', { shell: '/bin/bash', env });
+  const result = await addToClaudeCode('http://x', 'secret', { shell: SHELL, env });
   assert.deepEqual(result, { ok: false, reason: 'not-found', detail: '' });
 });
 
 test('reports a failure without the token', async () => {
   const { env } = sandbox('[ "$2" = add ] && { echo "bad header Bearer secret" >&2; exit 1; }; exit 0');
-  const result = await addToClaudeCode('http://x', 'secret', { shell: '/bin/bash', env });
+  const result = await addToClaudeCode('http://x', 'secret', { shell: SHELL, env });
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'failed');
   assert.equal(result.detail, 'bad header Bearer <token>');
@@ -61,25 +64,22 @@ test('reports whether Claude Code is connected with the current address and toke
   const output = path.join(os.tmpdir(), `yalqen-claude-get-${process.pid}.txt`);
   fs.writeFileSync(output, GET_OUTPUT);
   const { env } = sandbox(`[ "$2" = get ] && cat "${output}"`);
-  const options = { shell: '/bin/bash', env };
+  const options = { shell: SHELL, env };
   assert.equal(await setupModule.claudeConnection('http://127.0.0.1:47823/mcp', 'secret', options), 'connected');
   assert.equal(await setupModule.claudeConnection('http://127.0.0.1:47823/mcp', 'newer', options), 'stale');
   assert.equal(await setupModule.claudeConnection('http://127.0.0.1:47824/mcp', 'secret', options), 'stale');
   fs.rmSync(output);
   const missing = sandbox('echo "No MCP server found" >&2; exit 1');
-  assert.equal(
-    await setupModule.claudeConnection('http://x', 'secret', { shell: '/bin/bash', env: missing.env }),
-    'missing',
-  );
+  assert.equal(await setupModule.claudeConnection('http://x', 'secret', { shell: SHELL, env: missing.env }), 'missing');
   const absent = sandbox(null);
   assert.equal(
-    await setupModule.claudeConnection('http://x', 'secret', { shell: '/bin/bash', env: absent.env }),
+    await setupModule.claudeConnection('http://x', 'secret', { shell: SHELL, env: absent.env }),
     'unavailable',
   );
 });
 
 test('removes the yalqen server from the user scope', async () => {
   const { env, log } = sandbox('echo "$@" >> "$CALLS"');
-  assert.deepEqual(await setupModule.removeFromClaudeCode({ shell: '/bin/bash', env }), { ok: true });
-  assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), ['mcp remove yalqen --scope user']);
+  assert.deepEqual(await setupModule.removeFromClaudeCode({ shell: SHELL, env }), { ok: true });
+  assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\\n'), ['mcp remove yalqen --scope user']);
 });

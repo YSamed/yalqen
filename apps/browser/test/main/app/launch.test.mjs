@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import launch from '../../../dist/main/app/launch.js';
 
 const { externalUrls, miniWindowUrl } = launch;
-const files = new Set(['/home/a/doc.pdf', '/home/a/sayfa ben.html']);
+const home = path.resolve('/home/a');
+const doc = path.join(home, 'doc.pdf');
+const page = path.join(home, 'sayfa ben.html');
+const files = new Set([doc, page]);
 const isFile = (file) => files.has(file);
 
 test('links and existing files become addresses; the rest is skipped', () => {
@@ -21,10 +26,10 @@ test('links and existing files become addresses; the rest is skipped', () => {
         'javascript:alert(1)',
         'mailto:a@b.c',
       ],
-      '/home/a',
+      home,
       isFile,
     ),
-    ['https://example.com/a?b=1', 'http://x.com/', 'file:///home/a/doc.pdf', 'file:///home/a/sayfa%20ben.html'],
+    ['https://example.com/a?b=1', 'http://x.com/', pathToFileURL(doc).toString(), pathToFileURL(page).toString()],
   );
 });
 

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { test } from 'node:test';
 import downloadManager from '../../../dist/main/library/download-manager.js';
+import path from 'node:path';
 
 const { DownloadManager } = downloadManager;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
+const downloads = path.join('downloads');
 
 function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } = {}) {
   const session = new EventEmitter();
@@ -37,7 +39,7 @@ function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } 
       daily: session,
       privateBrowsing: new EventEmitter(),
       developer: new EventEmitter(),
-      directory: () => '/downloads',
+      directory: () => downloads,
       askBeforeDownload: () => askBefore,
       parentOf: () => undefined,
       onStateChange: () => {},
@@ -76,25 +78,26 @@ function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } 
 
 test('automatic downloads use the configured directory and reserve unique paths', (t) => {
   const f = fixture(t, { askBefore: false });
-  assert.equal(f.start().savePath, '/downloads/report.pdf');
-  assert.equal(f.start().savePath, '/downloads/report (1).pdf');
+  assert.equal(f.start().savePath, path.join(downloads, 'report.pdf'));
+  assert.equal(f.start().savePath, path.join(downloads, 'report (1).pdf'));
   assert.equal(f.entries.size, 2);
   assert.deepEqual(f.prompts, []);
   assert.deepEqual(f.saves, []);
 });
 
 test('save as changes both the file name and folder before resuming', async (t) => {
-  const f = fixture(t, { responses: [1], paths: ['/chosen/renamed.pdf'] });
+  const chosen_renamed = path.join('', 'chosen', 'renamed.pdf');
+  const f = fixture(t, { responses: [1], paths: [chosen_renamed] });
   const item = f.start();
   assert.equal(item.paused, true);
   assert.equal(f.entries.size, 0);
   await tick();
   assert.equal(item.paused, false);
-  assert.equal(item.savePath, '/chosen/renamed.pdf');
+  assert.equal(item.savePath, chosen_renamed);
   const entry = [...f.entries.values()][0];
   assert.equal(entry.filename, 'renamed.pdf');
   assert.equal(entry.savePath, item.savePath);
-  assert.equal(f.saves[0].defaultPath, '/downloads/report.pdf');
+  assert.equal(f.saves[0].defaultPath, path.join(downloads, 'report.pdf'));
   assert.match(f.saves[0].message, /example.com/);
 });
 
@@ -106,28 +109,31 @@ test('cancelling either dialog cancels the download and releases its reserved na
     assert.equal(item.state, 'cancelled');
     assert.equal(f.entries.size, 0);
     assert.equal(f.manager.reservedPaths.size, 0);
-    assert.equal(f.start().savePath, '/downloads/report.pdf');
+    assert.equal(f.start().savePath, path.join(downloads, 'report.pdf'));
     await tick();
   }
 });
 
 test('a save chooser cannot overwrite a file reserved by an active download', async (t) => {
+  const chosen_report = path.join('', 'chosen', 'report.pdf');
+  const chosen_other = path.join('', 'chosen', 'other.pdf');
   const f = fixture(t, {
     responses: [1, 1, 0],
-    paths: ['/chosen/report.pdf', '/chosen/report.pdf', '/chosen/other.pdf'],
+    paths: [chosen_report, chosen_report, chosen_other],
   });
   const first = f.start();
   await tick();
   const second = f.start();
   await tick();
-  assert.equal(first.savePath, '/chosen/report.pdf');
-  assert.equal(second.savePath, '/chosen/other.pdf');
+  assert.equal(first.savePath, chosen_report);
+  assert.equal(second.savePath, chosen_other);
   assert.equal(f.prompts.length, 3);
   assert.equal(f.entries.size, 2);
 });
 
 test('retry retains the selected folder and name without requesting approval again', async (t) => {
-  const f = fixture(t, { responses: [1], paths: ['/chosen/custom.pdf'] });
+  const chosen_custom = path.join('', 'chosen', 'custom.pdf');
+  const f = fixture(t, { responses: [1], paths: [chosen_custom] });
   const first = f.start();
   await tick();
   first.state = 'interrupted';
@@ -136,7 +142,7 @@ test('retry retains the selected folder and name without requesting approval aga
   f.manager.actions(() => {}).retry(id);
   assert.equal(f.session.retried, first.getURL());
   const retry = f.start();
-  assert.equal(retry.savePath, '/chosen/custom.pdf');
+  assert.equal(retry.savePath, chosen_custom);
   assert.equal(f.saves.length, 1);
   assert.equal(f.entries.size, 1);
 });

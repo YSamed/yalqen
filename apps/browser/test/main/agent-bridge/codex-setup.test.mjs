@@ -83,6 +83,7 @@ test('connecting creates the config when Codex has none yet', async (t) => {
 });
 
 test('the config lives in CODEX_HOME when it is set', () => {
-  assert.equal(codexConfigPath({ CODEX_HOME: '/tmp/codex-home' }), '/tmp/codex-home/config.toml');
+  const tmp = path.join('', 'tmp', 'codex-home');
+  assert.equal(codexConfigPath({ CODEX_HOME: tmp }), path.join(tmp, 'config.toml'));
   assert.equal(codexConfigPath({}), path.join(os.homedir(), '.codex', 'config.toml'));
 });

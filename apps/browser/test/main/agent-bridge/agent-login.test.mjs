@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import login from '../../../dist/main/agent-bridge/agent-login.js';
 
 const { BROWSER_SCRIPT, loginUrlIn } = login;
+const IS_WIN = process.platform === 'win32';
 
 test('the first https URL in CLI output is the sign-in page', () => {
   const output =
@@ -19,7 +20,7 @@ test('the first https URL in CLI output is the sign-in page', () => {
   assert.equal(loginUrlIn('Paste code here if prompted >'), null);
 });
 
-test('the browser stand-in records the URL it is asked to open', async (t) => {
+test('the browser stand-in records the URL it is asked to open', { skip: IS_WIN }, async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'yalqen-login-test-'));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
   const browser = path.join(directory, 'browser');
