@@ -562,6 +562,8 @@ export const IpcChannel = {
   agentChatNew: 'yalqen:agent-chat-new',
   agentChatShowBackground: 'yalqen:agent-chat-show-background',
   agentChatDismissBackground: 'yalqen:agent-chat-dismiss-background',
+  // A press in a page, which the interface cannot see, for popups in the interface that close on outside clicks.
+  pagePress: 'yalqen:page-press',
   agentChatOpenBackground: 'yalqen:agent-chat-open-background',
   agentChatContinueBackground: 'yalqen:agent-chat-continue-background',
   agentChatPermission: 'yalqen:agent-chat-permission',
@@ -638,6 +640,7 @@ export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   closeAgentProject(id: string): Promise<boolean>;
   cancelQueuedAgentChat(sessionId: string, messageId: string): Promise<void>;
   onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
+  onPagePress(listener: () => void): () => void;
 }
 
 export interface CommandBarOpen {

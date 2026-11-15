@@ -21,6 +21,7 @@ const server = http.createServer((_req, res) => {
 });
 
 let tabManager;
+let pagePresses = 0;
 async function eventually(predicate, label) {
   const start = Date.now();
   while (!(await predicate())) {
@@ -53,6 +54,7 @@ app
       zoomFor: () => 1,
       translation: () => ({ enabled: false, language: 'en' }),
       confirmUnload: () => true,
+      onPagePress: () => pagePresses++,
     });
     const mail = tabManager.open(`${base}/mail/#inbox`);
     const other = tabManager.open(`${base}/other`);
@@ -70,7 +72,15 @@ app
     assert.equal(tabManager.activeId, opened);
     await eventually(() => tabManager.snapshotFor(opened)?.url === `${base}/docs`, 'the new tab at the bookmark');
 
-    console.log('PASS: a bookmark switches to the tab already showing its page and opens a new tab otherwise');
+    // A press in a page is reported, so popups in the interface can close on it.
+    const contents = tabManager.find(opened).view.webContents;
+    contents.sendInputEvent({ type: 'mouseDown', x: 10, y: 10, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', x: 10, y: 10, button: 'left', clickCount: 1 });
+    await eventually(() => pagePresses === 1, 'the page press reported');
+
+    console.log(
+      'PASS: a bookmark switches to the tab already showing its page and opens a new tab otherwise, and page presses are reported',
+    );
   })
   .then(() => app.quit())
   .catch((error) => {

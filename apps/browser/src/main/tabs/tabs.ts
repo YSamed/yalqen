@@ -135,6 +135,8 @@ interface TabManagerOptions {
   // The "Tab modes" setting: the mode slider, new tabs taking the mode in front and the modes' looks.
   tabModes?: () => boolean;
   onPrivateEnded: () => void;
+  // A mouse press in any page of this window.
+  onPagePress?: () => void;
   onDeveloperEnded?: () => void;
   freezeBackground: () => boolean;
   // "Keep pinned tabs on their site": pinned tabs load at their pinned address and send other sites to new tabs.
@@ -2396,6 +2398,7 @@ export class TabManager {
       void contents.loadURL(upgraded);
     });
     listen('input-event', (_event, input) => {
+      if (input.type === 'mouseDown') this.options.onPagePress?.();
       if (isActivation(input.type)) {
         tab.activatedAt = Date.now();
         tab.interacted = true;

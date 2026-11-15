@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import { t } from '../../shared/i18n';
   import type { TabId, TabSnapshot } from '../../shared/types';
@@ -59,8 +59,14 @@
     document.querySelector<HTMLInputElement>('.bookmark-editor input')?.select();
   }
 
-  // A press anywhere outside the edit card cancels it, like Cancel. A click into the page goes to another view,
-  // so the interface losing focus counts as outside too.
+  // A press anywhere outside the edit card cancels it, like Cancel. Pages are other views the interface cannot see,
+  // so main reports presses in them.
+  onMount(() =>
+    window.yalqen.onPagePress(() => {
+      editing = null;
+    }),
+  );
+
   function cancelOutside(event: PointerEvent): void {
     if (editing && !(event.target as Element | null)?.closest?.('.bookmark-editor')) editing = null;
   }
@@ -98,12 +104,7 @@
   }
 </script>
 
-<svelte:window
-  onpointerdown={cancelOutside}
-  onblur={() => {
-    editing = null;
-  }}
-/>
+<svelte:window onpointerdown={cancelOutside} />
 
 <aside class="bookmarks-panel" aria-label={t('bookmarksPanel.title')}>
   <header>

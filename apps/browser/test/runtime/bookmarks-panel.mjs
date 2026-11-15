@@ -183,7 +183,7 @@ app
       url: 'https://c.example/spec/v2',
     });
 
-    // Escape cancels, and so does a press outside the card or a click into the page, which takes focus away.
+    // Escape cancels, and so does a press outside the card, in the interface or in the page (which main reports).
     const before = actions.length;
     await rightClick('Board');
     await eventually(`!!document.querySelector('.bookmark-editor')`);
@@ -198,7 +198,7 @@ app
     await eventually(`!document.querySelector('.bookmark-editor')`);
     await rightClick('Board');
     await eventually(`!!document.querySelector('.bookmark-editor')`);
-    await js(`window.dispatchEvent(new Event('blur'))`);
+    window.webContents.send(IpcChannel.pagePress);
     await eventually(`!document.querySelector('.bookmark-editor')`);
     assert.equal(actions.length, before);
     await rightClick('Work');

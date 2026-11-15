@@ -393,6 +393,10 @@ export class YalqenWindow {
       developerWindow: this.isDeveloper,
       tabModes: () => app.settings.get().tabModes,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
+      // Only the bookmarks panel has a popup that closes on clicks outside it, including in the page.
+      onPagePress: () => {
+        if (this.bookmarksPanelVisible && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.pagePress);
+      },
       onDeveloperEnded: () => app.onDeveloperTabsClosed(),
       confirmUnload: (tab) => {
         this.tabs.activate(tab.id);
