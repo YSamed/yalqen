@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
+import i18n from '../../dist/shared/i18n.js';
 
 const require = createRequire(import.meta.url);
 
@@ -83,7 +84,7 @@ test('all platform constants are false on an unrecognised platform', () => {
   const { error, module } = load({ platform: 'aix', bashOne: '/usr/bin/bash' });
   // DEFAULT_SHELL runs at import time and rejects unknown platforms, so the import itself fails.
   assert.equal(module, undefined);
-  assert.equal(error?.message, 'Unsupported Platform');
+  assert.equal(error?.message, i18n.t('platform.unsupported'));
 });
 
 test('winBash skips the System32 stub and returns the first real bash', () => {
@@ -112,14 +113,14 @@ test('winBash throws when every candidate is a System32 stub', () => {
   });
 
   assert.equal(module, undefined);
-  assert.equal(error?.message, 'No bash executable found');
+  assert.equal(error?.message, i18n.t('platform.bashNotFound'));
 });
 
 test('winBash throws when no bash executable exists', () => {
   const { error, module } = load({ platform: 'win32', bashAll: [] });
 
   assert.equal(module, undefined);
-  assert.equal(error?.message, 'No bash executable found');
+  assert.equal(error?.message, i18n.t('platform.bashNotFound'));
 });
 
 test('defaultShell returns winBash on Windows', () => {

@@ -1364,6 +1364,9 @@ export const tr: Record<MessageKey, string> = {
   'main.installExtension': 'Yükle',
   'main.aboutVersion': 'Faz 0 prototipi · Electron {electron}',
 
+  'platform.bashNotFound': 'Çalıştırılabilir bash bulunamadı',
+  'platform.unsupported': 'Desteklenmeyen platform',
+
   'downloadManager.confirm': '“{name}” indirilsin mi?',
   'downloadManager.source': 'Kaynak: {source}{size}',
   'downloadManager.download': 'İndir',

@@ -1,5 +1,6 @@
 import which from 'which';
 import { Options as OpenOptions, default as open } from 'open';
+import { t } from '../shared/i18n.js';
 
 export const IS_WIN = process.platform === 'win32';
 export const IS_MAC = process.platform === 'darwin';
@@ -10,7 +11,7 @@ export const winBash = () => {
   // bash.exe in System32 is a stub to WSL
   const found = all.find((bash) => !/System32/i.test(bash));
   if (!found) {
-    throw new Error('No bash executable found');
+    throw new Error(t('platform.bashNotFound'));
   }
   return found;
 };
@@ -27,7 +28,7 @@ export const defaultShell = () => {
     const bash = which.sync('bash');
     return bash ?? '/bin/sh';
   }
-  throw new Error('Unsupported Platform');
+  throw new Error(t('platform.unsupported'));
 };
 
 export const DEFAULT_SHELL = defaultShell();
