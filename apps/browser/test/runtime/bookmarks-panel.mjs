@@ -183,12 +183,24 @@ app
       url: 'https://c.example/spec/v2',
     });
 
-    // Escape cancels; a folder edits only its name.
+    // Escape cancels, and so does a press outside the card or a click into the page, which takes focus away.
+    const before = actions.length;
     await rightClick('Board');
     await eventually(`!!document.querySelector('.bookmark-editor')`);
     window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
     await eventually(`!document.querySelector('.bookmark-editor')`);
-    const before = actions.length;
+    await rightClick('Board');
+    await eventually(`!!document.querySelector('.bookmark-editor')`);
+    await js(
+      `(() => { const input = document.querySelector('.bookmark-editor input'); input.value = 'Changed'; input.dispatchEvent(new Event('input')); })()`,
+    );
+    await click('#bookmarks-panel header strong');
+    await eventually(`!document.querySelector('.bookmark-editor')`);
+    await rightClick('Board');
+    await eventually(`!!document.querySelector('.bookmark-editor')`);
+    await js(`window.dispatchEvent(new Event('blur'))`);
+    await eventually(`!document.querySelector('.bookmark-editor')`);
+    assert.equal(actions.length, before);
     await rightClick('Work');
     await eventually(`document.querySelectorAll('.bookmark-editor input').length === 1`);
     await typeInto(0, 'Projects');

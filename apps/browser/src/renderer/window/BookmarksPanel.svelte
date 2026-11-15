@@ -59,6 +59,12 @@
     document.querySelector<HTMLInputElement>('.bookmark-editor input')?.select();
   }
 
+  // A press anywhere outside the edit card cancels it, like Cancel. A click into the page goes to another view,
+  // so the interface losing focus counts as outside too.
+  function cancelOutside(event: PointerEvent): void {
+    if (editing && !(event.target as Element | null)?.closest?.('.bookmark-editor')) editing = null;
+  }
+
   function cancelOnEscape(event: KeyboardEvent): void {
     if (event.key === 'Escape') editing = null;
   }
@@ -91,6 +97,13 @@
     return url && !brokenIcons[url] ? url : null;
   }
 </script>
+
+<svelte:window
+  onpointerdown={cancelOutside}
+  onblur={() => {
+    editing = null;
+  }}
+/>
 
 <aside class="bookmarks-panel" aria-label={t('bookmarksPanel.title')}>
   <header>
