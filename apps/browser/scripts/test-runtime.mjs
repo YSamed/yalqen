@@ -40,6 +40,8 @@ for (const test of [
   'tab-modes-ui.mjs',
   'devtools-view.mjs',
   'devtools-divider.mjs',
+  'bookmarks-panel.mjs',
+  'bookmark-tabs.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
   'profile-settings.mjs',

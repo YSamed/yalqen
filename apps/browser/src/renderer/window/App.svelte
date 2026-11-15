@@ -9,6 +9,7 @@
   import { windowTintVars } from '../../shared/window-color';
   import { isNewTab } from './format';
   import DeviceControls from './DeviceControls.svelte';
+  import BookmarksPanel from './BookmarksPanel.svelte';
   import DevToolsDivider from './DevToolsDivider.svelte';
   import TabPanel from './TabPanel.svelte';
   import Toolbar from './Toolbar.svelte';
@@ -27,6 +28,7 @@
   const COLLAPSED_WIDTH = 44;
   const CONTROL_SIZE = 34;
   const CHROME_HEIGHT = 44;
+  const BOOKMARKS_PANEL_WIDTH = 300;
   const PAGE_INSET = 8;
   const PRIVATE_ACCENT = '#d4d4d8';
   const PANEL_ROW_INSET = PAGE_INSET + 3;
@@ -171,6 +173,10 @@
   const material = $derived(browser.material);
   const pageFullScreen = $derived(browser.pageFullScreen);
   const agentVisible = $derived(agentPanelOpen && !pageFullScreen);
+  // The bookmarks panel takes the AI panel's place on the right edge; main keeps only one of them open.
+  const bookmarksPanel = $derived(browser.bookmarksPanel ?? null);
+  const bookmarksVisible = $derived(bookmarksPanel !== null && !pageFullScreen && !agentVisible);
+  const sideVisible = $derived(agentVisible || bookmarksVisible);
   const windowFullScreen = $derived(browser.windowFullScreen);
   const panelWidth = $derived(sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : PANEL_WIDTH) : PAGE_INSET);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
@@ -179,7 +185,13 @@
   // much less to match the tab rail's spacing.
   const collapsedAgentWidth = $derived(side === 'left' ? COLLAPSED_WIDTH - PAGE_INSET : COLLAPSED_WIDTH);
   const agentReservedWidth = $derived(
-    agentVisible ? (agentCollapsed ? collapsedAgentWidth : agentWidth + PAGE_INSET) : 0,
+    agentVisible
+      ? agentCollapsed
+        ? collapsedAgentWidth
+        : agentWidth + PAGE_INSET
+      : bookmarksVisible
+        ? BOOKMARKS_PANEL_WIDTH + PAGE_INSET
+        : 0,
   );
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let shownWidth = $state(PANEL_WIDTH);
@@ -218,10 +230,11 @@
   // then shows the window, while the tab rows are still rendering.
   $effect.pre(() => {
     const target = agentReservedWidth;
-    const mode = `${agentCollapsed}|${agentVisible}`;
+    const mode = `${agentCollapsed}|${agentVisible}|${bookmarksVisible}`;
     const previousMode = agentMode;
     agentMode = mode;
-    const toggled = agentVisible && previousMode !== mode && previousMode.endsWith('|true');
+    // Only collapsing or expanding a visible AI panel animates; opening, closing and swapping panels snap.
+    const toggled = agentVisible && previousMode !== mode && previousMode.split('|')[1] === 'true';
     cancelAnimationFrame(agentAnimation);
     const from = untrack(() => shownAgentWidth);
     if (!toggled || !animateModeChanges || reducedMotion.matches || from === target) {
@@ -350,12 +363,12 @@
   class="shell"
   class:right={side === 'right'}
   class:fullscreen={pageFullScreen}
-  class:with-agent={agentVisible}
+  class:with-agent={sideVisible}
   style:grid-template-columns={pageFullScreen
     ? 'minmax(0, 1fr)'
     : side === 'left'
-      ? `${shownWidth}px minmax(0, 1fr)${agentVisible ? ` ${shownAgentWidth}px` : ''}`
-      : `minmax(0, 1fr) ${shownWidth}px${agentVisible ? ` ${shownAgentWidth}px` : ''}`}
+      ? `${shownWidth}px minmax(0, 1fr)${sideVisible ? ` ${shownAgentWidth}px` : ''}`
+      : `minmax(0, 1fr) ${shownWidth}px${sideVisible ? ` ${shownAgentWidth}px` : ''}`}
   style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !pageFullScreen}
@@ -391,6 +404,7 @@
       <Toolbar
         {developer}
         modeSwitch={browser.modeSwitch ?? false}
+        bookmarksPanelOpen={bookmarksVisible}
         tabs={toolbarTabs}
         {activeTabId}
         {zoom}
@@ -459,7 +473,12 @@
       <DeviceControls {device} bezel={DEVICE_BEZEL} />
     {/if}
   </section>
-  {#if agentVisible && side === 'right'}<div class="agent-titlebar" aria-hidden="true"></div>{/if}
+  {#if sideVisible && side === 'right'}<div class="agent-titlebar" aria-hidden="true"></div>{/if}
+  {#if bookmarksVisible && bookmarksPanel}
+    <div class="agent-slot" id="bookmarks-panel">
+      <BookmarksPanel view={bookmarksPanel} {tabs} {activeTabId} />
+    </div>
+  {/if}
   <div
     class="agent-slot"
     class:animating={shownAgentWidth !== agentReservedWidth}

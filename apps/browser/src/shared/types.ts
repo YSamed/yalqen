@@ -167,6 +167,8 @@ export interface BrowserState {
   tabCleanup?: boolean;
   // The "Tab modes" setting: the window takes the look of the active tab's mode.
   tabModes?: boolean;
+  // The bookmarks side panel's contents while it is open; null or absent while it is closed.
+  bookmarksPanel?: import('./bookmarks-panel').BookmarksPanelView | null;
   // Whether tabs in this window can switch between normal, developer and private.
   modeSwitch?: boolean;
   favorites: Favorite[];
@@ -486,6 +488,11 @@ export type UiAction =
   | { type: 'open-blocked-popups' }
   | { type: 'toggle-bookmark' }
   | { type: 'open-bookmarks-menu' }
+  | { type: 'toggle-bookmarks-panel' }
+  | { type: 'open-bookmark'; url: string }
+  | { type: 'edit-bookmark'; id: string; title: string; url: string }
+  | { type: 'rename-bookmark-folder'; id: string; title: string }
+  | { type: 'open-bookmarks-page' }
   | { type: 'toggle-panel' }
   | { type: 'toggle-sidebar' }
   | { type: 'toggle-agent-panel' }
@@ -864,6 +871,8 @@ export interface SettingsValues {
   manualTabCleanup: boolean;
   // Tabs switch between normal, developer and private from the address bar.
   tabModes: boolean;
+  // The toolbar's bookmarks button opens a bookmarks panel on the right instead of a menu.
+  bookmarksPanel: boolean;
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;

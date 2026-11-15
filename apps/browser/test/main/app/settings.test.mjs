@@ -51,6 +51,7 @@ test('unknown or mistyped fields fall back', () => {
       pinnedTabsStayHome: false,
       manualTabCleanup: false,
       tabModes: false,
+      bookmarksPanel: false,
       sidebarVisible: true,
       sidebarWidgets: ['media'],
       toolbarVisible: true,
@@ -133,6 +134,12 @@ test('the button to close idle tabs is off by default and kept once turned on', 
   assert.equal(sanitizeSettings(null).manualTabCleanup, false);
   assert.equal(sanitizeSettings({ manualTabCleanup: true }).manualTabCleanup, true);
   assert.equal(sanitizeSettings({ manualTabCleanup: 1 }).manualTabCleanup, false);
+});
+
+test('the bookmarks side panel is off by default and kept once turned on', () => {
+  assert.equal(sanitizeSettings(null).bookmarksPanel, false);
+  assert.equal(sanitizeSettings({ bookmarksPanel: true }).bookmarksPanel, true);
+  assert.equal(sanitizeSettings({ bookmarksPanel: 'yes' }).bookmarksPanel, false);
 });
 
 test('tab modes are off by default and kept once turned on', () => {
