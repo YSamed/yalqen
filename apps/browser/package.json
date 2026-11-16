@@ -160,6 +160,7 @@
     "node": ">=22.12"
   },
   "overrides": {
-    "http-cache-semantics": "^4.3.0"
+    "http-cache-semantics": "^4.3.0",
+    "minimatch@>=7": "^11.0.1"
   }
 }
