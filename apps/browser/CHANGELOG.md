@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.7](https://github.com/YSamed/yalqen/compare/v0.4.6...v0.4.7) (2026-11-16)
+
+
+### Features
+
+* show the search hint in the address bar on a new tab ([#420](https://github.com/YSamed/yalqen/issues/420)) ([3a4e4cb](https://github.com/YSamed/yalqen/commit/3a4e4cb3b106aa48331ddf110954648cf6de3e5e))
+
 ## [0.4.6](https://github.com/YSamed/yalqen/compare/v0.4.5...v0.4.6) (2026-11-16)
 
 
