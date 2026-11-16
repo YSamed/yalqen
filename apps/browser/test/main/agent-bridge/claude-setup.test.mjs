@@ -13,12 +13,15 @@ function sandbox(claudeScript) {
   fs.mkdirSync(bin);
   if (claudeScript) fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh\n${claudeScript}\n`, { mode: 0o755 });
   const log = path.join(home, 'calls.log');
-  return { env: { HOME: home, PATH: `${bin}:/usr/bin:/bin`, CALLS: log }, log };
+  // A login shell rebuilds PATH from the system, so a real claude on this machine would be found; this one ignores -ilc.
+  const shell = path.join(home, 'shell');
+  fs.writeFileSync(shell, '#!/bin/sh\nexec /bin/sh -c "$2"\n', { mode: 0o755 });
+  return { env: { HOME: home, PATH: `${bin}:/usr/bin:/bin`, CALLS: log }, log, shell };
 }
 
 test('replaces the yalqen server in the user scope', async () => {
-  const { env, log } = sandbox('echo "$@" >> "$CALLS"');
-  const result = await addToClaudeCode('http://127.0.0.1:47823/mcp', 'secret', { shell: '/bin/bash', env });
+  const { env, log, shell } = sandbox('echo "$@" >> "$CALLS"');
+  const result = await addToClaudeCode('http://127.0.0.1:47823/mcp', 'secret', { shell, env });
   assert.deepEqual(result, { ok: true });
   assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), [
     'mcp remove yalqen --scope user',
@@ -27,14 +30,14 @@ test('replaces the yalqen server in the user scope', async () => {
 });
 
 test('reports a missing claude command', async () => {
-  const { env } = sandbox(null);
-  const result = await addToClaudeCode('http://x', 'secret', { shell: '/bin/bash', env });
+  const { env, shell } = sandbox(null);
+  const result = await addToClaudeCode('http://x', 'secret', { shell, env });
   assert.deepEqual(result, { ok: false, reason: 'not-found', detail: '' });
 });
 
 test('reports a failure without the token', async () => {
-  const { env } = sandbox('[ "$2" = add ] && { echo "bad header Bearer secret" >&2; exit 1; }; exit 0');
-  const result = await addToClaudeCode('http://x', 'secret', { shell: '/bin/bash', env });
+  const { env, shell } = sandbox('[ "$2" = add ] && { echo "bad header Bearer secret" >&2; exit 1; }; exit 0');
+  const result = await addToClaudeCode('http://x', 'secret', { shell, env });
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'failed');
   assert.equal(result.detail, 'bad header Bearer <token>');
@@ -60,26 +63,26 @@ test('reads the registered address and token from claude mcp get', () => {
 test('reports whether Claude Code is connected with the current address and token', async () => {
   const output = path.join(os.tmpdir(), `yalqen-claude-get-${process.pid}.txt`);
   fs.writeFileSync(output, GET_OUTPUT);
-  const { env } = sandbox(`[ "$2" = get ] && cat "${output}"`);
-  const options = { shell: '/bin/bash', env };
+  const { env, shell } = sandbox(`[ "$2" = get ] && cat "${output}"`);
+  const options = { shell, env };
   assert.equal(await setupModule.claudeConnection('http://127.0.0.1:47823/mcp', 'secret', options), 'connected');
   assert.equal(await setupModule.claudeConnection('http://127.0.0.1:47823/mcp', 'newer', options), 'stale');
   assert.equal(await setupModule.claudeConnection('http://127.0.0.1:47824/mcp', 'secret', options), 'stale');
   fs.rmSync(output);
   const missing = sandbox('echo "No MCP server found" >&2; exit 1');
   assert.equal(
-    await setupModule.claudeConnection('http://x', 'secret', { shell: '/bin/bash', env: missing.env }),
+    await setupModule.claudeConnection('http://x', 'secret', { shell: missing.shell, env: missing.env }),
     'missing',
   );
   const absent = sandbox(null);
   assert.equal(
-    await setupModule.claudeConnection('http://x', 'secret', { shell: '/bin/bash', env: absent.env }),
+    await setupModule.claudeConnection('http://x', 'secret', { shell: absent.shell, env: absent.env }),
     'unavailable',
   );
 });
 
 test('removes the yalqen server from the user scope', async () => {
-  const { env, log } = sandbox('echo "$@" >> "$CALLS"');
-  assert.deepEqual(await setupModule.removeFromClaudeCode({ shell: '/bin/bash', env }), { ok: true });
+  const { env, log, shell } = sandbox('echo "$@" >> "$CALLS"');
+  assert.deepEqual(await setupModule.removeFromClaudeCode({ shell, env }), { ok: true });
   assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), ['mcp remove yalqen --scope user']);
 });
