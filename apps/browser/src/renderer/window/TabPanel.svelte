@@ -552,6 +552,7 @@
     size="lg"
     variant="surface"
     tone="muted"
+    class="panel-toggle"
     icon={side === 'left'
       ? collapsed
         ? 'panel-expand'
@@ -1079,11 +1080,16 @@
     width: 100%;
   }
 
-  .body > :not(.lists) {
+  .body > :not(.lists, .spaces, .footer),
+  .spaces > :global(:not(.panel-toggle)),
+  .footer > :global(:not(.panel-toggle)) {
     transition: opacity 120ms ease-out;
   }
 
-  .fading .body > :not(.lists) {
+  /* The toggle sits at the same spot in both layouts, so it stays visible under the cursor. */
+  .fading .body > :not(.lists, .spaces, .footer),
+  .fading .spaces > :global(:not(.panel-toggle)),
+  .fading .footer > :global(:not(.panel-toggle)) {
     opacity: 0;
   }
 
@@ -1515,6 +1521,10 @@
     padding-top: 8px;
   }
 
+  .right .spaces {
+    flex-direction: row-reverse;
+  }
+
   .spaces.compact {
     flex-direction: column;
     align-items: center;
@@ -1581,6 +1591,11 @@
     position-anchor: --sidebar-add;
     left: auto;
     right: anchor(right);
+  }
+
+  .right .add-menu {
+    left: anchor(left);
+    right: auto;
   }
 
   .add-menu .select-item {
