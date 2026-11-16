@@ -266,6 +266,29 @@
   function popIn(node: Element) {
     return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
   }
+  // Pinned tiles fold from the grid into one column, which also moves the rows below, so every
+  // list item glides from where it was before the layout swap.
+  let layoutRects: [Element, DOMRect][] = [];
+  $effect.pre(() => {
+    void collapsed;
+    if (!lists || reducedMotion.matches) return;
+    layoutRects = [...lists.querySelectorAll('li')].map((li) => [li, li.getBoundingClientRect()]);
+  });
+  $effect(() => {
+    void collapsed;
+    for (const [li, from] of layoutRects) {
+      const to = li.getBoundingClientRect();
+      const dx = from.left - to.left;
+      const dy = from.top - to.top;
+      if (li.isConnected && (dx || dy))
+        li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
+          duration: 200,
+          easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        });
+    }
+    layoutRects = [];
+  });
+
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
     return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
   }
