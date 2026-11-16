@@ -11,9 +11,13 @@ const { values } = parseArgs({
     out: { type: 'string' },
   },
 });
-const { newRequestRule, pausedRequestCommand } = (
-  await import(pathToFileURL(mainModule(values['module-dir'], 'devtools/request-rules.js')))
-).default;
+const requestRules = (await import(pathToFileURL(mainModule(values['module-dir'], 'devtools/request-rules.js'))))
+  .default;
+const { pausedRequestCommand } = requestRules;
+// Newer builds moved newRequestRule to dist/shared; older baselines still export it from request-rules.
+const newRequestRule =
+  requestRules.newRequestRule ??
+  (await import(pathToFileURL(path.resolve(values['module-dir'], '../shared/request-rule.js')))).default.newRequestRule;
 const paused = {
   requestId: 'bench-request',
   request: { url: 'https://api.example/data', headers: { Accept: '*/*', Cookie: 'existing=1' } },

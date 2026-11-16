@@ -291,13 +291,16 @@
       const progress = Math.min(1, (now - start) / PANEL_ANIMATION_MS);
       shownWidth = Math.round(from + (target - from) * (1 - (1 - progress) ** 3));
       panelSlide = slides ? shownWidth - target : 0;
-      if (contentFading && progress >= CONTENT_SWAP_PROGRESS) {
+      if (progress < 1) panelAnimation = requestAnimationFrame(step);
+      else {
         contentCollapsed = collapsed;
         contentFading = false;
       }
-      if (progress < 1) panelAnimation = requestAnimationFrame(step);
     };
     panelSlide = slides ? from - target : 0;
+    // Expanded rows are clipped by the narrowing panel, so collapsing swaps the layout last and
+    // expanding swaps it first. The tab icons sit at the same x in both layouts.
+    if (!collapsed) contentCollapsed = false;
     contentFading = true;
     panelAnimation = requestAnimationFrame(step);
   });
@@ -385,6 +388,7 @@
         groups={tabGroups}
         collapsed={contentCollapsed}
         fading={contentFading}
+        closing={contentFading && collapsed}
         {side}
         {topInset}
         rowInset={PANEL_ROW_INSET}

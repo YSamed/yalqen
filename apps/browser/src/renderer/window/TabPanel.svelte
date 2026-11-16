@@ -3,8 +3,8 @@
   import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
+  import { scale } from 'svelte/transition';
   import { flip } from 'svelte/animate';
-  import { fly } from 'svelte/transition';
   import { devStates } from './format';
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
@@ -27,6 +27,7 @@
     groups,
     collapsed,
     fading,
+    closing,
     side,
     topInset,
     rowInset,
@@ -52,6 +53,7 @@
     groups: TabGroup[];
     collapsed: boolean;
     fading: boolean;
+    closing: boolean;
     side: PanelSide;
     topInset: number;
     rowInset: number;
@@ -261,12 +263,8 @@
   }
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  function reveal(node: Element) {
-    return fly(node, {
-      x: side === 'left' ? -8 : 8,
-      duration: reducedMotion.matches ? 0 : 160,
-      easing: cubicOut,
-    });
+  function popIn(node: Element) {
+    return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
   }
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
     return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
@@ -554,6 +552,7 @@
     size="lg"
     variant="surface"
     tone="muted"
+    class="panel-toggle"
     icon={side === 'left'
       ? collapsed
         ? 'panel-expand'
@@ -589,7 +588,8 @@
     variant={tab.id === activeTabId ? 'surface' : 'ghost'}
     class="tab-icon"
     label={tabLabel}
-    tabindex={-1}
+    tabindex={collapsed ? 0 : -1}
+    aria-current={collapsed && tab.id === activeTabId ? 'page' : undefined}
     aria-pressed={selected.has(tab.id)}
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
@@ -654,6 +654,8 @@
   class:collapsed
   class:dragging={dragId !== null}
   class:fading
+  class:closing
+  class:opening={fading && !closing}
   class:right={side === 'right'}
   aria-label={t('tabPanel.tabs')}
   onwheel={switchSpaceBySwipe}
@@ -661,322 +663,316 @@
 >
   <div class="top" style:height="{topInset}px"></div>
 
-  {#key collapsed}
-    <div class="body" in:reveal>
-      <div class="lists" bind:this={lists}>
-        {#if favorites.length > 0}
-          <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
-            {#each favorites as favorite (favorite.url)}
-              <li
-                class="favorite"
-                class:active={tabsById.get(activeTabId ?? '')?.url === favorite.url}
-                data-hover-preview={previews.has(favorite.url) ? '' : undefined}
-                onpointerenter={(e) => previews.enter(e.currentTarget, null, favorite.url)}
-                onpointerleave={previews.leave}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  send({ type: 'open-favorite-menu', url: favorite.url });
-                }}
+  <div class="body">
+    <div class="lists" bind:this={lists}>
+      {#if favorites.length > 0}
+        <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
+          {#each favorites as favorite (favorite.url)}
+            <li
+              class="favorite"
+              class:active={tabsById.get(activeTabId ?? '')?.url === favorite.url}
+              data-hover-preview={previews.has(favorite.url) ? '' : undefined}
+              onpointerenter={(e) => previews.enter(e.currentTarget, null, favorite.url)}
+              onpointerleave={previews.leave}
+              oncontextmenu={(e) => {
+                e.preventDefault();
+                send({ type: 'open-favorite-menu', url: favorite.url });
+              }}
+            >
+              <IconButton
+                size="lg"
+                variant="surface"
+                class="tile"
+                label={favorite.title}
+                onclick={() => send({ type: 'open-favorite', url: favorite.url })}
               >
+                {@render favicon(favorite, 16, favoriteUnread(favorite.url))}
+              </IconButton>
+            </li>
+          {/each}
+        </ul>
+        {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
+      {/if}
+
+      {#if !collapsed && activeSpaceName}
+        <p class="space-name">{activeSpaceName}</p>
+      {/if}
+
+      {#if showPinned && pinned.length > 0}
+        <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
+          {#each pinned as tab, index (tab.id)}
+            <li
+              class="favorite"
+              class:active={tab.id === activeTabId}
+              class:selected={selected.has(tab.id)}
+              class:discarded={!tab.live}
+              class:lifted={tab.id === dragId}
+              class:returning={tab.id === returningId}
+              class:drop-before={draggingPinned && dropIndex === index}
+              class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
+              data-drag-index={index}
+              data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
+              animate:reorder
+              style:transform={dragStyle(tab.id)}
+              onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
+              onpointerleave={previews.leave}
+              onpointerdown={(e) => onPointerDown(e, tab.id, 'pinned')}
+              oncontextmenu={(e) => {
+                e.preventDefault();
+                send({ type: 'open-tab-menu', id: tab.id });
+              }}
+            >
+              {#if collapsed}
+                {@render compactTab(tab)}
+              {:else}
                 <IconButton
                   size="lg"
                   variant="surface"
                   class="tile"
-                  label={favorite.title}
-                  onclick={() => send({ type: 'open-favorite', url: favorite.url })}
+                  label={label(tab)}
+                  aria-current={tab.id === activeTabId ? 'page' : undefined}
+                  aria-pressed={selected.has(tab.id)}
+                  onclick={(e) => selectTab(e, tab.id)}
+                  onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
                 >
-                  {@render favicon(favorite, 16, favoriteUnread(favorite.url))}
+                  {@render favicon(tab, 16, tab.unread)}
+                  {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
                 </IconButton>
-              </li>
-            {/each}
-          </ul>
-          {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
-        {/if}
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
 
-        {#if !collapsed && activeSpaceName}
-          <p class="space-name">{activeSpaceName}</p>
-        {/if}
+      {#if tabCleanup && listed.length > 0}
+        <div class="tab-cleanup" class:compact={collapsed}>
+          {#if !collapsed}<span class="cleanup-line" aria-hidden="true"></span>{/if}
+          <IconButton
+            size="sm"
+            icon="broom"
+            tone="muted"
+            class="tab-cleanup-button"
+            label={idleCount > 0 ? t('tabPanel.cleanTabs', { count: idleCount }) : t('tabPanel.noTabsToClean')}
+            title={idleCount > 0 ? t('tabPanel.cleanTabsTitle', { count: idleCount }) : t('tabPanel.noTabsToClean')}
+            aria-disabled={idleCount === 0}
+            onclick={() => {
+              if (idleCount > 0) send({ type: 'clean-tabs' });
+            }}
+          />
+        </div>
+      {:else if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
+        <span class="section-divider" aria-hidden="true"></span>
+      {:else if collapsed && showPinned && pinned.length > 0 && listed.length > 0}
+        <span class="divider" aria-hidden="true"></span>
+      {/if}
 
-        {#if showPinned && pinned.length > 0}
-          <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
-            {#each pinned as tab, index (tab.id)}
+      {#each sections as section (section.key)}
+        {#if section.group}
+          {@const group = section.group}
+          {#if renaming === group.name}
+            <input
+              class="group-rename"
+              style:margin-inline-start={indent(section.depth)}
+              aria-label={t('tabPanel.renameFolder')}
+              maxlength="80"
+              bind:value={renameValue}
+              use:focusSelect
+              onblur={commitRename}
+              onkeydown={(e) => {
+                if (e.key === 'Enter') commitRename();
+                else if (e.key === 'Escape') renaming = null;
+                e.stopPropagation();
+              }}
+            />
+          {:else}
+            <button
+              class="group-heading"
+              class:drop-target={dropFolder === group.name}
+              style:margin-inline-start={indent(section.depth)}
+              data-folder={group.name}
+              title={group.name}
+              aria-label={`${group.name} (${group.count})`}
+              aria-expanded={!group.collapsed}
+              onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
+              ondblclick={() => startRename(group.name)}
+              onpointerdown={(e) => onFolderPointerDown(e, group.name)}
+              oncontextmenu={(e) => {
+                e.preventDefault();
+                send({ type: 'open-folder-menu', name: group.name });
+              }}
+              onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
+            >
+              <span>{collapsed ? group.name.slice(0, 1) : group.name}</span><small>{group.count}</small>
+            </button>
+          {/if}
+        {/if}
+        {#if !section.group?.collapsed}
+          <ol class="rows" style:margin-inline-start={indent(section.depth)}>
+            {#each section.entries as tab (tab.id)}
+              {@const index = listedIndex.get(tab.id) ?? -1}
               <li
-                class="favorite"
+                class="row"
+                class:private={tab.isPrivate}
                 class:active={tab.id === activeTabId}
                 class:selected={selected.has(tab.id)}
                 class:discarded={!tab.live}
-                class:lifted={tab.id === dragId}
-                class:returning={tab.id === returningId}
-                class:drop-before={draggingPinned && dropIndex === index}
-                class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
-                data-drag-index={index}
+                class:lifted={index >= 0 && tab.id === dragId}
+                class:returning={index >= 0 && tab.id === returningId}
+                class:drop-before={index >= 0 && draggingListed && dropIndex === index}
+                class:drop-after={index >= 0 &&
+                  draggingListed &&
+                  dropIndex === index + 1 &&
+                  tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
+                data-drag-index={index >= 0 ? index : undefined}
                 data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
                 animate:reorder
-                style:transform={dragStyle(tab.id)}
+                style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
                 onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
                 onpointerleave={previews.leave}
-                onpointerdown={(e) => onPointerDown(e, tab.id, 'pinned')}
+                onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
                 oncontextmenu={(e) => {
                   e.preventDefault();
                   send({ type: 'open-tab-menu', id: tab.id });
                 }}
               >
-                {#if collapsed}
-                  {@render compactTab(tab)}
-                {:else}
-                  <IconButton
-                    size="lg"
-                    variant="surface"
-                    class="tile"
-                    label={label(tab)}
-                    aria-current={tab.id === activeTabId ? 'page' : undefined}
-                    aria-pressed={selected.has(tab.id)}
-                    onclick={(e) => selectTab(e, tab.id)}
-                    onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-                  >
-                    {@render favicon(tab, 16, tab.unread)}
-                    {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
-                  </IconButton>
-                {/if}
+                {@render tabRow(tab)}
               </li>
             {/each}
-          </ul>
+          </ol>
         {/if}
+      {/each}
 
-        {#if tabCleanup && listed.length > 0}
-          <div class="tab-cleanup" class:compact={collapsed}>
-            {#if !collapsed}<span class="cleanup-line" aria-hidden="true"></span>{/if}
-            <IconButton
-              size="sm"
-              icon="broom"
-              tone="muted"
-              class="tab-cleanup-button"
-              label={idleCount > 0 ? t('tabPanel.cleanTabs', { count: idleCount }) : t('tabPanel.noTabsToClean')}
-              title={idleCount > 0 ? t('tabPanel.cleanTabsTitle', { count: idleCount }) : t('tabPanel.noTabsToClean')}
-              aria-disabled={idleCount === 0}
-              onclick={() => {
-                if (idleCount > 0) send({ type: 'clean-tabs' });
-              }}
-            />
-          </div>
-        {:else if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
-          <span class="section-divider" aria-hidden="true"></span>
-        {:else if collapsed && showPinned && pinned.length > 0 && listed.length > 0}
-          <span class="divider" aria-hidden="true"></span>
-        {/if}
+      {#if collapsed}
+        <div class="new-tab-position" in:popIn>
+          <NewTabButton />
+        </div>
+      {/if}
+    </div>
 
-        {#each sections as section (section.key)}
-          {#if section.group}
-            {@const group = section.group}
-            {#if renaming === group.name}
-              <input
-                class="group-rename"
-                style:margin-inline-start={indent(section.depth)}
-                aria-label={t('tabPanel.renameFolder')}
-                maxlength="80"
-                bind:value={renameValue}
-                use:focusSelect
-                onblur={commitRename}
-                onkeydown={(e) => {
-                  if (e.key === 'Enter') commitRename();
-                  else if (e.key === 'Escape') renaming = null;
-                  e.stopPropagation();
-                }}
-              />
-            {:else}
+    {#if !collapsed && profile !== 'private'}
+      <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} />
+    {/if}
+
+    <div class="spacer"></div>
+
+    {#if media}
+      <MediaPlayer {media} compact={collapsed} />
+    {/if}
+
+    {#if spaces.length > 0}
+      <div class="spaces" class:compact={collapsed}>
+        {#if inSpaceRow}{@render panelToggle()}{/if}
+        {#if renamingSpace !== null}
+          <input
+            class="group-rename"
+            aria-label={t('spaces.rename')}
+            maxlength="80"
+            bind:value={renameValue}
+            use:focusSelect
+            onblur={commitSpaceRename}
+            onkeydown={(e) => {
+              if (e.key === 'Enter') commitSpaceRename();
+              else if (e.key === 'Escape') renamingSpace = null;
+              e.stopPropagation();
+            }}
+          />
+        {:else}
+          <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
+            {#each spaces.length > 1 ? spaces : [] as space (space.id)}
               <button
-                class="group-heading"
-                class:drop-target={dropFolder === group.name}
-                style:margin-inline-start={indent(section.depth)}
-                data-folder={group.name}
-                title={group.name}
-                aria-label={`${group.name} (${group.count})`}
-                aria-expanded={!group.collapsed}
-                onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
-                ondblclick={() => startRename(group.name)}
-                onpointerdown={(e) => onFolderPointerDown(e, group.name)}
+                class="space-dot"
+                aria-pressed={space.id === activeSpaceId}
+                aria-label={space.name}
+                title={space.name}
+                onclick={() => send({ type: 'switch-space', id: space.id })}
+                ondblclick={() => startSpaceRename(space)}
                 oncontextmenu={(e) => {
                   e.preventDefault();
-                  send({ type: 'open-folder-menu', name: group.name });
+                  if (space.id) send({ type: 'open-space-menu', id: space.id });
                 }}
-                onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
+                onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
               >
-                <span>{collapsed ? group.name.slice(0, 1) : group.name}</span><small>{group.count}</small>
+                {#if space.icon}{space.icon}{:else}<span class="dot" aria-hidden="true"></span>{/if}
+              </button>
+            {/each}
+          </div>
+          {#if !collapsed}
+            <IconButton
+              size="lg"
+              variant="surface"
+              tone="muted"
+              icon="plus"
+              class="space-add"
+              label={t('tabPanel.addMenu')}
+              aria-haspopup="true"
+              popovertarget="sidebar-add-menu"
+            />
+          {/if}
+          <div bind:this={addMenu} id="sidebar-add-menu" class="select-content up add-menu" popover="auto">
+            <button
+              type="button"
+              class="select-item"
+              onclick={() => {
+                addMenu?.hidePopover();
+                send({ type: 'new-tab' });
+              }}
+            >
+              {t('newTabButton.label')}
+            </button>
+            <button
+              type="button"
+              class="select-item"
+              onclick={() => {
+                addMenu?.hidePopover();
+                send({ type: 'create-space' });
+              }}
+            >
+              {t('spaces.add')}
+            </button>
+            {#if !collapsed && profile !== 'private'}
+              <button
+                type="button"
+                class="select-item"
+                onclick={() => {
+                  addMenu?.hidePopover();
+                  addingLiveFolder = true;
+                }}
+              >
+                {t('liveFolders.add')}
               </button>
             {/if}
-          {/if}
-          {#if !section.group?.collapsed}
-            <ol class="rows" style:margin-inline-start={indent(section.depth)}>
-              {#each section.entries as tab (tab.id)}
-                {@const index = listedIndex.get(tab.id) ?? -1}
-                <li
-                  class="row"
-                  class:private={tab.isPrivate}
-                  class:active={tab.id === activeTabId}
-                  class:selected={selected.has(tab.id)}
-                  class:discarded={!tab.live}
-                  class:lifted={index >= 0 && tab.id === dragId}
-                  class:returning={index >= 0 && tab.id === returningId}
-                  class:drop-before={index >= 0 && draggingListed && dropIndex === index}
-                  class:drop-after={index >= 0 &&
-                    draggingListed &&
-                    dropIndex === index + 1 &&
-                    tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
-                  data-drag-index={index >= 0 ? index : undefined}
-                  data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
-                  animate:reorder
-                  style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
-                  onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
-                  onpointerleave={previews.leave}
-                  onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
-                  oncontextmenu={(e) => {
-                    e.preventDefault();
-                    send({ type: 'open-tab-menu', id: tab.id });
-                  }}
-                >
-                  {#if collapsed}
-                    {@render compactTab(tab)}
-                  {:else}
-                    {@render tabRow(tab)}
-                  {/if}
-                </li>
-              {/each}
-            </ol>
-          {/if}
-        {/each}
-
-        {#if collapsed}
-          <div class="new-tab-position">
-            <NewTabButton />
           </div>
         {/if}
       </div>
+    {/if}
 
-      {#if !collapsed && profile !== 'private'}
-        <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} />
-      {/if}
-
-      <div class="spacer"></div>
-
-      {#if media}
-        <MediaPlayer {media} compact={collapsed} />
-      {/if}
-
-      {#if spaces.length > 0}
-        <div class="spaces" class:compact={collapsed}>
-          {#if inSpaceRow}{@render panelToggle()}{/if}
-          {#if renamingSpace !== null}
-            <input
-              class="group-rename"
-              aria-label={t('spaces.rename')}
-              maxlength="80"
-              bind:value={renameValue}
-              use:focusSelect
-              onblur={commitSpaceRename}
-              onkeydown={(e) => {
-                if (e.key === 'Enter') commitSpaceRename();
-                else if (e.key === 'Escape') renamingSpace = null;
-                e.stopPropagation();
-              }}
+    {#if selectedTabIds.length > 1 || !inSpaceRow}
+      <footer class="footer" class:compact={collapsed}>
+        {#if selectedTabIds.length > 1}
+          <div
+            class="selection"
+            aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
+            title={t('tabPanel.selectionHint')}
+          >
+            {#if !collapsed}<span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span
+              >{/if}
+            <IconButton
+              icon="close"
+              size="sm"
+              label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
+              onclick={() => send({ type: 'close-selected-tabs' })}
             />
-          {:else}
-            <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
-              {#each spaces.length > 1 ? spaces : [] as space (space.id)}
-                <button
-                  class="space-dot"
-                  aria-pressed={space.id === activeSpaceId}
-                  aria-label={space.name}
-                  title={space.name}
-                  onclick={() => send({ type: 'switch-space', id: space.id })}
-                  ondblclick={() => startSpaceRename(space)}
-                  oncontextmenu={(e) => {
-                    e.preventDefault();
-                    if (space.id) send({ type: 'open-space-menu', id: space.id });
-                  }}
-                  onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
-                >
-                  {#if space.icon}{space.icon}{:else}<span class="dot" aria-hidden="true"></span>{/if}
-                </button>
-              {/each}
-            </div>
-            {#if !collapsed}
-              <IconButton
-                size="lg"
-                variant="surface"
-                tone="muted"
-                icon="plus"
-                class="space-add"
-                label={t('tabPanel.addMenu')}
-                aria-haspopup="true"
-                popovertarget="sidebar-add-menu"
-              />
-            {/if}
-            <div bind:this={addMenu} id="sidebar-add-menu" class="select-content up add-menu" popover="auto">
-              <button
-                type="button"
-                class="select-item"
-                onclick={() => {
-                  addMenu?.hidePopover();
-                  send({ type: 'new-tab' });
-                }}
-              >
-                {t('newTabButton.label')}
-              </button>
-              <button
-                type="button"
-                class="select-item"
-                onclick={() => {
-                  addMenu?.hidePopover();
-                  send({ type: 'create-space' });
-                }}
-              >
-                {t('spaces.add')}
-              </button>
-              {#if !collapsed && profile !== 'private'}
-                <button
-                  type="button"
-                  class="select-item"
-                  onclick={() => {
-                    addMenu?.hidePopover();
-                    addingLiveFolder = true;
-                  }}
-                >
-                  {t('liveFolders.add')}
-                </button>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      {/if}
-
-      {#if selectedTabIds.length > 1 || !inSpaceRow}
-        <footer class="footer" class:compact={collapsed}>
-          {#if selectedTabIds.length > 1}
-            <div
-              class="selection"
-              aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
-              title={t('tabPanel.selectionHint')}
+            <button
+              class="clear-selection"
+              aria-label={t('tabPanel.clearSelection')}
+              onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
             >
-              {#if !collapsed}<span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span
-                >{/if}
-              <IconButton
-                icon="close"
-                size="sm"
-                label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
-                onclick={() => send({ type: 'close-selected-tabs' })}
-              />
-              <button
-                class="clear-selection"
-                aria-label={t('tabPanel.clearSelection')}
-                onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
-              >
-            </div>
-          {/if}
-          {#if !inSpaceRow}{@render panelToggle()}{/if}
-        </footer>
-      {/if}
-    </div>
-  {/key}
+          </div>
+        {/if}
+        {#if !inSpaceRow}{@render panelToggle()}{/if}
+      </footer>
+    {/if}
+  </div>
 </aside>
 
 <style>
@@ -1084,8 +1080,35 @@
     width: 100%;
   }
 
-  .fading .body {
+  .body > :not(.lists, .spaces, .footer),
+  .spaces > :global(:not(.panel-toggle)),
+  .footer > :global(:not(.panel-toggle)) {
+    transition: opacity 120ms ease-out;
+  }
+
+  /* The toggle sits at the same spot in both layouts, so it stays visible under the cursor. */
+  .fading .body > :not(.lists, .spaces, .footer),
+  .fading .spaces > :global(:not(.panel-toggle)),
+  .fading .footer > :global(:not(.panel-toggle)) {
     opacity: 0;
+  }
+
+  .collapsed .pill {
+    display: none;
+  }
+
+  .closing .pill {
+    opacity: 0;
+  }
+
+  .opening .pill {
+    animation: pill-in 160ms var(--ease-out) 80ms backwards;
+  }
+
+  @keyframes pill-in {
+    from {
+      opacity: 0;
+    }
   }
 
   /* Expanded rows keep their full width while the panel animates, so they are uncovered
@@ -1105,6 +1128,9 @@
     margin: 0;
     padding: 0;
     list-style: none;
+    transition:
+      gap 160ms var(--ease-out),
+      padding 160ms var(--ease-out);
   }
 
   .collapsed .rows {
@@ -1495,6 +1521,10 @@
     padding-top: 8px;
   }
 
+  .right .spaces {
+    flex-direction: row-reverse;
+  }
+
   .spaces.compact {
     flex-direction: column;
     align-items: center;
@@ -1561,6 +1591,11 @@
     position-anchor: --sidebar-add;
     left: auto;
     right: anchor(right);
+  }
+
+  .right .add-menu {
+    left: anchor(left);
+    right: auto;
   }
 
   .add-menu .select-item {
