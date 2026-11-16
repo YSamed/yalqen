@@ -12,6 +12,7 @@ export const SITE_PERMISSIONS: readonly SitePermission[] = [
   'geolocation',
   'notifications',
   'popups',
+  'apps',
 ];
 
 export function isSitePermission(value: unknown): value is SitePermission {

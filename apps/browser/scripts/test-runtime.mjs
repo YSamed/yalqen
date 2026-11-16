@@ -42,6 +42,7 @@ for (const test of [
   'devtools-divider.mjs',
   'bookmarks-panel.mjs',
   'bookmark-tabs.mjs',
+  'app-links.mjs',
   'threat-protection.mjs',
   'persistent-profiles.mjs',
   'profile-settings.mjs',

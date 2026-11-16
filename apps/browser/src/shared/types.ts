@@ -1016,8 +1016,9 @@ export interface ProcessUsage {
   pages: PageProcess[];
 }
 
-export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups';
-export type PromptPermission = Exclude<SitePermission, 'popups'>;
+// 'apps': the site may hand links to apps (slack://, zoommtg://…) without asking each time.
+export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups' | 'apps';
+export type PromptPermission = Exclude<SitePermission, 'popups' | 'apps'>;
 export type PermissionDecision = 'allow' | 'deny';
 export type SystemDevice = 'camera' | 'microphone' | 'screen';
 export type SystemAccess = 'granted' | 'denied' | 'restricted' | 'not-determined' | 'unknown';
