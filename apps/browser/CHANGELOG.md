@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.9](https://github.com/YSamed/yalqen/compare/v0.4.8...v0.4.9) (2026-11-16)
+
+
+### Bug Fixes
+
+* limit the collapse glide to favorite and pinned tiles ([#426](https://github.com/YSamed/yalqen/issues/426)) ([0e88728](https://github.com/YSamed/yalqen/commit/0e8872887e1ee4c5b80828053e7e65c2efa080e3))
+* start sidebar row animations from their position before the collapse ([#428](https://github.com/YSamed/yalqen/issues/428)) ([3b811b5](https://github.com/YSamed/yalqen/commit/3b811b5a6c6c3444fed7ead7066e0014bc5bb34a))
+
 ## [0.4.8](https://github.com/YSamed/yalqen/compare/v0.4.7...v0.4.8) (2026-11-16)
 
 
