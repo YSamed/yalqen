@@ -266,30 +266,37 @@
   function popIn(node: Element) {
     return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
   }
-  // Favorite and pinned tiles fold from the grid into one column, so each glides from where it was
-  // before the layout swap. Tab rows are left to animate:reorder; a second animation would stack on it.
+  // Tiles fold from the grid into one column and push the rows below, so every list item glides from
+  // where it was before the layout swap.
   let layoutRects: [Element, DOMRect][] = [];
   $effect.pre(() => {
     void collapsed;
     if (!lists || reducedMotion.matches) return;
-    layoutRects = [...lists.querySelectorAll('.favorite')].map((li) => [li, li.getBoundingClientRect()]);
+    layoutRects = [...lists.querySelectorAll('li')].map((li) => [li, li.getBoundingClientRect()]);
   });
   $effect(() => {
     void collapsed;
-    for (const [li, from] of layoutRects) {
-      const to = li.getBoundingClientRect();
-      const dx = from.left - to.left;
-      const dy = from.top - to.top;
-      if (li.isConnected && (dx || dy))
-        li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
-          duration: 200,
-          easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-        });
-    }
-    layoutRects = [];
+    // Queued behind animate:reorder, which claims the rows it moves; a second animation would stack.
+    queueMicrotask(() => {
+      for (const [li, from] of layoutRects) {
+        const to = li.getBoundingClientRect();
+        const dx = from.left - to.left;
+        const dy = from.top - to.top;
+        if (li.isConnected && (dx || dy))
+          li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
+            duration: 200,
+            easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+          });
+      }
+      layoutRects = [];
+    });
   });
 
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
+    // Svelte measures `from` after the pinned section has already switched layout, so prefer the
+    // rect taken before the swap.
+    const before = layoutRects.findIndex(([li]) => li === node);
+    if (before >= 0) [, from] = layoutRects.splice(before, 1)[0];
     return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
   }
   const draggingPinned = $derived(dragGroup === 'pinned');
