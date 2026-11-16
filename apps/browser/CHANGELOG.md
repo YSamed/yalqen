@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.8](https://github.com/YSamed/yalqen/compare/v0.4.7...v0.4.8) (2026-11-16)
+
+
+### Features
+
+* glide pinned tiles between the grid and the column when the sidebar collapses ([#425](https://github.com/YSamed/yalqen/issues/425)) ([f3cb778](https://github.com/YSamed/yalqen/commit/f3cb778f75051c49e86f5f69961ba3c88c7bd070))
+* keep the tab icon column in place while the sidebar collapses ([#421](https://github.com/YSamed/yalqen/issues/421)) ([6067a28](https://github.com/YSamed/yalqen/commit/6067a2826ab70024e414922a2c35932761265274))
+
 ## [0.4.7](https://github.com/YSamed/yalqen/compare/v0.4.6...v0.4.7) (2026-11-16)
 
 
