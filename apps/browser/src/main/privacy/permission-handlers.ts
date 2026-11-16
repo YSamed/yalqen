@@ -8,6 +8,7 @@ import {
 } from './permissions.js';
 import { t } from '../../shared/i18n.js';
 import { openSystemSettings, requestSystemAccess } from './system-access.js';
+import type { AppLinks } from './app-links.js';
 
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
 
@@ -22,6 +23,8 @@ interface PermissionHandlerOptions {
   parentOf: (contents: WebContents) => BaseWindow | undefined;
   // Kinds the user chose never to be asked about; undecided requests for them are refused silently.
   blockedRequests: () => readonly SitePermission[];
+  // Links to apps (slack://…), which Electron asks about as "openExternal".
+  appLinks: AppLinks;
 }
 
 export function installPermissionHandlers({
@@ -29,6 +32,7 @@ export function installPermissionHandlers({
   storeFor,
   parentOf,
   blockedRequests,
+  appLinks,
 }: PermissionHandlerOptions): void {
   let prompts: Promise<unknown> = Promise.resolve();
   // Prompts are shown one at a time; a queued request is decided again once its turn comes,
@@ -91,6 +95,16 @@ export function installPermissionHandlers({
     browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) {
         callback(true);
+        return;
+      }
+      // A sign-in page handing its token back to an app: ask, then Electron passes the link to the system.
+      if (permission === 'openExternal') {
+        const url = 'externalURL' in details ? details.externalURL : undefined;
+        if (!url) {
+          callback(false);
+          return;
+        }
+        appLinks.ask(contents, url, details.requestingUrl, isPrivate).then(callback, () => callback(false));
         return;
       }
       // Let Electron 45 screen-sharing requests proceed to the display-media source picker.

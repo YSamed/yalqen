@@ -111,6 +111,7 @@ import { selectTabIds, moveTabSelection, type TabSelectionMode } from '../../sha
 import { TabTranslation } from './tab-translation.js';
 import { certificateChainFor, type CertificateDetails } from '../privacy/certificate-details.js';
 import { stepZoom } from './zoom.js';
+import { appLinkScheme } from '../privacy/app-links.js';
 import { MAX_CLOSED_TABS } from './closed-tabs.js';
 import { modeFlags, modeOf, type TabMode } from '../../shared/tab-modes.js';
 import { tabForBookmark } from '../../shared/bookmarks-panel.js';
@@ -135,6 +136,8 @@ interface TabManagerOptions {
   // The "Tab modes" setting: the mode slider, new tabs taking the mode in front and the modes' looks.
   tabModes?: () => boolean;
   onPrivateEnded: () => void;
+  // window.open of a link to an app (slack://…), which belongs to the app rather than a tab.
+  onAppLink?: (contents: WebContents, url: string, isPrivate: boolean) => void;
   // A mouse press in any page of this window.
   onPagePress?: () => void;
   onDeveloperEnded?: () => void;
@@ -2406,6 +2409,10 @@ export class TabManager {
       if (input.type === 'char') tab.edited = true;
     });
     contents.setWindowOpenHandler(({ url, disposition, features }) => {
+      if (appLinkScheme(url)) {
+        this.options.onAppLink?.(contents, url, tab.isPrivate);
+        return { action: 'deny' };
+      }
       if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
         tab.activatedAt = 0;
         if (opensPeek(disposition, features, url)) {

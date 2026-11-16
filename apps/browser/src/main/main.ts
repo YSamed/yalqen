@@ -2,7 +2,7 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain, Menu, nativeTheme, net, webContents, type WebContents } from 'electron';
+import { app, dialog, ipcMain, Menu, nativeTheme, net, shell, webContents, type WebContents } from 'electron';
 import { ExtensionAccessController } from './extensions/extension-access-controller.js';
 import {
   BOOKMARKS_URL,
@@ -103,6 +103,7 @@ import { captureClip, pickedSelector } from './tabs/tab-picker.js';
 import { WebAppController } from './app/web-app-controller.js';
 import { webAppContains } from '../shared/web-apps.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
+import { AppLinks, confirmAppLink } from './privacy/app-links.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
 import { RequestRuleStore } from './devtools/request-rules.js';
@@ -403,6 +404,10 @@ function startBrowser(): void {
 
   applyPageLanguage(sessions, getLocale());
   applyCookieBlocking(sessions, settings.get().blockThirdPartyCookies, cookiesAllowed);
+  const appLinks = new AppLinks({
+    storeFor: permissionsFor,
+    confirm: confirmAppLink((contents) => windowOf(contents)?.window),
+  });
   installPermissionHandlers({
     sessions: [
       [daily, false],
@@ -412,6 +417,7 @@ function startBrowser(): void {
     storeFor: permissionsFor,
     parentOf: (contents) => windowOf(contents)?.window,
     blockedRequests: () => settings.get().blockedPermissionRequests,
+    appLinks,
   });
   installDisplayMediaHandler({
     sessions: [daily, privateBrowsing, developer],
@@ -697,6 +703,11 @@ function startBrowser(): void {
     clearClosedTabs: () => closedTabStore.clearSince(0),
     pageTheme: fs.readFileSync(rendererPath('tokens.css'), 'utf8'),
     permissionsFor,
+    openAppLink: (contents, url, isPrivate) => {
+      void appLinks.ask(contents, url, contents.getURL(), isPrivate).then((open) => {
+        if (open) void shell.openExternal(url).catch(() => {});
+      });
+    },
     zoomFor: (isPrivate) => (isPrivate ? privateZoom : zoom),
     searchEngine,
     downloadActions: (window) => downloadManager.actions(() => window.tabs.openDownloads()),
@@ -1219,8 +1230,11 @@ function startBrowser(): void {
             ...workspaces.spaces().map((space) => space.id),
           ]) ?? undefined)
         : undefined;
+    // Links from other apps, often sign-ins, go to the last normal window: a private, developer or web app window
+    // has none of the user's sign-ins.
     const openExternal = (urls: string[], external: readonly string[] = [...urls]) => {
-      const reusable = current && !current.window.isDestroyed() ? current : null;
+      const main = mainWindow();
+      const reusable = main && !main.window.isDestroyed() ? main : null;
       const first = reusable ? undefined : urls.shift();
       const window = reusable ?? openWindow({ url: first, space: routeExternal(first, external) });
       for (const url of urls) window.tabs.open(url, { space: routeExternal(url, external) });

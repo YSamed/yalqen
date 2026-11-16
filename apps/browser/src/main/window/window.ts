@@ -11,6 +11,7 @@ import {
   nativeTheme,
   type Rectangle,
   type Session,
+  type WebContents,
 } from 'electron';
 import { watchInterfaceBridge } from './interface-bridge.js';
 import { getLocale, t } from '../../shared/i18n.js';
@@ -191,6 +192,8 @@ export interface AppContext {
   clearClosedTabs(): void;
   pageTheme: string;
   permissionsFor(isPrivate: boolean): PermissionStore;
+  // A page's window.open of an app link (zoommtg://…): ask, then hand it to the system.
+  openAppLink(contents: WebContents, url: string, isPrivate: boolean): void;
   zoomFor(isPrivate: boolean): ZoomStore;
   searchEngine(): SearchEngine;
   downloadActions(window: YalqenWindow): DownloadActions;
@@ -393,6 +396,7 @@ export class YalqenWindow {
       developerWindow: this.isDeveloper,
       tabModes: () => app.settings.get().tabModes,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
+      onAppLink: (contents, url, isPrivate) => app.openAppLink(contents, url, isPrivate),
       // Only the bookmarks panel has a popup that closes on clicks outside it, including in the page.
       onPagePress: () => {
         if (this.bookmarksPanelVisible && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.pagePress);
