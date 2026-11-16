@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/YSamed/yalqen/compare/v0.4.4...v0.4.5) (2026-11-16)
+
+
+### Features
+
+* add a bookmarks side panel ([#413](https://github.com/YSamed/yalqen/issues/413)) ([a515cc5](https://github.com/YSamed/yalqen/commit/a515cc5e1a6a983854aabcb6cbba0f16e9669868))
+
 ## [0.4.4](https://github.com/YSamed/yalqen/compare/v0.4.3...v0.4.4) (2026-11-13)
 
 
