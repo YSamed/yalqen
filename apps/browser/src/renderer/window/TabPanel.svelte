@@ -266,13 +266,13 @@
   function popIn(node: Element) {
     return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
   }
-  // Pinned tiles fold from the grid into one column, which also moves the rows below, so every
-  // list item glides from where it was before the layout swap.
+  // Favorite and pinned tiles fold from the grid into one column, so each glides from where it was
+  // before the layout swap. Tab rows are left to animate:reorder; a second animation would stack on it.
   let layoutRects: [Element, DOMRect][] = [];
   $effect.pre(() => {
     void collapsed;
     if (!lists || reducedMotion.matches) return;
-    layoutRects = [...lists.querySelectorAll('li')].map((li) => [li, li.getBoundingClientRect()]);
+    layoutRects = [...lists.querySelectorAll('.favorite')].map((li) => [li, li.getBoundingClientRect()]);
   });
   $effect(() => {
     void collapsed;
