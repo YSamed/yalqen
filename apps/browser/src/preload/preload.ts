@@ -78,6 +78,7 @@ const api: YalqenApi = {
   cancelQueuedAgentChat: (id, messageId) =>
     ipcRenderer.invoke(channel.agentChatCancelQueued, id, messageId) as Promise<void>,
   onAgentChat: (listener) => subscribe<string>(channel.agentChatUpdate, listener),
+  onPagePress: (listener) => subscribe<void>(channel.pagePress, listener),
 };
 
 contextBridge.exposeInMainWorld('yalqen', api);

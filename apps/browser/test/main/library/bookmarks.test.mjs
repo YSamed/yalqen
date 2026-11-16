@@ -72,6 +72,23 @@ test('bookmarks are added once, edited, moved and persisted', () => {
   });
 });
 
+test('the revision goes up with every change, so the bookmarks panel knows when to rebuild', () => {
+  withDir((dir) => {
+    const store = new BookmarkStore(dir);
+    const seen = [store.revision];
+    const bookmark = store.add('https://example.com/', 'Example');
+    seen.push(store.revision);
+    store.edit(bookmark.id, 'Renamed', 'https://example.com/renamed');
+    seen.push(store.revision);
+    const folder = store.addFolder('Work');
+    seen.push(store.revision);
+    store.renameFolder(folder.id, 'Projects');
+    seen.push(store.revision);
+    for (let index = 1; index < seen.length; index++) assert.ok(seen[index] > seen[index - 1]);
+    store.saveNow();
+  });
+});
+
 test('bookmarked addresses are known after every change', () => {
   withDir((dir) => {
     const store = new BookmarkStore(dir);

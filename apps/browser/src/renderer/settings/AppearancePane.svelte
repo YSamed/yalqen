@@ -239,6 +239,13 @@
     onchange={(checked) => update({ tabModes: checked })}
   />
 </SettingRow>
+<SettingRow title={t('settings.bookmarksPanel')} hint={t('settings.bookmarksPanelHint')}>
+  <Switch
+    label={t('settings.bookmarksPanel')}
+    checked={values.bookmarksPanel}
+    onchange={(checked) => update({ bookmarksPanel: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
   <Switch
     label={t('settings.mediaPlayer')}

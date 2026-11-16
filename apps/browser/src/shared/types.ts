@@ -167,6 +167,8 @@ export interface BrowserState {
   tabCleanup?: boolean;
   // The "Tab modes" setting: the window takes the look of the active tab's mode.
   tabModes?: boolean;
+  // The bookmarks side panel's contents while it is open; null or absent while it is closed.
+  bookmarksPanel?: import('./bookmarks-panel').BookmarksPanelView | null;
   // Whether tabs in this window can switch between normal, developer and private.
   modeSwitch?: boolean;
   favorites: Favorite[];
@@ -486,6 +488,11 @@ export type UiAction =
   | { type: 'open-blocked-popups' }
   | { type: 'toggle-bookmark' }
   | { type: 'open-bookmarks-menu' }
+  | { type: 'toggle-bookmarks-panel' }
+  | { type: 'open-bookmark'; url: string }
+  | { type: 'edit-bookmark'; id: string; title: string; url: string }
+  | { type: 'rename-bookmark-folder'; id: string; title: string }
+  | { type: 'open-bookmarks-page' }
   | { type: 'toggle-panel' }
   | { type: 'toggle-sidebar' }
   | { type: 'toggle-agent-panel' }
@@ -555,6 +562,8 @@ export const IpcChannel = {
   agentChatNew: 'yalqen:agent-chat-new',
   agentChatShowBackground: 'yalqen:agent-chat-show-background',
   agentChatDismissBackground: 'yalqen:agent-chat-dismiss-background',
+  // A press in a page, which the interface cannot see, for popups in the interface that close on outside clicks.
+  pagePress: 'yalqen:page-press',
   agentChatOpenBackground: 'yalqen:agent-chat-open-background',
   agentChatContinueBackground: 'yalqen:agent-chat-continue-background',
   agentChatPermission: 'yalqen:agent-chat-permission',
@@ -631,6 +640,7 @@ export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   closeAgentProject(id: string): Promise<boolean>;
   cancelQueuedAgentChat(sessionId: string, messageId: string): Promise<void>;
   onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
+  onPagePress(listener: () => void): () => void;
 }
 
 export interface CommandBarOpen {
@@ -864,6 +874,8 @@ export interface SettingsValues {
   manualTabCleanup: boolean;
   // Tabs switch between normal, developer and private from the address bar.
   tabModes: boolean;
+  // The toolbar's bookmarks button opens a bookmarks panel on the right instead of a menu.
+  bookmarksPanel: boolean;
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;

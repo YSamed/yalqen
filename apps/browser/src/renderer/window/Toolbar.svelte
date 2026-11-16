@@ -68,6 +68,7 @@
     agentPanelOpen,
     agentStatus,
     modeSwitch = false,
+    bookmarksPanelOpen = false,
   }: {
     tabs: TabSnapshot[];
     developer: boolean;
@@ -87,6 +88,7 @@
     agentPanelOpen: boolean;
     agentStatus: AgentSessionState['status'];
     modeSwitch?: boolean;
+    bookmarksPanelOpen?: boolean;
   } = $props();
 
   let brokenIcons: Record<string, true> = $state({});
@@ -228,7 +230,12 @@
   {:else if id === 'home'}
     <IconButton icon="home" label={t('toolbar.home')} onclick={() => send({ type: 'go-home' })} />
   {:else if id === 'bookmarks'}
-    <IconButton icon="bookmarks" label={t('toolbar.bookmarks')} onclick={() => send({ type: 'open-bookmarks-menu' })} />
+    <IconButton
+      icon="bookmarks"
+      label={t('toolbar.bookmarks')}
+      aria-pressed={bookmarksPanelOpen}
+      onclick={() => send({ type: 'open-bookmarks-menu' })}
+    />
   {:else if id === 'history'}
     <IconButton
       icon="history"

@@ -113,6 +113,7 @@ import { certificateChainFor, type CertificateDetails } from '../privacy/certifi
 import { stepZoom } from './zoom.js';
 import { MAX_CLOSED_TABS } from './closed-tabs.js';
 import { modeFlags, modeOf, type TabMode } from '../../shared/tab-modes.js';
+import { tabForBookmark } from '../../shared/bookmarks-panel.js';
 
 const STORAGE_WORLD_ID = 1001;
 const MAX_PINCH_ZOOM = 3;
@@ -134,6 +135,8 @@ interface TabManagerOptions {
   // The "Tab modes" setting: the mode slider, new tabs taking the mode in front and the modes' looks.
   tabModes?: () => boolean;
   onPrivateEnded: () => void;
+  // A mouse press in any page of this window.
+  onPagePress?: () => void;
   onDeveloperEnded?: () => void;
   freezeBackground: () => boolean;
   // "Keep pinned tabs on their site": pinned tabs load at their pinned address and send other sites to new tabs.
@@ -2014,6 +2017,14 @@ export class TabManager {
   }
 
   // The plus button and Cmd+T open the new tab in the mode of the tab the user is on.
+  // The bookmarks panel's click: switch to a tab of this space already showing the page, or open it.
+  openPage(url: string): TabId {
+    const tab = tabForBookmark(url, this.here, this.activeId);
+    if (!tab) return this.open(url, { isPrivate: false });
+    this.activate(tab.id);
+    return tab.id;
+  }
+
   openInActiveMode(url?: string): TabId {
     return this.modesOn ? this.open(url, modeFlags(this.activeMode)) : this.open(url);
   }
@@ -2387,6 +2398,7 @@ export class TabManager {
       void contents.loadURL(upgraded);
     });
     listen('input-event', (_event, input) => {
+      if (input.type === 'mouseDown') this.options.onPagePress?.();
       if (isActivation(input.type)) {
         tab.activatedAt = Date.now();
         tab.interacted = true;

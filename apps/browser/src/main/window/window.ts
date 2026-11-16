@@ -31,7 +31,10 @@ import {
   type WindowMaterial,
 } from '../../shared/types.js';
 import { isTabMode, modeFlags } from '../../shared/tab-modes.js';
-import type { BookmarkStore } from '../library/bookmarks.js';
+import { canBookmark, type BookmarkStore } from '../library/bookmarks.js';
+import { siteIcons } from '../library/site-icons.js';
+import { storageDomain } from '../privacy/site-storage.js';
+import type { BookmarksPanelView } from '../../shared/bookmarks-panel.js';
 import type { FavoriteStore } from '../library/favorites.js';
 import type { LiveFolderRefresher, LiveFolderStore } from '../library/live-folders.js';
 import { isLiveFolderKind, liveFolderSource } from '../../shared/live-folders.js';
@@ -238,6 +241,9 @@ export class YalqenWindow {
   private agentProviders: AgentProviderId[] = ['claude'];
   private readonly projectFiles = new ProjectFiles();
   private agentPanelOpen = false;
+  // The bookmarks panel shares the right edge with the AI panel; opening one closes the other.
+  private bookmarksPanelOpen = false;
+  private bookmarksPanelCache: { revision: number; view: BookmarksPanelView } | null = null;
   private signingIn = false;
   private pickedElements: AgentElementRef[] = [];
   private readonly references = new Map<string, ReferenceCapture>();
@@ -387,6 +393,10 @@ export class YalqenWindow {
       developerWindow: this.isDeveloper,
       tabModes: () => app.settings.get().tabModes,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
+      // Only the bookmarks panel has a popup that closes on clicks outside it, including in the page.
+      onPagePress: () => {
+        if (this.bookmarksPanelVisible && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.pagePress);
+      },
       onDeveloperEnded: () => app.onDeveloperTabsClosed(),
       confirmUnload: (tab) => {
         this.tabs.activate(tab.id);
@@ -690,6 +700,7 @@ export class YalqenWindow {
       panelSide: this.app.settings.get().panelSide,
       pinnedDisplay: this.app.settings.get().pinnedDisplay,
       tabModes: this.app.settings.get().tabModes,
+      bookmarksPanel: this.bookmarksPanelVisible ? this.bookmarksPanelView() : null,
       modeSwitch: this.tabs.canSwitchMode,
       tabCleanup: !this.webApp && this.app.settings.get().manualTabCleanup,
       favorites: this.webApp ? [] : this.app.favorites.list(),
@@ -727,10 +738,49 @@ export class YalqenWindow {
     if (!this.agentPanelOpen) this.toggleAgentPanel();
   }
 
+  private get bookmarksPanelVisible(): boolean {
+    return this.bookmarksPanelOpen && this.app.settings.get().bookmarksPanel && !this.webApp;
+  }
+
+  toggleBookmarksPanel(): void {
+    if (this.webApp) return;
+    this.bookmarksPanelOpen = !this.bookmarksPanelVisible;
+    if (this.bookmarksPanelOpen && this.agentPanelOpen) this.agentPanelOpen = false;
+    this.pushState();
+  }
+
+  // The tree is rebuilt only when the bookmarks change; the icons come from the newest history visit per site.
+  private bookmarksPanelView(): BookmarksPanelView {
+    const bookmarks = this.app.bookmarks;
+    if (this.bookmarksPanelCache?.revision === bookmarks.revision) return this.bookmarksPanelCache.view;
+    const list = bookmarks.bookmarks();
+    const domainOf = (url: string) => {
+      try {
+        return storageDomain(new URL(url).hostname);
+      } catch {
+        return '';
+      }
+    };
+    const icons = siteIcons(this.app.history.list(), [...new Set(list.map((bookmark) => domainOf(bookmark.url)))]);
+    const view: BookmarksPanelView = {
+      folders: bookmarks.folders().map(({ id, title, parentId }) => ({ id, title, parentId })),
+      bookmarks: list.map(({ id, title, url, folderId }) => ({
+        id,
+        title,
+        url,
+        folderId,
+        icon: icons[domainOf(url)] ?? null,
+      })),
+    };
+    this.bookmarksPanelCache = { revision: bookmarks.revision, view };
+    return view;
+  }
+
   toggleAgentPanel(): void {
     if (this.isPrivate && !this.isDeveloper) return;
     this.agentPanelOpen = !this.agentPanelOpen;
     if (this.agentPanelOpen) {
+      this.bookmarksPanelOpen = false;
       if (this.agentProject.directory)
         this.projectTabs.bind(this.tabs.snapshotFor(), this.activeProjectId, this.isDeveloper);
       this.uiContents.focus();
@@ -1847,7 +1897,32 @@ export class YalqenWindow {
         if (page) app.toggleBookmark(page.url, page.title);
         break;
       }
+      case 'toggle-bookmarks-panel':
+        this.toggleBookmarksPanel();
+        break;
+      case 'open-bookmark':
+        if (typeof action.url === 'string' && canBookmark(action.url)) tabs.openPage(action.url);
+        break;
+      case 'edit-bookmark':
+        if ([action.id, action.title, action.url].every((value) => typeof value === 'string'))
+          app.runBookmarksCommand(
+            'rename',
+            new URLSearchParams({ id: action.id, title: action.title, url: action.url.trim() }),
+          );
+        break;
+      case 'rename-bookmark-folder':
+        if (typeof action.id === 'string' && typeof action.title === 'string' && action.title.trim())
+          app.runBookmarksCommand('rename-folder', new URLSearchParams({ id: action.id, title: action.title }));
+        break;
+      case 'open-bookmarks-page':
+        tabs.openBookmarks();
+        break;
       case 'open-bookmarks-menu':
+        // With the bookmarks panel turned on, the toolbar button opens and closes it instead of the menu.
+        if (app.settings.get().bookmarksPanel && !this.webApp) {
+          this.toggleBookmarksPanel();
+          break;
+        }
         this.popup(
           libraryMenuTemplate(app.bookmarks, {
             open: (url) => tabs.navigate(url),

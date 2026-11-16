@@ -65,6 +65,8 @@ export class BookmarkStore {
   private folderList: BookmarkFolder[] = [];
   private bookmarkList: Bookmark[] = [];
   private urls: Set<string> | null = null;
+  // Goes up on every change, so views built from the bookmarks know when to rebuild.
+  private revisionCount = 0;
   private suggestionList: readonly Readonly<Pick<Bookmark, 'title' | 'url'>>[] | null = null;
   private readonly searchTexts = new WeakMap<Bookmark, { title: string; url: string; text: string }>();
 
@@ -349,7 +351,12 @@ export class BookmarkStore {
     this.json.flush();
   }
 
+  get revision(): number {
+    return this.revisionCount;
+  }
+
   private save(): void {
+    this.revisionCount++;
     this.urls = null;
     this.suggestionList = null;
     this.json.schedule((): SavedBookmarks => ({ version: 2, folders: this.folderList, bookmarks: this.bookmarkList }));
