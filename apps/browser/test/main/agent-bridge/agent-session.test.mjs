@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import sessionModule from '../../../dist/main/agent-bridge/agent-session.js';
-import { DEFAULT_SHELL } from '../../../dist/main/platform.js';
+import { defaultShell } from '../../../dist/main/platform.js';
 
 const { AgentSession } = sessionModule;
 const size = { cols: 72, rows: 30 };
@@ -44,7 +44,7 @@ function fixture(t, overrides = {}) {
     onState: () => calls.states.push(session.state()),
     onOutput: (output) => calls.output.push(output),
     loadPty: async () => host,
-    shell: DEFAULT_SHELL,
+    shell: defaultShell(),
     env: { PATH: process.env.PATH, ELECTRON_RUN_AS_NODE: '1', CLAUDECODE: '1' },
     ...overrides,
   });
@@ -65,7 +65,7 @@ test('launches one interactive Claude session in the chosen project with session
   await session.start(size);
   assert.equal(calls.spawn.length, 1);
   const [shell, args, options] = calls.spawn[0];
-  assert.equal(shell, DEFAULT_SHELL);
+  assert.equal(shell, defaultShell());
   assert.equal(args[0], '-ilc');
   assert.match(args[1], /exec claude --mcp-config "\$YALQEN_MCP_CONFIG"/);
   assert.doesNotMatch(args.join(' '), /test-secret|skip-permissions/);

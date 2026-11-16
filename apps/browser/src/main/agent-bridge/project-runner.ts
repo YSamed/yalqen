@@ -2,7 +2,7 @@ import { spawn as spawnProcess, type ChildProcess, type SpawnOptions } from 'nod
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EMPTY_PROJECT_RUN } from '../../shared/agent-panel.js';
-import { DEFAULT_SHELL } from '../platform.js';
+import { defaultShell } from '../platform.js';
 import type { ProjectRunState } from '../../shared/types.js';
 
 const SCRIPT_NAMES = ['dev', 'start', 'serve', 'preview'];
@@ -129,12 +129,16 @@ export class ProjectRunner {
     let child: ChildProcess;
     try {
       // A new process group lets stop() end the dev server together with its child processes.
-      child = (this.options.spawn ?? spawnProcess)(this.options.shell ?? env.SHELL ?? DEFAULT_SHELL, ['-ilc', SCRIPT], {
-        cwd: directory,
-        env,
-        detached: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
+      child = (this.options.spawn ?? spawnProcess)(
+        this.options.shell ?? env.SHELL ?? defaultShell(),
+        ['-ilc', SCRIPT],
+        {
+          cwd: directory,
+          env,
+          detached: true,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
     } catch {
       this.view = { ...this.view, status: 'error', url: null, exitCode: null };
       this.options.onState();

@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { DEFAULT_SHELL } from '../platform.js';
+import { defaultShell } from '../platform.js';
 
 export interface ShellCommand {
   executable: string;
@@ -25,7 +25,7 @@ export async function findCommand(name: string): Promise<ShellCommand> {
   const env = childEnv();
   const output = await new Promise<string>((resolve, reject) => {
     execFile(
-      env.SHELL ?? DEFAULT_SHELL,
+      env.SHELL ?? defaultShell(),
       ['-ilc', SCRIPT],
       { env: { ...env, YALQEN_COMMAND: name }, timeout: 10_000, maxBuffer: 128 * 1024 },
       (error, stdout) => (error ? reject(error) : resolve(stdout)),

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import childProcess from 'node:child_process';
 import { createRequire } from 'node:module';
+import { promisify } from 'node:util';
 import { test } from 'node:test';
 import i18n from '../../dist/shared/i18n.js';
 
@@ -9,9 +11,10 @@ const PLATFORM_MODULE = require.resolve('../../dist/main/platform.js');
 const WHICH_MODULE = require.resolve('which');
 const OPEN_MODULE = require.resolve('open');
 
-// platform.js snapshots the platform into IS_WIN/IS_MAC/IS_LINUX/IS_POSIX and evaluates
-// DEFAULT_SHELL at import time, so every case has to be exercised through a fresh import
-// with process.platform and the which/open dependencies stubbed up front.
+// platform.js snapshots the platform into IS_WIN/IS_MAC/IS_LINUX/IS_POSIX at import time, so every
+// case has to be exercised through a fresh import with process.platform and the which/open
+// dependencies stubbed up front. defaultShell() resolves lazily on its first call, so the import
+// itself never reaches which.
 function restore(key, saved) {
   if (saved) require.cache[key] = saved;
   else delete require.cache[key];
@@ -22,6 +25,8 @@ function load({ platform, bashAll = [], bashOne, open: openImpl }) {
   const savedWhich = require.cache[WHICH_MODULE];
   const savedOpen = require.cache[OPEN_MODULE];
   const calls = { which: [], open: [] };
+  // Mutable so a test can change what which reports after the shell has already been cached.
+  const state = { bashAll, bashOne };
 
   require.cache[WHICH_MODULE] = {
     id: WHICH_MODULE,
@@ -30,8 +35,9 @@ function load({ platform, bashAll = [], bashOne, open: openImpl }) {
     exports: {
       sync: (command, options) => {
         calls.which.push([command, options]);
-        // which.sync returns an array with { all: true } and a single path otherwise.
-        return options?.all ? bashAll : bashOne;
+        // which.sync returns an array with { all: true } and a single path otherwise; with
+        // { nothrow: true } it returns null when nothing matches.
+        return options?.all ? state.bashAll : state.bashOne;
       },
     },
   };
@@ -63,7 +69,46 @@ function load({ platform, bashAll = [], bashOne, open: openImpl }) {
     delete require.cache[PLATFORM_MODULE];
   }
 
-  return { module, error, calls };
+  return { module, error, calls, state };
+}
+
+// openAsText on Linux pipes a script into the shell via promisify(execFile)(shell, ['-s']). The
+// compiled module reads execFile off the shared node:child_process object at call time, so
+// replacing the property is enough — but the stub has to expose promisify.custom, since that is
+// the form the module actually invokes.
+function patchExec(run) {
+  const original = childProcess.execFile;
+  const stub = () => {
+    throw new Error('execFile was called in its callback form');
+  };
+  stub[promisify.custom] = run;
+  childProcess.execFile = stub;
+  return () => {
+    childProcess.execFile = original;
+  };
+}
+
+function fakeShell({ fails } = {}) {
+  const calls = [];
+  return {
+    calls,
+    run: (file, args, options) => {
+      const stdin = {
+        script: '',
+        ended: false,
+        write(chunk) {
+          this.script += chunk;
+          return true;
+        },
+        end() {
+          this.ended = true;
+        },
+      };
+      calls.push({ file, args, options, stdin });
+      const settled = fails ? Promise.reject(fails) : Promise.resolve({ stdout: '', stderr: '' });
+      return Object.assign(settled, { child: { stdin } });
+    },
+  };
 }
 
 const SYSTEM32_BASH = String.raw`C:\Windows\System32\bash.exe`;
@@ -80,11 +125,15 @@ test('platform constants reflect the import-time platform', () => {
   assert.deepEqual([linux.IS_WIN, linux.IS_MAC, linux.IS_LINUX, linux.IS_POSIX], [false, false, true, true]);
 });
 
-test('all platform constants are false on an unrecognised platform', () => {
-  const { error, module } = load({ platform: 'aix', bashOne: '/usr/bin/bash' });
-  // DEFAULT_SHELL runs at import time and rejects unknown platforms, so the import itself fails.
-  assert.equal(module, undefined);
-  assert.equal(error?.message, i18n.t('platform.unsupported'));
+test('an unrecognised platform imports but rejects once the shell is resolved', () => {
+  const { error, module } = load({ platform: 'aix' });
+
+  assert.equal(error, undefined);
+  assert.deepEqual([module.IS_WIN, module.IS_MAC, module.IS_LINUX, module.IS_POSIX], [false, false, false, false]);
+  // defaultShell() resolves lazily, so the failure surfaces on first use rather than at import.
+  assert.throws(() => module.defaultShell(), { message: i18n.t('platform.unsupported') });
+  // A failed resolution is not cached, so a second call reports the same error.
+  assert.throws(() => module.defaultShell(), { message: i18n.t('platform.unsupported') });
 });
 
 test('winBash skips the System32 stub and returns the first real bash', () => {
@@ -94,6 +143,13 @@ test('winBash skips the System32 stub and returns the first real bash', () => {
   });
 
   assert.equal(module.winBash(), GIT_BASH);
+});
+
+test('winBash asks which for every match without throwing', () => {
+  const { module, calls } = load({ platform: 'win32', bashAll: [GIT_BASH] });
+
+  assert.equal(module.winBash(), GIT_BASH);
+  assert.deepEqual(calls.which, [['bash', { all: true, nothrow: true }]]);
 });
 
 test('winBash matches System32 case-insensitively', () => {
@@ -106,21 +162,30 @@ test('winBash matches System32 case-insensitively', () => {
   assert.equal(module.winBash(), GIT_BASH);
 });
 
-test('winBash throws when every candidate is a System32 stub', () => {
-  const { error, module } = load({
+test('winBash reports and returns undefined when every candidate is a System32 stub', (t) => {
+  const debug = t.mock.method(console, 'debug');
+  const { module } = load({
     platform: 'win32',
     bashAll: [SYSTEM32_BASH],
   });
 
-  assert.equal(module, undefined);
-  assert.equal(error?.message, i18n.t('platform.bashNotFound'));
+  assert.equal(module.winBash(), undefined);
+  assert.deepEqual(
+    debug.mock.calls.map((call) => call.arguments),
+    [[i18n.t('platform.bashNotFound')]],
+  );
 });
 
-test('winBash throws when no bash executable exists', () => {
-  const { error, module } = load({ platform: 'win32', bashAll: [] });
+test('winBash reports and returns undefined when which finds no bash', (t) => {
+  const debug = t.mock.method(console, 'debug');
+  // which returns null rather than [] when { all: true, nothrow: true } matches nothing.
+  const { module } = load({ platform: 'win32', bashAll: null });
 
-  assert.equal(module, undefined);
-  assert.equal(error?.message, i18n.t('platform.bashNotFound'));
+  assert.equal(module.winBash(), undefined);
+  assert.deepEqual(
+    debug.mock.calls.map((call) => call.arguments),
+    [[i18n.t('platform.bashNotFound')]],
+  );
 });
 
 test('defaultShell returns winBash on Windows', () => {
@@ -128,6 +193,13 @@ test('defaultShell returns winBash on Windows', () => {
     platform: 'win32',
     bashAll: [SYSTEM32_BASH, GIT_BASH],
   });
+
+  assert.equal(module.defaultShell(), GIT_BASH);
+});
+
+test('defaultShell falls back to the Git install path when winBash finds nothing', (t) => {
+  t.mock.method(console, 'debug');
+  const { module } = load({ platform: 'win32', bashAll: null });
 
   assert.equal(module.defaultShell(), GIT_BASH);
 });
@@ -143,24 +215,31 @@ test('defaultShell returns the bash path on Linux', () => {
   const { module, calls } = load({ platform: 'linux', bashOne: '/usr/bin/bash' });
 
   assert.equal(module.defaultShell(), '/usr/bin/bash');
-  // Once for DEFAULT_SHELL at import time, once for the explicit call above.
-  assert.deepEqual(calls.which, [
-    ['bash', undefined],
-    ['bash', undefined],
-  ]);
+  assert.deepEqual(calls.which, [['bash', { nothrow: true }]]);
 });
 
 test('defaultShell falls back to /bin/sh when which finds nothing', () => {
-  const { module } = load({ platform: 'linux', bashOne: undefined });
+  const { module } = load({ platform: 'linux', bashOne: null });
 
   assert.equal(module.defaultShell(), '/bin/sh');
 });
 
-test('DEFAULT_SHELL is evaluated once at import time', () => {
-  const { module } = load({ platform: 'linux', bashOne: '/usr/bin/bash' });
+test('defaultShell resolves lazily and consults which only once', () => {
+  const { module, calls } = load({ platform: 'linux', bashOne: '/usr/bin/bash' });
 
-  assert.equal(module.DEFAULT_SHELL, '/usr/bin/bash');
-  assert.equal(module.DEFAULT_SHELL, module.defaultShell());
+  // Importing the module resolves no shell.
+  assert.deepEqual(calls.which, []);
+  assert.equal(module.defaultShell(), '/usr/bin/bash');
+  assert.equal(module.defaultShell(), '/usr/bin/bash');
+  assert.deepEqual(calls.which, [['bash', { nothrow: true }]]);
+});
+
+test('defaultShell caches the first resolution', () => {
+  const { module, state } = load({ platform: 'linux', bashOne: '/usr/bin/bash' });
+
+  assert.equal(module.defaultShell(), '/usr/bin/bash');
+  state.bashOne = '/opt/homebrew/bin/bash';
+  assert.equal(module.defaultShell(), '/usr/bin/bash');
 });
 
 test('openAsText prefers a list of editors on Windows', async () => {
@@ -173,20 +252,39 @@ test('openAsText prefers a list of editors on Windows', async () => {
   ]);
 });
 
-test('openAsText uses open -t on macOS', async () => {
+test('openAsText uses the absolute /usr/bin/open -t on macOS', async () => {
   const { module, calls } = load({ platform: 'darwin' });
 
   await module.openAsText('/tmp/notes.txt');
 
-  assert.deepEqual(calls.open, [['/tmp/notes.txt', { app: { name: 'open', arguments: ['-t'] } }]]);
+  assert.deepEqual(calls.open, [['/tmp/notes.txt', { app: { name: '/usr/bin/open', arguments: ['-t'] } }]]);
 });
 
-test('openAsText uses open -t on Linux', async () => {
+test('openAsText launches the desktop text editor through the default shell on Linux', async (t) => {
   const { module, calls } = load({ platform: 'linux', bashOne: '/usr/bin/bash' });
+  const shell = fakeShell();
+  t.after(patchExec(shell.run));
 
   await module.openAsText('/tmp/notes.txt');
 
-  assert.deepEqual(calls.open, [['/tmp/notes.txt', { app: { name: 'open', arguments: ['-t'] } }]]);
+  // Linux never goes through the open package — it cannot pick a text editor and forwards -t only.
+  assert.deepEqual(calls.open, []);
+  assert.equal(shell.calls.length, 1);
+  assert.equal(shell.calls[0].file, '/usr/bin/bash');
+  assert.deepEqual(shell.calls[0].args, ['-s']);
+});
+
+test('openAsText pipes a script that hands the file to the default text editor', async (t) => {
+  const { module } = load({ platform: 'linux', bashOne: '/usr/bin/bash' });
+  const shell = fakeShell();
+  t.after(patchExec(shell.run));
+
+  await module.openAsText('/tmp/notes.txt');
+
+  const { stdin } = shell.calls[0];
+  assert.match(stdin.script, /^DESKTOP_FILE=\$\(xdg-mime query default text\/plain\)/);
+  assert.ok(stdin.script.includes('gio launch "$dir/applications/$DESKTOP_FILE" "/tmp/notes.txt"'));
+  assert.equal(stdin.ended, true);
 });
 
 test('openAsText resolves with the value open produced', async () => {
@@ -195,15 +293,29 @@ test('openAsText resolves with the value open produced', async () => {
   assert.equal(await module.openAsText('a.txt'), 'opened');
 });
 
+test('openAsText returns undefined on an unsupported platform', async () => {
+  const { module } = load({ platform: 'aix' });
+
+  assert.equal(await module.openAsText('/tmp/notes.txt'), undefined);
+});
+
 test('openAsText propagates failures from open', async () => {
   const failure = new Error('no suitable editor');
   const { module } = load({
-    platform: 'linux',
-    bashOne: '/usr/bin/bash',
+    platform: 'darwin',
     open: async () => {
       throw failure;
     },
   });
+
+  await assert.rejects(module.openAsText('/tmp/notes.txt'), failure);
+});
+
+test('openAsText propagates failures from the Linux shell', async (t) => {
+  const failure = new Error('gio: command not found');
+  const { module } = load({ platform: 'linux', bashOne: '/usr/bin/bash' });
+  const shell = fakeShell({ fails: failure });
+  t.after(patchExec(shell.run));
 
   await assert.rejects(module.openAsText('/tmp/notes.txt'), failure);
 });
