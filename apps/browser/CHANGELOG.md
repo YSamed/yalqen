@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.10](https://github.com/YSamed/yalqen/compare/v0.4.9...v0.4.10) (2026-11-16)
+
+
+### Bug Fixes
+
+* override vulnerable minimatch versions to 11.0.1 or later ([#436](https://github.com/YSamed/yalqen/issues/436)) ([fe148c8](https://github.com/YSamed/yalqen/commit/fe148c86f30f3cd98d3770ebf7ca6b5c83c92337))
+
 ## [0.4.9](https://github.com/YSamed/yalqen/compare/v0.4.8...v0.4.9) (2026-11-16)
 
 
