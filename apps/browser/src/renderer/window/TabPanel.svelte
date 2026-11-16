@@ -3,6 +3,7 @@
   import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
+  import { scale } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { devStates } from './format';
   import Icon from '../ui/Icon.svelte';
@@ -26,6 +27,7 @@
     groups,
     collapsed,
     fading,
+    closing,
     side,
     topInset,
     rowInset,
@@ -51,6 +53,7 @@
     groups: TabGroup[];
     collapsed: boolean;
     fading: boolean;
+    closing: boolean;
     side: PanelSide;
     topInset: number;
     rowInset: number;
@@ -260,6 +263,9 @@
   }
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+  function popIn(node: Element) {
+    return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
+  }
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
     return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
   }
@@ -581,7 +587,8 @@
     variant={tab.id === activeTabId ? 'surface' : 'ghost'}
     class="tab-icon"
     label={tabLabel}
-    tabindex={-1}
+    tabindex={collapsed ? 0 : -1}
+    aria-current={collapsed && tab.id === activeTabId ? 'page' : undefined}
     aria-pressed={selected.has(tab.id)}
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
@@ -646,6 +653,8 @@
   class:collapsed
   class:dragging={dragId !== null}
   class:fading
+  class:closing
+  class:opening={fading && !closing}
   class:right={side === 'right'}
   aria-label={t('tabPanel.tabs')}
   onwheel={switchSpaceBySwipe}
@@ -825,11 +834,7 @@
                   send({ type: 'open-tab-menu', id: tab.id });
                 }}
               >
-                {#if collapsed}
-                  {@render compactTab(tab)}
-                {:else}
-                  {@render tabRow(tab)}
-                {/if}
+                {@render tabRow(tab)}
               </li>
             {/each}
           </ol>
@@ -837,7 +842,7 @@
       {/each}
 
       {#if collapsed}
-        <div class="new-tab-position">
+        <div class="new-tab-position" in:popIn>
           <NewTabButton />
         </div>
       {/if}
@@ -1074,8 +1079,30 @@
     width: 100%;
   }
 
-  .fading .body {
+  .body > :not(.lists) {
+    transition: opacity 120ms ease-out;
+  }
+
+  .fading .body > :not(.lists) {
     opacity: 0;
+  }
+
+  .collapsed .pill {
+    display: none;
+  }
+
+  .closing .pill {
+    opacity: 0;
+  }
+
+  .opening .pill {
+    animation: pill-in 160ms var(--ease-out) 80ms backwards;
+  }
+
+  @keyframes pill-in {
+    from {
+      opacity: 0;
+    }
   }
 
   /* Expanded rows keep their full width while the panel animates, so they are uncovered
@@ -1095,6 +1122,9 @@
     margin: 0;
     padding: 0;
     list-style: none;
+    transition:
+      gap 160ms var(--ease-out),
+      padding 160ms var(--ease-out);
   }
 
   .collapsed .rows {
