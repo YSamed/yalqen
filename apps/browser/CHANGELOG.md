@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.6](https://github.com/YSamed/yalqen/compare/v0.4.5...v0.4.6) (2026-11-16)
+
+
+### Bug Fixes
+
+* let sign-in pages hand off to apps, and open incoming links in a normal window ([#417](https://github.com/YSamed/yalqen/issues/417)) ([a9d70e6](https://github.com/YSamed/yalqen/commit/a9d70e649e34707d59ea29ff408f2d39737e092f))
+
 ## [0.4.5](https://github.com/YSamed/yalqen/compare/v0.4.4...v0.4.5) (2026-11-16)
 
 
