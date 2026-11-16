@@ -410,7 +410,11 @@
                 onclick={() => send({ type: 'open-address' })}
               >
                 {@render favicon(tab)}
-                <span class="label">{siteLabel(tab)}</span>
+                {#if isNewTab(tab.url)}
+                  <span class="label hint">{t('commandBar.placeholder')}</span>
+                {:else}
+                  <span class="label">{siteLabel(tab)}</span>
+                {/if}
               </button>
               {#if tab.audible || tab.muted}
                 <IconButton
@@ -1084,6 +1088,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .label.hint {
+    color: var(--text-muted);
   }
 
   .loading {
