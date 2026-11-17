@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.17](https://github.com/YSamed/yalqen/compare/v0.4.16...v0.4.17) (2026-11-17)
+
+
+### Bug Fixes
+
+* make runtime tests pass on linux and windows ([#456](https://github.com/YSamed/yalqen/issues/456)) ([8a7d3e0](https://github.com/YSamed/yalqen/commit/8a7d3e03bba53c4390062ab956023479f17a7d74))
+
 ## [0.4.16](https://github.com/YSamed/yalqen/compare/v0.4.15...v0.4.16) (2026-11-17)
 
 
