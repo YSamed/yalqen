@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.14](https://github.com/YSamed/yalqen/compare/v0.4.13...v0.4.14) (2026-11-17)
+
+
+### Features
+
+* titlebar and hamburger menu for Windows and Linux ([#447](https://github.com/YSamed/yalqen/issues/447)) ([f96341a](https://github.com/YSamed/yalqen/commit/f96341ac77c9cf1e57ef76567c80b6275a79c1df))
+
 ## [0.4.13](https://github.com/YSamed/yalqen/compare/v0.4.12...v0.4.13) (2026-11-17)
 
 
