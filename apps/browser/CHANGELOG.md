@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.13](https://github.com/YSamed/yalqen/compare/v0.4.12...v0.4.13) (2026-11-17)
+
+
+### Bug Fixes
+
+* return full path to executable from findCommand ([#443](https://github.com/YSamed/yalqen/issues/443)) ([65ed563](https://github.com/YSamed/yalqen/commit/65ed563d98c0e8116079cfc579f9c912a514251d))
+
 ## [0.4.12](https://github.com/YSamed/yalqen/compare/v0.4.11...v0.4.12) (2026-11-17)
 
 
