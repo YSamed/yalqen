@@ -80,6 +80,11 @@ jobs:
       - run: npm run test:windows
       - run: npm run build:renderer
       - run: node scripts/test-runtime.mjs
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\electron-builder\Cache
+          key: electron-builder-${{ runner.os }}-${{ hashFiles('apps/browser/package-lock.json') }}
+          restore-keys: electron-builder-${{ runner.os }}-
       - run: npm exec electron-builder -- --win --publish never
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
