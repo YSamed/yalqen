@@ -6,6 +6,7 @@
   "license": "MIT",
   "description": "A fast, privacy-minded web browser",
   "homepage": "https://yalqen.com/",
+  "author": "Yalqen",
   "repository": "https://github.com/YSamed/yalqen",
   "main": "dist/main/main.js",
   "desktopName": "yalqen.desktop",
@@ -63,6 +64,7 @@
   },
   "build": {
     "appId": "com.yalqen.browser",
+    "npmRebuild": false,
     "productName": "Yalqen",
     "directories": {
       "output": "release"
