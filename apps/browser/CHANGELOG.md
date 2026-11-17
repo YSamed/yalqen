@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.12](https://github.com/YSamed/yalqen/compare/v0.4.11...v0.4.12) (2026-11-17)
+
+
+### Bug Fixes
+
+* drop interactive shell flag for project runs on Windows ([#441](https://github.com/YSamed/yalqen/issues/441)) ([578e4b5](https://github.com/YSamed/yalqen/commit/578e4b5536802f9419f791af23d3d87a1ec746c2))
+
 ## [0.4.11](https://github.com/YSamed/yalqen/compare/v0.4.10...v0.4.11) (2026-11-17)
 
 
