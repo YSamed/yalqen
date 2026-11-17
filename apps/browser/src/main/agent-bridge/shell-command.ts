@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import path from 'node:path';
-import { defaultShell, ensureExecutable } from '../platform.js';
+import { IS_WIN, defaultShell, ensureExecutable } from '../platform.js';
 
 export interface ShellCommand {
   executable: string;
@@ -25,7 +25,8 @@ export async function findCommand(name: string): Promise<ShellCommand> {
   const output = await new Promise<string>((resolve, reject) => {
     execFile(
       env.SHELL ?? defaultShell(),
-      ['-lc', SCRIPT],
+      // An interactive zsh is the only one that reads .zshrc, where nvm and Homebrew add PATH; Git Bash on Windows needs it off.
+      [IS_WIN ? '-lc' : '-ilc', SCRIPT],
       { env: { ...env, YALQEN_COMMAND: name }, timeout: 10_000, maxBuffer: 128 * 1024 },
       (error, stdout) => (error ? reject(error) : resolve(stdout)),
     );

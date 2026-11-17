@@ -57,9 +57,8 @@ export const openAsText = async (file: string) => {
         app: { name: WIN_EDITORS },
       });
     case IS_MAC:
-      return open(file, {
-        app: { name: '/usr/bin/open', arguments: ['-t'] },
-      });
+      await promisify(execFile)('/usr/bin/open', ['-t', file]);
+      return;
     case IS_LINUX:
       return (async () => {
         const script = `DESKTOP_FILE=$(xdg-mime query default text/plain)

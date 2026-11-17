@@ -549,12 +549,19 @@ test('WIN_EDITORS is a non-empty, duplicate-free list of editor names', () => {
   assert.ok(module.WIN_EDITORS.every((editor) => typeof editor === 'string' && editor !== ''));
 });
 
-test('openAsText uses the absolute /usr/bin/open -t on macOS', async () => {
+test('openAsText uses the absolute /usr/bin/open -t on macOS', async (t) => {
   const { module, calls } = load({ platform: 'darwin' });
+  const shell = fakeShell();
+  t.after(patchExec(shell.run));
 
   await module.openAsText('/tmp/notes.txt');
 
-  assert.deepEqual(calls.open, [['/tmp/notes.txt', { app: { name: '/usr/bin/open', arguments: ['-t'] } }]]);
+  // The open package would turn this into `open -a /usr/bin/open`, which is not the text-only launch.
+  assert.deepEqual(calls.open, []);
+  assert.deepEqual(
+    shell.calls.map(({ file, args }) => [file, args]),
+    [['/usr/bin/open', ['-t', '/tmp/notes.txt']]],
+  );
 });
 
 test('openAsText launches the desktop text editor through the default shell on Linux', async (t) => {
@@ -602,7 +609,8 @@ test('openAsText returns undefined on an unsupported platform', async () => {
 test('openAsText propagates failures from open', async () => {
   const failure = new Error('no suitable editor');
   const { module } = load({
-    platform: 'darwin',
+    platform: 'win32',
+    bashAll: [GIT_BASH],
     open: async () => {
       throw failure;
     },
