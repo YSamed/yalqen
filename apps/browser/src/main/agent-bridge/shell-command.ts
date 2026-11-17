@@ -1,7 +1,6 @@
 import { execFile } from 'node:child_process';
-import fs from 'node:fs/promises';
 import path from 'node:path';
-import { defaultShell } from '../platform.js';
+import { defaultShell, ensureExecutable } from '../platform.js';
 
 export interface ShellCommand {
   executable: string;
@@ -26,14 +25,14 @@ export async function findCommand(name: string): Promise<ShellCommand> {
   const output = await new Promise<string>((resolve, reject) => {
     execFile(
       env.SHELL ?? defaultShell(),
-      ['-ilc', SCRIPT],
+      ['-lc', SCRIPT],
       { env: { ...env, YALQEN_COMMAND: name }, timeout: 10_000, maxBuffer: 128 * 1024 },
       (error, stdout) => (error ? reject(error) : resolve(stdout)),
     );
   });
   const [, executable, shellPath] = output.slice(output.indexOf('\0')).split('\0');
   if (!executable || !path.isAbsolute(executable)) throw Object.assign(new Error(`${name} not found`), { code: 127 });
-  await fs.access(executable, fs.constants.X_OK);
+  await ensureExecutable(executable);
   if (shellPath) env.PATH = shellPath;
   return { executable, env };
 }

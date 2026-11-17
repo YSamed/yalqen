@@ -1366,6 +1366,8 @@ export const tr: Record<MessageKey, string> = {
 
   'platform.bashNotFound': 'Çalıştırılabilir bash bulunamadı',
   'platform.unsupported': 'Desteklenmeyen platform',
+  'platform.fileNotFound': 'Dosya bulunamadı',
+  'platform.fileNotExecutable': 'Dosya yürütülebilir değil',
 
   'downloadManager.confirm': '“{name}” indirilsin mi?',
   'downloadManager.source': 'Kaynak: {source}{size}',

@@ -1355,6 +1355,8 @@ export const en = {
 
   'platform.bashNotFound': 'No bash executable found',
   'platform.unsupported': 'Unsupported platform',
+  'platform.fileNotFound': 'File not found',
+  'platform.fileNotExecutable': 'File is not executable',
 
   'downloadManager.confirm': 'Do you want to download “{name}”?',
   'downloadManager.source': 'Source: {source}{size}',
