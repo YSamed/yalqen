@@ -244,12 +244,16 @@ test('a muted autoplay that never made sound still freezes in the background', (
   assert.equal(f.tab.frozen, true);
 });
 
-test('a silence event left over from the previous page does not protect a page that never made sound', () => {
+test('a silence event left over from the previous page does not protect a page that never made sound', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
   const f = fixture();
   const sound = freezable(f);
   f.view.webContents.emit('media-started-playing');
   sound(false);
   assert.equal(f.manager.discardCandidates()[0].audible, false);
+  await nextTurn();
+  t.mock.timers.runAll();
+  assert.equal(f.tab.frozen, true);
 });
 
 test('selecting the active tab focuses it without remounting its page', () => {

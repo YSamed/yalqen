@@ -312,20 +312,24 @@ test('an ordered import matches the unordered selection, ties and skipped rows i
   await withDir(async (dir) => {
     const source = path.join(dir, 'History');
     const db = historyDb(source);
-    db.exec('DELETE FROM urls');
-    const insert = db.prepare('INSERT INTO urls (url, title, last_visit_time, hidden) VALUES (?, ?, ?, ?)');
     const rows = [];
-    for (let index = 0; index < MAX_VISITS * 2; index++) {
-      const row = {
-        url: index % 13 === 0 ? 'about:blank' : `https://site.example/${index}`,
-        title: `Visit ${index}`,
-        last_visit_time: BigInt(NEW_YEAR_WEBKIT) + BigInt(((index * 7919) % 700) * 1000),
-        hidden: index % 29 === 0 ? 1 : 0,
-      };
-      insert.run(row.url, row.title, row.last_visit_time, row.hidden);
-      if (row.hidden === 0) rows.push(row);
+    try {
+      db.exec('BEGIN; DELETE FROM urls');
+      const insert = db.prepare('INSERT INTO urls (url, title, last_visit_time, hidden) VALUES (?, ?, ?, ?)');
+      for (let index = 0; index < MAX_VISITS * 2; index++) {
+        const row = {
+          url: index % 13 === 0 ? 'about:blank' : `https://site.example/${index}`,
+          title: `Visit ${index}`,
+          last_visit_time: BigInt(NEW_YEAR_WEBKIT) + BigInt(((index * 7919) % 700) * 1000),
+          hidden: index % 29 === 0 ? 1 : 0,
+        };
+        insert.run(row.url, row.title, row.last_visit_time, row.hidden);
+        if (row.hidden === 0) rows.push(row);
+      }
+      db.exec('COMMIT');
+    } finally {
+      db.close();
     }
-    db.close();
     let imported;
     await importChromiumHistory({ importVisits: (visits) => (imported = visits).length }, source);
     assert.deepEqual(imported, parseChromiumHistory(rows));

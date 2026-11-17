@@ -18,7 +18,10 @@ function launch(id, mode, value) {
   const child = spawn(
     process.execPath,
     [worker, `--yalqen-profile=${id}`, `--test-root=${profile}`, `--test-mode=${mode}`, `--test-value=${value}`],
-    { stdio: 'inherit', env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined } },
+    {
+      stdio: mode === 'stay' ? ['pipe', 'inherit', 'inherit'] : 'inherit',
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
+    },
   );
   children.add(child);
   const completion = new Promise((resolve, reject) => {
@@ -60,6 +63,7 @@ app
     });
     assert.equal(JSON.parse(fs.readFileSync(path.join(profile, 'duplicate-work.json'), 'utf8')).primary, false);
     await launch('default', 'read', 'personal').completion;
+    running.child.stdin.end();
     await running.completion;
     registry.remove(work.id, 'default');
     assert.equal(fs.existsSync(path.join(profile, 'profiles', work.id)), false);

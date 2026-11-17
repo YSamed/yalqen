@@ -70,8 +70,8 @@ if (!selected.primary) {
         record({ verified: true, id: selected.profile.id });
       }
       if (mode === 'stay') {
-        clearTimeout(deadline);
-        setTimeout(() => app.quit(), 10_000);
+        process.stdin.once('end', () => app.quit());
+        process.stdin.resume();
       } else app.quit();
     })
     .catch((error) => {

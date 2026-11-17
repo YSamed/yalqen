@@ -37,28 +37,20 @@ function interfaceWindow(name, withPreload) {
   return { window, loads };
 }
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 1500));
-
 app
   .whenReady()
   .then(async () => {
     const healthy = interfaceWindow('bridge-healthy', true);
-    await healthy.window.loadFile(page);
-    await settle();
-    assert.equal(healthy.loads.count, 1);
-    assert.equal(await healthy.window.webContents.executeJavaScript('window.yalqen.ready'), true);
-
     const broken = interfaceWindow('bridge-broken', false);
-    await broken.window.loadFile(page);
-    await settle();
-    assert.equal(broken.loads.count, 3);
-
     const recovering = interfaceWindow('bridge-recovering', false);
     recovering.window.webContents.once('did-finish-load', () => {
       session.fromPartition('bridge-recovering').registerPreloadScript({ type: 'frame', filePath: preload });
     });
-    await recovering.window.loadFile(page);
-    await settle();
+    await Promise.all([healthy, broken, recovering].map(({ window }) => window.loadFile(page)));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    assert.equal(healthy.loads.count, 1);
+    assert.equal(await healthy.window.webContents.executeJavaScript('window.yalqen.ready'), true);
+    assert.equal(broken.loads.count, 3);
     assert.equal(recovering.loads.count, 2);
     assert.equal(await recovering.window.webContents.executeJavaScript('window.yalqen.ready'), true);
 

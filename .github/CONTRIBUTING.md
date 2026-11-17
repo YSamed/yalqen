@@ -26,7 +26,9 @@ Running `npm install` at the repository root sets up Git hooks: commit messages 
 
 From `apps/browser`, use `npm run test:macos`, `npm run test:windows`, or `npm run test:linux` to run the shared unit tests and the selected platform's tests in `test/platform/`. Platform unit tests use controlled dependencies, so you can also run another platform's cases locally. Use `npm test` for all three suites.
 
-Run `npm run test:runtime` on the target operating system to build the app and exercise Electron. Linux CI uses `xvfb-run -a npm run test:runtime` for a virtual display.
+Run `npm run test:runtime` on the target operating system to build the app and exercise Electron. CI reuses the main process and preloads from the unit tests, builds the renderer once, and runs `node scripts/test-runtime.mjs`. Linux CI runs it under Xvfb.
+
+After `npm run build`, you can rerun a single test while editing its assertions, for example `node --test test/main/tabs/tab-lifecycle.test.mjs` or `npm exec electron -- test/runtime/persistent-profiles.mjs`. Rebuild when the application source changes.
 
 ## Testing Linux
 

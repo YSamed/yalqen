@@ -29,7 +29,8 @@ jobs:
       - run: npm ci
       - run: npm run check:static
       - run: npm run test:macos
-      - run: npm run test:runtime
+      - run: npm run build:renderer
+      - run: node scripts/test-runtime.mjs
 
   linux:
     runs-on: ubuntu-24.04
@@ -51,15 +52,16 @@ jobs:
       - run: npm ci
       - run: npm run check:static
       - run: npm run test:linux
+      - run: npm run build:renderer
       - name: Run Electron tests with a display and an unlocked test keyring
         env:
           XDG_CURRENT_DESKTOP: GNOME
         run: |
           dbus-run-session -- bash -e -c '
             printf "%s" "yalqen-ci" | gnome-keyring-daemon --unlock --components=secrets
-            xvfb-run -a npm run test:runtime
+            xvfb-run -a node scripts/test-runtime.mjs
           '
-      - run: npm run package:linux -- --publish never
+      - run: npm exec electron-builder -- --linux --publish never
       - name: Verify the packaged Chromium sandbox
         run: xvfb-run -a node scripts/test-linux-appimage.mjs release/Yalqen-*.AppImage
 
@@ -78,8 +80,9 @@ jobs:
       - run: npm ci
       - run: npm run check:static
       - run: npm run test:windows
-      - run: npm run test:runtime
-      - run: npm run package:win -- --publish never
+      - run: npm run build:renderer
+      - run: node scripts/test-runtime.mjs
+      - run: npm exec electron-builder -- --win --publish never
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: yalqen-win
