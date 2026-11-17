@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.11](https://github.com/YSamed/yalqen/compare/v0.4.10...v0.4.11) (2026-11-17)
+
+
+### Bug Fixes
+
+* restore interactive shell and text-only open on macOS ([#439](https://github.com/YSamed/yalqen/issues/439)) ([4a3f072](https://github.com/YSamed/yalqen/commit/4a3f0722874fe69a8955fca14bccea520805502f))
+
 ## [0.4.10](https://github.com/YSamed/yalqen/compare/v0.4.9...v0.4.10) (2026-11-16)
 
 
