@@ -76,7 +76,7 @@ export const openAsText = async (file: string) => {
   }
 };
 
-export const ensureExecutable = async (filePath: string): Promise<void> => {
+export const ensureExecutable = async (filePath: string): Promise<string> => {
   if (IS_WIN) {
     const basePath = toWindows(filePath);
     filePath = [...WIN_PATHEXT.map((e) => `${basePath}${e}`)].find((p) => existsSync(p)) || basePath;
@@ -96,6 +96,8 @@ export const ensureExecutable = async (filePath: string): Promise<void> => {
   if (IS_POSIX) {
     await access(filePath, constants.X_OK);
   }
+
+  return filePath;
 };
 
 export const isExecutableScript = async (filePath: string): Promise<boolean> => {
