@@ -105,7 +105,6 @@
   let agentPanelLoading = $state(false);
   let agentPanelLoadFailed = $state(false);
 
-  const windowControls = navigator.userAgent.includes('Macintosh');
   // Each field gets its own signal so effects and child components run only when their value
   // changes, not on every state push (a title or download update replaces the whole state).
   // Passing `browser.x` to a child would subscribe it to the entire state instead.
@@ -203,6 +202,30 @@
   let contentFading = $state(false);
   const panelSettled = $derived(shownWidth === panelWidth);
   const rightPanel = $derived(side === 'right' && sidebarVisible);
+
+  let wcoVisible = $state(false);
+  let wcoTbRect = $state({ x: 0, y: 0, width: 0, height: 0 });
+
+  $effect(() => {
+    const wco = navigator.windowControlsOverlay;
+    if (!wco) return;
+
+    const updateRect = () => {
+      wcoVisible = wco.visible;
+      const { x, y, width, height } = wco.getTitlebarAreaRect();
+      wcoTbRect = { x, y, width, height };
+    };
+
+    updateRect();
+
+    wco.addEventListener('geometrychange', updateRect);
+    return () => wco.removeEventListener('geometrychange', updateRect);
+  });
+
+  let wcoTbleftInset = $derived(wcoVisible ? wcoTbRect.x : 0);
+  let wcoTbrightInset = $derived(
+    wcoVisible ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0
+  );
 
   $effect(() => {
     if (!agentPanelOpen || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;
@@ -421,12 +444,12 @@
         {agentStatus}
         buttons={toolbarButtons}
         {toolbarExtensions}
-        leadingInset={windowControls
-          ? side === 'left'
-            ? Math.max(0, WINDOW_CONTROLS_END - shownWidth)
-            : WINDOW_CONTROLS_END
-          : 0}
-        trailingInset={PAGE_INSET}
+        leadingInset={
+        side === 'left'
+          ? Math.max(0, wcoTbleftInset - shownWidth)
+          : wcoTbleftInset
+        }
+        trailingInset={PAGE_INSET + wcoTbrightInset}
         centerOffset={(side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
         trailingOverhang={(rightPanel
           ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET)

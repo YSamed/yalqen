@@ -127,7 +127,7 @@ import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
 import { accentHex } from '../../shared/accent.js';
 import { windowColorHex } from '../../shared/window-color.js';
-import { openAsText } from '../platform.js';
+import { IS_MAC, openAsText } from '../platform.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
 const CASCADE_OFFSET = 24;
@@ -319,7 +319,12 @@ export class YalqenWindow {
       minHeight: 400,
       title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
-      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+      titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
+      ...(!IS_MAC ? {titleBarOverlay: {
+          color: 'rgba(0, 0, 0, 0)',
+          symbolColor: '#ffffff',
+          height: 44
+        }} : {}),
       // Vibrancy at creation makes the compositor clear see-through chrome; a transparent window flashes in Stage Manager.
       ...(this.glassApplied ? { vibrancy: 'hud' as const } : {}),
       visualEffectState: 'active',
