@@ -11,7 +11,7 @@ Thanks for your interest in improving Yalqen.
 
 ## Development setup
 
-Requires Node.js 24 and Git on macOS or Linux. Linux support is experimental; initial testing covers Ubuntu with GNOME Wayland. Windows is not yet supported.
+Requires Node.js 24 and Git on macOS, Linux or Windows. Linux support is experimental; initial testing covers Ubuntu with GNOME Wayland. Windows support is in development; see [Testing Windows](#testing-windows).
 
 ```bash
 npm install
@@ -36,7 +36,15 @@ In `apps/browser`, run `npm run check` for the standard checks and `npm run pack
 
 When reporting a Linux issue, include your distribution and version, CPU architecture, desktop environment, display server (Wayland or X11), Yalqen version or commit, and steps to reproduce. Do not include credentials or private browsing data in logs.
 
-Share platform test results in the [Linux preview discussion](https://github.com/YSamed/yalqen/discussions/280). Contributions for additional distributions, desktop environments, and Windows support are welcome.
+Share platform test results in the [Linux preview discussion](https://github.com/YSamed/yalqen/discussions/280). Contributions for additional distributions and desktop environments are welcome.
+
+## Testing Windows
+
+Install Node.js 24 and [Git for Windows](https://git-scm.com/download/win). Yalqen runs terminal commands and coding agents through the Git Bash that Git for Windows installs; the WSL `bash.exe` in `System32` is not used. Run the setup commands above in PowerShell or Git Bash.
+
+In `apps/browser`, run `npm run test:windows` for the unit tests and `npm run test:runtime` for the Electron tests. `npm exec electron-builder -- --win --publish never` builds an unsigned installer in `release/`, as the Windows CI job does. Releases do not include Windows files yet; packaging, signing and auto-update are tracked in [#192](https://github.com/YSamed/yalqen/issues/192).
+
+When reporting a Windows issue, include your Windows version and build, CPU architecture, Yalqen commit, and steps to reproduce. Do not include credentials or private browsing data in logs.
 
 ## Making changes
 
