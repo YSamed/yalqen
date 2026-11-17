@@ -75,12 +75,23 @@ jobs:
           security list-keychains -d user -s "$keychain"
           rm "$RUNNER_TEMP/certificate.p12"
           echo "CSC_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+      - name: Write the provisioning profile
+        env:
+          MAC_PROVISIONING_PROFILE_BASE64: ${{ secrets.MAC_PROVISIONING_PROFILE_BASE64 }}
+        if: env.MAC_PROVISIONING_PROFILE_BASE64 != '' && env.CSC_KEYCHAIN != ''
+        run: |
+          profile="$RUNNER_TEMP/Yalqen.provisionprofile"
+          printf '%s' "$MAC_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$profile"
+          echo "PROVISIONING_PROFILE=$profile" >> "$GITHUB_ENV"
       - name: Package
         run: |
           signing=()
           # Hardened runtime rejects ad-hoc signed frameworks, so it is only used with a Developer ID certificate.
           if [ -z "$CSC_KEYCHAIN" ]; then
             signing=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
+          # The keychain-access-groups entitlement is restricted: without the profile macOS kills the app at launch.
+          elif [ -n "$PROVISIONING_PROFILE" ]; then
+            signing=(-c.mac.provisioningProfile="$PROVISIONING_PROFILE" -c.mac.entitlements=build/entitlements.main.mac.plist)
           fi
           npm run build
           npx electron-builder --mac --publish never -c.extraMetadata.version="${TAG#v}" "${signing[@]}"
