@@ -25,10 +25,13 @@
     fitAgentPanelWidth,
   } from '../../shared/agent-panel';
   import Button from '../ui/Button.svelte';
+  import { IS_MAC } from '../platform';
 
   const COLLAPSED_WIDTH = 44;
   const CONTROL_SIZE = 34;
   const CHROME_HEIGHT = 44;
+  // macOS draws its traffic lights into the content area and reports no width for them.
+  const MAC_TLIGHTS_WIDTH = 88;
   const BOOKMARKS_PANEL_WIDTH = 300;
   const PAGE_INSET = 8;
   const PRIVATE_ACCENT = '#d4d4d8';
@@ -220,12 +223,24 @@
 
     updateRect();
 
+    // The overlay's box only changes when its own size does, so a resize that leaves the caption
+    // cluster untouched fires no geometrychange while the space beside it still moves. Reading the
+    // rect on resize too keeps it and windowWidth on one clock.
     wco.addEventListener('geometrychange', updateRect);
-    return () => wco.removeEventListener('geometrychange', updateRect);
+    window.addEventListener('resize', updateRect);
+    return () => {
+      wco.removeEventListener('geometrychange', updateRect);
+      window.removeEventListener('resize', updateRect);
+    };
   });
 
-  let wcoTbleftInset = $derived(wcoVisible ? wcoTbRect.x : 0);
-  let wcoTbrightInset = $derived(wcoVisible ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
+  // `visible` only promises that not every value is zero, so a squeezed window can still report an
+  // area with no width; without this the trailing inset would swallow the whole toolbar.
+  let wcoTbUsable = $derived(wcoVisible && wcoTbRect.width > 0);
+  // macOS lays out no overlay, so its native traffic lights are measured by hand; they sit top-left,
+  // so only the leading edge has to clear them.
+  let wcoTbleftInset = $derived(wcoTbUsable ? wcoTbRect.x : IS_MAC ? MAC_TLIGHTS_WIDTH : 0);
+  let wcoTbrightInset = $derived(wcoTbUsable ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
 
   $effect(() => {
     if (!agentPanelOpen || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;

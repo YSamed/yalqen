@@ -10,6 +10,7 @@ import {
   nativeTheme,
   type Rectangle,
   type Session,
+  type TitleBarOverlay,
   type WebContents,
 } from 'electron';
 import { watchInterfaceBridge } from './interface-bridge.js';
@@ -148,6 +149,16 @@ const FIRST_PAINT_SCRIPT = `new Promise((resolve) => {
 })`;
 const MAX_PICKED_ELEMENTS = 5;
 const MAX_AGENT_PROJECTS = 6;
+
+// Built at creation and rebuilt on every theme flip, so the two must not drift apart.
+function titleBarOverlayOptions(): TitleBarOverlay {
+  return {
+    // Keeps the buttons floating over whatever the interface paints behind them.
+    color: 'rgba(0, 0, 0, 0)',
+    symbolColor: nativeTheme.shouldUseDarkColors ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
+    height: TITLEBAR_OVERLAY_HEIGHT,
+  };
+}
 
 // Native glass cannot be removed from a live window, so every window follows the value read at launch.
 let startupTransparency: boolean | null = null;
@@ -324,15 +335,7 @@ export class YalqenWindow {
       title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
       titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
-      ...(!IS_MAC
-        ? {
-            titleBarOverlay: {
-              color: 'rgba(0, 0, 0, 0)',
-              symbolColor: nativeTheme.shouldUseDarkColors ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
-              height: TITLEBAR_OVERLAY_HEIGHT,
-            },
-          }
-        : {}),
+      ...(!IS_MAC ? { titleBarOverlay: titleBarOverlayOptions() } : {}),
       // Vibrancy at creation makes the compositor clear see-through chrome; a transparent window flashes in Stage Manager.
       ...(this.glassApplied ? { vibrancy: 'hud' as const } : {}),
       visualEffectState: 'active',
@@ -2359,11 +2362,7 @@ export class YalqenWindow {
   // Windows and Linux draw the caption buttons themselves, so a theme flip has to repaint their ink.
   private applyTitleBarTheme(): void {
     if (IS_MAC || this.window.isDestroyed()) return;
-    this.window.setTitleBarOverlay({
-      color: 'rgba(0, 0, 0, 0)',
-      symbolColor: nativeTheme.shouldUseDarkColors ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
-      height: TITLEBAR_OVERLAY_HEIGHT,
-    });
+    this.window.setTitleBarOverlay(titleBarOverlayOptions());
   }
 
   private applyLayout(): void {
