@@ -111,7 +111,7 @@ test('starts the script through the login shell with the script name outside the
   assert.equal(runner.start(), true);
   const [shell, args, options] = calls.spawn[0];
   assert.equal(shell, defaultShell());
-  assert.equal(args[0], '-ilc');
+  assert.equal(args[0], process.platform === 'win32' ? '-lc' : '-ilc');
   assert.ok(!args[1].includes('vite') && !args[1].includes('dev'));
   assert.equal(options.cwd, directory);
   assert.equal(options.detached, true);
