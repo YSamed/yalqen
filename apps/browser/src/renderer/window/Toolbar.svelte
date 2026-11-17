@@ -63,6 +63,7 @@
     leadingInset,
     trailingInset,
     centerOffset,
+    alignLeading = false,
     trailingOverhang = 0,
     agentAvailable,
     agentPanelOpen,
@@ -83,6 +84,9 @@
     leadingInset: number;
     trailingInset: number;
     centerOffset: number;
+    // Hidden sidebar: the tabs start at the leading edge instead of centering, so the empty space
+    // beside the address bar fills in and the group does not shift as tabs change width.
+    alignLeading?: boolean;
     trailingOverhang?: number;
     agentAvailable: boolean;
     agentPanelOpen: boolean;
@@ -167,10 +171,13 @@
       const contentRight =
         tabGroup.querySelector('.new-tab-slot > *')?.getBoundingClientRect().right ?? groupBounds.right;
       const contentCenter = (contentRight - groupBounds.left) / 2;
-      const targetLeft = headerBounds.left + headerBounds.width / 2 + centerOffset - contentCenter;
       const leftLimit = headerBounds.left + leadingInset + 8;
+      const targetLeft = alignLeading
+        ? leftLimit
+        : headerBounds.left + headerBounds.width / 2 + centerOffset - contentCenter;
       const rightLimit = controls.getBoundingClientRect().left - 8 - groupBounds.width;
-      // Keep the group centered, so switching tabs does not move it, without overlapping neighboring controls.
+      // Keep the group inside the space between the leading controls and the trailing ones, so
+      // switching tabs does not move it and it never overlaps either side.
       const left = Math.max(leftLimit, Math.min(targetLeft, rightLimit));
       // Whole device pixels keep the address text from shimmering while the panel moves.
       groupOffset = Math.round((left - (groupBounds.left - groupOffset)) * devicePixelRatio) / devicePixelRatio;
@@ -192,6 +199,7 @@
   $effect(() => {
     void centerOffset;
     void leadingInset;
+    void alignLeading;
     untrack(() => alignGroup?.());
   });
 </script>

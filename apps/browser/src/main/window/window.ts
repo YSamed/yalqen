@@ -127,9 +127,13 @@ import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
 import { accentHex } from '../../shared/accent.js';
 import { windowColorHex } from '../../shared/window-color.js';
-import { openAsText } from '../platform.js';
+import { IS_MAC, openAsText } from '../platform.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
+// The Windows/Linux caption buttons float over the chrome, so their ink has to match the chrome's
+// own ink or the glyphs disappear into it. These track the interface's `--text` token.
+const TITLEBAR_SYMBOL_COLORS = { light: '#1a1b1e', dark: '#f4f4f7' };
+const TITLEBAR_OVERLAY_HEIGHT = 44;
 const CASCADE_OFFSET = 24;
 const REVEAL_FALLBACK_MS = 1000;
 const FIRST_PAINT_WAIT_MS = 200;
@@ -319,7 +323,16 @@ export class YalqenWindow {
       minHeight: 400,
       title: `${this.isDeveloper ? t('window.titleDeveloper') : this.isPrivate ? t('window.titlePrivate') : 'Yalqen'} · ${app.persistentProfiles.currentName()}`,
       icon: app.icon,
-      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+      titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
+      ...(!IS_MAC
+        ? {
+            titleBarOverlay: {
+              color: 'rgba(0, 0, 0, 0)',
+              symbolColor: nativeTheme.shouldUseDarkColors ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
+              height: TITLEBAR_OVERLAY_HEIGHT,
+            },
+          }
+        : {}),
       // Vibrancy at creation makes the compositor clear see-through chrome; a transparent window flashes in Stage Manager.
       ...(this.glassApplied ? { vibrancy: 'hud' as const } : {}),
       visualEffectState: 'active',
@@ -579,7 +592,11 @@ export class YalqenWindow {
     this.applyLayout();
     setTimeout(this.reveal, REVEAL_FALLBACK_MS);
 
-    nativeTheme.on('updated', this.pushState);
+    const syncTheme = () => {
+      this.applyTitleBarTheme();
+      this.pushState();
+    };
+    nativeTheme.on('updated', syncTheme);
     this.uiContents.once('did-finish-load', () => {
       this.glassApplied = this.glassApplied && applyGlass(this.window);
       this.pushState();
@@ -601,7 +618,7 @@ export class YalqenWindow {
         return;
       }
       app.onWindowClosing(this);
-      nativeTheme.off('updated', this.pushState);
+      nativeTheme.off('updated', syncTheme);
       this.preconnector.cancel();
       for (const project of this.agentProjects) {
         project.dispose();
@@ -700,6 +717,7 @@ export class YalqenWindow {
       developer: this.isDeveloper,
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
+      windowMenu: !IS_MAC,
       addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
@@ -1954,6 +1972,13 @@ export class YalqenWindow {
       case 'toggle-translation':
         tabs.toggleTranslation();
         break;
+      case 'open-app-menu': {
+        // macOS has a global menu bar, so the button is not shown and this should never arrive.
+        if (IS_MAC) break;
+        const menu = Menu.getApplicationMenu();
+        if (menu && !this.window.isDestroyed()) menu.popup({ window: this.window });
+        break;
+      }
       case 'open-settings':
         tabs.openSettings();
         break;
@@ -2329,6 +2354,16 @@ export class YalqenWindow {
     if (process.platform !== 'darwin') return;
     this.window.setWindowButtonVisibility(this.app.settings.get().toolbarVisible || this.window.isFullScreen());
     if (!this.window.isFullScreen()) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
+  }
+
+  // Windows and Linux draw the caption buttons themselves, so a theme flip has to repaint their ink.
+  private applyTitleBarTheme(): void {
+    if (IS_MAC || this.window.isDestroyed()) return;
+    this.window.setTitleBarOverlay({
+      color: 'rgba(0, 0, 0, 0)',
+      symbolColor: nativeTheme.shouldUseDarkColors ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
+      height: TITLEBAR_OVERLAY_HEIGHT,
+    });
   }
 
   private applyLayout(): void {

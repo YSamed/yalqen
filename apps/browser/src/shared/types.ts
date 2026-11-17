@@ -159,6 +159,9 @@ export interface BrowserState {
   activeSpaceId: string;
   pageFullScreen: boolean;
   windowFullScreen: boolean;
+  // Whether the toolbar shows the button that pops up the native application menu. False on macOS,
+  // where the menu bar is global and a per-window button would duplicate it.
+  windowMenu?: boolean;
   addressPlaceholder: string;
   panelCollapsed: boolean;
   panelSide: PanelSide;
@@ -503,6 +506,7 @@ export type UiAction =
   | { type: 'open-extension-store' }
   | { type: 'open-history' }
   | { type: 'toggle-translation' }
+  | { type: 'open-app-menu' }
   | { type: 'open-settings' };
 
 export const PageChannel = {

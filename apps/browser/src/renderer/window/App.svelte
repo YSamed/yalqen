@@ -13,6 +13,7 @@
   import DevToolsDivider from './DevToolsDivider.svelte';
   import TabPanel from './TabPanel.svelte';
   import Toolbar from './Toolbar.svelte';
+  import MenuButton from './MenuButton.svelte';
   import type AgentPanel from './AgentPanel.svelte';
   import {
     EMPTY_AGENT_SESSION,
@@ -40,7 +41,6 @@
     (PINNED_COLUMNS - 1) * PINNED_GAP +
     PANEL_ROW_INSET;
   const PAGE_RADIUS = 16;
-  const WINDOW_CONTROLS_END = 88;
   const DEVICE_BEZEL = 10;
   const PANEL_ANIMATION_MS = 240;
   const CONTENT_SWAP_PROGRESS = 0.5;
@@ -105,7 +105,6 @@
   let agentPanelLoading = $state(false);
   let agentPanelLoadFailed = $state(false);
 
-  const windowControls = navigator.userAgent.includes('Macintosh');
   // Each field gets its own signal so effects and child components run only when their value
   // changes, not on every state push (a title or download update replaces the whole state).
   // Passing `browser.x` to a child would subscribe it to the entire state instead.
@@ -178,6 +177,8 @@
   const bookmarksVisible = $derived(bookmarksPanel !== null && !pageFullScreen && !agentVisible);
   const sideVisible = $derived(agentVisible || bookmarksVisible);
   const windowFullScreen = $derived(browser.windowFullScreen);
+  // macOS keeps its menu bar outside the window, so the corner button is Windows and Linux only.
+  const windowMenu = $derived(browser.windowMenu ?? false);
   const panelWidth = $derived(sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : PANEL_WIDTH) : PAGE_INSET);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
   const side = $derived(browser.panelSide);
@@ -203,6 +204,28 @@
   let contentFading = $state(false);
   const panelSettled = $derived(shownWidth === panelWidth);
   const rightPanel = $derived(side === 'right' && sidebarVisible);
+
+  let wcoVisible = $state(false);
+  let wcoTbRect = $state({ x: 0, y: 0, width: 0, height: 0 });
+
+  $effect(() => {
+    const wco = navigator.windowControlsOverlay;
+    if (!wco) return;
+
+    const updateRect = () => {
+      wcoVisible = wco.visible;
+      const { x, y, width, height } = wco.getTitlebarAreaRect();
+      wcoTbRect = { x, y, width, height };
+    };
+
+    updateRect();
+
+    wco.addEventListener('geometrychange', updateRect);
+    return () => wco.removeEventListener('geometrychange', updateRect);
+  });
+
+  let wcoTbleftInset = $derived(wcoVisible ? wcoTbRect.x : 0);
+  let wcoTbrightInset = $derived(wcoVisible ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
 
   $effect(() => {
     if (!agentPanelOpen || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;
@@ -305,6 +328,13 @@
     panelAnimation = requestAnimationFrame(step);
   });
   const topInset = $derived(toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
+  // The corner button floats over the toolbar's leading edge unless the sidebar is the leftmost
+  // column and already owns that corner, so the tab group has to start clear of it.
+  const menuInset = $derived(
+    windowMenu && toolbarVisible && !pageFullScreen && !(side === 'left' && sidebarVisible)
+      ? PAGE_INSET + CONTROL_SIZE + 8
+      : 0,
+  );
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = material;
@@ -421,12 +451,9 @@
         {agentStatus}
         buttons={toolbarButtons}
         {toolbarExtensions}
-        leadingInset={windowControls
-          ? side === 'left'
-            ? Math.max(0, WINDOW_CONTROLS_END - shownWidth)
-            : WINDOW_CONTROLS_END
-          : 0}
-        trailingInset={PAGE_INSET}
+        leadingInset={Math.max(side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset, menuInset)}
+        alignLeading={!sidebarVisible}
+        trailingInset={PAGE_INSET + wcoTbrightInset}
         centerOffset={(side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
         trailingOverhang={(rightPanel
           ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET)
@@ -435,6 +462,9 @@
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
     {/if}
+  {/if}
+  {#if windowMenu && toolbarVisible && !pageFullScreen}
+    <div class="menu-button" style:height="{topInset}px"><MenuButton /></div>
   {/if}
   {#if browser.devToolsDivider}<DevToolsDivider rect={browser.devToolsDivider} />{/if}
   <section
@@ -524,6 +554,7 @@
 
 <style>
   .shell {
+    position: relative;
     display: grid;
     grid-template-areas:
       'panel bar'
@@ -531,6 +562,17 @@
     height: 100%;
     background: var(--chrome-base);
     transition: background-color var(--transition);
+  }
+
+  /* The button floats over the grid so it reaches the window's own corner in every panel mode,
+     where the sidebar (left wide and narrow) would otherwise sit under it. */
+  .menu-button {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    z-index: 2;
   }
 
   .shell.right {

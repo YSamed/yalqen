@@ -818,6 +818,8 @@ export const tr: Record<MessageKey, string> = {
   'toolbar.fullPageScreenshotTitle': 'Tam sayfa ekran görüntüsü al (⌥⌘S)',
   'toolbar.back': 'Geri',
   'toolbar.forward': 'İleri',
+  'toolbar.menu': 'Ana menü',
+  'toolbar.menuTitle': 'Ana menü',
   'toolbar.stop': 'Durdur',
   'toolbar.stopTitle': 'Durdur (Esc)',
   'toolbar.reload': 'Yenile',

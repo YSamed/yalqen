@@ -814,6 +814,8 @@ export const en = {
   'toolbar.stopTitle': 'Stop (Esc)',
   'toolbar.reload': 'Reload',
   'toolbar.reloadTitle': 'Reload (⌘R)',
+  'toolbar.menu': 'Main menu',
+  'toolbar.menuTitle': 'Main menu',
   'toolbar.openTabs': 'Open tabs',
   'tabModes.title': 'Browsing mode',
   'tabModes.normal': 'Normal',
