@@ -19,7 +19,7 @@ let selectedKind = '',
   auths = 0,
   picks = 0;
 let duringChoice = async () => {};
-const deadline = setTimeout(() => app.exit(1), 30000);
+const deadline = setTimeout(() => app.exit(1), 40_000);
 const html = `<style>input,textarea,select{display:block;width:220px;height:26px;margin:8px}input[type=hidden],.hidden{display:none}</style>
 <form id=shipping><input id=first autocomplete="section-checkout shipping given-name"><input id=last value="Keep typed family name" autocomplete="section-checkout shipping family-name"><textarea id=street autocomplete="section-checkout shipping street-address"></textarea><select id=country autocomplete="section-checkout shipping country"><option value="">Choose country</option><option value=TR>Türkiye</option></select><input id=billing autocomplete="section-checkout billing given-name"><input id=hidden class=hidden autocomplete="section-checkout shipping given-name"></form>
 <form id=other><input id=other-first autocomplete="section-checkout shipping given-name"></form>
@@ -46,7 +46,9 @@ async function focus(id) {
 }
 async function click() {
   const before = picks;
-  for (let attempt = 0; attempt < 5 && picks === before; attempt++) {
+  // Parallel CI runs can starve the renderer for seconds; resending too soon would open the chooser twice.
+  const giveUp = Date.now() + 15_000;
+  while (picks === before && Date.now() < giveUp) {
     const rect = await window.webContents.executeJavaScript(
       `(() => {const r=document.querySelector('[data-yalqen-autofill]').getBoundingClientRect();return{x:Math.round(r.x+14),y:Math.round(r.y+14)}})()`,
     );
@@ -55,7 +57,7 @@ async function click() {
     window.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...rect });
     window.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...rect });
     const sent = Date.now();
-    while (picks === before && Date.now() - sent < 1000) await new Promise((r) => setTimeout(r, 20));
+    while (picks === before && Date.now() - sent < 3000) await new Promise((r) => setTimeout(r, 20));
   }
   if (picks === before) throw Error('Autofill button click did not open the chooser');
 }
