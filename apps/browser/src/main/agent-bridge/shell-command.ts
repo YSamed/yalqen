@@ -31,9 +31,9 @@ export async function findCommand(name: string): Promise<ShellCommand> {
       (error, stdout) => (error ? reject(error) : resolve(stdout)),
     );
   });
-  const [, executable, shellPath] = output.slice(output.indexOf('\0')).split('\0');
-  if (!executable || !path.isAbsolute(executable)) throw Object.assign(new Error(`${name} not found`), { code: 127 });
-  await ensureExecutable(executable);
+  const [, command, shellPath] = output.slice(output.indexOf('\0')).split('\0');
+  if (!command || !path.isAbsolute(command)) throw Object.assign(new Error(`${name} not found`), { code: 127 });
+  const executable = await ensureExecutable(command);
   if (shellPath) env.PATH = shellPath;
   return { executable, env };
 }
