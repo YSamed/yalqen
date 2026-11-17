@@ -17,9 +17,10 @@ function devServerPolicy(): Plugin {
     apply: 'serve',
     transformIndexHtml: {
       order: 'pre',
-      handler: (html: string) =>
+      handler: (html: string, ctx) =>
         html.replace(POLICY, (_match, head: string, policy: string, tail: string) => {
-          const connect = `connect-src 'self' ws://${DEV_HOST}:${DEV_PORT} ws://localhost:${DEV_PORT}`;
+          const port = ctx.server?.config.server.port ?? DEV_PORT;
+          const connect = `connect-src 'self' ws://${DEV_HOST}:${port} ws://localhost:${port}`;
           return `${head}${policy}; ${connect}${tail}`;
         }),
     },
@@ -38,7 +39,6 @@ export default defineConfig({
   build: {
     outDir: '../../dist/renderer',
     emptyOutDir: true,
-    sourcemap: true,
     target: 'chrome152',
     rolldownOptions: {
       input: {

@@ -62,7 +62,13 @@ test('query values are carried onto the address', () => {
 
 test('a non-http address is rejected rather than loaded', () => {
   withServer('file:///tmp/renderer', () => {
-    assert.throws(() => devServerEnabled(), /YALQEN_DEV_SERVER_URL is not an http address/);
+    assert.throws(() => devServerEnabled(), /YALQEN_DEV_SERVER_URL is not a loopback http address/);
+  });
+});
+
+test('a remote address is rejected rather than loaded', () => {
+  withServer('https://example.com', () => {
+    assert.throws(() => devServerEnabled(), /is not a loopback http address/);
   });
 });
 
