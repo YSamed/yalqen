@@ -8,6 +8,11 @@ const DEV_PORT = Number(process.env.YALQEN_DEV_SERVER_PORT ?? 5173);
 const DEV_HOST = '127.0.0.1';
 const POLICY = /(<meta\s+http-equiv="Content-Security-Policy"\s+content=")([^"]*)(")/;
 
+// The renderer runs sandboxed with context isolation, so it cannot read process.platform for
+// itself. A build targets one platform, so the value is inlined here as a literal instead of being
+// guessed from the user agent, which any page can be given a different one of.
+const PLATFORM_DEFINE = { __YALQEN_PLATFORM__: JSON.stringify(process.platform) };
+
 // The built pages are loaded over `file://`, where the policy stops at `default-src 'none'`. A dev
 // server needs the one addition of the HMR socket, and only while serving, so the build output keeps
 // the stricter policy it ships with.
@@ -30,6 +35,7 @@ function devServerPolicy(): Plugin {
 export default defineConfig({
   root: 'src/renderer',
   base: './',
+  define: PLATFORM_DEFINE,
   plugins: [svelte(), devServerPolicy()],
   server: {
     host: DEV_HOST,

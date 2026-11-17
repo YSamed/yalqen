@@ -16,6 +16,10 @@ interface WindowControlsOverlay extends EventTarget {
 }
 
 declare global {
+  // Substituted by Vite at build time from the building machine's own platform; see the `define`
+  // in vite.config.mts. Only `src/renderer/platform.ts` reads it.
+  const __YALQEN_PLATFORM__: string;
+
   interface Window {
     yalqen: YalqenApi;
     yalqenSettings: SettingsApi;
@@ -27,7 +31,8 @@ declare global {
   }
 
   interface Navigator {
-    // Absent (undefined) outside Electron and on macOS, where the caption buttons are native.
+    // Only the parts the interface reads are declared. Optional because it is absent outside
+    // Electron and wherever the overlay is not laid out, so every reader has to guard for it.
     readonly windowControlsOverlay?: WindowControlsOverlay;
   }
 }
