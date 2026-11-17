@@ -5,7 +5,7 @@ import os from 'node:os';
 import { app, BrowserWindow, nativeImage } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import pageDebugger from '../../dist/main/devtools/page-debugger.js';
-import { IS_WIN } from '../../dist/main/platform.js';
+import { IS_MAC } from '../../dist/main/platform.js';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-screenshot-test-'));
 app.setPath('userData', profile);
@@ -15,7 +15,7 @@ void run();
 async function run() {
   try {
     await app.whenReady();
-    const window = new BrowserWindow({ width: 600, height: 400, show: IS_WIN });
+    const window = new BrowserWindow({ width: 600, height: 400, show: !IS_MAC });
     const { webContents } = window;
     const sectionCount = 16;
     await webContents.loadURL(

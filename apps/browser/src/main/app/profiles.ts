@@ -72,7 +72,7 @@ export class ProfileRegistry {
     this.file = path.join(root, 'browser-profiles.sqlite');
     this.db = new DatabaseSync(this.file);
     fs.chmodSync(this.file, 0o600);
-    this.db.exec(`PRAGMA busy_timeout=2000; PRAGMA foreign_keys=ON;
+    this.db.exec(`PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;
       CREATE TABLE IF NOT EXISTS profiles (id TEXT PRIMARY KEY, name TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS runtimes (profile_id TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE, pid INTEGER NOT NULL, token TEXT NOT NULL);`);

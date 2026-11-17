@@ -70,8 +70,9 @@ if (!selected.primary) {
         record({ verified: true, id: selected.profile.id });
       }
       if (mode === 'stay') {
-        process.stdin.once('end', () => app.quit());
-        process.stdin.resume();
+        // A file, not stdin: Electron on Windows is a GUI app whose stdin ends at once.
+        const release = path.join(profile, 'release-stay');
+        setInterval(() => fs.existsSync(release) && app.quit(), 50);
       } else app.quit();
     })
     .catch((error) => {
