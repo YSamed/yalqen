@@ -8,6 +8,7 @@
   "homepage": "https://yalqen.com/",
   "repository": "https://github.com/YSamed/yalqen",
   "main": "dist/main/main.js",
+  "desktopName": "yalqen.desktop",
   "scripts": {
     "postinstall": "node scripts/prepare-terminal.mjs",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
@@ -128,6 +129,7 @@
       ],
       "target": "AppImage",
       "category": "Productivity",
+      "syncDesktopName": true,
       "icon": "resources/icon-512.png",
       "mimeTypes": [
         "x-scheme-handler/http",
