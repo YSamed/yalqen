@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.16](https://github.com/YSamed/yalqen/compare/v0.4.15...v0.4.16) (2026-11-17)
+
+
+### Bug Fixes
+
+* keep address bar centered on macos when sidebar is hidden ([#454](https://github.com/YSamed/yalqen/issues/454)) ([c1067bc](https://github.com/YSamed/yalqen/commit/c1067bca16594d9a07befe6b6ba261f7c6171b62))
+* windows titlebar and menu ([#449](https://github.com/YSamed/yalqen/issues/449)) ([c6b49af](https://github.com/YSamed/yalqen/commit/c6b49af9ec55bd11fa4062b99f97fa0dfd691fda))
+
 ## [0.4.15](https://github.com/YSamed/yalqen/compare/v0.4.14...v0.4.15) (2026-11-17)
 
 
