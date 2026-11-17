@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import profiles from '../../dist/main/app/profiles.js';
 import controllers from '../../dist/main/app/profile-controller.js';
 import settings from '../../dist/main/app/settings.js';
@@ -16,10 +17,10 @@ process.on('uncaughtException', (error) => {
   app.exit(1);
 });
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-profile-settings-'));
-app.setPath('userData', root);
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-profile-settings-'));
+app.setPath('userData', profile);
 internalPages.registerInternalScheme();
-const registry = new profiles.ProfileRegistry(root, 'Personal');
+const registry = new profiles.ProfileRegistry(profile, 'Personal');
 let controller;
 let window;
 let attacker;
@@ -43,11 +44,11 @@ async function button(label, row = '') {
 app
   .whenReady()
   .then(async () => {
-    const store = new settings.SettingsStore(root);
+    const store = new settings.SettingsStore(profile);
     const view = () => ({
       values: store.get(),
       version: 'test',
-      downloadDirectory: root,
+      downloadDirectory: profile,
       defaultBrowser: true,
       engines: [{ id: 'google', label: 'Google' }],
       customTemplateValid: true,
@@ -151,9 +152,9 @@ app
     approve = true;
     await button('Delete profile', 'Business');
     await eventually("document.querySelectorAll('section li').length === 1");
-    assert.equal(fs.existsSync(path.join(root, 'profiles', work.id)), false);
+    assert.equal(fs.existsSync(path.join(profile, 'profiles', work.id)), false);
 
-    const preload = path.join(root, 'attacker-preload.js');
+    const preload = path.join(profile, 'attacker-preload.js');
     fs.writeFileSync(
       preload,
       `const { contextBridge, ipcRenderer } = require('electron'); contextBridge.exposeInMainWorld('test', { invoke: (...args) => ipcRenderer.invoke(...args) });`,
@@ -171,21 +172,19 @@ app
       'PASS: production settings UI validates/persists homepage/startup URLs, creates/renames/defaults/opens profiles and confirms/cancels deletion; untrusted pages cannot manage profiles',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   window?.destroy();
   attacker?.destroy();
   controller?.stop();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch (error) {
-    console.error(error);
-  }
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

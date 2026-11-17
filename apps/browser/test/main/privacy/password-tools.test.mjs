@@ -5,6 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import tools from '../../../dist/main/privacy/password-tools.js';
 import passwords from '../../../dist/main/privacy/passwords.js';
+import { IS_POSIX } from '../../../dist/main/platform.js';
 const cipher = {
   available: () => true,
   encrypt: (value) => Buffer.from(value).toString('base64'),
@@ -114,7 +115,7 @@ test('CSV export writes a private atomic file and a failed target preserves data
   const records = [{ origin: 'https://example.com', username: 'ada', password: 'secret' }];
   await tools.writePasswordCsv(file, records);
   assert.deepEqual(await tools.readPasswordCsv(file), { records, skipped: 0 });
-  if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  if (IS_POSIX) assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   const folder = path.join(directory, 'do-not-replace');
   fs.mkdirSync(folder);
   fs.writeFileSync(path.join(folder, 'sentinel'), 'keep');

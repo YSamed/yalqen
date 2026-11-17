@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { app, session } from 'electron';
+import { registerBeforeQuit } from '../../helpers/cleanup-tasks.mjs';
 import profiles from '../../../dist/main/app/profiles.js';
 import bookmarks from '../../../dist/main/library/bookmarks.js';
 import history from '../../../dist/main/library/history.js';
@@ -9,12 +10,12 @@ import settings from '../../../dist/main/app/settings.js';
 import passwords from '../../../dist/main/privacy/passwords.js';
 import passwordHandlers from '../../../dist/main/privacy/password-handlers.js';
 
-const root = process.argv.find((arg) => arg.startsWith('--test-root=')).slice('--test-root='.length);
+const profile = process.argv.find((arg) => arg.startsWith('--test-root=')).slice('--test-root='.length);
 const mode = process.argv.find((arg) => arg.startsWith('--test-mode=')).slice('--test-mode='.length);
 const expected = process.argv.find((arg) => arg.startsWith('--test-value=')).slice('--test-value='.length);
-const registry = new profiles.ProfileRegistry(root, 'Personal');
+const registry = new profiles.ProfileRegistry(profile, 'Personal');
 const selected = profiles.initializeProfile(registry, process.argv, app);
-const record = (data) => fs.writeFileSync(path.join(root, `${mode}-${expected}.json`), JSON.stringify(data));
+const record = (data) => fs.writeFileSync(path.join(profile, `${mode}-${expected}.json`), JSON.stringify(data));
 const deadline = setTimeout(() => app.exit(1), 25_000);
 if (!selected.primary) {
   record({ primary: false, id: selected.profile.id });
@@ -52,7 +53,7 @@ if (!selected.primary) {
         record({ primary: true, directory, id: selected.profile.id });
       } else {
         const cookie = (await browsing.cookies.get({ name: 'account' }))[0];
-        assert.equal(cookie.value, expected);
+        assert.equal(cookie?.value, expected);
         assert.deepEqual(
           store.bookmarks().map(({ title }) => title),
           [expected],
@@ -68,6 +69,9 @@ if (!selected.primary) {
         );
         record({ verified: true, id: selected.profile.id });
       }
+      // Stay mode keeps this process alive holding the profile's single-instance lock,
+      // so the quit must not be appended to the promise chain: a finally would quit as
+      // soon as this callback returned and defeat the whole mode.
       if (mode === 'stay') {
         clearTimeout(deadline);
         setTimeout(() => app.quit(), 10_000);
@@ -75,10 +79,18 @@ if (!selected.primary) {
     })
     .catch((error) => {
       console.error(error);
-      app.exit(1);
+      process.exitCode = 1;
+      app.quit();
     });
-  app.on('quit', () => {
-    clearTimeout(deadline);
-    registry.close();
-  });
 }
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+  // Release the single-instance record so the parent's next launch is not blocked by
+  // this process's still-alive PID.
+  registry.close();
+});
+
+// The test root belongs to persistent-profiles.mjs, which creates it and cleans it up.
+// A worker deleting it would take the parent's registry, lock database and other
+// workers' results with it, and the parent's next launch would land on a missing root.

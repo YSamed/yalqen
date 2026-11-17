@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { getDomain } from 'tldts';
 import type { Cookie, Session, WebContents } from 'electron';
@@ -57,8 +58,6 @@ export class StorageOrigins {
   }
 }
 
-// Chromium's quota database discovers dormant IndexedDB/cache/service-worker origins.
-// Open read-only; if a future engine changes the schema, the observed-origin index still works.
 export function quotaOrigins(directory: string | null): { origins: string[]; limited: boolean } {
   if (!directory) return { origins: [], limited: false };
   const origins = new Set<string>();
@@ -66,7 +65,8 @@ export function quotaOrigins(directory: string | null): { origins: string[]; lim
   for (const relative of ['WebStorage/QuotaManager', 'QuotaManager']) {
     let db: DatabaseSync | undefined;
     try {
-      db = new DatabaseSync(path.join(directory, relative), { readOnly: true, timeout: 100 });
+      const url = pathToFileURL(path.join(directory, relative));
+      db = new DatabaseSync(url, { readOnly: true, timeout: 600 });
       const rows = db.prepare('SELECT DISTINCT storage_key FROM buckets LIMIT ?').all(MAX_ORIGINS + 1);
       limited ||= rows.length > MAX_ORIGINS;
       for (const row of rows.slice(0, MAX_ORIGINS)) {

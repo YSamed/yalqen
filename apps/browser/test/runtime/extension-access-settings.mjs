@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import extensions from '../../dist/main/extensions/extensions.js';
 import controllers from '../../dist/main/extensions/extension-access-controller.js';
 import extensionIpc from '../../dist/main/extensions/extensions-ipc.js';
@@ -11,8 +12,9 @@ import ipc from '../../dist/main/app/settings-ipc.js';
 import settingsPage from '../../dist/main/app/settings-page.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import types from '../../dist/shared/types.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-access-ui-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-access-ui-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const windows = [];
 let window, manager;
@@ -33,11 +35,11 @@ async function eventually(predicate) {
 app
   .whenReady()
   .then(async () => {
-    const preferences = new settings.SettingsStore(root);
+    const preferences = new settings.SettingsStore(profile);
     const view = () => ({
       values: preferences.get(),
       version: 'test',
-      downloadDirectory: root,
+      downloadDirectory: profile,
       defaultBrowser: true,
       engines: [{ id: 'google', label: 'Google' }],
       customTemplateValid: true,
@@ -67,13 +69,15 @@ app
       },
       {},
     );
-    const source = path.join(fs.realpathSync(root), 'source');
+    const source = path.join(fs.realpathSync(profile), 'source');
     fs.mkdirSync(source);
     fs.writeFileSync(
       path.join(source, 'manifest.json'),
       JSON.stringify({ manifest_version: 3, name: 'Access UI test', version: '1.0', host_permissions: ['<all_urls>'] }),
     );
-    manager = new extensions.ExtensionManager(root, browsing, () => settingsPage.broadcastExtensions(manager.list()));
+    manager = new extensions.ExtensionManager(profile, browsing, () =>
+      settingsPage.broadcastExtensions(manager.list()),
+    );
     assert.equal(await manager.install(source), null);
     const access = new controllers.ExtensionAccessController({
       extensions: manager,
@@ -132,7 +136,7 @@ app
     );
     await eventually("document.querySelector('form.access [role=status]')?.textContent.includes('saved')");
     assert.equal(manager.accessFor(source).mode, 'click');
-    const preload = path.join(root, 'attacker.cjs');
+    const preload = path.join(profile, 'attacker.cjs');
     fs.writeFileSync(
       preload,
       "const{contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('test',{invoke:(...args)=>ipcRenderer.invoke(...args)});",
@@ -156,20 +160,18 @@ app
       'PASS: production extension access settings validate site lists, preserve native cancellation, save normalized engine scope and click mode, reject untrusted IPC',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.stopUpdates();
   for (const w of windows) if (!w.isDestroyed()) w.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  manager?.stopUpdates();
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

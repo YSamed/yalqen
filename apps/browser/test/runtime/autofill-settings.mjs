@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import stores from '../../dist/main/privacy/autofill.js';
 import handlers from '../../dist/main/privacy/autofill-handlers.js';
 import passwords from '../../dist/main/privacy/password-handlers.js';
@@ -12,8 +13,9 @@ import ipc from '../../dist/main/app/settings-ipc.js';
 import settingsPage from '../../dist/main/app/settings-page.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import types from '../../dist/shared/types.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-autofill-ui-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-autofill-ui-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const windows = [];
 const rendererErrors = [];
@@ -50,7 +52,7 @@ async function form(values) {
 app
   .whenReady()
   .then(async () => {
-    const store = new stores.AutofillStore(root, passwords.safeStorageCipher);
+    const store = new stores.AutofillStore(profile, passwords.safeStorageCipher);
     handlers.installAutofillHandlers({
       store,
       allowed: () => false,
@@ -62,7 +64,7 @@ app
       },
     });
     // Addresses and cards share a settings pane with passwords, as in the app.
-    const passwordStore = new passwordStores.PasswordStore(root, passwords.safeStorageCipher);
+    const passwordStore = new passwordStores.PasswordStore(profile, passwords.safeStorageCipher);
     passwords.installPasswordHandlers({
       store: passwordStore,
       savesPasswords: () => false,
@@ -70,11 +72,11 @@ app
       isSettingsFrame: settingsPage.isSettingsFrame,
       onChange: () => settingsPage.broadcastPasswords(passwordStore.view()),
     });
-    const preferences = new settings.SettingsStore(root),
+    const preferences = new settings.SettingsStore(profile),
       view = () => ({
         values: preferences.get(),
         version: 'test',
-        downloadDirectory: root,
+        downloadDirectory: profile,
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
@@ -162,7 +164,10 @@ app
       false,
     );
     assert.equal(fs.readFileSync(store.file, 'utf8').includes('4242424242424242'), false);
-    assert.equal(new stores.AutofillStore(root, passwords.safeStorageCipher).read(card.id).number, '4242424242424242');
+    assert.equal(
+      new stores.AutofillStore(profile, passwords.safeStorageCipher).read(card.id).number,
+      '4242424242424242',
+    );
     authenticated = false;
     const before = auths;
     assert.equal(
@@ -170,7 +175,7 @@ app
       null,
     );
     assert.equal(auths, before + 1);
-    const preload = path.join(root, 'attacker.cjs');
+    const preload = path.join(profile, 'attacker.cjs');
     fs.writeFileSync(
       preload,
       "const{contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('test',{invoke:(...args)=>ipcRenderer.invoke(...args)});",
@@ -200,24 +205,23 @@ app
       await window.webContents.executeJavaScript(`window.yalqenSettings.removeAutofill(${JSON.stringify(card.id)})`),
       true,
     );
-    assert.equal(new stores.AutofillStore(root, passwords.safeStorageCipher).choices('card').length, 0);
+    assert.equal(new stores.AutofillStore(profile, passwords.safeStorageCipher).choices('card').length, 0);
     assert.deepEqual(rendererErrors, []);
     console.log(
       'PASS: production settings add/edit encrypted addresses and cards, preserve authentication cancellation, hide full card numbers, persist removal and reject untrusted read/delete IPC',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   for (const w of windows) if (!w.isDestroyed()) w.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
 
@@ -123,7 +124,7 @@ app
       canNext: false,
       updatedAt: Date.now(),
     };
-    // A hidden window advances the sidebar's transitions unevenly, so the pill could move between two calls.
+    // A hidden window advances transitions unevenly, so the pill could move between calls.
     const drag = (types, from, to = from) =>
       window.webContents.executeJavaScript(`(() => {
         document.getAnimations().forEach((animation) => animation.finish());
@@ -163,11 +164,13 @@ app
     await drag(['pointerdown', 'pointerup'], 0.5);
     assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
 
-    // Dragging from a quarter to three quarters along the pill previews the time, then seeks once to
-    // 3:00, two minutes past 1:00.
+    // Dragging a quarter to three quarters previews the time, then seeks once to 3:00.
     await drag(['pointerdown', 'pointermove'], 0.25, 0.75);
     await eventually("document.querySelector('.player .time')?.textContent.trim() === '3:00 / 4:00'");
     assert.equal(actions.filter((action) => action.type === 'seek-media').length, seeksBefore);
+    // The seek baseline advances with the wall clock during the drag, so re-report 1:00 before release.
+    push({ media: { ...song, updatedAt: Date.now() } });
+    await new Promise((resolve) => setTimeout(resolve, 50));
     await drag(['pointerup'], 0.75);
     const seek = actions.at(-1);
     assert.equal(seek.type, 'seek-media');
@@ -204,11 +207,17 @@ app
     push({ panelCollapsed: false });
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(await window.webContents.executeJavaScript("!!document.querySelector('.player')"), false);
-
-    clearTimeout(deadline);
-    app.exit(0);
   })
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
+  clearTimeout(deadline);
+});
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
+});

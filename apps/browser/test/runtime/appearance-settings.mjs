@@ -3,12 +3,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import types from '../../dist/shared/types.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-appearance-ui-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-appearance-ui-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const rendererErrors = [];
 const clears = [];
@@ -32,7 +34,7 @@ const labelled = (label) => `document.querySelector('#pane [aria-label=${JSON.st
 app
   .whenReady()
   .then(async () => {
-    const preferences = new settings.SettingsStore(root);
+    const preferences = new settings.SettingsStore(profile);
     const pinnable = 'abcdefghijklmnopabcdefghijklmnop';
     const uninstalled = 'ponmlkjihgfedcbaponmlkjihgfedcba';
     preferences.update({ toolbarButtons: ['bookmarks', 'history', 'settings', `extension:${uninstalled}`] });
@@ -46,7 +48,7 @@ app
       view: () => ({
         values: preferences.get(),
         version: 'test',
-        downloadDirectory: root,
+        downloadDirectory: profile,
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
@@ -204,18 +206,17 @@ app
       'PASS: appearance settings pick theme and sidebar layout from cards, edit toolbar buttons from the preview and show advanced settings for matching searches, and clear browsing data from a dialog',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   if (window && !window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  clearTimeout(deadline);
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

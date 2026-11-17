@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import workspaces from '../../../dist/main/library/workspaces.js';
 import tabs from '../../../dist/main/tabs/tabs.js';
 import order from '../../../dist/main/tabs/tab-shortcuts.js';
+import { IS_POSIX } from '../../../dist/main/platform.js';
 const { WorkspaceStore } = workspaces;
 function manager() {
   const manager = new tabs.TabManager({
@@ -73,7 +74,7 @@ test('workspace saves, renames and removes atomically; independent opens have fr
     const json = fs.readFileSync(store.file, 'utf8');
     assert.equal(json.includes('FORM SECRET'), false);
     assert.equal(json.includes('private.example'), false);
-    assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+    if (IS_POSIX) assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
     assert.equal(store.rename(id, 'Changed'), true);
     assert.equal(new WorkspaceStore(dir).list()[0].name, 'Changed');
     fs.renameSync(store.file, store.file + '.backup');

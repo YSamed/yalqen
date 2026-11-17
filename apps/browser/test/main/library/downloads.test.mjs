@@ -34,26 +34,26 @@ function withDir(run) {
 }
 
 test('taken names are numbered and paths cannot leave the folder', () => {
-  const taken = new Set(['/d/a.zip', '/d/a (1).zip']);
+  const taken = new Set([path.join('/d', 'a.zip'), path.join('/d', 'a (1).zip')]);
   assert.equal(
     uniquePath('/d', 'a.zip', (file) => taken.has(file)),
-    '/d/a (2).zip',
+    path.join('/d', 'a (2).zip'),
   );
   assert.equal(
     uniquePath('/d', 'b.zip', (file) => taken.has(file)),
-    '/d/b.zip',
+    path.join('/d', 'b.zip'),
   );
   assert.equal(
     uniquePath('/d', '../../etc/passwd', () => false),
-    '/d/passwd',
+    path.join('/d', 'passwd'),
   );
   assert.equal(
     uniquePath('/d', '.hidden', () => false),
-    '/d/hidden',
+    path.join('/d', 'hidden'),
   );
   assert.equal(
     uniquePath('/d', '', () => false),
-    '/d/indirme',
+    path.join('/d', 'indirme'),
   );
 });
 

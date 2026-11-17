@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import type { AgentConnectionState, AgentSetupResult } from '../../shared/types.js';
+import { defaultShell, IS_POSIX, isExecutableScript } from '../platform.js';
 
 const TIMEOUT_MS = 20_000;
 const NOT_FOUND = 'command -v claude >/dev/null 2>&1 || { echo "claude-not-found" >&2; exit 127; }';
@@ -17,19 +18,27 @@ interface ClaudeSetupOptions {
 }
 
 interface Run {
-  error: Error | null;
+  error?: Error | null;
   stdout: string;
   stderr: string;
 }
 
 // Apps opened from the Dock get a bare PATH, so the user's login shell finds the CLI the way their terminal does.
-function runClaude(script: string, options: ClaudeSetupOptions, extraEnv: NodeJS.ProcessEnv = {}): Promise<Run> {
-  const shell = options.shell ?? process.env.SHELL ?? '/bin/zsh';
+async function runClaude(script: string, options: ClaudeSetupOptions, extraEnv: NodeJS.ProcessEnv = {}): Promise<Run> {
+  const shell = options.shell ?? process.env.SHELL ?? defaultShell();
   const env = { ...(options.env ?? process.env), ...extraEnv };
+  const isExec = await isExecutableScript(shell);
   return new Promise((resolve) => {
-    execFile(shell, ['-ilc', script], { env, timeout: TIMEOUT_MS }, (error, stdout, stderr) =>
-      resolve({ error, stdout: String(stdout), stderr: String(stderr) }),
-    );
+    type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
+    const resolver: ExecFileCallback = (error, stdout, stderr) =>
+      resolve({ error, stdout: String(stdout), stderr: String(stderr) });
+    if (IS_POSIX && isExec) {
+      execFile(shell, ['-ilc', script], { env, timeout: TIMEOUT_MS }, resolver);
+    } else {
+      const sh = execFile(defaultShell(), ['-ls'], { env, timeout: TIMEOUT_MS }, resolver);
+      sh.stdin?.write(script);
+      sh.stdin?.end();
+    }
   });
 }
 

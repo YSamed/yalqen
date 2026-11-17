@@ -4,13 +4,15 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { app, BrowserWindow, session, webContents } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import stores from '../../dist/main/library/workspaces.js';
 import handlers from '../../dist/main/library/workspace-handlers.js';
 import tabs from '../../dist/main/tabs/tabs.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import shared from '../../dist/shared/workspaces.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-workspace-runtime-'));
-app.setPath('userData', root);
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-workspace-runtime-'));
+app.setPath('userData', profile);
 internal.registerInternalScheme();
 const windows = [],
   managers = [];
@@ -114,7 +116,7 @@ app
     original.setSelectedGroup('Work');
     original.togglePin(originalId);
     original.open(url + '/private', { activate: false, isPrivate: true });
-    const store = new stores.WorkspaceStore(root);
+    const store = new stores.WorkspaceStore(profile);
     let opened;
     handlers.installWorkspaceHandlers({
       store,
@@ -162,7 +164,7 @@ app
     await ready(
       "document.querySelector('ol strong').textContent==='Renamed' && !document.querySelector('[data-open]').disabled",
     );
-    assert.equal(new stores.WorkspaceStore(root).list()[0].name, 'Renamed');
+    assert.equal(new stores.WorkspaceStore(profile).list()[0].name, 'Renamed');
     await ui.executeJavaScript("document.querySelector('[data-open]').click()");
     await eventually(() => opened?.activeContents()?.getTitle() === 'Article');
     assert.notEqual(opened.activeTabId, originalId);
@@ -193,7 +195,7 @@ app
     await ready("document.querySelectorAll('ol li').length===0");
     assert.equal(original.count, 2);
     assert.equal(opened.count, 1);
-    const attacker = path.join(root, 'attacker.cjs');
+    const attacker = path.join(profile, 'attacker.cjs');
     fs.writeFileSync(
       attacker,
       "const{contextBridge,ipcRenderer}=require('electron');contextBridge.exposeInMainWorld('invoke',(name,...args)=>ipcRenderer.invoke(name,...args));",
@@ -218,19 +220,19 @@ app
       'PASS: production workspace UI/preload/IPC saves, renames, restores real Chromium tabs/groups/pins into a new window without touching the source form, excludes private/history data, confirms deletion and rejects private/external mutations',
     );
   })
-  .then(() => app.quit())
   .catch((error) => {
     console.error(error);
-    app.exit(1);
-  });
-app.on('before-quit', () => {
+    process.exitCode = 1;
+  })
+  .finally(() => app.quit());
+
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   server.close();
   for (const manager of managers) manager.destroyAll();
   for (const window of windows) if (!window.isDestroyed()) window.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
+
+registerWillQuit(async () => {
+  await removeDirectory(profile);
 });

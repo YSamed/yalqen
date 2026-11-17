@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import webApps from '../../../dist/main/library/web-apps.js';
 import shared from '../../../dist/shared/web-apps.js';
 import tabs from '../../../dist/main/tabs/tabs.js';
+import { IS_POSIX } from '../../../dist/main/platform.js';
 const { WebAppStore, parseWebAppManifest } = webApps;
 const { webAppContains } = shared;
 const page = 'https://app.example/inbox';
@@ -65,7 +66,7 @@ test('store installs once per manifest id, persists atomically with 0600, caps a
     const first = store.install(manifest);
     assert.ok(first.id);
     assert.equal(store.install({ ...manifest, name: 'Again' }).id, first.id);
-    assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
+    if (IS_POSIX) assert.equal(fs.statSync(store.file).mode & 0o777, 0o600);
     assert.deepEqual(new WebAppStore(dir).list(), [first]);
     assert.equal(store.install({ ...manifest, scope: 'https://app.example/other/' }), null);
     for (let i = 1; i < 50; i++) assert.ok(store.install({ ...manifest, manifestId: `https://app.example/mail/${i}` }));
