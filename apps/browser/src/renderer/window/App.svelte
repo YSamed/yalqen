@@ -220,12 +220,22 @@
 
     updateRect();
 
+    // The overlay's box only changes when its own size does, so a resize that leaves the caption
+    // cluster untouched fires no geometrychange while the space beside it still moves. Reading the
+    // rect on resize too keeps it and windowWidth on one clock.
     wco.addEventListener('geometrychange', updateRect);
-    return () => wco.removeEventListener('geometrychange', updateRect);
+    window.addEventListener('resize', updateRect);
+    return () => {
+      wco.removeEventListener('geometrychange', updateRect);
+      window.removeEventListener('resize', updateRect);
+    };
   });
 
-  let wcoTbleftInset = $derived(wcoVisible ? wcoTbRect.x : 0);
-  let wcoTbrightInset = $derived(wcoVisible ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
+  // `visible` only promises that not every value is zero, so a squeezed window can still report an
+  // area with no width; without this the trailing inset would swallow the whole toolbar.
+  let wcoTbUsable = $derived(wcoVisible && wcoTbRect.width > 0);
+  let wcoTbleftInset = $derived(wcoTbUsable ? wcoTbRect.x : 0);
+  let wcoTbrightInset = $derived(wcoTbUsable ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
 
   $effect(() => {
     if (!agentPanelOpen || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;
