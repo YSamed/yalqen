@@ -41,7 +41,6 @@
     (PINNED_COLUMNS - 1) * PINNED_GAP +
     PANEL_ROW_INSET;
   const PAGE_RADIUS = 16;
-  const WINDOW_CONTROLS_END = 88;
   const DEVICE_BEZEL = 10;
   const PANEL_ANIMATION_MS = 240;
   const CONTENT_SWAP_PROGRESS = 0.5;
@@ -226,9 +225,7 @@
   });
 
   let wcoTbleftInset = $derived(wcoVisible ? wcoTbRect.x : 0);
-  let wcoTbrightInset = $derived(
-    wcoVisible ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0
-  );
+  let wcoTbrightInset = $derived(wcoVisible ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
 
   $effect(() => {
     if (!agentPanelOpen || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;
@@ -454,10 +451,7 @@
         {agentStatus}
         buttons={toolbarButtons}
         {toolbarExtensions}
-        leadingInset={Math.max(
-          side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset,
-          menuInset,
-        )}
+        leadingInset={Math.max(side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset, menuInset)}
         alignLeading={!sidebarVisible}
         trailingInset={PAGE_INSET + wcoTbrightInset}
         centerOffset={(side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
