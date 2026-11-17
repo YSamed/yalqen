@@ -25,10 +25,13 @@
     fitAgentPanelWidth,
   } from '../../shared/agent-panel';
   import Button from '../ui/Button.svelte';
+  import { IS_MAC } from '../platform';
 
   const COLLAPSED_WIDTH = 44;
   const CONTROL_SIZE = 34;
   const CHROME_HEIGHT = 44;
+  // macOS draws its traffic lights into the content area and reports no width for them.
+  const MAC_TLIGHTS_WIDTH = 88;
   const BOOKMARKS_PANEL_WIDTH = 300;
   const PAGE_INSET = 8;
   const PRIVATE_ACCENT = '#d4d4d8';
@@ -234,7 +237,9 @@
   // `visible` only promises that not every value is zero, so a squeezed window can still report an
   // area with no width; without this the trailing inset would swallow the whole toolbar.
   let wcoTbUsable = $derived(wcoVisible && wcoTbRect.width > 0);
-  let wcoTbleftInset = $derived(wcoTbUsable ? wcoTbRect.x : 0);
+  // macOS lays out no overlay, so its native traffic lights are measured by hand; they sit top-left,
+  // so only the leading edge has to clear them.
+  let wcoTbleftInset = $derived(wcoTbUsable ? wcoTbRect.x : IS_MAC ? MAC_TLIGHTS_WIDTH : 0);
   let wcoTbrightInset = $derived(wcoTbUsable ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
 
   $effect(() => {
