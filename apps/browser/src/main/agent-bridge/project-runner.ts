@@ -2,7 +2,7 @@ import { spawn as spawnProcess, type ChildProcess, type SpawnOptions } from 'nod
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EMPTY_PROJECT_RUN } from '../../shared/agent-panel.js';
-import { defaultShell } from '../platform.js';
+import { IS_WIN, defaultShell } from '../platform.js';
 import type { ProjectRunState } from '../../shared/types.js';
 
 const SCRIPT_NAMES = ['dev', 'start', 'serve', 'preview'];
@@ -131,7 +131,8 @@ export class ProjectRunner {
       // A new process group lets stop() end the dev server together with its child processes.
       child = (this.options.spawn ?? spawnProcess)(
         this.options.shell ?? env.SHELL ?? defaultShell(),
-        ['-ilc', SCRIPT],
+        // Without a pty, Git Bash rejects -i; zsh needs it to read .zshrc, where nvm and Homebrew add PATH.
+        [IS_WIN ? '-lc' : '-ilc', SCRIPT],
         {
           cwd: directory,
           env,
