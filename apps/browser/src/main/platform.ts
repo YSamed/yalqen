@@ -63,13 +63,13 @@ export const openAsText = async (file: string) => {
     case IS_LINUX:
       return (async () => {
         const script = `DESKTOP_FILE=$(xdg-mime query default text/plain)
-      for dir in "\${XDG_DATA_HOME:-$HOME/.local/share}" /usr/local/share /usr/share; do
-        if [ -f "$dir/applications/$DESKTOP_FILE" ]; then
-          gio launch "$dir/applications/$DESKTOP_FILE" "${file}"
-          break
-        fi
-      done`;
-        const sh = promisify(execFile)(defaultShell(), ['-s']);
+          for dir in "\${XDG_DATA_HOME:-$HOME/.local/share}" /usr/local/share /usr/share; do
+            if [ -f "$dir/applications/$DESKTOP_FILE" ]; then
+              gio launch "$dir/applications/$DESKTOP_FILE" "$1"
+              break
+            fi
+          done`.replace(/^[\s\t]*/, '');
+        const sh = promisify(execFile)(defaultShell(), ['-s', '--', file]);
         sh.child.stdin?.write(script);
         sh.child.stdin?.end();
         await sh;
