@@ -705,6 +705,7 @@ export class YalqenWindow {
       developer: this.isDeveloper,
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
+      windowMenu: !IS_MAC,
       addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
       panelSide: this.app.settings.get().panelSide,
@@ -1959,6 +1960,13 @@ export class YalqenWindow {
       case 'toggle-translation':
         tabs.toggleTranslation();
         break;
+      case 'open-app-menu': {
+        // macOS has a global menu bar, so the button is not shown and this should never arrive.
+        if (IS_MAC) break;
+        const menu = Menu.getApplicationMenu();
+        if (menu && !this.window.isDestroyed()) menu.popup({ window: this.window });
+        break;
+      }
       case 'open-settings':
         tabs.openSettings();
         break;

@@ -1,5 +1,6 @@
 <script lang="ts" module>
   const paths = {
+    menu: 'M2.5 4h11M2.5 8h11M2.5 12h11',
     home: 'M2 7 8 2l6 5M4 6v7h8V6M6.5 13V9h3v4',
     back: 'M10 3 5 8l5 5',
     forward: 'm6 3 5 5-5 5',

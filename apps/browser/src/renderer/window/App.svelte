@@ -13,6 +13,7 @@
   import DevToolsDivider from './DevToolsDivider.svelte';
   import TabPanel from './TabPanel.svelte';
   import Toolbar from './Toolbar.svelte';
+  import MenuButton from './MenuButton.svelte';
   import type AgentPanel from './AgentPanel.svelte';
   import {
     EMPTY_AGENT_SESSION,
@@ -177,6 +178,8 @@
   const bookmarksVisible = $derived(bookmarksPanel !== null && !pageFullScreen && !agentVisible);
   const sideVisible = $derived(agentVisible || bookmarksVisible);
   const windowFullScreen = $derived(browser.windowFullScreen);
+  // macOS keeps its menu bar outside the window, so the corner button is Windows and Linux only.
+  const windowMenu = $derived(browser.windowMenu ?? false);
   const panelWidth = $derived(sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : PANEL_WIDTH) : PAGE_INSET);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
   const side = $derived(browser.panelSide);
@@ -328,6 +331,13 @@
     panelAnimation = requestAnimationFrame(step);
   });
   const topInset = $derived(toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
+  // The corner button floats over the toolbar's leading edge unless the sidebar is the leftmost
+  // column and already owns that corner, so the tab group has to start clear of it.
+  const menuInset = $derived(
+    windowMenu && toolbarVisible && !pageFullScreen && !(side === 'left' && sidebarVisible)
+      ? PAGE_INSET + CONTROL_SIZE + 8
+      : 0,
+  );
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = material;
@@ -444,11 +454,11 @@
         {agentStatus}
         buttons={toolbarButtons}
         {toolbarExtensions}
-        leadingInset={
-        side === 'left'
-          ? Math.max(0, wcoTbleftInset - shownWidth)
-          : wcoTbleftInset
-        }
+        leadingInset={Math.max(
+          side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset,
+          menuInset,
+        )}
+        alignLeading={!sidebarVisible}
         trailingInset={PAGE_INSET + wcoTbrightInset}
         centerOffset={(side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
         trailingOverhang={(rightPanel
@@ -458,6 +468,9 @@
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
     {/if}
+  {/if}
+  {#if windowMenu && toolbarVisible && !pageFullScreen}
+    <div class="menu-button" style:height="{topInset}px"><MenuButton /></div>
   {/if}
   {#if browser.devToolsDivider}<DevToolsDivider rect={browser.devToolsDivider} />{/if}
   <section
@@ -547,6 +560,7 @@
 
 <style>
   .shell {
+    position: relative;
     display: grid;
     grid-template-areas:
       'panel bar'
@@ -554,6 +568,17 @@
     height: 100%;
     background: var(--chrome-base);
     transition: background-color var(--transition);
+  }
+
+  /* The button floats over the grid so it reaches the window's own corner in every panel mode,
+     where the sidebar (left wide and narrow) would otherwise sit under it. */
+  .menu-button {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    z-index: 2;
   }
 
   .shell.right {
