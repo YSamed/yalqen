@@ -55,7 +55,6 @@ export function installAppMenu(host: AppMenuHost): void {
       },
       closeWindow: () => BaseWindow.getFocusedWindow()?.close(),
       reopenClosedTab: inWindow((window) => window.tabs.reopenClosed()),
-      // Only once manual tab cleanup is turned on, so the shortcut never closes tabs unasked.
       cleanTabs: () => {
         if (settings.get().manualTabCleanup) void current()?.tabs.closeIdle();
       },

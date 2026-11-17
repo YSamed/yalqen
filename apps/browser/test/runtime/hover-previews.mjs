@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import types from '../../dist/shared/types.js';
 import overlay from '../../dist/main/window/hover-preview.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
@@ -66,7 +67,7 @@ const state = {
   toolbarVisible: true,
   toolbarTabs: true,
   toolbarButtons: ['settings'],
-  material: 'opaque',
+  ...windowAppearance,
   device: null,
   zoom: 1,
   defaultZoom: 1,
@@ -115,11 +116,9 @@ app
       `[...document.querySelectorAll('aside li.row')].find((row) => row.textContent.includes(${JSON.stringify(title)}))`;
     await eventually("document.querySelectorAll('aside li.row').length === 2");
 
-    // Only a Gmail or Calendar row offers a preview.
     assert.equal(await run(`${rowOf('Inbox (2)')}.hasAttribute('data-hover-preview')`), true);
     assert.equal(await run(`${rowOf('Tab a')}.hasAttribute('data-hover-preview')`), false);
 
-    // Hovering it asks for the preview after a short pause, anchored to the row, in the interface's colours.
     const count = actions.length;
     await run(`${rowOf('Inbox (2)')}.dispatchEvent(new PointerEvent('pointerenter'))`);
     await wait(150);
@@ -138,15 +137,12 @@ app
     assert.ok(shown.anchor.width > 0 && shown.anchor.height > 0);
     assert.equal(typeof shown.theme.dark, 'boolean');
 
-    // Leaving the row lets the main process wait for the pointer to reach the preview; a plain row asks for nothing.
     await run(`${rowOf('Inbox (2)')}.dispatchEvent(new PointerEvent('pointerleave'))`);
     assert.equal(actions.at(-1).type, 'leave-preview');
-    // Coming straight back asks again at once, so the open preview is kept.
     const back = actions.length;
     await run(`${rowOf('Inbox (2)')}.dispatchEvent(new PointerEvent('pointerenter'))`);
     assert.equal(actions.slice(back).at(0)?.type, 'show-preview');
     await run(`${rowOf('Inbox (2)')}.dispatchEvent(new PointerEvent('pointerleave'))`);
-    // Pressing anywhere in the interface puts it away at once.
     await run(`document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
     assert.equal(actions.at(-1).type, 'hide-preview');
     const before = actions.length;
@@ -157,7 +153,6 @@ app
       false,
     );
 
-    // The overlay lists the messages beside the row, inside the window.
     const chosen = [];
     const preview = new HoverPreview(window, (choice) => chosen.push(choice));
     const mail = {
@@ -192,7 +187,6 @@ app
       ['WeQuel', 'Bob', '+3 more unread'],
     );
 
-    // Once the pointer is on the card it stays after the tile is left, and goes once the pointer leaves it.
     await card("document.getElementById('card').dispatchEvent(new MouseEvent('mouseenter'))");
     await wait(100);
     preview.release();
@@ -202,7 +196,6 @@ app
     await wait(500);
     assert.equal(preview.isShowing('mail'), false);
 
-    // Without the pointer reaching the card, leaving the tile puts it away after a moment.
     preview.show(preview.begin(), 'mail', mail, anchor, shown.theme);
     await placed();
     preview.release();
@@ -210,7 +203,6 @@ app
     await wait(500);
     assert.equal(preview.isShowing('mail'), false);
 
-    // A click on a message reports which one, and the footer reports the tab.
     preview.show(preview.begin(), 'mail', mail, anchor, shown.theme);
     await placed();
     await card("document.querySelectorAll('.item')[1].click()");
@@ -223,7 +215,6 @@ app
     await wait(200);
     assert.deepEqual(chosen, [1, 'tab']);
 
-    // A read that finishes after the pointer left is never shown.
     const late = preview.begin();
     preview.hide();
     const children = window.contentView.children.length;

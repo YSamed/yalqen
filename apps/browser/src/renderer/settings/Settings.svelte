@@ -44,7 +44,6 @@
     { id: 'developer', label: t('settings.paneDeveloper'), icon: 'sparkle' },
     { id: 'about', label: t('settings.paneAbout'), icon: 'info' },
   ];
-  // Addresses and cards used to have their own pane; older links still land next to passwords.
   const aliases: Record<string, PaneId> = { '/autofill': 'passwords' };
   const paneFromPath = panes.find((item) => `/${item.id}` === location.pathname)?.id ?? aliases[location.pathname];
   let pane = $state<PaneId>(paneFromPath ?? 'general');
@@ -63,8 +62,6 @@
     if (location.pathname !== path) history.replaceState(null, '', `${path}${location.hash}`);
   });
 
-  // Rows come from many components, so matching works on what they render: a section heading that
-  // matches keeps its whole section, otherwise only the rows that mention the term stay visible.
   function filterResults(): void {
     if (!results) return;
     const term = query.trim().toLocaleLowerCase();
@@ -101,7 +98,6 @@
     if (!searching || !results) return;
     void query;
     void tick().then(filterResults);
-    // Lists such as passwords or site data load after the pane appears.
     const observer = new MutationObserver(filterResults);
     observer.observe(results, { childList: true, subtree: true, characterData: true });
     return () => observer.disconnect();
@@ -280,7 +276,6 @@
     text-align: start;
   }
 
-  /* Long labels such as "Passwords and autofill" wrap instead of being cut off. */
   .panes :global(.pane-tab > span) {
     overflow: visible;
     text-overflow: clip;
@@ -326,7 +321,6 @@
     margin-top: 6px;
   }
 
-  /* Consecutive rows read as one card: the first rounds its top, the last its bottom. */
   .pane :global(.row) {
     display: flex;
     align-items: center;

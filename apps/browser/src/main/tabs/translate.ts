@@ -199,7 +199,6 @@ async function translateGroup(
   if (isCancelled()) return null;
   const lines = joined.text.split(SEPARATOR);
   if (lines.length === group.length) return { texts: lines.map((line) => line.trim()), source: joined.source };
-  // The engine merged or split lines, so the batch cannot be mapped back reliably; go one by one.
   const texts: string[] = [];
   let source = joined.source;
   for (const text of group) {
@@ -217,8 +216,6 @@ export async function translateTexts(
   target: PageLanguage,
   isCancelled: () => boolean = () => false,
 ): Promise<{ texts: string[]; source: string | null }> {
-  // Repeated labels and navigation text need only one translation per run. The
-  // index is local to this page/selection; no page text is cached across runs.
   const unique: string[] = [];
   const positions = new Map<string, number>();
   const indices = texts.map((text) => {

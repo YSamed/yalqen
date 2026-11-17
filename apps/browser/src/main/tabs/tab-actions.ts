@@ -4,7 +4,6 @@ import type { TabRuntime } from '../agent-bridge/runtime-buffer.js';
 const FIND_TIMEOUT_MS = 3000;
 const POLL_MS = 100;
 const IDLE_MS = 500;
-// Streams and long polls never finish, so only recent requests count as pending.
 const PENDING_WINDOW_MS = 10_000;
 const META = 4;
 

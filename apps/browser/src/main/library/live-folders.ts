@@ -161,7 +161,6 @@ export class LiveFolderStore {
     return true;
   }
 
-  // The first refresh only sets the baseline, so a new folder does not start with every item unread.
   update(id: string, feed: ParsedFeed | null, now = Date.now()): void {
     const target = this.find(id);
     if (!target) return;
@@ -204,7 +203,6 @@ export async function fetchFeed(fetchUrl: FeedFetch, url: string): Promise<Parse
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: { accept: 'application/atom+xml, application/rss+xml, application/xml;q=0.9, text/xml;q=0.8' },
     });
-    // Redirects are followed, so the final address must be checked as well.
     if (!response.ok || !response.body || (response.url && !response.url.startsWith('https://'))) return null;
     const reader = response.body.getReader();
     const chunks: Uint8Array[] = [];

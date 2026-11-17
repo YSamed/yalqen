@@ -6,7 +6,7 @@ import linuxModule from 'app-builder-lib/out/targets/LinuxTargetHelper.js';
 import configModule from 'app-builder-lib/out/util/config/config.js';
 import builderUtil from 'builder-util';
 
-const metadata = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+const metadata = JSON.parse(fs.readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
 
 test('Linux packaging configuration is accepted by electron-builder', async () => {
   await configModule.validateConfiguration(metadata.build, new builderUtil.DebugLogger());

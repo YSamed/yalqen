@@ -21,7 +21,6 @@ export function isPeekable(url: string): boolean {
   return /^https?:/i.test(url);
 }
 
-// A shift+click on a link is the only page-opened window Chromium reports as a plain new window without features.
 export function opensPeek(disposition: string, features: string, url: string): boolean {
   return disposition === 'new-window' && features === '' && isPeekable(url);
 }

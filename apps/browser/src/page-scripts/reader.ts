@@ -26,7 +26,6 @@ export function prepare(token: string): boolean {
   )
     return false;
   const clone = document.cloneNode(true) as Document;
-  // Remove user-entered data and active embeds before extracting the article.
   clone
     .querySelectorAll('form,input,textarea,select,iframe,object,embed,script,style,noscript')
     .forEach((node) => node.remove());

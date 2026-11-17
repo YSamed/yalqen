@@ -8,7 +8,6 @@ import { searchFieldMarkup } from './search-field-markup.js';
 
 const HISTORY_MARKER = '__YALQEN_HISTORY_SLOT__';
 
-// toLocaleDateString builds a new formatter per call, which made a full history page block the main process.
 let dateFormats: { locale: string; day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } | undefined;
 function getDateFormats() {
   const locale = getLocale();
@@ -22,7 +21,6 @@ function getDateFormats() {
   return dateFormats;
 }
 
-// Splits a message around one parameter so a long list can reuse the translation for every row.
 function messageAround(key: MessageKey, param: string): (value: string) => string {
   const [before, after = ''] = t(key, { [param]: '\u0000' }).split('\u0000');
   return (value) => `${before}${value}${after}`;
@@ -50,7 +48,6 @@ export function renderHistory(entries: HistoryEntry[], query: string): string {
     .map((entry) => {
       const visitedAt = new Date(entry.visitedAt);
       let heading = '';
-      // Formatting the day for every row dominated the page; it only changes at local midnight.
       if (entry.visitedAt < dayStart || entry.visitedAt >= dayEnd) {
         const [year, month, date] = [visitedAt.getFullYear(), visitedAt.getMonth(), visitedAt.getDate()];
         dayStart = new Date(year, month, date).getTime();

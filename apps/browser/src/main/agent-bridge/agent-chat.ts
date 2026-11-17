@@ -48,7 +48,6 @@ const MAX_COMMANDS = 200;
 const PERMISSION_MODES: AgentPermissionMode[] = ['default', 'acceptEdits', 'auto', 'plan'];
 const WORK_MODES: AgentWorkMode[] = ['normal', 'verify', 'review', 'design'];
 const REPLY_LENGTHS: AgentReplyLength[] = ['short', 'detailed'];
-// Output tokens cost several times more than input, so a one-line steer per message pays for itself quickly.
 const SHORT_REPLY_PROMPT =
   '\n\nYalqen reply style: Keep your reply short and plain, with as few words as possible. When a task finishes without errors, reply only with a short confirmation in the user\'s language, for example "Done." in English or "İşlem bitti." in Turkish. Add more only for errors, warnings, or something the user must decide or check, in one sentence each. Do not repeat the request, list the steps you took, use headings, or paste code unless the user asks for it.';
 const REVIEW_DENIAL = 'Yalqen is in review-only mode: do not change files. Report the change you would make instead.';
@@ -95,7 +94,6 @@ export type SessionStore = Pick<
 interface AgentChatOptions {
   connect(): Promise<AgentConnection>;
   onState(): void;
-  // Receives the snapshot as JSON, the form the interface takes it in.
   onUpdate(serialized: string): void;
   loadClient?(): Promise<Client>;
   loadSessions?(): Promise<SessionStore>;
@@ -630,7 +628,6 @@ export class AgentChat {
       request.settle({ behavior: 'allow', updatedInput });
       return;
     }
-    // "Always" lasts for this conversation only; Yalqen never writes the user's Claude settings files.
     const updatedPermissions = request.suggestions.map((update) => ({ ...update, destination: 'session' as const }));
     const mode = updatedPermissions.findLast((update) => update.type === 'setMode');
     if (mode?.type === 'setMode' && isPermissionMode(mode.mode))
@@ -749,8 +746,6 @@ export class AgentChat {
     return { ...EMPTY_AGENT_CHAT, provider, replyLength, modelChoice, effort, permissionMode, models, commands };
   }
 
-  // Claude only lists its models inside a session, so a promptless one is opened just to read them
-  // before the first message; the picker would otherwise show the short fallback list.
   async refreshModels(): Promise<void> {
     if (this.view.provider !== 'claude' || this.modelsLoaded || this.modelsRequested || this.client) return;
     this.modelsRequested = true;
@@ -1113,8 +1108,6 @@ export class AgentChat {
     if (!this.disposed) this.updateTimer ??= setTimeout(() => this.publish(), 32);
   }
 
-  // A streamed reply publishes about 30 times a second, so the transcript is serialized once:
-  // its size shows when old messages must go, and the same text is what the interface receives.
   private publish(): void {
     if (this.updateTimer) clearTimeout(this.updateTimer);
     this.updateTimer = null;

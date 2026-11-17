@@ -2,7 +2,6 @@ import { t, type MessageKey } from '../../shared/i18n.js';
 
 const MAX_LISTED_SITES = 3;
 
-// Chrome shows no install warning for these, so listing them would only add noise.
 const SILENT = new Set([
   'activeTab',
   'alarms',
@@ -48,7 +47,6 @@ const DESCRIBED: Record<string, MessageKey> = {
   webNavigation: 'permissionText.history',
 };
 
-// Unknown names come from an untrusted manifest, so anything sentence-like is dropped.
 const PERMISSION_NAME = /^[a-z][A-Za-z.]{0,40}$/;
 const HOST_PATTERN = /^(\*|https?|wss?|ftp|file):\/\/([^/]*)\//;
 

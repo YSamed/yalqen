@@ -2,7 +2,6 @@ import type { TabManager } from '../tabs/tabs.js';
 import { pageInfo, responseBody, screenshot } from '../tabs/tab-agent.js';
 import type { BridgeActions, BridgeHost, BridgeTab } from './tools.js';
 
-// The first tab set belongs to the focused window, so its active tab is the default target.
 export function createElectronHost(
   tabSets: () => TabManager[],
   actions: BridgeActions,

@@ -100,7 +100,6 @@
   .access {
     margin-top: 6px;
   }
-  /* Doubled class outranks the settings page's card row style, which has the same specificity and loads later. */
   .access :global(.row.row) {
     justify-content: flex-start;
     gap: 12px;

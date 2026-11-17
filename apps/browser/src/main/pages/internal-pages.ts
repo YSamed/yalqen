@@ -57,7 +57,6 @@ interface InternalPages {
   settings: { template: string; asset: (name: string) => Buffer<ArrayBuffer> | null };
 }
 
-// The locale is fixed for the whole run, so page templates are translated once when loaded.
 function localizePage(page: string): string {
   return page
     .replace('<html lang="en">', `<html lang="${getLocale()}">`)

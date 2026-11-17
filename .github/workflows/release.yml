@@ -55,9 +55,6 @@ jobs:
           key="$RUNNER_TEMP/AuthKey.p8"
           printf '%s' "$APPLE_API_KEY_P8" > "$key"
           echo "APPLE_API_KEY=$key" >> "$GITHUB_ENV"
-      # electron-builder 26 unlocks the keychain it makes from CSC_LINK with the certificate password
-      # instead of the keychain password, so the certificate goes into a keychain made here instead.
-      # The runner image already trusts Apple's Developer ID intermediate, which cannot be imported twice.
       - name: Import the signing certificate
         env:
           MAC_CERTIFICATE_P12_BASE64: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
@@ -86,10 +83,8 @@ jobs:
       - name: Package
         run: |
           signing=()
-          # Hardened runtime rejects ad-hoc signed frameworks, so it is only used with a Developer ID certificate.
           if [ -z "$CSC_KEYCHAIN" ]; then
             signing=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
-          # The keychain-access-groups entitlement is restricted: without the profile macOS kills the app at launch.
           elif [ -n "$PROVISIONING_PROFILE" ]; then
             signing=(-c.mac.provisioningProfile="$PROVISIONING_PROFILE" -c.mac.entitlements=build/entitlements.main.mac.plist)
           fi
@@ -102,7 +97,6 @@ jobs:
             apps/browser/release/*.dmg
             apps/browser/release/*.zip
             apps/browser/release/latest-mac.yml
-      # Scorecard's Signed-Releases check only sees provenance attached to the release as *.intoto.jsonl.
       - name: Attach provenance bundle
         env:
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}

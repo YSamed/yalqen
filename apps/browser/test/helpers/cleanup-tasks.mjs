@@ -2,6 +2,8 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { app } from 'electron';
 
+if (process.platform === 'darwin') app.commandLine.appendSwitch('use-mock-keychain');
+
 const beforeQuitTasks = [];
 const willQuitTasks = [];
 let isQuitting = false;
@@ -14,9 +16,6 @@ function registerWillQuit(fn) {
   willQuitTasks.push(fn);
 }
 
-// Windows keeps Chromium helper processes alive until this process exits, so files in a live
-// profile stay locked and in-process retries cannot succeed. Deletion is delegated to a detached
-// helper that waits for this process to disappear.
 const sweeperScript = `
 const fs = require('node:fs');
 const parent = Number(process.argv[1]);
@@ -72,13 +71,11 @@ app.on('before-quit', async (event) => {
   isQuitting = true;
 
   await Promise.all(beforeQuitTasks.map((fn) => fn()));
-  app.quit(); // Proceeds to 'will-quit'
+  app.quit();
 });
 
 let isWillQuitting = false;
 app.on('will-quit', async (event) => {
-  // Always prevent the default exit: a second quit cycle (e.g. from 'window-all-closed' after the
-  // before-quit tasks destroyed windows) must not kill the process mid-cleanup.
   event.preventDefault();
   if (isWillQuitting) return;
   isWillQuitting = true;
@@ -89,7 +86,6 @@ app.on('will-quit', async (event) => {
     console.error('Cleanup failed:', error);
     process.exitCode = 1;
   }
-  // app.exit() bypasses the normal exit path, so carry a test's failure code or it would look like a pass.
   app.exit(process.exitCode ?? 0);
 });
 

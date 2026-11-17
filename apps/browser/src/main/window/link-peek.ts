@@ -58,7 +58,6 @@ export class LinkPeek {
     return this.current !== null;
   }
 
-  // A peek from a developer tab browses in the developer session and becomes a developer tab when kept.
   open(url: string, isPrivate: boolean, owner: PeekOwner, developer = false): void {
     if (!isPeekable(url) || this.host.window.isDestroyed()) return;
     this.close();

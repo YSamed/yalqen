@@ -14,8 +14,6 @@ const height = 36
 const margin = { x: 10, top: 6, bottom: 14 }
 const fontFamily = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
 
-// Helvetica advance widths per 1000 em. Viewers render with their own system font, so each
-// text element pins its width with textLength and the renderer absorbs the gap in spacing.
 const regularWidths = {
   ' ': 278, ',': 278, '.': 278, a: 556, b: 556, c: 500, d: 556, e: 556, f: 278, g: 556, h: 556, i: 222, j: 222,
   k: 500, l: 222, m: 833, n: 556, o: 556, p: 556, q: 556, r: 333, s: 500, t: 278, u: 556, v: 500, w: 722, x: 500,
@@ -92,7 +90,6 @@ async function stableReleases() {
 
 const isDmg = (asset) => asset.name.endsWith('.dmg')
 const releases = await stableReleases()
-// A release is published before its assets finish uploading, so skip ones without a DMG yet.
 const latest = releases
   .filter((release) => release.assets.some(isDmg))
   .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))[0]
@@ -110,8 +107,6 @@ async function uniqueDownloads() {
   }
 }
 const unique = await uniqueDownloads()
-// Historical downloads were not deduplicated. Preserve them without claiming
-// that the combined figure represents unique people or unique downloads.
 const historicalDownloads = 103
 const displayedDownloads = unique === null ? downloads : historicalDownloads + unique
 

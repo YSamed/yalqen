@@ -13,7 +13,6 @@ function helpMentions(executable: string, flag: string): Promise<boolean> {
 
 export const ACP_AGENTS: Record<Exclude<AgentProviderId, 'claude'>, AcpAgent> = {
   codex: { label: 'Codex', command: 'codex-acp', args: async () => [] },
-  // Gemini CLI renamed --experimental-acp to --acp; older releases only know the experimental flag.
   gemini: {
     label: 'Gemini CLI',
     command: 'gemini',

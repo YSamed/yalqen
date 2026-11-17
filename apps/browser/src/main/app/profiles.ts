@@ -60,8 +60,6 @@ function alive(pid: number): boolean {
   }
 }
 
-// Processes share only metadata. SQLite transactions serialize activation, creation and
-// deletion so a profile cannot start while another process removes its data directory.
 export class ProfileRegistry {
   readonly file: string;
   private readonly db: DatabaseSync;
@@ -176,8 +174,6 @@ export class ProfileRegistry {
     this.runtime = null;
   }
 
-  // Keep the PID record until the process exits. Clearing it in will-quit would let
-  // another profile delete storage while Chromium is still flushing its session.
   close(): void {
     if (this.db.isOpen) this.db.close();
   }

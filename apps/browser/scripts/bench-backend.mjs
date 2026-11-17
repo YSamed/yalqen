@@ -108,7 +108,6 @@ try {
       checksum += suggest('article', sources).length;
     }),
     measure('suggestions, broad match, 500 fresh tabs per input', 500, () => {
-      // Match suggestionTabs() in production: every input receives new records.
       const freshTabs = suggestionTabs.map(({ id, title, url }) => ({ id, title, url }));
       checksum += suggest('article', { tabs: freshTabs, bookmarks: [], history: EMPTY_HISTORY_INDEX }).length;
     }),
@@ -118,7 +117,6 @@ try {
     measure('bookmark suggestions, 5000 bookmarks', 200, (index) => {
       checksum += suggest(['article', 'site12', 'missing'][index % 3], {
         tabs: [],
-        // The fallback allows measuring an older build with the same harness.
         bookmarks: bookmarkStore.suggestions?.() ?? bookmarkStore.bookmarks(),
         history: sources.history,
       }).length;

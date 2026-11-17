@@ -34,12 +34,9 @@ const BUNDLER_PREFIXES = [
   /^webpack-internal:\/\/\/(?:\([^)]*\)\/)?/,
   /^webpack:\/\/[^/]*\//,
   /^turbopack:\/\/\[project\]\//,
-  // Next.js names its webpack layers, such as (rsc) or (app-pages-browser), in front of the path.
   /^\/?\([a-z-]+\)\//,
 ];
 
-// Turns the many spellings bundlers use into a path an agent can open: absolute paths stay
-// absolute, everything else becomes relative to the project root.
 export function projectPath(file: string): string {
   let path = file.trim();
   for (const prefix of BUNDLER_PREFIXES) path = path.replace(prefix, '');
@@ -48,7 +45,6 @@ export function projectPath(file: string): string {
   path = path.replace(/[?#].*$/, '');
   if (path.startsWith('/@fs/')) return path.slice('/@fs'.length);
   if (path.startsWith('./')) return path.slice(2);
-  // Dev servers such as Vite serve project files from the root, so /src/x.tsx means <project>/src/x.tsx.
   if (path.startsWith('/') && !/^\/(Users|home|private|var|tmp|opt|Volumes|mnt|srv)\//.test(path)) return path.slice(1);
   return path;
 }
@@ -59,8 +55,6 @@ function isServerFrame(source: InspectedSource): boolean {
   return SERVER_FRAME.test(source.raw?.file ?? '');
 }
 
-// Webpack evaluates each module with its source map inline, which the page cannot fetch, so
-// such a location is still the compiled one until the main process maps it.
 export function needsInlineMap(source: InspectedSource | null): source is InspectedSource & { raw: SourceLocation } {
   return (
     !!source?.raw?.file.startsWith('webpack-internal:') &&
@@ -71,7 +65,6 @@ export function needsInlineMap(source: InspectedSource | null): source is Inspec
 
 function location(source: InspectedSource | null): SourceLocation | null {
   if (!source?.mapped || !source.file) return null;
-  // Server component code never reaches the browser, so only the file name is trustworthy.
   if (isServerFrame(source)) return { file: projectPath(source.file), line: null, column: null };
   if (needsInlineMap(source)) return null;
   return { file: projectPath(source.file), line: source.line, column: source.column };
@@ -81,7 +74,6 @@ const MINIFIED_NAME = /^[A-Za-z_$][\w$]{0,2}$/;
 
 export function componentInfo(inspection: ComponentInspection | null): ComponentInfo {
   if (!inspection?.framework) return NO_COMPONENT;
-  // A minifier's two-letter names would send the agent looking for components that do not exist.
   if (!inspection.development && (!inspection.component || MINIFIED_NAME.test(inspection.component))) {
     return NO_COMPONENT;
   }

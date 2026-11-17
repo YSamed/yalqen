@@ -17,7 +17,6 @@ import { transferPasswords } from './password-transfer.js';
 import { chooseLogin } from './login-menu.js';
 import { passwordOrigin, sanitizeCredential, type Cipher, type PasswordStore, type SaveOffer } from './passwords.js';
 
-// A login that succeeds navigates or removes its form; one that does neither in time most likely failed.
 const SUBMISSION_WAIT_MS = 10_000;
 const CLIPBOARD_CLEAR_MS = 30_000;
 

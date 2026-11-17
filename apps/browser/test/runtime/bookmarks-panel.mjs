@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
@@ -79,10 +81,7 @@ app
       toolbarTabs: true,
       toolbarButtons: ['settings'],
       toolbarExtensions: [],
-      material: 'opaque',
-      glassTint: 0,
-      accent: '#0a84ff',
-      windowColor: null,
+      ...windowAppearance,
       defaultZoom: 1,
       downloads: { active: 0, progress: null, started: 0 },
       extensions: false,
@@ -113,7 +112,6 @@ app
       defaultZoom: () => 1,
       closed: [],
     });
-    // The active tab shows the bookmarked inbox further down the page; another tab shows the board.
     manager.tabs.push(manager.createRecord({ id: 'a', url: 'https://a.example/inbox#thread', title: 'Inbox' }));
     manager.tabs.push(manager.createRecord({ id: 'b', url: 'https://b.example/', title: 'Board' }));
     manager.activeId = 'a';
@@ -138,13 +136,11 @@ app
       await window.webContents.insertText(text);
     };
 
-    // Folders start closed; the root bookmark whose page is the active tab is lifted like the active tab.
     await eventually(`!!document.querySelector('#bookmarks-panel .row')`);
     assert.equal(await js(`!!${row('Board')}`), false);
     assert.equal(await js(`(${row('Inbox')}).classList.contains('active')`), true);
     assert.equal(await js(`(${row('Work')}).getAttribute('aria-expanded')`), 'false');
 
-    // Opening folders shows what is inside; a bookmark open in another tab is marked open but not active.
     await click(`#bookmarks-panel .row.folder`);
     await eventually(`!!${row('Board')}`);
     assert.equal(await js(`(${row('Board')}).classList.contains('open')`), true);
@@ -155,14 +151,12 @@ app
     await eventually(`!!${row('Spec')}`);
     assert.equal(await js(`(${row('Spec')}).classList.contains('open')`), false);
 
-    // A click opens the page; main switches to its tab when there is one.
     await js(`(${row('Board')}).click()`);
     const start = Date.now();
     while (actions.at(-1)?.type !== 'open-bookmark' && Date.now() - start < 2000)
       await new Promise((resolve) => setTimeout(resolve, 20));
     assert.deepEqual(actions.at(-1), { type: 'open-bookmark', url: 'https://b.example/' });
 
-    // Right-click edits the name and the address, with Save and Cancel; a bad address is refused here.
     await rightClick('Spec');
     await eventually(`document.querySelectorAll('.bookmark-editor input').length === 2`);
     await typeInto(0, 'Product spec');
@@ -183,7 +177,6 @@ app
       url: 'https://c.example/spec/v2',
     });
 
-    // Escape cancels, and so does a press outside the card, in the interface or in the page (which main reports).
     const before = actions.length;
     await rightClick('Board');
     await eventually(`!!document.querySelector('.bookmark-editor')`);
@@ -208,7 +201,6 @@ app
     await eventually(`!document.querySelector('.bookmark-editor')`);
     assert.deepEqual(actions.slice(before), [{ type: 'rename-bookmark-folder', id: 'work', title: 'Projects' }]);
 
-    // The footer opens the full bookmarks page, and the header closes the panel.
     await js(`document.querySelector('#bookmarks-panel footer button').click()`);
     await js(`document.querySelector('#bookmarks-panel header button').click()`);
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -228,15 +220,9 @@ app
     console.error(error);
     app.exit(1);
   });
-app.on('before-quit', () => {
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   manager?.destroyAll();
   window?.destroy();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5 });
-  } catch (error) {
-    console.error(error);
-  }
-});
+registerWillQuit(() => removeDirectory(profile));

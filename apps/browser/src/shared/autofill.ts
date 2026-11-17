@@ -73,7 +73,6 @@ const CARD_FIELDS = new Set([
   'cc-exp-year',
 ]);
 
-// The section and shipping/billing tokens keep distinct forms from being filled together.
 export function autofillField(value: string): { kind: AutofillKind; field: string; section: string } | null {
   const tokens = value.trim().toLowerCase().split(/\s+/);
   const field = tokens.at(-1)!;
@@ -105,9 +104,7 @@ export function autofillValues(data: AutofillData, locale: string): Record<strin
   let country = data.country;
   try {
     country = new Intl.DisplayNames([locale], { type: 'region' }).of(data.country) ?? country;
-  } catch {
-    /* Retain the country code when the locale cannot be resolved. */
-  }
+  } catch {}
   return {
     name: [data.givenName, data.additionalName, data.familyName].filter(Boolean).join(' '),
     'given-name': data.givenName,

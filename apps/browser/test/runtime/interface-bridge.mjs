@@ -42,20 +42,17 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 1500));
 app
   .whenReady()
   .then(async () => {
-    // With its preload the interface loads once and is left alone.
     const healthy = interfaceWindow('bridge-healthy', true);
     await healthy.window.loadFile(page);
     await settle();
     assert.equal(healthy.loads.count, 1);
     assert.equal(await healthy.window.webContents.executeJavaScript('window.yalqen.ready'), true);
 
-    // Without it the page is reloaded, but only twice, so a broken preload cannot loop.
     const broken = interfaceWindow('bridge-broken', false);
     await broken.window.loadFile(page);
     await settle();
     assert.equal(broken.loads.count, 3);
 
-    // When a reload brings the bridge back, the window stops there.
     const recovering = interfaceWindow('bridge-recovering', false);
     recovering.window.webContents.once('did-finish-load', () => {
       session.fromPartition('bridge-recovering').registerPreloadScript({ type: 'frame', filePath: preload });

@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JsonFile } from '../storage/json-file.js';
 
-// package.json is three levels above dist/main/app, both in the repository and inside the packaged app.
 export const REPO_URL: string = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../../../package.json'), 'utf8'),
 ).repository;

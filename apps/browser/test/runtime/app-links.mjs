@@ -4,10 +4,12 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import handlers from '../../dist/main/privacy/permission-handlers.js';
 import appLinks from '../../dist/main/privacy/app-links.js';
 import permissions from '../../dist/main/privacy/permissions.js';
+import i18n from '../../dist/shared/i18n.js';
 
 const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-app-links-')));
 app.setPath('userData', path.join(root, 'profile'));
@@ -17,8 +19,6 @@ process.on('uncaughtException', (error) => {
   app.exit(1);
 });
 
-// A sign-in page and an authorization endpoint that sends the token back to an app with a redirect.
-// The same page for every other path; the request is never written back into it.
 const server = http.createServer((req, res) => {
   if (req.url === '/authorize') {
     res.writeHead(302, { Location: 'x-yalqen-test://callback?code=redirected' });
@@ -45,7 +45,6 @@ app
     const base = `http://127.0.0.1:${server.address().port}`;
     const browsing = session.fromPartition('app-links');
     const store = new permissions.PermissionStore(null);
-    // The prompt is answered with Cancel: allowing would hand the test link to the system for real.
     const prompts = [];
     const links = new appLinks.AppLinks({
       storeFor: () => store,
@@ -92,26 +91,27 @@ app
     await eventually(() => tabManager.snapshotFor(id)?.loading === false, 'the sign-in page');
     const contents = tabManager.find(id).view.webContents;
 
-    // A link to the app asks first, naming the app and the site, instead of being refused silently.
     await contents.executeJavaScript(`document.getElementById('open').click()`, true);
     await eventually(() => prompts.length === 1, 'the prompt for a clicked app link');
     assert.deepEqual(prompts[0], { app: 'Test App', host: `127.0.0.1:${server.address().port}` });
 
-    // So does the usual OAuth ending: the authorization endpoint redirecting to the app.
     contents.loadURL(`${base}/authorize`).catch(() => {});
     await eventually(() => prompts.length === 2, 'the prompt for a redirect to the app');
 
-    // window.open of an app link goes to the same prompt and leaves no empty tab behind.
     const count = tabManager.tabs.length;
     await contents.executeJavaScript(`window.open('x-yalqen-test://callback?code=popup')`, true);
     await eventually(() => prompts.length === 3, 'the prompt for window.open of an app link');
     assert.deepEqual(opened, [{ url: 'x-yalqen-test://callback?code=popup', isPrivate: false }]);
     assert.equal(tabManager.tabs.length, count);
 
-    // Links that no app opens never prompt.
     await contents.executeJavaScript(`location.href = 'x-yalqen-nothing://x'`, true);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    assert.equal(prompts.length, 3);
+    if (process.platform === 'linux') {
+      await eventually(() => prompts.length === 4, 'the Linux fallback prompt for an unnamed app');
+      assert.equal(prompts[3].app, i18n.t('appLinks.anApp'));
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.equal(prompts.length, 3);
+    }
 
     console.log(
       'PASS: app links from sign-in pages (click, redirect, window.open) ask to open the app instead of failing silently',
@@ -122,13 +122,9 @@ app
     console.error(error);
     app.exit(1);
   });
-app.on('before-quit', () => {
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   tabManager?.destroyAll();
   server.close();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
-});
+registerWillQuit(() => removeDirectory(root));

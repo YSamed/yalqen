@@ -15,7 +15,6 @@ process.on('uncaughtException', (error) => {
   app.exit(1);
 });
 
-// The same page for every path; the request is never written back into it.
 const server = http.createServer((_req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.end('<title>Tab modes test</title><p>Tab modes</p>');
@@ -78,7 +77,6 @@ app
     const window = new BaseWindow({ show: false });
     tabManager = manager(window);
     const contentsOf = (id) => tabManager.find(id).view.webContents;
-    // The first load once timed out on CI only (about 70 ms locally), so a timeout reports where the tab stopped.
     const loadState = (id) => {
       try {
         const contents = tabManager.find(id)?.view?.webContents;
@@ -111,7 +109,6 @@ app
     assert.equal(tabManager.canSwitchMode, true);
     assert.equal(contentsOf(work).session, sessions.daily);
 
-    // Switching to developer reloads the same page in the developer session, with DevTools open.
     assert.equal(await tabManager.setMode(work, 'developer'), true);
     await loaded(work);
     assert.equal(contentsOf(work).session, sessions.developer);
@@ -122,7 +119,6 @@ app
     await eventually(() => tabManager.find(work).devToolsShown, 'DevTools open in the developer tab');
     assert.equal(tabManager.activeMode, 'developer');
 
-    // A new tab from the plus button takes the mode of the tab in front.
     const extra = tabManager.openInActiveMode(page);
     await loaded(extra);
     assert.equal(contentsOf(extra).session, sessions.developer);
@@ -130,13 +126,11 @@ app
     tabManager.close(extra);
     await eventually(() => !tabManager.snapshotFor(extra), 'the extra tab closed');
 
-    // Going back to another tab gives its own mode back.
     tabManager.activate(mail);
     assert.equal(tabManager.activeMode, 'normal');
     tabManager.activate(work);
     assert.equal(tabManager.activeMode, 'developer');
 
-    // Leaving developer mode for private forgets the developer session once no developer tab is left.
     assert.equal(await tabManager.setMode(work, 'private'), true);
     await loaded(work);
     assert.equal(contentsOf(work).session, sessions.private);
@@ -145,14 +139,12 @@ app
     assert.equal(tabManager.hasPrivateTabs, true);
     assert.equal(tabManager.hasDeveloperTabs, false);
 
-    // And back to normal: the daily session, and the private data is forgotten.
     assert.equal(await tabManager.setMode(work, 'normal'), true);
     await loaded(work);
     assert.equal(contentsOf(work).session, sessions.daily);
     assert.equal(ended.private, 1);
     assert.equal(await tabManager.setMode(work, 'normal'), false);
 
-    // Pages a developer tab opens from its menu or a peek keep developer mode, and the agent bridge sees them.
     assert.equal(await tabManager.setMode(work, 'developer'), true);
     await loaded(work);
     assert.equal(tabManager.modeOfContents(contentsOf(work)), 'developer');
@@ -177,7 +169,6 @@ app
     assert.equal(await tabManager.setMode(work, 'normal'), true);
     await loaded(work);
 
-    // A pinned tab keeps its mode; the page opens in a new tab of the chosen mode instead.
     tabManager.togglePin(mail);
     tabManager.activate(mail);
     const count = tabManager.tabs.length;
@@ -186,7 +177,6 @@ app
     assert.equal(tabManager.snapshotFor(mail).isPrivate, false);
     assert.equal(tabManager.snapshotFor(tabManager.activeId).isPrivate, true);
 
-    // With the setting off nothing switches, and the plus button opens a normal tab as before.
     modesOn = false;
     assert.equal(tabManager.canSwitchMode, false);
     assert.equal(await tabManager.setMode(work, 'private'), false);
@@ -196,7 +186,6 @@ app
     assert.equal(tabManager.snapshotFor(plain).isPrivate, false);
     modesOn = true;
 
-    // Private windows keep every tab private.
     const privateWindow = new BaseWindow({ show: false });
     const privateTabs = manager(privateWindow, { privateWindow: true });
     const only = privateTabs.open(page);

@@ -121,17 +121,14 @@ export class ProjectRunner {
     delete env.CLAUDECODE;
     env.BROWSER = 'none';
     env.FORCE_COLOR = '0';
-    // Python's http.server prints its address with print(), which is buffered when piped.
     env.PYTHONUNBUFFERED = '1';
     env.YALQEN_RUN_DIRECTORY = directory;
     env.YALQEN_RUN_MANAGER = command.manager;
     env.YALQEN_RUN_SCRIPT = command.script;
     let child: ChildProcess;
     try {
-      // A new process group lets stop() end the dev server together with its child processes.
       child = (this.options.spawn ?? spawnProcess)(
         this.options.shell ?? env.SHELL ?? defaultShell(),
-        // Without a pty, Git Bash rejects -i; zsh needs it to read .zshrc, where nvm and Homebrew add PATH.
         [IS_WIN ? '-lc' : '-ilc', SCRIPT],
         {
           cwd: directory,

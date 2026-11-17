@@ -25,6 +25,5 @@ export interface Truncated {
 export function truncateBytes(text: string, maxBytes: number): Truncated {
   const bytes = Buffer.from(text, 'utf8');
   if (bytes.length <= maxBytes) return { text, truncated: false };
-  // Cutting inside a multi-byte character leaves a replacement character at the end.
   return { text: bytes.subarray(0, maxBytes).toString('utf8').replace(/�$/, ''), truncated: true };
 }

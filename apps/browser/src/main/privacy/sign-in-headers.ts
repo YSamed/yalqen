@@ -3,8 +3,6 @@ import { signInUserAgent } from '../app/page-preferences.js';
 
 const SIGN_IN_URLS = ['https://accounts.google.com/*'];
 
-// Chromium keeps sending its client hints after a user agent override, and Google rejects the
-// Firefox user agent paired with Chromium hints, so the hints are dropped on sign-in requests.
 export function signInRequestHeaders(
   url: string,
   headers: Record<string, string>,
@@ -21,8 +19,6 @@ export function signInRequestHeaders(
   return rewritten;
 }
 
-// Electron keeps one onBeforeSendHeaders listener per session; cookie blocking replaces this one
-// with a listener that applies the same rewrite.
 export function rewriteSignInHeaders(session: Session): void {
   session.webRequest.onBeforeSendHeaders({ urls: SIGN_IN_URLS }, ({ url, requestHeaders }, callback) =>
     callback({ requestHeaders: signInRequestHeaders(url, requestHeaders, process.platform) ?? requestHeaders }),

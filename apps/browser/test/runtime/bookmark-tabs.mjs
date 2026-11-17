@@ -4,6 +4,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { app, BaseWindow, session } from 'electron';
+import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 
 const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-bookmark-tabs-')));
@@ -14,7 +15,6 @@ process.on('uncaughtException', (error) => {
   app.exit(1);
 });
 
-// The same page for every path; the request is never written back into it.
 const server = http.createServer((_req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.end('<title>Bookmark tabs test</title><p>Bookmark tabs</p>');
@@ -61,18 +61,15 @@ app
     await eventually(() => tabManager.snapshotFor(other)?.loading === false, 'the other page');
     const count = tabManager.tabs.length;
 
-    // A bookmark for a page that is open switches to its tab, whatever follows the # in either address.
     assert.equal(tabManager.openPage(`${base}/mail`), mail);
     assert.equal(tabManager.activeId, mail);
     assert.equal(tabManager.tabs.length, count);
 
-    // Otherwise the page opens in a new tab in front.
     const opened = tabManager.openPage(`${base}/docs`);
     assert.equal(tabManager.tabs.length, count + 1);
     assert.equal(tabManager.activeId, opened);
     await eventually(() => tabManager.snapshotFor(opened)?.url === `${base}/docs`, 'the new tab at the bookmark');
 
-    // A press in a page is reported, so popups in the interface can close on it.
     const contents = tabManager.find(opened).view.webContents;
     contents.sendInputEvent({ type: 'mouseDown', x: 10, y: 10, button: 'left', clickCount: 1 });
     contents.sendInputEvent({ type: 'mouseUp', x: 10, y: 10, button: 'left', clickCount: 1 });
@@ -87,13 +84,9 @@ app
     console.error(error);
     app.exit(1);
   });
-app.on('before-quit', () => {
+registerBeforeQuit(() => {
   clearTimeout(deadline);
   tabManager?.destroyAll();
   server.close();
 });
-app.on('quit', () => {
-  try {
-    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  } catch {}
-});
+registerWillQuit(() => removeDirectory(root));

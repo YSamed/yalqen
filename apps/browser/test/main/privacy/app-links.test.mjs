@@ -65,15 +65,16 @@ test('Always allow is remembered per site, and only in the private store for pri
   assert.equal(stores.normal.get('https://app.slack.com', 'apps'), undefined);
   assert.equal(await links.ask(null, 'slack://other', SITE, true), true);
   assert.equal(prompts.length, 1);
-  // A site blocked from opening apps in Settings is refused without asking.
   stores.normal.set('https://app.slack.com', ['apps'], 'deny');
   assert.equal(await links.ask(null, 'slack://magic-login/abc', SITE, false), false);
   assert.equal(prompts.length, 1);
 });
 
-test('links with no app to open them, or that are not app links, are refused without a prompt', async () => {
+test('unnamed apps follow platform policy and non-app links are refused without a prompt', async () => {
   const none = setup('');
-  if (process.platform !== 'linux') assert.equal(await none.links.ask(null, 'unknown-app://x', SITE, false), false);
+  none.answer({ open: false, always: false });
+  assert.equal(await none.links.ask(null, 'unknown-app://x', SITE, false), false);
+  assert.equal(none.prompts.length, process.platform === 'linux' ? 1 : 0);
   const { links, prompts } = setup();
   assert.equal(await links.ask(null, 'javascript:alert(1)', SITE, false), false);
   assert.equal(await links.ask(null, 'https://example.com/', SITE, false), false);

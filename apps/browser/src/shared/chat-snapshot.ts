@@ -10,8 +10,6 @@ function reuse<T>(previous: unknown, next: T): T {
   return (Array.isArray(next) ? entries.map(([, value]) => value) : Object.fromEntries(entries)) as T;
 }
 
-// Every update carries the whole transcript as new objects. Keeping the unchanged messages and
-// parts lets the chat skip them, so a streamed reply re-renders only its own text.
 export function reuseChatSnapshot(previous: AgentChatSnapshot, next: AgentChatSnapshot): AgentChatSnapshot {
   const messages = new Map(previous.messages.map((message) => [message.id, message]));
   return {

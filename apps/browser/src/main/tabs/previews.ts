@@ -11,9 +11,6 @@ import {
 export const PREVIEW_WORLD_ID = 1050;
 const READ_TIMEOUT_MS = 2500;
 
-// Runs in the Calendar tab. Google Calendar draws each timed event as a chip in a day column
-// ([data-datekey]); the chip's position in the column gives its time whatever the interface language.
-// Chips without the hidden description are inner duplicates of the same event.
 export const CALENDAR_READ_SCRIPT = `(() => {
   const chips = [];
   for (const chip of document.querySelectorAll('[data-eventid]')) {
@@ -38,7 +35,6 @@ export const CALENDAR_READ_SCRIPT = `(() => {
   return { columns: document.querySelectorAll('[data-datekey]').length, chips: chips.slice(0, 200) };
 })()`;
 
-// Opens an event's details the way a click on its chip in Calendar does.
 export const CALENDAR_OPEN_SCRIPT = (id: string) => `(() => {
   const chip = [...document.querySelectorAll('[data-eventid]')].find((node) => node.getAttribute('data-eventid') === ${JSON.stringify(id)});
   chip?.scrollIntoView({ block: 'center' });
@@ -46,7 +42,6 @@ export const CALENDAR_OPEN_SCRIPT = (id: string) => `(() => {
   return Boolean(chip);
 })()`;
 
-// Null when the page has no day columns to read, such as a month or schedule view, or Calendar's sign-in page.
 function chipsFrom(read: unknown): CalendarChip[] | null {
   const { columns, chips: value } = (typeof read === 'object' && read !== null ? read : {}) as {
     columns?: unknown;
@@ -72,21 +67,16 @@ const FEED_SCRIPT = (url: string) =>
   `fetch(${JSON.stringify(url)}, { credentials: 'include' }).then((response) => response.ok ? response.text() : '')`;
 
 export interface PreviewTab {
-  // The tab a click in the preview switches to, or null when no tab is open on the site.
   id: string | null;
   url: string;
-  // The loaded page, or null for a tab that is not loaded.
   contents: WebContents | null;
 }
 
 export interface PreviewSources {
   session: Session;
-  // Runs a read in the tab's page, waking it if it is frozen.
   readInTab(contents: WebContents, code: string): Promise<unknown>;
 }
 
-// Gmail's feed is read with the browser's own session, so it works even when the Gmail tab is not loaded; a
-// loaded tab is asked as a fallback, since its requests carry the page's cookies the way Gmail expects.
 async function mailPreview(tab: PreviewTab, sources: PreviewSources): Promise<PreviewContent> {
   const feed = gmailFeedUrl(tab.url);
   const fromSession = await withTimeout(

@@ -27,11 +27,9 @@ interface AgentProjectOptions {
 }
 
 interface Conversation {
-  // Changes whenever another chat is shown, so the panel starts its view over.
   id: string;
   provider: AgentProviderId;
   readonly chats: Map<AgentProviderId, AgentChat>;
-  // Chats set aside by "new chat" while they were still working; they keep running until dismissed.
   readonly background: AgentChat[];
 }
 
@@ -42,15 +40,11 @@ function isWorking(chat: AgentChat): boolean {
   return WORKING.includes(chat.state().status);
 }
 
-// One project open in a window's agent panel: its own terminal session, dev server and one conversation
-// per browser tab. Projects in the same window run side by side, each with its own Yalqen connection.
 export class AgentProject {
   readonly id = randomUUID();
   readonly session: AgentSession;
   readonly runner: ProjectRunner;
-  // Origins of the tabs this project's agent may use: its dev server and tabs the user attached.
   readonly origins = new Set<string>();
-  // Tabs map to conversations; a tab the agent opens shares the conversation of the tab it worked in.
   private readonly conversations = new Map<string, Conversation>();
   private tabId = '';
 
@@ -101,7 +95,6 @@ export class AgentProject {
     return this.conversation.provider;
   }
 
-  // Returns whether the shown conversation changed.
   focusTab(tabId: string): boolean {
     if (tabId === this.tabId) return false;
     const previous = this.conversations.get(this.tabId);
@@ -113,7 +106,6 @@ export class AgentProject {
     if (!this.conversations.has(tabId)) this.conversations.set(tabId, this.conversation);
   }
 
-  // A closed tab takes its conversation along unless another open tab still shares it.
   retainTabs(tabIds: ReadonlySet<string>): void {
     const before = this.allChats;
     for (const tabId of [...this.conversations.keys()])
@@ -126,7 +118,6 @@ export class AgentProject {
     return this.chatOf(this.conversation);
   }
 
-  // Starts a tab's conversation with a first message, without showing it until the tab is focused.
   async startChat(tabId: string, text: string): Promise<boolean> {
     if (this.conversations.has(tabId)) return false;
     return this.chatOf(this.conversationFor(tabId)).send(null, text);
@@ -172,7 +163,6 @@ export class AgentProject {
     return conversation?.chats.get(conversation.provider);
   }
 
-  // Moves a background chat into a tab of its own, where it becomes that tab's shown chat.
   moveBackgroundChat(id: string, tabId: string): boolean {
     const conversation = this.conversation;
     const chat = conversation.background.find((candidate) => candidate.state().id === id);
@@ -196,8 +186,6 @@ export class AgentProject {
     return this.conversation.background.find((candidate) => candidate.state().id === id) ?? null;
   }
 
-  // Returns false when there is nothing worth keeping, so the caller simply clears the shown chat. When the
-  // list is full, the oldest finished chat makes room.
   setAsideChat(): boolean {
     const conversation = this.conversation;
     const chat = conversation.chats.get(conversation.provider);

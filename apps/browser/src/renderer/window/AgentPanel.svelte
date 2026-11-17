@@ -78,7 +78,6 @@
     });
   }
 
-  // Closed tabs are not reported here, so only the shown conversation and unsent drafts are kept.
   $effect(() => {
     const current = conversationId;
     untrack(() => {

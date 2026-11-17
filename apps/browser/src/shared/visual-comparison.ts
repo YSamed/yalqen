@@ -28,7 +28,6 @@ export interface VisualComparisonPreview {
 export interface VisualComparisonReview {
   tabId: TabId;
   text: string;
-  // The order is meaningful: before, then after.
   images: AgentChatImage[];
 }
 

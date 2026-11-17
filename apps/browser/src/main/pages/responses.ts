@@ -4,7 +4,6 @@ export function notFound(): Response {
   return new Response('Not found', { status: 404 });
 }
 
-// Internal pages follow the accent color picked in settings; empty keeps the stylesheet's default.
 let accentAttribute = '';
 
 export function setPageAccent(hex: string | null): void {

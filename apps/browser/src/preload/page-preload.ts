@@ -118,7 +118,6 @@ if (location.href === NEW_TAB_URL && window === window.top) {
     centerOffset = offset;
     applyCenterOffset();
   };
-  // An offset meant for a new page width waits for the matching resize, so both land in the same frame.
   const receive = (center: NewTabCenter | undefined) => {
     if (!center || !Number.isFinite(center.offset)) return;
     if (center.width === null || Math.abs(window.innerWidth - center.width) < 1) {
@@ -168,8 +167,6 @@ window.addEventListener(
     }
 
     const now = performance.now();
-    // Chromium keeps a wheel gesture on one scroller, so its target is checked once per gesture
-    // instead of forcing style and layout on every event.
     if (now - gestureAt > GAP_MS) gestureInScroller = hasHorizontalScroller(event);
     gestureAt = now;
     if (gestureInScroller) {
@@ -306,7 +303,6 @@ function usernameFor(scope: ParentNode, password: HTMLInputElement): string {
   return before.at(-1)?.value ?? '';
 }
 
-// On a change-password form the new password is the one worth keeping.
 function submittedPassword(scope: ParentNode): HTMLInputElement | null {
   const passwords = passwordInputs(scope).filter((input) => input.value);
   return passwords.find((input) => hasToken(input, 'new-password')) ?? passwords[0] ?? null;
@@ -314,7 +310,6 @@ function submittedPassword(scope: ParentNode): HTMLInputElement | null {
 
 let submissionWatch = 0;
 
-// Script-driven logins that succeed often just swap the form out, with no navigation to wait for.
 function watchForSuccess(password: HTMLInputElement): void {
   clearInterval(submissionWatch);
   const startedAt = performance.now();
@@ -343,8 +338,6 @@ interface LoginFields {
   password: HTMLInputElement;
 }
 
-// Sign-up and change-password forms carry several password fields or a new-password hint, so only
-// a form with a single current-password field is filled.
 function loginFields(target?: HTMLInputElement): LoginFields | null {
   const scope = target?.form ?? document;
   const password =
@@ -458,7 +451,6 @@ function showPicker(fields: LoginFields, label: string, mode: 'login' | 'generat
         setValue(fields.password, login.password);
         filledPasswords.add(fields.password);
       } catch {
-        /* A closed page or dismissed picker leaves the current form intact. */
       } finally {
         picking = false;
         if (pickerButton) pickerButton.disabled = false;
@@ -566,8 +558,6 @@ if (window === window.top && (location.protocol === 'https:' || location.protoco
       hasPasswordFields = document.querySelector('input[type="password"]') !== null;
       void fillLogin();
       const observer = new MutationObserver((records) => {
-        // Most pages have no login form. Text updates and unrelated DOM changes
-        // should not repeatedly scan the whole document during its first paint.
         if (
           hasPasswordFields ||
           records.some((record) =>
@@ -606,7 +596,6 @@ if (window === window.top && (location.protocol === 'https:' || location.protoco
     },
     { capture: true },
   );
-  // Script-driven logins often skip the form's submit, so the click or Enter that starts them counts too.
   document.addEventListener(
     'click',
     (event) => {

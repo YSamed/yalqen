@@ -6,8 +6,6 @@ import { indexHistory, searchKey, type HistoryIndex } from '../address-bar/sugge
 import { withoutHash } from '../address-bar/url.js';
 
 export const MAX_VISITS = 5000;
-// Pages that keep retitling themselves (unread counters, clocks) would otherwise rewrite the
-// history file for as long as they stay open; like Chrome, only a visit's first titles are kept.
 export const MAX_TITLE_CHANGES = 5;
 
 export interface HistoryEntry {
@@ -66,7 +64,6 @@ export class HistoryStore {
     return entry.id;
   }
 
-  // Keeps the original visit times. A visit is skipped when its address already has one at least as recent.
   importVisits(visits: readonly ImportedVisit[]): number {
     const newest = new Map<string, HistoryEntry>();
     for (const entry of this.entries) {

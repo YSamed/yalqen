@@ -2,24 +2,19 @@ import { validAnchor, validTheme, type OverlayShadow, type TooltipTheme } from '
 import type { AnchorRect } from './types.js';
 import type { MessageKey } from './locales/en.js';
 
-// The preview view is this much larger than the card on every side, room for its shadow.
 export const PREVIEW_PAD = 14;
 export const PREVIEW_SHADOW: OverlayShadow = { y: 4, blur: 10 };
 
-// Hover previews: a glance at a site's unread mail or next events from its tab, without switching to it.
 export type PreviewKind = 'mail' | 'calendar';
 
 export interface MailMessage {
   from: string;
   subject: string;
-  // Epoch milliseconds, or null when the feed gave no usable date.
   at: number | null;
-  // The conversation in Gmail, which a click on the message opens.
   link: string | null;
 }
 
 export interface CalendarEvent {
-  // The event chip's id in the Calendar page, which a click on the event opens.
   id: string;
   title: string;
   start: number;
@@ -29,11 +24,9 @@ export interface CalendarEvent {
 export type PreviewContent =
   | { kind: 'mail'; unread: number; messages: MailMessage[] }
   | { kind: 'calendar'; events: CalendarEvent[] }
-  // The data could not be read: the tab is not loaded, the user is signed out or the page changed.
   | { kind: 'unavailable'; site: PreviewKind };
 
 export interface PreviewRequest {
-  // The hovered tab, or null for a favourite, which is matched to an open tab by its site.
   tabId: string | null;
   url: string;
   anchor: AnchorRect;
@@ -56,7 +49,6 @@ export function previewKind(rawUrl: string): PreviewKind | null {
   return null;
 }
 
-// Gmail serves the signed-in account's unread inbox as an Atom feed; the account index ("u/1") follows the tab.
 export function gmailFeedUrl(rawUrl: string): string {
   const account = /^\/mail\/u\/(\d+)\//.exec(new URL(rawUrl).pathname)?.[1] ?? '0';
   return `https://mail.google.com/mail/u/${account}/feed/atom`;
@@ -77,7 +69,6 @@ function decode(text: string): string {
     .trim();
 }
 
-// Only links back into Gmail are kept, since the preview opens them in a tab.
 function gmailLink(entry: string): string | null {
   const href = /<link\b[^>]*\bhref="([^"]+)"/.exec(entry)?.[1];
   if (!href) return null;
@@ -94,7 +85,6 @@ function tag(xml: string, name: string): string | null {
   return match ? decode(match[1]) : null;
 }
 
-// The feed is plain Atom 0.3 with no nested markup in the fields read here, so a full XML parser is not needed.
 export function parseGmailFeed(xml: string): PreviewContent | null {
   if (!/<feed[\s>]/.test(xml)) return null;
   const entries = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map((match) => match[1]);
@@ -116,17 +106,14 @@ export function parseGmailFeed(xml: string): PreviewContent | null {
   };
 }
 
-// What the Calendar tab's reader reports for each event chip in its day columns.
 export interface CalendarChip {
   id: string;
   dateKey: number;
   title: string;
-  // Minutes after midnight, from the chip's position in its day column.
   top: number;
   bottom: number;
 }
 
-// Google Calendar numbers its day columns as ((year - 1970) << 9) | (month << 5) | day.
 export function decodeDateKey(key: number): { year: number; month: number; day: number } | null {
   if (!Number.isInteger(key) || key <= 0) return null;
   const day = key & 31;
@@ -135,8 +122,6 @@ export function decodeDateKey(key: number): { year: number; month: number; day: 
   return month >= 1 && month <= 12 && day >= 1 ? { year, month, day } : null;
 }
 
-// Positions are a few pixels off the hour lines, so the start snaps to the nearest and the end up to the next
-// five minutes: a 17:29–18:27 chip is the 17:30–18:30 event.
 export function calendarEvents(chips: readonly CalendarChip[], now: number): CalendarEvent[] {
   const seen = new Set<string>();
   const events: CalendarEvent[] = [];
@@ -162,8 +147,6 @@ export interface PreviewSize {
 export const PREVIEW_GAP = 8;
 const EDGE = 8;
 
-// Beside the hovered tile or row, top-aligned with it, on the side with room; a toolbar tab, which has page
-// below it rather than beside it, gets the preview underneath.
 export function placePreview(anchor: AnchorRect, size: PreviewSize, area: PreviewSize): { x: number; y: number } {
   const clampY = (y: number) => Math.max(EDGE, Math.min(y, area.height - size.height - EDGE));
   const clampX = (x: number) => Math.max(EDGE, Math.min(x, area.width - size.width - EDGE));
@@ -175,7 +158,6 @@ export function placePreview(anchor: AnchorRect, size: PreviewSize, area: Previe
   return { x: Math.round(clampX(anchor.x)), y: Math.round(clampY(anchor.y + anchor.height + PREVIEW_GAP)) };
 }
 
-// The request comes from the browser interface over IPC; anything unexpected is dropped.
 export function validPreviewRequest(value: unknown): PreviewRequest | null {
   if (typeof value !== 'object' || value === null) return null;
   const { tabId, url, anchor, theme } = value as Record<string, unknown>;
@@ -190,15 +172,12 @@ export interface PreviewItem {
   primary: string;
   secondary: string;
   meta: string;
-  // An event happening now, highlighted in the accent colour.
   live: boolean;
 }
 
-// What the preview shows, already worded and formatted, so the overlay only lays it out.
 export interface PreviewView {
   heading: string | null;
   items: PreviewItem[];
-  // Shown instead of items: nothing unread, no more events, or why the preview cannot be read.
   message: string | null;
   footer: string | null;
 }

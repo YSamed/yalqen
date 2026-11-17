@@ -280,7 +280,6 @@
           snapshot.state.id,
           text,
           attached.map((tab) => tab.id),
-          // The composer is reactive state, and IPC cannot clone its proxies.
           $state.snapshot(sent),
         ))
       )
@@ -301,7 +300,6 @@
     }
   }
 
-  // The failed prompt goes back into an empty composer, so after signing in it is one Enter away.
   async function signIn(): Promise<void> {
     signingIn = true;
     signInFailed = false;

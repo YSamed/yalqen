@@ -31,7 +31,6 @@ function stepLines(event: TimelineEvent): string[] {
   }
 }
 
-// A starting point the agent or developer refines, not a finished test: typed values are blanks.
 export function playwrightTest(episode: ErrorEpisode, pageUrl: string): string {
   const failures = failedRequests(episode.events);
   const name = failures.length > 0 ? `${failures[0].method} ${failures[0].path} succeeds` : 'no errors on the page';

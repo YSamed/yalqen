@@ -9,8 +9,6 @@ export interface DigestLabels {
   omitted: string;
 }
 
-// Built from the chat itself rather than by asking the model, so it is instant and free. The newest
-// messages matter most for continuing, so older ones are dropped first when it runs long.
 export function chatDigest(messages: readonly AgentChatMessage[], labels: DigestLabels): string {
   const entries = messages
     .filter((message) => !message.reverted)

@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, WebContentsView, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
@@ -69,10 +70,7 @@ app
       toolbarTabs: true,
       toolbarButtons: ['settings'],
       toolbarExtensions: [],
-      material: 'opaque',
-      glassTint: 0,
-      accent: '#0a84ff',
-      windowColor: null,
+      ...windowAppearance,
       defaultZoom: 1,
       downloads: { active: 0, progress: null, started: 0 },
       extensions: false,
@@ -103,7 +101,6 @@ app
       defaultZoom: () => 1,
       closed: [],
     });
-    // Tabs without a page are the ones memory saving unloaded; b is loaded and p is pinned.
     for (const id of ['a', 'b', 'c', 'd'])
       manager.tabs.push(manager.createRecord({ id, url: `https://${id}.example/`, title: `Tab ${id}` }));
     manager.tabs.push(
@@ -120,7 +117,6 @@ app
     });
     await window.loadFile(path.resolve('dist/renderer/index.html'));
 
-    // The clean button counts the unpinned idle tabs: not the active one, the loaded one or the pinned one.
     const cleanButton = 'aside .tab-cleanup button';
     await eventually(`document.querySelector('${cleanButton}')?.getAttribute('aria-label') === 'Clean 2 tabs'`);
     assert.equal(
@@ -136,9 +132,7 @@ app
     assert.deepEqual(manager.options.closed.map(({ id }) => id).sort(), ['c', 'd']);
     assert.equal(manager.activeId, 'a');
 
-    // With nothing left to clean the button stays put but does nothing.
     await eventually(`document.querySelector('${cleanButton}').getAttribute('aria-disabled') === 'true'`);
-    // The pointer is still over it, so its title is held by the tooltip; the label says the same.
     assert.equal(
       await window.webContents.executeJavaScript(`document.querySelector('${cleanButton}').getAttribute('aria-label')`),
       'No tab to clean',
@@ -147,14 +141,12 @@ app
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.equal(manager.tabs.length, 3);
 
-    // The collapsed sidebar keeps the button.
     manager.tabs.push(manager.createRecord({ id: 'e', url: 'https://e.example/', title: 'Tab e' }));
     collapsed = true;
     changed();
     await eventually("document.querySelector('aside.panel')?.classList.contains('collapsed')");
     await eventually(`document.querySelector('${cleanButton}')?.getAttribute('aria-label') === 'Clean 1 tab'`);
 
-    // Turning the setting off removes it.
     tabCleanup = false;
     changed();
     await eventually(`!document.querySelector('${cleanButton}')`);

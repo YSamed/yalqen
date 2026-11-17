@@ -38,7 +38,6 @@ async function loadPty(): Promise<AgentPtyHost> {
   return {
     spawn,
     terminate: (terminal) => {
-      // forkpty gives this session its own process group; close its child commands too.
       const kill = (signal: NodeJS.Signals) => {
         try {
           if (process.platform === 'win32') terminal.kill();
@@ -141,7 +140,6 @@ export class AgentSession {
     env.YALQEN_AGENT_DIRECTORY = directory;
     env.YALQEN_MCP_URL = connection.url;
     env.YALQEN_MCP_TOKEN = connection.token;
-    // Credentials stay in the child environment, outside command arguments and renderer state.
     env.YALQEN_MCP_CONFIG = JSON.stringify({
       mcpServers: {
         yalqen: {

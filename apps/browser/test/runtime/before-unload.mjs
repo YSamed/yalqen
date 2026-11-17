@@ -1,6 +1,3 @@
-// Run after build:main: electron test/runtime/before-unload.mjs
-// Uses a disposable profile and native Chromium unload events, with scripted
-// answers in place of the application's message box. No user data is loaded.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -13,8 +10,6 @@ const { checkBeforeUnload } = unload;
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-unload-test-'));
 app.setPath('userData', profile);
-// Chromium allows a close when no beforeunload reply arrives within 500 ms. A hidden window's renderers run at
-// background priority and can miss that deadline on a busy runner, so they keep normal priority here.
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 let window;
 let server;
@@ -57,7 +52,6 @@ app
     const listener = await page('<script>window.addEventListener("beforeunload", e => e.preventDefault())</script>');
     assert.equal(await checkBeforeUnload(listener), false);
     assert.equal(listener.isDestroyed(), false);
-    // A subresource that never answers keeps the main frame loading, like a slow site.
     server = http.createServer((request, response) => {
       if (request.url === '/hang' || request.url === '/stall') return;
       response.setHeader('content-type', 'text/html');

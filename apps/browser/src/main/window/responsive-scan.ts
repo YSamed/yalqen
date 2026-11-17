@@ -166,7 +166,6 @@ export async function createResponsiveScanSession(
     async scan(viewport, signal) {
       check(signal);
       changed = true;
-      // Await every command even after cancellation: restoration must follow pending mutations.
       await contents.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
         width: viewport.width,
         height: viewport.height,

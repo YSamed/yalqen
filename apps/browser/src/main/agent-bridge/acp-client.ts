@@ -305,7 +305,6 @@ export class AcpQuery implements ChatQuery {
         title: request.toolCall.title ?? undefined,
         toolUseID: request.toolCall.toolCallId,
         requestId: randomUUID(),
-        // Any non-empty list lets the user pick "always"; the agent applies its own allow_always option.
         suggestions: always ? [{ type: 'addRules', rules: [], behavior: 'allow', destination: 'session' }] : [],
       } as unknown as Parameters<CanUseTool>[2],
     );

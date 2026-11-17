@@ -23,7 +23,6 @@ interface Run {
   stderr: string;
 }
 
-// Apps opened from the Dock get a bare PATH, so the user's login shell finds the CLI the way their terminal does.
 async function runClaude(script: string, options: ClaudeSetupOptions, extraEnv: NodeJS.ProcessEnv = {}): Promise<Run> {
   const shell = options.shell ?? process.env.SHELL ?? defaultShell();
   const env = { ...(options.env ?? process.env), ...extraEnv };

@@ -185,7 +185,6 @@ interface LibraryMenuActions {
   exportBookmarks(): void;
 }
 
-// Bookmarks with an import submenu for every browser profile found on this Mac.
 export function libraryMenuTemplate(
   bookmarks: BookmarkStore,
   actions: LibraryMenuActions,
@@ -214,7 +213,6 @@ interface SiteInfoHost {
   protections?: { preferences: SiteProtections; settings(): SettingsValues };
 }
 
-// Null when the active tab changed while cookies and storage were being measured.
 export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstructorOptions[] | null> {
   const { tabs } = host;
   const tab = tabs.snapshotFor();

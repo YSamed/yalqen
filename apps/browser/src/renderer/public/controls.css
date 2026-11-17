@@ -350,7 +350,6 @@ input[type='radio'] {
     flip-block flip-inline;
 }
 
-/* Controls at the bottom of a panel open upward, and to the left when they sit near its right edge. */
 .select-content.up {
   top: auto;
   bottom: anchor(top);

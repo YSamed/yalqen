@@ -17,7 +17,7 @@ const {
   firefoxProfiles,
   firefoxTimeToUnixMs,
   historyImportMenu,
-  importChromiumBookmarks,
+  importBookmarkFile,
   importChromiumHistory,
   importErrorMessage,
   importFirefoxBookmarks,
@@ -152,7 +152,7 @@ test('imports only add, reuse folders by title and add nothing the second time',
       ),
     );
 
-    assert.deepEqual(await importChromiumBookmarks(store, source), { bookmarks: 2, folders: 1, skipped: 2 });
+    assert.deepEqual(await importBookmarkFile(store, source), { bookmarks: 2, folders: 1, skipped: 2 });
     assert.deepEqual(store.find(known.url), known);
     assert.equal(store.find('https://mail.example/').folderId, work.id);
     assert.equal(store.find('https://paper.example/').createdAt, NEW_YEAR);
@@ -161,13 +161,13 @@ test('imports only add, reuse folders by title and add nothing the second time',
       ['Work', 'News'],
     );
 
-    assert.deepEqual(await importChromiumBookmarks(store, source), { bookmarks: 0, folders: 0, skipped: 4 });
+    assert.deepEqual(await importBookmarkFile(store, source), { bookmarks: 0, folders: 0, skipped: 4 });
     store.saveNow();
     assert.equal(new BookmarkStore(dir).bookmarks().length, 3);
 
-    await assert.rejects(importChromiumBookmarks(store, path.join(dir, 'missing')), { code: 'ENOENT' });
+    await assert.rejects(importBookmarkFile(store, path.join(dir, 'missing')), { code: 'ENOENT' });
     touch(source, '{"roots":');
-    await assert.rejects(importChromiumBookmarks(store, source), SyntaxError);
+    await assert.rejects(importBookmarkFile(store, source), SyntaxError);
   });
 });
 
@@ -609,7 +609,6 @@ test('Firefox history rows become web visits, newest first, up to the history ca
   assert.equal(visits.at(-1).url, 'https://site.example/10');
 });
 
-// Columns and root guids as Firefox creates them (nsPlacesTables.h, Bookmarks.sys.mjs).
 const PLACES_SCHEMA = `
   CREATE TABLE moz_places (id INTEGER PRIMARY KEY, url LONGVARCHAR, title LONGVARCHAR, rev_host LONGVARCHAR,
     visit_count INTEGER DEFAULT 0, hidden INTEGER DEFAULT 0 NOT NULL, typed INTEGER DEFAULT 0 NOT NULL,
@@ -628,7 +627,6 @@ const PLACES_SCHEMA = `
 
 function placesDb(file, wal = false) {
   const db = new DatabaseSync(file);
-  // Like a running Firefox: one exclusive WAL connection that keeps recent writes out of the main file.
   if (wal) db.exec('PRAGMA locking_mode = EXCLUSIVE; PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0');
   db.exec(PLACES_SCHEMA);
   let guids = 0;

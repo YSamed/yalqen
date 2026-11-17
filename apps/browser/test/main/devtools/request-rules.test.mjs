@@ -198,7 +198,6 @@ test('mock body cache evicts at its budget and follows Unicode edits after evict
     assert.equal(encodings.get(rules[0].body), 1);
     reply(rules[1]);
     reply(rules[2]);
-    // Three 1 Mi-character two-byte UTF-8 bodies exceed the 8 Mi-character Base64 budget.
     assert.equal(reply(rules[0]), first);
     assert.equal(encodings.get(rules[0].body), 2);
     rules[0].body = changedBody;

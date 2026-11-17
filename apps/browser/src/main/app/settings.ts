@@ -254,7 +254,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     autoUpdate: typeof autoUpdate === 'boolean' ? autoUpdate : base.autoUpdate,
     autoUpdateExtensions: typeof autoUpdateExtensions === 'boolean' ? autoUpdateExtensions : base.autoUpdateExtensions,
     usageCounting: typeof usageCounting === 'boolean' ? usageCounting : base.usageCounting,
-    // The removed "ask where to save" option implied a prompt, so it keeps asking.
     askBeforeDownload:
       (typeof askBeforeDownload === 'boolean' ? askBeforeDownload : base.askBeforeDownload) ||
       askDownloadLocation === true,

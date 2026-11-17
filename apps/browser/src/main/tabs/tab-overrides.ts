@@ -19,13 +19,11 @@ export function releaseDebugger(tab: Tab, contents: WebContents): void {
   if (!needsDebugger(tab)) detachDebugger(contents);
 }
 
-// The agent's temporary rules come first, so they win over the user's saved ones.
 export function rulesFor(tab: Tab, userRules: readonly RequestRule[]): readonly RequestRule[] {
   const agentRules = tab.agent?.rules ?? [];
   return tab.overrides.requestRules ? [...agentRules, ...userRules] : agentRules;
 }
 
-// Backend tracing only needs the requests the app's own code makes.
 const TRACED_REQUESTS: InterceptPattern[] = [
   { urlPattern: '*', resourceType: 'Fetch', requestStage: 'Request' },
   { urlPattern: '*', resourceType: 'XHR', requestStage: 'Request' },
@@ -51,7 +49,6 @@ export async function pushOverrides(
   releaseDebugger(tab, contents);
 }
 
-// A paused request stalls the page until it is answered, so every pause gets a reply.
 export function answerPausedRequest(
   contents: WebContents,
   rules: readonly RequestRule[],

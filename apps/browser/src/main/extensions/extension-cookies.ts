@@ -81,7 +81,6 @@ function optionalText(value: unknown, name: string): string | undefined {
   return value === undefined ? undefined : text(value, name);
 }
 
-// Chrome's cookies API, limited to the hosts the extension may access, as Chrome limits it.
 export async function callCookies(
   cookies: Cookies,
   grant: ExtensionGrant,

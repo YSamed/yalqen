@@ -59,7 +59,6 @@ export function benchPlanFromEnv(env: NodeJS.ProcessEnv): BenchPlan {
   };
 }
 
-// Occluded windows stop painting and lose priority, which would skew timings while the user works elsewhere.
 export function prepareBenchApp(): void {
   app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 }

@@ -28,7 +28,6 @@ import {
 } from '../agent-bridge/reference.js';
 
 const MAX_SHOT_SIDE = 2000;
-// Resolving a React 19 location fetches the dev server's source map, which can be slow on big apps.
 const INSPECT_TIMEOUT_MS = 4000;
 const HIGHLIGHT = {
   showInfo: true,
@@ -39,7 +38,6 @@ const HIGHLIGHT = {
   marginColor: { r: 246, g: 178, b: 107, a: 0.66 },
 };
 
-// Runs on the picked node in the page; reads only what DevTools would show for it.
 const DESCRIBE_NODE = `function () {
   const short = (value) => (value || '').replace(/\\s+/g, ' ').trim().slice(0, 200);
   const classes = (el) => [...el.classList].slice(0, 2).map((name) => '.' + CSS.escape(name)).join('');
@@ -209,7 +207,6 @@ async function inlineSourceMaps(contents: WebContents, urls: Set<string>): Promi
   };
   contents.debugger.on('message', onMessage);
   try {
-    // Enabling the debugger reports every script already loaded, with its source map URL.
     await contents.debugger.sendCommand('Debugger.enable');
   } finally {
     contents.debugger.off('message', onMessage);
@@ -283,7 +280,6 @@ export interface ClipImage {
   h: number;
 }
 
-// `view` is the page view's bounds in window pixels, which differ from CSS pixels when the page is zoomed.
 export async function captureClip(
   contents: WebContents,
   backendNodeId: number,
@@ -320,7 +316,6 @@ const optional = <T>(promise: Promise<T>, fallback: T) => promise.catch(() => fa
 const REFERENCE_SHOT_WIDTH = 1280;
 const REFERENCE_SHOT_HEIGHT = 2400;
 
-// JPEG and at most 1280 CSS pixels wide: a section of a marketing page is often several screens tall.
 async function referenceShot(send: Send, box: Box | null): Promise<string | null> {
   if (!box || box.width < 1 || box.height < 1) return null;
   const { cssVisualViewport } = (await send('Page.getLayoutMetrics')) as {

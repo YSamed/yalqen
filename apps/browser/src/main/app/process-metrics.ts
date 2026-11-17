@@ -34,8 +34,6 @@ export function contentsKind(url: string): ProcessGroupKind {
   return 'pages';
 }
 
-// Renderers without a web contents of their own host out-of-process iframes or wait as spares,
-// so they count towards the pages.
 export function summarizeProcesses(
   processes: readonly ProcessSample[],
   contents: readonly ContentsSample[],

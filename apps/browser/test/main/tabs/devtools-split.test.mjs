@@ -6,7 +6,6 @@ const { devToolsSplit, DEVTOOLS_MIN_WIDTH, SPLIT_GAP } = placement;
 const area = { x: 100, y: 50, width: 1000, height: 700 };
 
 function fills(split) {
-  // The page, the gap and DevTools cover the area exactly, side by side.
   assert.equal(split.page.x, area.x);
   assert.equal(split.page.width + SPLIT_GAP + split.tools.width, area.width);
   assert.equal(split.tools.x + split.tools.width, area.x + area.width);

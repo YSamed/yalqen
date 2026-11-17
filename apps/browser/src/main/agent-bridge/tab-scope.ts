@@ -43,8 +43,6 @@ export function originOf(url: string): string | null {
   }
 }
 
-// A project sees the tabs of origins it claimed. Until it claims one, it sees every tab no other
-// project in the window claimed, so a window with a single project works as before.
 export function projectIncludes(
   claimed: ReadonlySet<string>,
   claimedByOthers: readonly ReadonlySet<string>[],

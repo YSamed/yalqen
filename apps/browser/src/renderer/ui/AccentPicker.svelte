@@ -25,7 +25,6 @@
 
   let group = $state<HTMLElement>();
 
-  // Arrow keys move the choice like native radio buttons.
   function move(event: KeyboardEvent, index: number): void {
     const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
     if (!step) return;

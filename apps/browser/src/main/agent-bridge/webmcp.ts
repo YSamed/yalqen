@@ -1,6 +1,3 @@
-// WebMCP lets a page offer tools to agents through navigator.modelContext. Chromium does not ship it
-// by default, so observed local pages get this small stand-in when the API is missing. It runs in
-// the page's own world because the page is the one registering tools.
 export const WEBMCP_SCRIPT = `(() => {
   if ('modelContext' in navigator) return;
   const tools = new Map();

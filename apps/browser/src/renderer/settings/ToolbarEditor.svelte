@@ -40,7 +40,6 @@
     return extension ? { label: extension.title, icon: 'extensions', image: extension.icon } : null;
   }
 
-  // Pinned extensions that are no longer installed stay saved but are not shown or moved.
   const shown = $derived(saved.filter((id) => itemOf(id) !== null));
   const missing = $derived(saved.filter((id) => itemOf(id) === null));
   const hidden = $derived(TOOLBAR_BUTTON_IDS.filter((id) => !shown.includes(id)));
@@ -99,7 +98,6 @@
     dropIndex = null;
   }
 
-  // The marker goes before the first button whose middle is right of the pointer.
   function dragOverBar(event: DragEvent): void {
     if (!dragging || !bar) return;
     event.preventDefault();

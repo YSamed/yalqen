@@ -49,8 +49,6 @@ function pageCommand(url: string): InternalNavigation | null {
 
 const param = (url: string, name: string) => new URL(url).searchParams.get(name) ?? '';
 
-// Internal pages act through links and GET forms, so these addresses are commands for the
-// browser rather than places to load.
 export function internalNavigation(url: string): InternalNavigation | null {
   if (!url.startsWith(`${INTERNAL_SCHEME}://`)) return null;
   if (url.startsWith(PROCEED_HTTP_URL)) return { type: 'proceed-http', token: url.slice(PROCEED_HTTP_URL.length) };
@@ -83,8 +81,6 @@ export function internalNavigation(url: string): InternalNavigation | null {
   return pageCommand(url);
 }
 
-// A command only runs when it comes from the page that offers it, so other pages cannot
-// trigger it by linking to its address.
 export function isAllowedFrom(navigation: InternalNavigation, currentUrl: string): boolean {
   switch (navigation.type) {
     case 'proceed-http':

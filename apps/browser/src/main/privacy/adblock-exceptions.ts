@@ -1,8 +1,6 @@
 import type { ElectronBlocker } from '@ghostery/adblocker-electron';
 import type { Session, WebContents } from 'electron';
 
-// Inspect the actual top-level page, not a frame's claimed URL or a request's referrer.
-// This bypass covers network blocking, CSP, cosmetic CSS and scriptlets together.
 export function applyAdBlockExceptions(
   blocker: ElectronBlocker,
   allowed: (session: Session, url: string) => boolean,

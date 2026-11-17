@@ -74,8 +74,6 @@ function conditionalHeaders(response: Response): Record<string, string> {
   return { ...(etag && { 'If-None-Match': etag }), ...(modified && { 'If-Modified-Since': modified }) };
 }
 
-// The domain feed holds hundreds of thousands of entries; validating them on the main thread
-// would freeze every window for a noticeable moment on each refresh.
 function normalizeInWorker(bytes: Buffer): Promise<NormalizedDomains> {
   return new Promise((resolve, reject) => {
     let worker: Worker;
@@ -114,7 +112,6 @@ export class LocalThreatLists {
   private refresh: Promise<void> | null = null;
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
-  // Kept in memory only: a restart within the refresh interval reuses the cached file anyway.
   private readonly validators = new Map<'domains' | 'hashes', Record<string, string>>();
 
   constructor(
@@ -173,7 +170,6 @@ export class LocalThreatLists {
 
   async checkFile(file: string): Promise<string | null> {
     if (!this.enabled() || !this.hashes.size) return null;
-    // Stream large downloads; URLs, file contents and hashes never leave this device.
     const algorithms = [createHash('md5'), createHash('sha1'), createHash('sha256')];
     for await (const chunk of fs.createReadStream(file)) for (const hash of algorithms) hash.update(chunk);
     for (const hash of algorithms) if (this.hashes.has(hash.digest('hex'))) return HASH_SOURCE;

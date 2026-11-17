@@ -55,8 +55,6 @@ function terminalPath(fd) {
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
-// Started as a child of the terminal, macOS credits camera and microphone requests to the terminal app
-// and Yalqen never shows up under Privacy & Security. Launching through LaunchServices makes it its own app.
 function launchCommand(executable) {
   if (process.platform !== 'darwin') return [executable, [project]];
   const output = terminalPath(process.stdout) ?? '/dev/null';

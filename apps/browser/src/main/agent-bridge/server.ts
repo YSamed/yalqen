@@ -37,7 +37,6 @@ export interface ClientInfo {
 interface BridgeServerOptions {
   host: BridgeHost;
   token: () => string;
-  // Agents Yalqen starts in a window get their own token, which limits them to that window's tabs.
   scopedHost?: (token: string) => BridgeHost | null;
   version: string;
   onInitialize?: (client: ClientInfo | null) => void;
@@ -126,7 +125,6 @@ function readBody(req: http.IncomingMessage): Promise<string | null> {
   });
 }
 
-// OTLP/HTTP with JSON bodies; the binary protobuf encoding would need a decoder Yalqen does not ship.
 async function receiveTraces(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -169,7 +167,6 @@ function createRequestHandler(options: BridgeServerOptions, port: () => number):
     }
     const host = hostFor(options, bearer(req.headers.authorization));
     if (!host) {
-      // A request without a token is a client probing for auth; one with a wrong token holds an old one.
       if (req.headers.authorization) options.onRejectedToken?.();
       res.setHeader('WWW-Authenticate', 'Bearer');
       send(res, 401, { error: 'unauthorized' });
@@ -206,7 +203,6 @@ function createRequestHandler(options: BridgeServerOptions, port: () => number):
       return;
     }
     if (!isRequest(message)) {
-      // A tools-only server never asks the client anything, so a client response needs no answer.
       const clientResponse =
         typeof message === 'object' && message !== null && ('result' in message || 'error' in message);
       if (clientResponse) send(res, 202);

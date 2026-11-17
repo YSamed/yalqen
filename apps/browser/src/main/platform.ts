@@ -17,7 +17,6 @@ export const WIN_EDITORS = ['zed', 'code', 'subl', 'notepad++', 'notepad'];
 
 export const winBash = () => {
   const all = which.sync('bash', { all: true, nothrow: true });
-  // bash.exe in System32 is a stub to WSL
   const found = all?.find((bash) => !/System32/i.test(bash));
   if (!found) {
     console.debug(t('platform.bashNotFound'));
@@ -28,7 +27,6 @@ export const winBash = () => {
 let cacheDefaultShell: string;
 
 const getDefaultShell = () => {
-  // TODO: Allow user to pick preferred shell in Settings
   if (IS_WIN) {
     return winBash() ?? String.raw`C:\Program Files\Git\bin\bash.exe`;
   }
@@ -50,7 +48,6 @@ export const defaultShell = () => {
 };
 
 export const openAsText = async (file: string) => {
-  // TODO: Allow user to pick preferred editor in Settings
   switch (true) {
     case IS_WIN:
       return open(file, {
@@ -59,27 +56,27 @@ export const openAsText = async (file: string) => {
     case IS_MAC:
       await promisify(execFile)('/usr/bin/open', ['-t', file]);
       return;
-    case IS_LINUX:
-      return (async () => {
-        const script = `DESKTOP_FILE=$(xdg-mime query default text/plain)
+    case IS_LINUX: {
+      const script = `DESKTOP_FILE=$(xdg-mime query default text/plain)
           for dir in "\${XDG_DATA_HOME:-$HOME/.local/share}" /usr/local/share /usr/share; do
             if [ -f "$dir/applications/$DESKTOP_FILE" ]; then
               gio launch "$dir/applications/$DESKTOP_FILE" "$1"
               break
             fi
-          done`.replace(/^[\s\t]*/, '');
-        const sh = promisify(execFile)(defaultShell(), ['-s', '--', file]);
-        sh.child.stdin?.write(script);
-        sh.child.stdin?.end();
-        await sh;
-      })();
+          done`;
+      const sh = promisify(execFile)(defaultShell(), ['-s', '--', file]);
+      sh.child.stdin?.write(script);
+      sh.child.stdin?.end();
+      await sh;
+    }
   }
 };
 
 export const ensureExecutable = async (filePath: string): Promise<string> => {
   if (IS_WIN) {
     const basePath = toWindows(filePath);
-    filePath = [...WIN_PATHEXT.map((e) => `${basePath}${e}`)].find((p) => existsSync(p)) || basePath;
+    filePath =
+      WIN_PATHEXT.map((extension) => `${basePath}${extension}`).find((candidate) => existsSync(candidate)) || basePath;
   }
 
   const stats = await stat(filePath);

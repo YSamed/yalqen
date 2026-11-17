@@ -164,8 +164,6 @@ export function validateFlowPlan(value: unknown): FlowPlan {
   };
 }
 
-// Read in an isolated world. Layout visibility matches browser-test semantics: an opacity-zero
-// element still has a rendered box and is not considered removed/hidden.
 const DOM_READ_HELPERS = `
   const short = (text, limit = 200) => String(text || '').replace(/\\s+/g, ' ').trim().slice(0, limit);
   const visible = (element) => {

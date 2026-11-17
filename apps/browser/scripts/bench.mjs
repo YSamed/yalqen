@@ -187,8 +187,6 @@ async function run({ out, session, scenario, variant, runIndex, adBlocking, hist
   }
 }
 
-// Startup and idle numbers come from local pages, so network latency and page animations
-// (example.com cycles its text) stay out of them.
 const LOCAL_PAGES = {
   '/static': '<!doctype html><meta charset="utf-8"><title>Yalqen bench</title><p>A static page without scripts.</p>',
   '/ticker': `<!doctype html><meta charset="utf-8"><title>Sayaç 0</title><p>Yalqen bench</p>

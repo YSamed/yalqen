@@ -25,7 +25,6 @@ const tab = (id, parentID, savedURL, title = null, savedTitle = '') => ({
 const list = (id, parentID, title, childrenIds) => ({ id, parentID, childrenIds, title, data: { list: {} } });
 const container = (id, childrenIds) => ({ id, parentID: null, childrenIds, title: null, data: { itemContainer: {} } });
 
-// Items and spaces alternate an id string and the object, as Arc writes them.
 const flat = (objects) => objects.flatMap((object) => [object.id, object]);
 
 function sidebar() {

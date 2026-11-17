@@ -8,6 +8,8 @@ import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
 import internal from '../../dist/main/pages/internal-pages.js';
 import types from '../../dist/shared/types.js';
+import siteStorage from '../../dist/shared/site-storage.js';
+import settingsPage from '../../dist/main/app/settings-page.js';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-appearance-ui-'));
 app.setPath('userData', profile);
@@ -44,6 +46,34 @@ app
       { id: pinnable, name: 'Grammar Helper', enabled: true, icon },
       { id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', name: 'Switched Off', enabled: false, icon },
     ]);
+    settingsPage.handleSettingsCall(siteStorage.SiteStorageChannel.list, () => ({
+      sites: [],
+      total: 0,
+      offset: 0,
+      more: false,
+      limited: false,
+    }));
+    settingsPage.handleSettingsCall(types.PasswordsChannel.list, () => ({
+      available: false,
+      passwords: [],
+      neverSave: [],
+    }));
+    settingsPage.handleSettingsCall(types.AutofillChannel.list, () => ({ available: false, records: [] }));
+    settingsPage.handleSettingsCall(types.AgentBridgeChannel.status, () => ({
+      enabled: false,
+      port: null,
+      error: null,
+      lastCallAt: null,
+      calls: 0,
+      client: null,
+      staleTokenAt: null,
+      url: null,
+      claudeCommand: null,
+      codexConfig: null,
+      otelConfig: null,
+      observedTabs: 0,
+      connectionsRevision: 0,
+    }));
     ipc.registerSettingsIpc({
       view: () => ({
         values: preferences.get(),
@@ -63,8 +93,8 @@ app
       },
       updater: {},
       relaunch() {},
-      permissions: {},
-      requestRules: {},
+      permissions: { origins: () => [] },
+      requestRules: { list: () => [] },
       onRequestRulesSaved() {},
     });
     const browsing = session.fromPartition('appearance-settings');
@@ -95,7 +125,6 @@ app
     await window.loadURL('yalqen://settings/appearance');
     await eventually(`!!${choice('Right, narrow')}`);
 
-    // One layout card sets the sidebar's visibility, side and width together.
     await run(`${choice('Right, narrow')}.click()`);
     await eventually(`${choice('Right, narrow')}.getAttribute('aria-checked')==='true'`);
     assert.deepEqual(
@@ -119,8 +148,6 @@ app
     await eventually(`${choice('Dark')}.getAttribute('aria-checked')==='true'`);
     assert.equal(preferences.get().theme, 'dark');
 
-    // Toolbar buttons are removed and added from the preview, and move with Option and the arrow keys.
-    // A pinned extension that is no longer installed is kept but not shown.
     const missing = `extension:${uninstalled}`;
     await run(`${labelled('Remove History button')}.click()`);
     await eventually(`!!${labelled('Add History button')}`);
@@ -137,13 +164,11 @@ app
     assert.ok(preferences.get().toolbarButtons.includes('settings'));
     assert.equal(await run(`document.querySelectorAll('#pane .bar [data-id]').length`), 3);
 
-    // Developer tools waits in the tray and is added like any other button.
     await eventually(`!!${labelled('Add Developer tools button')}`);
     await run(`${labelled('Add Developer tools button')}.click()`);
     await eventually(`!!${labelled('Remove Developer tools button')}`);
     assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', 'devtools', missing]);
 
-    // Enabled extensions can be pinned with their own icon and moved like the built-in buttons.
     await eventually(`!!${labelled('Add Grammar Helper button')}`);
     assert.equal(await run(`!!${labelled('Add Switched Off button')}`), false);
     assert.equal(await run(`${labelled('Add Grammar Helper button')}.querySelector('img')?.getAttribute('src')`), icon);
@@ -176,7 +201,6 @@ app
     await eventually(`!!${labelled('Add Grammar Helper button')}`);
     assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', 'devtools', missing]);
 
-    // Clearing browsing data happens in a dialog opened from the Privacy pane.
     await window.loadURL('yalqen://settings/privacy');
     const clearButton = `Array.from(document.querySelectorAll('#pane button')).find(item=>item.textContent.trim()==='Clear…')`;
     await eventually(`!!${clearButton}`);
@@ -196,7 +220,6 @@ app
 
     assert.deepEqual(rendererErrors, []);
 
-    // Searching keeps an advanced setting that matches.
     await run(
       `(() => {const input=document.querySelector('input[type=search], .search input');input.value='DNS';input.dispatchEvent(new Event('input',{bubbles:true}))})()`,
     );

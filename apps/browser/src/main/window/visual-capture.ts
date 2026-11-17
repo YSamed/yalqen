@@ -4,8 +4,6 @@ import type { VisualComparisonViewport } from '../../shared/visual-comparison.js
 import { MAX_VISUAL_COMPARISON_EDGE, MAX_VISUAL_COMPARISON_IMAGE_BYTES } from '../../shared/visual-comparison.js';
 import { VisualComparisonError } from './visual-comparison.js';
 
-// Only the active, visible page is captured. CSS dimensions stay in the metadata even when
-// the image is reduced for the preview and the agent's image input.
 export async function captureVisualPage(contents: WebContents): Promise<{
   viewport: VisualComparisonViewport;
   image: AgentChatImage;

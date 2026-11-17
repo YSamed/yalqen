@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import tabModes from '../../dist/shared/tab-modes.js';
 import types from '../../dist/shared/types.js';
@@ -70,10 +71,7 @@ app
       toolbarTabs: true,
       toolbarButtons: ['settings'],
       toolbarExtensions: [],
-      material: 'opaque',
-      glassTint: 0,
-      accent: '#0a84ff',
-      windowColor: null,
+      ...windowAppearance,
       defaultZoom: 1,
       downloads: { active: 0, progress: null, started: 0 },
       extensions: false,
@@ -110,7 +108,6 @@ app
     ipcMain.handle(IpcChannel.getState, () => view());
     ipcMain.on(IpcChannel.action, (_event, action) => {
       actions.push(action.type === 'set-tab-mode' ? `mode:${action.mode}` : action.type);
-      // The tab manager's own switching is covered by tab-modes.mjs; here the tab just takes the mode.
       if (action.type === 'set-tab-mode') {
         Object.assign(manager.find('a'), tabModes.modeFlags(action.mode));
         changed();
@@ -124,10 +121,8 @@ app
     assert.equal(await checked(), 'Normal');
     assert.equal(await js('document.documentElement.dataset.mode'), 'normal');
 
-    // On a web page the picked Normal icon says what it does next.
     assert.equal(await js(`document.querySelector('.modes .mode.normal').title`), 'Site information');
 
-    // Arrow keys move between the modes without switching; Enter picks one.
     await js(`document.querySelector('.modes .mode.normal').focus()`);
     window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Right' });
     window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Right' });
@@ -145,12 +140,10 @@ app
     changed();
     await eventually(`document.documentElement.dataset.mode === 'normal'`);
 
-    // Normal again opens the site information, as the lock did.
     await click('.modes .mode.normal');
     await new Promise((resolve) => setTimeout(resolve, 100));
     assert.deepEqual(actions, ['open-site-info']);
 
-    // Developer: the slider moves, and the window takes the developer look.
     await click('.modes .mode.developer');
     await eventually(`document.documentElement.dataset.mode === 'developer'`);
     assert.equal(await checked(), 'Developer');
@@ -160,20 +153,17 @@ app
     );
     assert.equal(await js(`getComputedStyle(document.body, '::after').content`), '""');
 
-    // Private: dark and flat, with the accent turned grey.
     await click('.modes .mode.private');
     await eventually(`document.documentElement.dataset.mode === 'private'`);
     assert.equal(await checked(), 'Private');
     assert.equal(await js(`getComputedStyle(document.documentElement).colorScheme`), 'dark');
     assert.equal(await js(`getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()`), '#d4d4d8');
 
-    // Back to normal in one click; the next click on it opens the site information.
     await click('.modes .mode.normal');
     await eventually(`document.documentElement.dataset.mode === 'normal'`);
     assert.equal(await js(`getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()`), '#0a84ff');
     assert.deepEqual(actions, ['open-site-info', 'mode:developer', 'mode:private', 'mode:normal']);
 
-    // With the setting off there is no slider, and a private tab leaves the window's look alone.
     modesOn = false;
     Object.assign(manager.find('a'), tabModes.modeFlags('private'));
     changed();

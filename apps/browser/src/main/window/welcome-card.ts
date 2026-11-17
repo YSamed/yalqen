@@ -25,7 +25,6 @@ export interface WelcomeHost {
 
 const FAILED_IMPORT: WelcomeImportResult = { ok: false, bookmarks: 0, visits: 0 };
 
-// The invitation floats over one window so appearance choices show up live.
 export class WelcomeCard {
   private view: WebContentsView | null = null;
   private host: WelcomeHost | null = null;

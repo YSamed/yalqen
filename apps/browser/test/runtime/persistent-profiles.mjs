@@ -55,13 +55,10 @@ app
       try {
         return JSON.parse(fs.readFileSync(path.join(profile, 'stay-work.json'), 'utf8')).activated === true;
       } catch {
-        // The file is rewritten by the second-instance handler; reading between the
-        // create and the write is expected. Poll until the content settles.
         return false;
       }
     });
     assert.equal(JSON.parse(fs.readFileSync(path.join(profile, 'duplicate-work.json'), 'utf8')).primary, false);
-    // A second profile remains usable while the first has its own live single-instance lock.
     await launch('default', 'read', 'personal').completion;
     await running.completion;
     registry.remove(work.id, 'default');

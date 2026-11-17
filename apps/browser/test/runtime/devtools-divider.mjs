@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
@@ -60,10 +61,7 @@ app
       toolbarTabs: true,
       toolbarButtons: ['settings'],
       toolbarExtensions: [],
-      material: 'opaque',
-      glassTint: 0,
-      accent: '#0a84ff',
-      windowColor: null,
+      ...windowAppearance,
       defaultZoom: 1,
       downloads: { active: 0, progress: null, started: 0 },
       extensions: false,
@@ -105,7 +103,6 @@ app
     const js = (code) => window.webContents.executeJavaScript(code);
     const handle = '[role="separator"][aria-orientation="vertical"]';
 
-    // The gap between the page and DevTools is a separator that reports DevTools' share.
     await eventually(`!!document.querySelector('${handle}')`);
     assert.deepEqual(
       await js(
@@ -115,7 +112,6 @@ app
     );
     assert.equal(await js(`document.querySelector('${handle}').getAttribute('aria-valuenow')`), '40');
 
-    // Dragging sends where the pointer is; arrows move it by 16 pixels, or 64 with Shift.
     const at = (x) => ({ x, y: 260 });
     window.webContents.focus();
     window.webContents.sendInputEvent({ type: 'mouseDown', button: 'left', clickCount: 1, ...at(603) });
@@ -123,7 +119,6 @@ app
     window.webContents.sendInputEvent({ type: 'mouseMove', button: 'left', ...at(480) });
     window.webContents.sendInputEvent({ type: 'mouseUp', button: 'left', clickCount: 1, ...at(480) });
     await new Promise((resolve) => setTimeout(resolve, 200));
-    // Chromium may merge quick moves, so only the last position is certain.
     assert.equal(actions.at(-1), 480);
     actions.length = 0;
     await js(`document.querySelector('${handle}').focus()`);
@@ -132,7 +127,6 @@ app
     await new Promise((resolve) => setTimeout(resolve, 200));
     assert.deepEqual(actions, [587, 667]);
 
-    // With DevTools closed there is no handle.
     divider = null;
     changed();
     await eventually(`!document.querySelector('${handle}')`);

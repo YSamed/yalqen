@@ -5,9 +5,6 @@ import { ElectronBlocker, adsLists } from '@ghostery/adblocker-electron';
 const FILTER_LISTS = adsLists.filter((url) => !url.includes('/peter-lowe/'));
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Scriptlets declare shared helpers (e.g. `proxyApplyFn`) as globals. Injected one by one, a later
-// scriptlet redeclares them and wraps the earlier Function.prototype.toString proxy, which then
-// recurses forever (seen on chatgpt.com). A function scope per scriptlet keeps their state apart.
 class ScopedScriptletBlocker extends ElectronBlocker {
   override getCosmeticsFilters(...args: Parameters<ElectronBlocker['getCosmeticsFilters']>) {
     const filters = super.getCosmeticsFilters(...args);

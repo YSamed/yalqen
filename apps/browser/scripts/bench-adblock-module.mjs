@@ -27,8 +27,6 @@ for (const build of builds) {
   if (!fs.existsSync(build.module)) throw new Error(`Missing built module: ${build.module}`);
 }
 
-// Each sample uses a fresh Node process. This isolates module evaluation and cache loading;
-// it excludes Electron startup, native session listeners, page loading and process-spawn time.
 const source = `
   const { performance } = require('node:perf_hooks');
   globalThis.fetch = async () => { throw new Error('A valid engine cache is required; network is disabled'); };
@@ -50,7 +48,6 @@ const source = `
 const samples = [];
 for (let run = 0; run < repetitions; run++) {
   for (const enabled of [false, true]) {
-    // Alternate build order to limit drift from warming the operating-system file cache.
     for (const build of run % 2 ? builds.toReversed() : builds) {
       const result = spawnSync(process.execPath, ['-e', source, build.module, cache, String(enabled)], {
         encoding: 'utf8',

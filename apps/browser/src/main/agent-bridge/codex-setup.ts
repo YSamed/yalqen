@@ -21,7 +21,6 @@ function isYalqenTable(name: string): boolean {
   return name === TABLE || name.startsWith(`${TABLE}.`);
 }
 
-// Only the Yalqen table and its subtables are touched; every other line keeps its exact text.
 export function withoutYalqen(config: string): string {
   const kept: string[] = [];
   let skipping = false;
@@ -67,7 +66,6 @@ async function readConfig(file: string): Promise<string | null> {
   }
 }
 
-// The previous file is kept next to it, and the new one replaces it in a single rename.
 async function writeConfig(file: string, previous: string | null, next: string): Promise<void> {
   await fs.mkdir(path.dirname(file), { recursive: true });
   if (previous !== null) await fs.writeFile(`${file}.yalqen-backup`, previous, { mode: 0o600 });

@@ -42,7 +42,6 @@ export function renderBookmarks(
       ? `<option value="" selected>${t('bookmarks.noFolder')}</option>`
       : `<option value="${escapeHtml(folderId!)}" selected>${escapeHtml(title)}</option>`;
   };
-  // The full tree exists once; editors clone it only when opened.
   const folderOptions = folders.length
     ? `<template id="folder-options"><option value="">${t('bookmarks.noFolder')}</option>${folders
         .map(

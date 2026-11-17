@@ -27,7 +27,6 @@ test('download polling keeps the existing DOM for unchanged or identical updates
       if (!update) throw new Error('end of fixture');
       return { ok: true, json: async () => update };
     },
-    // The retry stays pending without creating a real timer after the fixture ends.
     setTimeout: () => 1,
   });
   await new Promise((resolve) => setImmediate(resolve));

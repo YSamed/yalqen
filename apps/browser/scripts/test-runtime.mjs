@@ -1,68 +1,24 @@
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const executable = require('electron');
 const results = [];
-for (const test of [
-  'before-unload.mjs',
-  'download-location.mjs',
-  'site-protections.mjs',
-  'site-storage.mjs',
-  'reader.mjs',
-  'reading-list.mjs',
-  'workspaces.mjs',
-  'extension-updates.mjs',
-  'extension-access.mjs',
-  'extension-access-settings.mjs',
-  'login-selection.mjs',
-  'autofill.mjs',
-  'autofill-settings.mjs',
-  'one-time-code.mjs',
-  'bookmark-transfer.mjs',
-  'bulk-tabs.mjs',
-  'tab-selection.mjs',
-  'split-drag.mjs',
-  'tab-transition.mjs',
-  'media-player.mjs',
-  'unread-dot.mjs',
-  'toolbar-buttons.mjs',
-  'tooltips.mjs',
-  'interface-bridge.mjs',
-  'hover-previews.mjs',
-  'media-controls.mjs',
-  'media-skip.mjs',
-  'pinning.mjs',
-  'pinned-home.mjs',
-  'tab-cleanup.mjs',
-  'tab-modes.mjs',
-  'tab-modes-ui.mjs',
-  'devtools-view.mjs',
-  'devtools-divider.mjs',
-  'bookmarks-panel.mjs',
-  'bookmark-tabs.mjs',
-  'app-links.mjs',
-  'threat-protection.mjs',
-  'persistent-profiles.mjs',
-  'profile-settings.mjs',
-  'appearance-settings.mjs',
-  'sites-settings.mjs',
-  'closed-tabs.mjs',
-  'page-files.mjs',
-  'full-page-screenshot.mjs',
-  'password-tools.mjs',
-  'certificate-details.mjs',
-  'bookmark-editing.mjs',
-  'extension-bridge.mjs',
-]) {
-  // A broken build fails every file; stop early so it does not burn macOS CI minutes on retries.
+const directory = new URL('../test/runtime/', import.meta.url);
+const tests = readdirSync(directory, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && entry.name.endsWith('.mjs'))
+  .map((entry) => entry.name)
+  .sort();
+if (!tests.length) throw new Error('No Electron runtime tests found');
+for (const test of tests) {
   if (results.filter((result) => result.failed).length >= 3) {
     results.push({ test, seconds: 0, retried: false, failed: false, skipped: true });
     continue;
   }
   const run = () =>
-    spawnSync(executable, [fileURLToPath(new URL(`../test/runtime/${test}`, import.meta.url))], {
+    spawnSync(executable, [fileURLToPath(new URL(test, directory))], {
       stdio: 'inherit',
       env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined },
       timeout: 45_000,
@@ -70,7 +26,6 @@ for (const test of [
     });
   const started = Date.now();
   let result = run();
-  // shortcut: one retry hides rare CI-only timing flakes (tab-modes, reader); fix the test if it keeps retrying.
   const retried = Boolean(result.error || result.status !== 0);
   if (retried) {
     console.warn(`RETRY: ${test} failed once; running it again`);

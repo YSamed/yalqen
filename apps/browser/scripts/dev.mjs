@@ -24,8 +24,6 @@ const portFlag = argv.indexOf('--port');
 const port = portFlag === -1 ? (process.env.YALQEN_DEV_SERVER_PORT ?? '5173') : (argv[portFlag + 1] ?? '5173');
 const electronArgs = portFlag === -1 ? argv : [...argv.slice(0, portFlag), ...argv.slice(portFlag + 2)];
 
-// Vite is ESM-only and loads a native bundler, so it runs in this Node process rather than inside
-// Electron's main process. Main only needs the address through the environment.
 const { createServer } = await import('vite');
 const server = await createServer({
   configFile: path.join(project, 'vite.config.mts'),
@@ -59,8 +57,6 @@ const shutdown = async (signal) => {
 };
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => void shutdown(signal));
 
-// The window can outlive the terminal that started it, so the server follows Electron rather than
-// the other way round.
 child.on('exit', async (code, signal) => {
   await server.close();
   process.exitCode = code ?? (signal ? 1 : 0);

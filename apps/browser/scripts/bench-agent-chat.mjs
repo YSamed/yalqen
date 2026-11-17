@@ -41,7 +41,6 @@ const message = (id, role, parts) => ({
   workMode: 'normal',
 });
 
-// A coding session: short prompts, replies with prose, a file read and a command result.
 function transcript(bytes) {
   const messages = [];
   for (let turn = 0, size = 0; size < bytes; turn++) {
@@ -67,7 +66,6 @@ for (const kib of [100, 400, 900]) {
   const chat = new AgentChat({
     connect: async () => ({ url: 'http://127.0.0.1:1/mcp', token: 'bench' }),
     onState: () => undefined,
-    // Builds before the snapshot was published as JSON left the serialization to the window.
     onUpdate: (update) => {
       sent = typeof update === 'string' ? update : JSON.stringify(update);
     },

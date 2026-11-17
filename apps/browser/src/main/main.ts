@@ -142,7 +142,6 @@ import { createOverlayView } from './window/overlay-view.js';
 import { openMiniWindow } from './window/mini-window.js';
 import { ZoomStore } from './tabs/zoom.js';
 
-// AppImage launchers can silently add this flag when user namespaces are unavailable.
 if (process.platform === 'linux' && app.commandLine.hasSwitch('no-sandbox')) {
   console.error('Yalqen requires the Chromium sandbox. Enable unprivileged user namespaces to run the AppImage.');
   app.exit(1);
@@ -152,7 +151,6 @@ const COMMAND_BAR_PREWARM_MS = 5000;
 
 bench?.mark('modules-loaded');
 if (bench) prepareBenchApp();
-// The profile folder keeps its prototype name: renaming it would leave every existing profile behind.
 const profileRoot = bench?.profile ?? path.join(app.getPath('appData'), 'yalqen-electron-prototype');
 
 const appIcon = appIconPath();
@@ -175,10 +173,8 @@ const profileRegistry = selectedProfile.registry!;
 const primary = selectedProfile.primary;
 const externalUrls = new ExternalUrlInbox(primary);
 
-// Chromium reads its locale switch once at startup, before the app is ready.
 const chosenLanguage = new SettingsStore(app.getPath('userData')).get().interfaceLanguage;
 if (chosenLanguage !== 'system') app.commandLine.appendSwitch('lang', chosenLanguage);
-// Chromium keeps one renderer process warm, so a new tab or a new site does not wait for a launch.
 app.commandLine.appendSwitch('enable-features', 'SpareRendererForSitePerProcess');
 
 function startBrowser(): void {
@@ -355,7 +351,6 @@ function startBrowser(): void {
     },
     preloadPath('extension-apis'),
   );
-  // chrome.windows events; extensions such as Grammarly follow the focused window to find the active tab.
   const watchExtensionWindow = (window: YalqenWindow) => {
     const { id } = window.window;
     extensionBridge.windowCreated({ id, focused: window.window.isFocused() });
@@ -621,7 +616,6 @@ function startBrowser(): void {
     load: app.isPackaged && !bench ? loadAutoUpdater : null,
     automatic: () => settings.get().autoUpdate,
     onChange: () => broadcastSettings(settingsView()),
-    // quitAndInstall closes the windows before before-quit fires, so the session is saved first.
     beforeInstall: async () => {
       if (!(await confirmQuit())) return false;
       quitting = true;
@@ -754,7 +748,6 @@ function startBrowser(): void {
       downloadsChanged();
       forgetSessionData(privateBrowsing);
     },
-    // Developer windows and developer tabs share one session; it is forgotten once neither is left.
     onDeveloperTabsClosed: () => {
       if (windows.some((window) => window.isDeveloper || window.tabs.hasDeveloperTabs)) return;
       forgetSessionData(developer);
@@ -910,7 +903,6 @@ function startBrowser(): void {
   ipcMain.handle(IpcChannel.getState, (event) => senderWindow(event)?.state() ?? null);
   ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => senderWindow(event)?.setLayout(next));
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
-  // Agent access belongs only to the browser chrome's main frame, never a browsing tab.
   const agentSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     event.senderFrame === event.sender.mainFrame ? senderWindow(event) : undefined;
   ipcMain.handle(IpcChannel.agentSnapshot, (event) => agentSenderWindow(event)?.agentSession.snapshot() ?? null);
@@ -1105,7 +1097,6 @@ function startBrowser(): void {
         quitting = true;
         store.saveNow(sessionSnapshot());
         await forgetOnExit();
-        // Release only after consent: cancelling must not schedule a later relaunch.
         app.releaseSingleInstanceLock();
         app.relaunch({ args: profileArguments(process.argv.slice(1), persistentProfiles.id) });
         app.quit();
@@ -1190,7 +1181,6 @@ function startBrowser(): void {
     (current ?? openWindow({})).focus();
   });
 
-  // The first address bar open would otherwise wait for a new renderer, so it loads right after the first page.
   const prewarmCommandBar = () => {
     const warm = () => {
       bench?.mark('command-bar-prewarm');
@@ -1200,7 +1190,6 @@ function startBrowser(): void {
     setTimeout(warm, COMMAND_BAR_PREWARM_MS);
   };
 
-  // Content scripts only reach pages that load after their extension, so restored tabs wait for it.
   const openInitialWindows = () => {
     started = true;
     if (!bench) threatLists.start();
@@ -1230,8 +1219,6 @@ function startBrowser(): void {
             ...workspaces.spaces().map((space) => space.id),
           ]) ?? undefined)
         : undefined;
-    // Links from other apps, often sign-ins, go to the last normal window: a private, developer or web app window
-    // has none of the user's sign-ins.
     const openExternal = (urls: string[], external: readonly string[] = [...urls]) => {
       const main = mainWindow();
       const reusable = main && !main.window.isDestroyed() ? main : null;
@@ -1267,7 +1254,6 @@ function startBrowser(): void {
     showInvitation();
   };
 
-  // Everyone sees the thank-you invitation once, including people who installed before it existed.
   const showInvitation = () => {
     const window = current;
     if (bench || settings.get().invitationSeen || !window || window.isPrivate || window.isDeveloper || window.webApp)

@@ -100,7 +100,6 @@ function framePreview(frame: StoredFrame): VisualComparisonFrame {
   };
 }
 
-// One comparison per project keeps screenshot memory bounded and out of BrowserState.
 export class VisualComparisonManager {
   private before: StoredFrame | null = null;
   private after: StoredFrame | null = null;

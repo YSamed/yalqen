@@ -5,11 +5,7 @@ const CHECK_TIMEOUT_MS = 15_000;
 const checks = new WeakMap<WebContents, Promise<boolean>>();
 const NOOP_LISTENER = "window.addEventListener('beforeunload', () => {}, { once: true }); true";
 
-// Electron 44 emits this after Chromium runs every frame's beforeunload handlers.
-// Vetoing it checks consent without destroying tabs, preserving all pages when
-// a window/quit request is cancelled. Keep the Electron runtime test on upgrades.
 export function checkBeforeUnload(contents: WebContents): Promise<boolean> {
-  // A tab whose first navigation never committed (cancelled or still pending) has no page to lose and never answers.
   if (contents.isDestroyed() || contents.getURL() === '') return Promise.resolve(true);
   const pending = checks.get(contents);
   if (pending) return pending;
@@ -29,12 +25,9 @@ export function checkBeforeUnload(contents: WebContents): Promise<boolean> {
       finish(proceed);
     };
     const destroyed = () => finish(true);
-    // An unresponsive page must never implicitly lose its unsaved work.
     const timer = setTimeout(() => finish(false), CHECK_TIMEOUT_MS);
     events.once('-before-unload-fired', fired);
     events.once('destroyed', destroyed);
-    // Without any unload listener Electron skips the vetoable event and closes
-    // immediately. A one-shot noop listener keeps clean pages alive too.
     void addNoopListener(contents)
       .then(() => {
         if (finished) return;
@@ -48,8 +41,6 @@ export function checkBeforeUnload(contents: WebContents): Promise<boolean> {
   return check;
 }
 
-// WebContents.executeJavaScript* waits until the page stops loading, so a slow page would stall the check
-// until the timeout. The frame call runs at once, in the main world; a cross-site commit can swap the frame.
 async function addNoopListener(contents: WebContents): Promise<unknown> {
   if (!contents.isLoadingMainFrame()) {
     return contents.executeJavaScriptInIsolatedWorld(1010, [{ code: NOOP_LISTENER }]);

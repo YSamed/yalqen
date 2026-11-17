@@ -2,8 +2,6 @@ import { ACTION_BINDING } from './runtime-buffer.js';
 
 export const ACTION_WORLD = 'yalqen-agent';
 
-// Runs in an isolated world of local development pages: it sees the page's DOM events but not its
-// scripts, and the page cannot see it. Values typed into fields are never sent, only their length.
 export const ACTION_SCRIPT = `(() => {
   if (globalThis.__yalqenActionsInstalled) return;
   globalThis.__yalqenActionsInstalled = true;

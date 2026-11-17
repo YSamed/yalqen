@@ -129,7 +129,6 @@
   const listed = $derived(
     listOrder.map((id) => tabsById.get(id)).filter((tab): tab is TabSnapshot => !!tab && !tab.pinned),
   );
-  // The tabs the clean button closes: unpinned ones memory saving has put to sleep, as main counts them.
   const idleCount = $derived(
     tabCleanup ? listed.filter((tab) => !tab.live && !tab.isPrivate && tab.id !== activeTabId).length : 0,
   );
@@ -266,8 +265,6 @@
   function popIn(node: Element) {
     return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
   }
-  // Tiles fold from the grid into one column and push the rows below, so every list item glides from
-  // where it was before the layout swap.
   let layoutRects: [Element, DOMRect][] = [];
   $effect.pre(() => {
     void collapsed;
@@ -276,7 +273,6 @@
   });
   $effect(() => {
     void collapsed;
-    // Queued behind animate:reorder, which claims the rows it moves; a second animation would stack.
     queueMicrotask(() => {
       for (const [li, from] of layoutRects) {
         const to = li.getBoundingClientRect();
@@ -293,8 +289,6 @@
   });
 
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
-    // Svelte measures `from` after the pinned section has already switched layout, so prefer the
-    // rect taken before the swap.
     const before = layoutRects.findIndex(([li]) => li === node);
     if (before >= 0) [, from] = layoutRects.splice(before, 1)[0];
     return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
@@ -302,7 +296,6 @@
   const draggingPinned = $derived(dragGroup === 'pinned');
   const draggingListed = $derived(dragGroup === 'listed');
 
-  // A favourite opens or switches to a tab on its site, so it shows that tab's unread mail.
   function favoriteUnread(url: string): boolean {
     try {
       const { host } = new URL(url);
@@ -328,8 +321,6 @@
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
 
-  // Pointer events instead of HTML drag and drop, so reordering does not depend on the
-  // native macOS drag session inside the transparent glass window.
   function onPointerDown(event: PointerEvent & { currentTarget: HTMLElement }, id: TabId, group: DragGroup): void {
     if (event.button !== 0 || !event.isPrimary || !lists || event.ctrlKey || event.metaKey || event.shiftKey) return;
     if (settleOrder !== null) resetDragState();
@@ -368,7 +359,6 @@
     if (scrollSpeed() !== 0 && !scrollFrame) scrollFrame = requestAnimationFrame(autoScroll);
   }
 
-  // Dropping a tab on the page opens it beside the active tab, on the half it was released over.
   function splitSideAt(): SplitSide | null {
     const page = pageRect?.();
     if (!press || press.id === activeTabId || !page) return null;
@@ -501,8 +491,6 @@
     return true;
   }
 
-  // The dropped row stays where it was released until the new order arrives, so the reorder
-  // animates from the release point instead of snapping back first.
   function settle(): void {
     press = null;
     dropIndex = null;
@@ -519,7 +507,6 @@
     returnTimer = window.setTimeout(() => (returningId = null), 220);
   }
 
-  // The release lands on a row button, which would otherwise activate the tab that was just dropped.
   function suppressNextClick(): void {
     const swallow = (event: MouseEvent) => {
       event.preventDefault();
@@ -1116,7 +1103,6 @@
     transition: opacity 120ms ease-out;
   }
 
-  /* The toggle sits at the same spot in both layouts, so it stays visible under the cursor. */
   .fading .body > :not(.lists, .spaces, .footer),
   .fading .spaces > :global(:not(.panel-toggle)),
   .fading .footer > :global(:not(.panel-toggle)) {
@@ -1141,8 +1127,6 @@
     }
   }
 
-  /* Expanded rows keep their full width while the panel animates, so they are uncovered
-     instead of squeezed into whatever width the panel has reached. */
   .panel:not(.collapsed) .body {
     width: calc(var(--panel-full-width) - var(--panel-row-inset) - var(--panel-edge-inset));
   }
@@ -1413,7 +1397,6 @@
     position: relative;
   }
 
-  /* Cut out of the favicon's corner by a ring of the surface behind it, as on a phone's app icons. */
   .unread-dot {
     position: absolute;
     top: -2px;
@@ -1486,7 +1469,6 @@
     }
   }
 
-  /* Glass surfaces are translucent; backing them with the page color keeps covered rows from showing through. */
   .row.lifted .pill,
   .row.lifted :global(.tab-icon) {
     background: linear-gradient(var(--surface), var(--surface)), var(--page);

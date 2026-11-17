@@ -48,6 +48,7 @@ async function form(values) {
 app
   .whenReady()
   .then(async () => {
+    settingsPage.handleSettingsCall(types.AutofillChannel.list, () => ({ available: false, records: [] }));
     const store = new passwords.PasswordStore(profile, handlers.safeStorageCipher);
     assert.equal(store.view().available, true);
     handlers.installPasswordHandlers({

@@ -39,7 +39,6 @@ export class AgentTokenStore {
     }
   }
 
-  // Without Keychain encryption the token lives only in memory and changes on every launch.
   private replace(): string {
     const token = generateToken();
     if (!this.cipher.available()) return token;

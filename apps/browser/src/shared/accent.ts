@@ -1,4 +1,3 @@
-// Colors people can pick for buttons, switches and the active tab. Each stays readable under white text.
 export const ACCENT_COLORS = [
   { id: 'orange', hex: '#f28c28' },
   { id: 'coral', hex: '#ec5f4b' },

@@ -69,9 +69,6 @@ if (!selected.primary) {
         );
         record({ verified: true, id: selected.profile.id });
       }
-      // Stay mode keeps this process alive holding the profile's single-instance lock,
-      // so the quit must not be appended to the promise chain: a finally would quit as
-      // soon as this callback returned and defeat the whole mode.
       if (mode === 'stay') {
         clearTimeout(deadline);
         setTimeout(() => app.quit(), 10_000);
@@ -86,11 +83,5 @@ if (!selected.primary) {
 
 registerBeforeQuit(() => {
   clearTimeout(deadline);
-  // Release the single-instance record so the parent's next launch is not blocked by
-  // this process's still-alive PID.
   registry.close();
 });
-
-// The test root belongs to persistent-profiles.mjs, which creates it and cleans it up.
-// A worker deleting it would take the parent's registry, lock database and other
-// workers' results with it, and the parent's next launch would land on a missing root.

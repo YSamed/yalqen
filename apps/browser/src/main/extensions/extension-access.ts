@@ -64,15 +64,11 @@ export function restrictedManifest(
   return result;
 }
 
-// Chromium derives an unpacked extension's id from the resolved path bytes, which are UTF-16LE on
-// Windows and UTF-8 elsewhere, with an uppercased drive letter. Any mismatch changes the id and
-// stops the extension from loading.
 export function resolvedExtensionPath(directory: string): string {
   const resolved = path.resolve(directory);
   return process.platform === 'win32' ? resolved.replace(/^[a-z]:/, (drive) => drive.toUpperCase()) : resolved;
 }
 
-// The id derives from these same bytes, so it survives a move into a restricted runtime copy.
 function pathBytes(directory: string): Buffer {
   return Buffer.from(resolvedExtensionPath(directory), process.platform === 'win32' ? 'utf16le' : 'utf8');
 }

@@ -32,14 +32,10 @@ interface VisitText {
   host?: string;
 }
 
-// Folds I, İ, ı and i to "i" so Turkish and English typing find the same pages:
-// "insta" finds "Instagram" and "ısparta" finds "Isparta".
 export function searchKey(text: string): string {
   return text.toLowerCase().replace(/i\u0307|ı/g, 'i');
 }
 
-// Stable bookmark snapshots and visits can reuse normalized text across keystrokes
-// and index rebuilds. Weak keys let removed pages disappear with their browsing data.
 const pageTexts = new WeakMap<PageTextSource, VisitText>();
 
 function textOf(page: PageTextSource): VisitText {
@@ -150,7 +146,6 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
   };
 
   for (const tab of sources.tabs) {
-    // Tab snapshots are fresh on each input, so weak caching would only add work.
     const score = matchScore(term, tab.title, tab.url);
     if (score > 0)
       offer({ kind: 'tab', title: tab.title, url: tab.url, tabId: tab.id, score, visits: 0, lastVisit: 0 });
@@ -160,7 +155,6 @@ export function suggest(input: string, sources: SuggestionSources, limit = MAX_S
     if (score > 0)
       offer({ kind: 'bookmark', title: bookmark.title, url: bookmark.url, score, visits: 0, lastVisit: 0 });
   }
-  // Keep only the requested results instead of sorting every history match.
   const ranked: Candidate[] = [];
   const rank = (candidate: Candidate) => {
     if (ranked.length === count && compareCandidates(candidate, ranked[ranked.length - 1]) >= 0) return;

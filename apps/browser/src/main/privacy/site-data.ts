@@ -18,7 +18,6 @@ export interface SiteDataActions {
   clearSiteData(): void;
 }
 
-// Runs in an isolated world, so the page cannot change what it reports about itself.
 export const MEASURE_STORAGE_SCRIPT = `(async () => {
   let localStorageBytes = 0;
   try {
@@ -104,7 +103,6 @@ export function siteDataItems(data: SiteData, actions: SiteDataActions): MenuIte
   ];
 }
 
-// Clearing by origin leaves cookies set on a parent domain, so those are removed one by one.
 export async function clearSiteData(browsing: Session, origin: string): Promise<void> {
   const cookies = cookiesForHost(await browsing.cookies.get({}), new URL(origin).hostname);
   await Promise.allSettled([

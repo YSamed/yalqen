@@ -44,11 +44,9 @@
   --window: transparent;
   --warn: #a34a06;
   --bg: transparent;
-  /* The interface sets --glass-tint from the setting; the factors keep 0.22 and 0.32 at its default. */
   --chrome-base: rgb(250 247 243 / calc(var(--glass-tint, 0.25) * 0.88));
   --surface: rgb(255 255 255 / 0.55);
   --surface-strong: rgb(255 255 255 / 0.82);
-  /* Menus float over text, so a see-through glass fill would mix the two. */
   --surface-menu: #fbfaf8;
   --surface-hover: rgb(16 18 24 / 0.06);
   --well: rgb(16 18 24 / 0.06);
@@ -85,7 +83,6 @@
   }
 }
 
-/* The interface sets data-window-color and the --tint-* values only while a window color is chosen. */
 :root[data-window-color]:not([data-material='glass']) {
   --bg: light-dark(var(--tint-bg-light), var(--tint-bg-dark));
   --text-muted: light-dark(var(--tint-muted-light), var(--tint-muted-dark));
@@ -166,8 +163,6 @@ button:not(:disabled) {
   }
 }
 
-/* Developer mode frames the whole window in the accent colour, with a soft neon glow breathing along its edges.
-   The frame sits above the interface but lets every click through. */
 :root[data-mode='developer'] body::after {
   position: fixed;
   z-index: 2147483000;
@@ -197,8 +192,6 @@ button:not(:disabled) {
   }
 }
 
-/* Private mode is dark whatever the theme, and flat: no glass, no shadows, no colour, so it reads as a quieter
-   browser with less going on. The doubled :root outranks the glass and window colour rules above. */
 :root:root[data-mode='private'] {
   --window: #111113;
   --bg: #111113;

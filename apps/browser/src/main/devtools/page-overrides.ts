@@ -22,7 +22,6 @@ interface NetworkConditions {
 
 const UNTHROTTLED: NetworkConditions = { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 };
 
-// Same figures as the Chrome DevTools presets, in milliseconds and bytes per second.
 export const NETWORK_CONDITIONS: Record<NetworkPreset, { label: string; conditions: NetworkConditions }> = {
   offline: {
     get label() {
@@ -89,11 +88,9 @@ export function hasOverrides(overrides: PageOverrides): boolean {
 export interface ProtocolCommand {
   method: string;
   params?: Record<string, unknown>;
-  // Resetting the network domain on a page where it was never enabled may be refused.
   optional?: boolean;
 }
 
-// The agent bridge reads failed response bodies later, so the protocol has to keep them for a while.
 export const OBSERVED_NETWORK_ENABLE: ProtocolCommand = {
   method: 'Network.enable',
   params: { maxTotalBufferSize: 8 * 1024 * 1024, maxResourceBufferSize: 256 * 1024 },
@@ -106,7 +103,6 @@ export function overrideCommands(
   observed = false,
   extraPatterns: readonly InterceptPattern[] = [],
 ): ProtocolCommand[] {
-  // The caller passes only the rules that apply to this tab.
   const patterns = [...interceptPatterns(rules), ...extraPatterns];
   const fetch: ProtocolCommand =
     patterns.length > 0
@@ -118,8 +114,7 @@ export function overrideCommands(
       ? [
           observed
             ? OBSERVED_NETWORK_ENABLE
-            : // Only the switches are needed, so the protocol keeps no response bodies around.
-              { method: 'Network.enable', params: { maxTotalBufferSize: 0, maxResourceBufferSize: 0 } },
+            : { method: 'Network.enable', params: { maxTotalBufferSize: 0, maxResourceBufferSize: 0 } },
           { method: 'Network.setCacheDisabled', params: { cacheDisabled: overrides.cacheDisabled } },
           { method: 'Network.emulateNetworkConditions', params: { ...conditions } },
         ]

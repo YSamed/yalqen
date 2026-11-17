@@ -57,7 +57,6 @@ export interface SavedGroups {
   groupParents?: Record<string, string>;
 }
 
-// Folder state of the default space stays at the top level so older sessions keep loading.
 export interface SavedWindow extends SavedGroups {
   activeTabId: TabId | null;
   tabs: SavedTab[];
@@ -69,13 +68,9 @@ export interface SavedWindow extends SavedGroups {
 export interface SavedSession {
   version: 2;
   windows: SavedWindow[];
-  // Set when the browser restarts itself to install an update, so every tab comes back once
-  // even when the startup setting would only keep pinned tabs.
   resume?: true;
 }
 
-// Without session restore only pinned tabs survive, reset to their pinned URL; a null activeTabId
-// makes the restored window start on a new tab instead.
 export function pinnedOnly(window: SavedWindow): SavedWindow {
   const tabs = window.tabs.flatMap((tab) => {
     const pinnedUrl = tab.pinnedUrl ?? (tab.keepAlive ? tab.url : null);

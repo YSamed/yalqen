@@ -2,10 +2,8 @@ import { splitShortcut, type TooltipTheme } from '../../shared/tooltip';
 import type { UiAction } from '../../shared/types';
 
 const DELAY_MS = 500;
-// Moving straight from one tooltip to the next shows it at once, as the system tooltip does.
 const WARM_MS = 300;
 
-// The interface's own colours, for overlays the main process draws above the page.
 export function interfaceTheme(root: Document = document): TooltipTheme {
   const style = getComputedStyle(root.documentElement);
   const token = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
@@ -18,9 +16,6 @@ export function interfaceTheme(root: Document = document): TooltipTheme {
   };
 }
 
-// Native title tooltips cannot follow Yalqen's surface and accent colours, so the interface keeps writing
-// plain title attributes and this takes them over: the title is held aside while hovered so the system
-// tooltip never appears, and the main process draws the styled one above the page.
 export function installTooltips(send: (action: UiAction) => void, root: Document = document): () => void {
   let target: HTMLElement | null = null;
   let title = '';
@@ -29,7 +24,6 @@ export function installTooltips(send: (action: UiAction) => void, root: Document
   let lastHidden = 0;
 
   function show(): void {
-    // A tile with a hover preview shows that instead; its title is still held aside so no system tooltip shows.
     if (!target?.isConnected || target.closest('[data-hover-preview]')) return;
     const { text, keys } = splitShortcut(title);
     if (!text) return;
@@ -80,7 +74,6 @@ export function installTooltips(send: (action: UiAction) => void, root: Document
     release();
   }
 
-  // Pressing, scrolling or typing means the user has moved on from reading the tooltip.
   const dismiss = () => {
     if (!target) return;
     release();

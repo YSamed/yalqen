@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { app } from 'electron';
 
-// Compiled main modules live in dist/main/<domain>/, beside dist/preload and dist/renderer.
 const DIST = path.join(__dirname, '../..');
 
 export function preloadPath(

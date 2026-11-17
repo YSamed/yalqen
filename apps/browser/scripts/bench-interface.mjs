@@ -14,7 +14,6 @@ const { values } = parseArgs({
     tabs: { type: 'string', default: '200' },
     updates: { type: 'string', default: '200' },
     'active-only': { type: 'boolean', default: false },
-    // Builds before the state was sent as JSON expect an object; pass `object` with --renderer-dir for them.
     'state-format': { type: 'string', default: 'json' },
     out: { type: 'string' },
   },
@@ -154,7 +153,6 @@ ipcRenderer.on('bench:state', (_event, state) => {
     });
     window.webContents.on('preload-error', (_event, _path, error) => console.error(error));
     await window.loadFile(path.join(path.resolve(values['renderer-dir']), 'index.html'));
-    // The main process serializes every state to detect changes, so the JSON string is not timed.
     const applied = (state) => {
       const message = stateFormat === 'json' ? JSON.stringify(state) : state;
       return new Promise((resolve) => {

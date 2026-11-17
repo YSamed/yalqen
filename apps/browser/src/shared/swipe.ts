@@ -16,7 +16,6 @@ export function createSwipeTracker(
     if (done || Math.abs(dx) <= Math.abs(dy)) return 0;
     total += dx;
     if (Math.abs(total) < distance) return 0;
-    // one switch per gesture: trackpad momentum keeps sending events after the fingers lift
     done = true;
     return total > 0 ? 1 : -1;
   };

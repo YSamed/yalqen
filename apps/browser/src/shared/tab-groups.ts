@@ -42,7 +42,6 @@ export function parseGroupParents(value: unknown): Map<string, string> {
   return parents;
 }
 
-// Parents come before their children, so a depth-first walk matches the sidebar order.
 export function groupOrder(used: Iterable<string>, parents: GroupParents): string[] {
   const names = new Set(used);
   for (const [name, parent] of parents) names.add(name).add(parent);

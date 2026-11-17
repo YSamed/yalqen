@@ -18,14 +18,12 @@ export function childEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessE
   return env;
 }
 
-// Dock-launched apps need the same PATH as the user's terminal. The command name reaches the shell as data, never as code.
 export async function findCommand(name: string): Promise<ShellCommand> {
   if (!/^[\w.-]+$/.test(name)) throw new Error('Invalid command name');
   const env = childEnv();
   const output = await new Promise<string>((resolve, reject) => {
     execFile(
       env.SHELL ?? defaultShell(),
-      // An interactive zsh is the only one that reads .zshrc, where nvm and Homebrew add PATH; Git Bash on Windows needs it off.
       [IS_WIN ? '-lc' : '-ilc', SCRIPT],
       { env: { ...env, YALQEN_COMMAND: name }, timeout: 10_000, maxBuffer: 128 * 1024 },
       (error, stdout) => (error ? reject(error) : resolve(stdout)),

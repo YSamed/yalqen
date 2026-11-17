@@ -32,7 +32,6 @@ app
     const messages = [];
     let saveCancelled = true;
     let openCancelled = true;
-    // The dialogs are scripted; file writing, parsing and native parent handling run in real Electron.
     dialog.showSaveDialog = async (parent, options) => {
       assert.equal(parent, window);
       assert.deepEqual(options.filters, [{ name: 'HTML', extensions: ['html'] }]);

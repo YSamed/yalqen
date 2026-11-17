@@ -27,7 +27,6 @@ export interface ExtensionWindows {
   windows: ReturnType<typeof chromeWindow>[];
 }
 
-// The fields of chrome.windows.Window that extensions read; every Yalqen window is a normal one.
 export function chromeWindow({ id, focused }: ExtensionWindowState) {
   return { id, focused, type: 'normal', state: 'normal', incognito: false, alwaysOnTop: false };
 }
@@ -43,7 +42,6 @@ export function extensionIdOf(url: string): string | null {
   }
 }
 
-// chrome.identity.getRedirectURL() points here; Chrome hands these URLs to the extension instead of loading them.
 export function authRedirectExtension(url: string): string | null {
   try {
     const { protocol, hostname } = new URL(url);

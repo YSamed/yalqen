@@ -5,7 +5,6 @@ const EDGE = 3;
 const BANNER_WIDTH = 260;
 const BANNER_HEIGHT = 40;
 const COLOR = '#f28c28';
-// The banner has no preload; its Stop button asks to open this address, which is never loaded.
 const STOP_URL = 'https://stop.yalqen.invalid/';
 
 function bannerPage(label: string, stop: string): string {

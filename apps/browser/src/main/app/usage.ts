@@ -21,7 +21,6 @@ interface UsageOptions {
   send?: typeof fetch;
 }
 
-// A profile is counted at most once per UTC day. Nothing from tabs or browsing sessions is read.
 export class UsageReporter {
   private readonly file: string;
   private state: UsageState | null = null;
@@ -73,9 +72,7 @@ export class UsageReporter {
         clearTimeout(timeout);
         this.request = null;
       }
-    } catch {
-      // Offline or unavailable collector: retry on the next hourly check without affecting browsing.
-    }
+    } catch {}
   }
 
   private after(delay: number): void {
@@ -100,7 +97,6 @@ export class UsageReporter {
         return this.state;
       }
     } catch (error) {
-      // Do not replace an unreadable identity: doing so would inflate the count on every launch.
       if (!(error instanceof SyntaxError) && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
     const state = { installationId: randomUUID(), lastSentDay: null };

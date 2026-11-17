@@ -14,7 +14,6 @@ export interface FlowVerificationView {
 function resultObject(output: string): Record<string, unknown> | null {
   if (output.length > 256 * 1024) return null;
   try {
-    // Yalqen prefixes page-derived results with its untrusted-data notice.
     const start = output.startsWith('{') ? 0 : output.indexOf('\n\n') + 2;
     const value: unknown = JSON.parse(output.slice(start));
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;

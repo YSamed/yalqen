@@ -2,7 +2,6 @@ import { X509Certificate } from 'node:crypto';
 import { dialog, clipboard, type BaseWindow, type Certificate, type Session } from 'electron';
 import { t } from '../../shared/i18n.js';
 
-// Electron's verify callback takes -3 to keep Chromium's own verdict.
 const USE_CHROMIUM_RESULT = -3;
 type CertificateVerifyRequest = Electron.Request;
 
@@ -41,8 +40,6 @@ export function parseCertificateChain(value: unknown): CertificateDetails[] | nu
     return null;
   }
 }
-// Chromium verifies a server certificate once and caches the verdict, so the chain is kept from
-// that verification. Observing every page load through the debugger would slow each one down.
 const MAX_REMEMBERED_HOSTS = 512;
 const MAX_CHAIN_LENGTH = 16;
 const remembered = new WeakMap<Session, Map<string, Certificate>>();

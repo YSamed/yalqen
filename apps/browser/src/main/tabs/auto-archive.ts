@@ -20,7 +20,6 @@ export function isAutoArchiveHours(value: unknown): value is (typeof AUTO_ARCHIV
   return (AUTO_ARCHIVE_HOURS as readonly unknown[]).includes(value);
 }
 
-// Private tabs never reach the closed list or history, so archiving one would lose it.
 export function shouldArchive(tab: ArchiveCandidate, now: number, hours: number): boolean {
   if (hours <= 0 || now - tab.inactiveSince < hours * HOUR_MS) return false;
   return !(

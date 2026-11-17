@@ -5,7 +5,6 @@
   import { cubicOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
 
-  // The collapsed sidebar is one button wide, so it keeps only play and pause.
   let { media, compact = false }: { media: MediaInfo; compact?: boolean } = $props();
 
   const send = window.yalqen.send;
@@ -13,12 +12,10 @@
 
   const DRAG_THRESHOLD = 4;
 
-  // A press shows its result right away; the page's own answer replaces it once it arrives.
   let pressed = $state<{ playing: boolean; since: number } | null>(null);
   const playing = $derived(pressed && pressed.since >= media.updatedAt ? pressed.playing : media.playing);
   $effect(() => {
     if (!pressed) return;
-    // A page that never answers (it lost its media) falls back to what the browser last reported.
     const timer = window.setTimeout(() => (pressed = null), 2000);
     return () => window.clearTimeout(timer);
   });
@@ -28,7 +25,6 @@
     send({ type: 'toggle-media', id: media.tabId });
   }
 
-  // The page reports its position only on changes, so the bar advances locally in between.
   let now = $state(Date.now());
   $effect(() => {
     if (!playing || media.duration === null) return;
@@ -42,7 +38,6 @@
     return Math.min(media.duration, media.position + elapsed);
   });
 
-  // A press on the pill opens the tab; dragging along it scrubs, and the fill follows the pointer.
   let pill: HTMLElement | undefined = $state();
   let scrub = $state<{ startX: number; fraction: number; moved: boolean } | null>(null);
   let target = $state<{ seconds: number; since: number } | null>(null);
@@ -164,7 +159,6 @@
           </span>
         </div>
       {:else}
-        <!-- A live stream has no length to scrub. -->
         <button class="track" aria-label={t('widgets.showTab', { title: media.title })} onclick={showTab}>
           <span class="title">{media.title}</span>
         </button>
@@ -280,7 +274,6 @@
     display: none;
   }
 
-  /* The track buttons take the time's place while the pointer is on the pill. */
   .pill.skippable:is(:hover, :focus-within):not(.scrubbing) .time {
     display: none;
   }

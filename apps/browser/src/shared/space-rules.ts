@@ -44,7 +44,6 @@ export function sanitizeSpaceRules(values: readonly unknown[]): SpaceRule[] {
   return [...rules.values()];
 }
 
-// The most specific rule wins, so the order of the list never matters.
 export function spaceForUrl(rules: readonly SpaceRule[], url: string, spaces: readonly string[]): string | null {
   let parsed: URL;
   try {

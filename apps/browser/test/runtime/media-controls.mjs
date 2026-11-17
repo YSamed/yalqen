@@ -1,6 +1,3 @@
-// Run after build:main: electron test/runtime/media-controls.mjs
-// Drives the sidebar player's page scripts against real media elements, including one in a shadow
-// root and a muted preview, and checks that a frozen page is woken before it is asked to play.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -18,7 +15,6 @@ app.setPath('userData', profile);
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 const deadline = setTimeout(() => app.exit(1), 30_000);
 
-// Thirty seconds of silence, built in the page so no file or network is involved.
 const PAGE = `<!doctype html><body><script>
   const rate = 8000;
   const samples = rate * 30;
@@ -58,14 +54,12 @@ app
       'Promise.all([song, preview].map((item) => new Promise((resolve) => item.readyState >= 1 ? resolve() : item.addEventListener("loadedmetadata", resolve, { once: true }))))',
     );
 
-    // A muted preview that plays does not take the player over from the paused song.
     await page('song.currentTime = 4; preview.play()');
     let info = await read();
     assert.equal(info.duration, 30);
     assert.equal(info.position, 4);
     assert.equal(info.paused, true);
 
-    // Play resumes the song inside the shadow root and settles once it plays.
     await run(MEDIA_TOGGLE_SCRIPT);
     assert.equal(await page('song.paused'), false);
     info = await read();
@@ -77,13 +71,10 @@ app
     await run(mediaSeekScript(-3600));
     assert.ok((await page('song.currentTime')) < 1);
 
-    // Back at the start the song stays the followed one, though the preview has played further.
-    // Pause stops everything that plays, the preview too.
     await run(MEDIA_TOGGLE_SCRIPT);
     assert.deepEqual(await page('[song.paused, preview.paused]'), [true, true]);
     assert.equal((await read()).paused, true);
 
-    // A frozen page runs no script; unfreezing first lets play go through.
     const tab = { view, frozen: false, loading: false, pinnedUrl: null, autoReload: null };
     const freezer = new TabFreezer({
       enabled: () => true,

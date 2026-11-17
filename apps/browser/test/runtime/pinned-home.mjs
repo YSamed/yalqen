@@ -15,11 +15,9 @@ process.on('uncaughtException', (error) => {
   app.exit(1);
 });
 
-// 127.0.0.1 and localhost are different sites, standing in for a pinned app and the web it links to.
 const server = http.createServer((req, res) => {
   const port = server.address().port;
   res.setHeader('Content-Type', 'text/html');
-  // The same page for every path; the request is never written back into it.
   res.end(`<title>Pinned home test</title>
     <a id="same" href="/inbox/1">same site</a>
     <a id="away" href="http://localhost:${port}/elsewhere">other site</a>`);
@@ -65,7 +63,6 @@ app
     });
     const urlOf = (id) => tabManager.snapshotFor(id)?.url ?? '';
     const loaded = (id, url) => eventually(() => urlOf(id) === url && !tabManager.snapshotFor(id).loading, url);
-    // The click runs after the script returns: a link to another site swaps the renderer, which would drop the reply.
     const clicks = {
       same: "setTimeout(() => document.getElementById('same').click())",
       away: "setTimeout(() => document.getElementById('away').click())",
@@ -79,12 +76,10 @@ app
     tabManager.togglePin(pinned);
     assert.equal(tabManager.snapshotFor(pinned).pinned, true);
 
-    // Inside the pinned site the tab navigates as usual.
     await click(pinned, 'same');
     await loaded(pinned, `http://127.0.0.1:${port}/inbox/1`);
     const count = tabManager.tabs.length;
 
-    // A link to another site opens a new, unpinned tab in front, and the pinned tab stays where it was.
     await click(pinned, 'away');
     await eventually(() => tabManager.tabs.length === count + 1, 'a new tab for the other site');
     const away = tabManager.activeId;
@@ -93,11 +88,9 @@ app
     assert.equal(tabManager.snapshotFor(away).pinned, false);
     assert.equal(urlOf(pinned), `http://127.0.0.1:${port}/inbox/1`);
 
-    // Closing it comes back to the pinned tab.
     tabManager.close(away);
     await eventually(() => tabManager.activeId === pinned, 'back on the pinned tab');
 
-    // A typed address for another site opens a new tab too; one on the pinned site stays in place.
     tabManager.navigate(`http://localhost:${port}/typed`);
     await eventually(() => tabManager.activeId !== pinned, 'a new tab for the typed address');
     await loaded(tabManager.activeId, `http://localhost:${port}/typed`);
@@ -107,13 +100,11 @@ app
     await loaded(pinned, `http://127.0.0.1:${port}/inbox/2`);
     assert.equal(tabManager.activeId, pinned);
 
-    // Once memory saving unloads it, the pinned tab comes back at its pinned address.
     tabManager.activate(other);
     assert.equal(tabManager.discard(pinned), true);
     tabManager.activate(pinned);
     await loaded(pinned, home);
 
-    // With the setting off, pinned tabs behave as before: links leave in place and the last page comes back.
     stayHome = false;
     const before = tabManager.tabs.length;
     await click(pinned, 'away');

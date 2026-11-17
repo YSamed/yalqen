@@ -50,7 +50,6 @@
   }
 </script>
 
-<!-- Only the allowlisted, sanitized output of DOMPurify enters this element. -->
 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
 <div class="markdown" use:links>{@html html}</div>
 

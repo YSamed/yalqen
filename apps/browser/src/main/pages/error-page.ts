@@ -53,7 +53,6 @@ function describeHttpsOnly(url: string): ErrorText {
   };
 }
 
-// `theme` is the shared tokens.css, so error pages follow the same palette as internal pages.
 export function errorPageHtml(
   theme: string,
   code: number,

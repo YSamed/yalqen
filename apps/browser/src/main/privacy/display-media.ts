@@ -32,13 +32,10 @@ function pickSource(
       ...screens.map(item),
       ...(windows.length > 0 ? [{ type: 'separator' as const }, ...windows.map(item)] : []),
     ]);
-    // On macOS the click handler runs after the menu reports it closed.
     menu.popup({ window: parent, callback: () => setTimeout(() => resolve(picked)) });
   });
 }
 
-// The macOS system picker needs no Screen Recording permission, so Yalqen would never be listed under
-// Privacy & Security. Capturing through desktopCapturer makes macOS ask and list it.
 async function explainScreenAccess(parent: BaseWindow | undefined): Promise<void> {
   const options: MessageBoxOptions = {
     type: 'warning',

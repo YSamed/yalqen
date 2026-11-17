@@ -11,14 +11,10 @@ import controllers from '../../../dist/main/extensions/extension-access-controll
 const { restrictedManifest, prepareRestrictedExtension, extensionIdentity } = access;
 
 test('extension identity matches the id Chromium derives from the resolved path', () => {
-  // Chromium hashes the path bytes (UTF-16LE on Windows, UTF-8 on POSIX) with an uppercased drive
-  // letter and maps the first 16 SHA-256 bytes onto a-p, so these ids fail on any encoding change.
-  // The fixture must match the host: on POSIX, 'C:\Users\...' is a relative path, not a drive path.
   if (process.platform === 'win32') {
     const windows = extensionIdentity('C:\\Users\\test\\extensions\\demo', {});
     assert.equal(windows.id, 'lfijnockllgbjjdmcncmiighigfefjec');
     assert.equal(Buffer.from(windows.key, 'base64').toString('utf16le'), 'C:\\Users\\test\\extensions\\demo');
-    // A lowercase drive letter must yield the canonical id, not a distinct one.
     assert.equal(
       extensionIdentity('c:\\Users\\test\\extensions\\demo', {}).id,
       extensionIdentity('C:\\Users\\test\\extensions\\demo', {}).id,
@@ -28,7 +24,6 @@ test('extension identity matches the id Chromium derives from the resolved path'
     assert.equal(posix.id, 'fkcononbajknbcohomcmaljoemgfglhf');
     assert.equal(Buffer.from(posix.key, 'base64').toString('utf8'), '/home/test/extensions/demo');
   }
-  // An explicit manifest key always wins over the path-derived one.
   assert.equal(
     extensionIdentity('/tmp/ignored', { key: 'fixed' }).id,
     extensionIdentity('/tmp/other', { key: 'fixed' }).id,
@@ -106,7 +101,9 @@ test('restricted runtime copies preserve source packages and refuse symbolic lin
     extensionIdentity(runtime, JSON.parse(fs.readFileSync(path.join(runtime, 'manifest.json')))).id,
     identity.id,
   );
-  fs.symlinkSync(path.join(root, 'outside'), path.join(source, 'unsafe'));
+  const outside = path.join(root, 'outside');
+  fs.mkdirSync(outside);
+  fs.symlinkSync(outside, path.join(source, 'unsafe'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => prepareRestrictedExtension(path.join(root, 'runtime'), source, original));
   assert.throws(() => prepareRestrictedExtension(path.join(source, 'nested-runtime'), source, original));
 });

@@ -11,8 +11,6 @@ export interface InvitationSource extends WelcomeImportSource {
   history: string | null;
 }
 
-// Bookmark sources come labelled "Chrome — Person 1"; the card shows the browser and the profile apart.
-// Chromium keeps history beside the bookmarks file, Firefox keeps both in places.sqlite.
 export function invitationSources(
   sources: readonly ImportSource[],
   exists: (file: string) => boolean = fs.existsSync,

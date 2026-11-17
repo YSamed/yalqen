@@ -40,8 +40,6 @@ function reuseLiveFolders(previous: LiveFolderView[], next: LiveFolderView[]): L
   );
 }
 
-// IPC clones every object in a snapshot. Keep unchanged values stable so Svelte's
-// derived signals and keyed rows can skip work, without mutating raw state.
 export function reuseBrowserState(previous: BrowserState, next: BrowserState): BrowserState {
   if (previous === next) return previous;
   let byId: Map<string, TabSnapshot> | undefined;

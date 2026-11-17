@@ -8,7 +8,6 @@ test('a tab reads as normal, private or developer', () => {
   assert.equal(modeOf({ isPrivate: false }), 'normal');
   assert.equal(modeOf({ isPrivate: true }), 'private');
   assert.equal(modeOf({ isPrivate: true, developer: true }), 'developer');
-  // A developer flag alone still reads as developer, the stronger mode.
   assert.equal(modeOf({ isPrivate: false, developer: true }), 'developer');
 });
 

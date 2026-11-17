@@ -24,7 +24,6 @@ export interface BackendSpan {
   attributes: Record<string, string | number | boolean>;
 }
 
-// W3C Trace Context: version, trace id, parent span id, flags (sampled).
 export function newTraceparent(): Traceparent {
   const traceId = randomBytes(16).toString('hex');
   return { traceId, header: `00-${traceId}-${randomBytes(8).toString('hex')}-01` };
@@ -66,7 +65,6 @@ function nanosToMs(value: unknown): number {
   return Number.isFinite(nanos) ? nanos / 1e6 : 0;
 }
 
-// OTLP/JSON spells ids as hex; some exporters still send base64, which is decoded here.
 function hexId(value: unknown, bytes: number): string | null {
   if (typeof value !== 'string' || value === '') return null;
   if (new RegExp(`^[0-9a-f]{${bytes * 2}}$`, 'i').test(value)) return value.toLowerCase();
@@ -122,7 +120,6 @@ export function parseOtlpTraces(body: unknown): BackendSpan[] {
   return spans;
 }
 
-// The timeline keeps the request's server span and every failing span; the rest stays in the trace.
 export function isNotable(span: BackendSpan): boolean {
   return span.server || span.error !== null;
 }

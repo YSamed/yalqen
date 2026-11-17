@@ -102,7 +102,6 @@ app
     });
     await window.loadURL('yalqen://settings/sites');
 
-    // Permissions, exceptions and stored data for a domain share one row; storage-only sites follow it.
     await eventually(`!!${site('example.com')} && !!${site('github.com')}`);
     assert.deepEqual(
       await run(`[...document.querySelectorAll('li[data-domain]')].map((item) => item.dataset.domain)`),
@@ -113,7 +112,6 @@ app
     );
     assert.deepEqual(chips, ['Camera', 'Ads allowed', 'Cookies allowed']);
     assert.deepEqual([...new Set(iconRequests)].sort(), ['example.com', 'github.com']);
-    // A favicon that fails to load falls back to the first letter.
     await eventually(`${site('example.com')}.querySelector('.icon').textContent.trim()==='E'`);
 
     await run(`${site('example.com')}.querySelector('summary').click()`);
@@ -127,7 +125,6 @@ app
     await eventually(`${site('example.com')}.querySelector('summary .pill.warn')?.textContent.trim()==='Camera'`);
     assert.equal(permissions.decide('https://meet.example.com', ['camera']), 'deny');
 
-    // A switched-off exception stays listed so it can be switched back on.
     const ads = labelled('Show ads: https://example.com');
     await run(`${ads}.click()`);
     await eventually(`${ads}.getAttribute('aria-checked')==='false'`);

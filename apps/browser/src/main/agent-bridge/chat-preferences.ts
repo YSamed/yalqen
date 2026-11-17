@@ -17,7 +17,6 @@ interface SavedChatPreferences extends ChatPreferences {
   version: 1;
 }
 
-// Claude only lists its models once a session is running, so the panel shows these until the first reply.
 export const FALLBACK_MODELS: AgentChatModel[] = [
   { value: 'default', label: 'Default', efforts: [...EFFORTS] },
   { value: 'opus', label: 'Opus', efforts: [...EFFORTS] },

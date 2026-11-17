@@ -150,7 +150,6 @@ app
     const extension = await browsing.extensions.loadExtension(source);
     await page.loadURL(`chrome-extension://${extension.id}/page.html`);
     const opener = tabManager.open(`http://127.0.0.1:${server.address().port}/`);
-    // A tab to the right of the opener: closing the sign-in tab used to activate this one instead.
     tabManager.open(`http://127.0.0.1:${server.address().port}/other`, { activate: false });
     const startingTabs = tabManager.tabs.length;
 
@@ -162,15 +161,12 @@ app
     await eventually(() => page.webContents.executeJavaScript(`removed.includes(${result.tabId})`));
     assert.equal(tabManager.activeId, opener);
 
-    // Electron's chrome.permissions rejects permissions it does not implement; Grammarly checks for
-    // "cookies" before reading its sign-in cookie.
     assert.deepEqual(await page.webContents.executeJavaScript('permissionChecks()'), {
       cookies: true,
       identity: true,
       listed: true,
     });
 
-    // Grammarly's background page throws at startup without chrome.windows and never loads the account.
     assert.deepEqual(await page.webContents.executeJavaScript('windowChecks()'), {
       current: page.id,
       callback: window.id,
@@ -189,7 +185,6 @@ app
         `focus:${window.id},focus:-1,removed:${window.id}`,
     );
 
-    // An idle worker stops and starts again later; attaching it the second time used to throw and crash the app.
     const [versionId] = Object.keys(browsing.serviceWorkers.getAllRunning()).map(Number);
     assert.equal(typeof versionId, 'number');
     for (const runningStatus of ['stopping', 'stopped', 'starting', 'running']) {

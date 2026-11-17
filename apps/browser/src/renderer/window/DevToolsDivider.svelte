@@ -1,8 +1,6 @@
 <script lang="ts">
   import { t } from '../../shared/i18n';
 
-  // The gap between the page and DevTools, which main reports in window coordinates. Dragging it sets the
-  // DevTools width; main keeps both views inside the page area.
   let { rect }: { rect: { x: number; y: number; width: number; height: number; value: number } } = $props();
 
   const send = window.yalqen.send;
@@ -19,7 +17,6 @@
     if (dragging) send({ type: 'resize-devtools', x: event.clientX });
   }
 
-  // Arrow keys move the divider: left gives DevTools more room, right gives the page more. Shift moves further.
   function key(event: KeyboardEvent): void {
     const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
     if (!direction) return;
@@ -33,7 +30,6 @@
   }
 </script>
 
-<!-- A focusable separator is the window splitter pattern: it reports DevTools' share and moves with the arrows. -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
   class="divider"

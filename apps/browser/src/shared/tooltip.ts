@@ -22,24 +22,16 @@ export interface TooltipSize {
 
 export const TOOLTIP_GAP = 6;
 
-// Overlays are views a little larger than the surface they draw, so it has room for its shadow. A shadow that
-// reaches past that room is cut off by the view's edge into a hard line.
 export interface OverlayShadow {
   y: number;
   blur: number;
 }
 
-export function shadowFits(shadow: OverlayShadow, pad: number): boolean {
-  return shadow.blur + Math.abs(shadow.y) <= pad;
-}
-
-// The tooltip view is this much larger than the tooltip on every side.
 export const TOOLTIP_PAD = 10;
 export const TOOLTIP_SHADOW: OverlayShadow = { y: 3, blur: 7 };
 export const TOOLTIP_EDGE = 8;
 export const TOOLTIP_MAX_TEXT = 200;
 
-// Titles carry their shortcut at the end, as in "Reload (⌘R)"; the tooltip draws it as key caps.
 const SHORTCUT = /^(.*\S)\s*\(([⌃⌥⇧⌘]+)([^\s()]{1,6})\)$/u;
 
 export function splitShortcut(title: string): { text: string; keys: string[] } {
@@ -48,7 +40,6 @@ export function splitShortcut(title: string): { text: string; keys: string[] } {
   return { text: match[1], keys: [...match[2], match[3].toUpperCase()] };
 }
 
-// Below the anchor and centred on it, kept inside the window; above it when there is no room below.
 export function placeTooltip(anchor: AnchorRect, size: TooltipSize, area: TooltipSize): { x: number; y: number } {
   const centered = anchor.x + anchor.width / 2 - size.width / 2;
   const x = Math.max(TOOLTIP_EDGE, Math.min(centered, area.width - size.width - TOOLTIP_EDGE));
@@ -85,7 +76,6 @@ export function validTheme(value: unknown): TooltipTheme | null {
   };
 }
 
-// The request comes from the browser interface over IPC; anything unexpected is dropped.
 export function validTooltip(value: unknown): TooltipRequest | null {
   if (typeof value !== 'object' || value === null) return null;
   const { text, keys, anchor, theme } = value as Record<string, unknown>;

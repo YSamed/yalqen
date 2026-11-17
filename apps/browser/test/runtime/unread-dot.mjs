@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
 
@@ -68,7 +69,7 @@ let state = {
   toolbarVisible: true,
   toolbarTabs: true,
   toolbarButtons: ['settings'],
-  material: 'opaque',
+  ...windowAppearance,
   accent: '#e8590c',
   device: null,
   zoom: 1,
@@ -119,7 +120,6 @@ app
     const run = (script) => window.webContents.executeJavaScript(script);
     const dots = (scope) => run(`document.querySelectorAll(${JSON.stringify(`${scope} .unread-dot`)}).length`);
 
-    // Only the tab whose site reports unread mail gets the dot, and its label says so.
     await eventually("document.querySelectorAll('aside .row').length === 2");
     assert.equal(await dots('aside'), 1);
     assert.match(await run("document.querySelector('aside .unread-dot').closest('.row').textContent"), /Inbox \(3\)/);
@@ -128,7 +128,6 @@ app
       /unread messages/,
     );
 
-    // The dot uses the accent colour and sits on the favicon's top-right corner.
     const dot = await run(`(() => {
       const dot = document.querySelector('aside .unread-dot').getBoundingClientRect();
       const icon = document.querySelector('aside .unread-dot').parentElement.getBoundingClientRect();
@@ -143,16 +142,13 @@ app
     assert.equal(dot.accent, '#e8590c');
     assert.equal(dot.color, 'rgb(232, 89, 12)');
 
-    // The narrow sidebar keeps the dot on its favicon-only buttons.
     push({ panelCollapsed: true });
     await eventually("document.querySelector('aside')?.classList.contains('collapsed')");
     await eventually("document.querySelectorAll('aside .unread-dot').length === 1");
 
-    // With tabs in the toolbar, the toolbar chip shows it.
     push({ panelCollapsed: false, sidebarVisible: false, toolbarTabs: true });
     await eventually("document.querySelectorAll('header .unread-dot').length === 1");
 
-    // Once the mail is read the dot goes away.
     push({ tabs: state.tabs.map((entry) => ({ ...entry, unread: false })) });
     await eventually("document.querySelectorAll('.unread-dot').length === 0");
   })

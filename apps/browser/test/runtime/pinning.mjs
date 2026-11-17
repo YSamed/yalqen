@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, WebContentsView, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import types from '../../dist/shared/types.js';
 import menus from '../../dist/main/window/window-menus.js';
@@ -59,7 +60,7 @@ app
       toolbarVisible: true,
       toolbarTabs: true,
       toolbarButtons: ['settings'],
-      material: 'opaque',
+      ...windowAppearance,
       defaultZoom: 1,
       downloads: { active: 0, progress: null, started: 0 },
       extensions: false,
@@ -133,7 +134,6 @@ app
       await eventually(`document.querySelectorAll('aside .favorite').length === ${index + 1}`);
       assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, index + 1);
     }
-    // A hidden window never advances the sidebar's reveal transition, so geometry would be read mid-slide.
     await window.webContents.executeJavaScript('document.getAnimations().forEach((animation) => animation.finish())');
     const geometry = await window.webContents.executeJavaScript(`(() => {
       const panel = document.querySelector('aside').getBoundingClientRect();
@@ -153,8 +153,6 @@ app
       ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => `https://${id}.example/`),
     );
     assert.equal(manager.options.closed.length, 0);
-    // Hidden launchers must not make newly pinned background tabs disappear.
-    // This is the user's actual appearance setting: expanded-only pins in a collapsed panel.
     for (const tab of manager.tabs) manager.togglePin(tab.id);
     collapsed = true;
     pinnedDisplay = 'expanded';

@@ -45,7 +45,6 @@
     };
   }
 
-  // The frame stays centred, so each edge moves half as far as the size changes.
   function moveDrag(event: PointerEvent): void {
     if (!drag) return;
     pending = {

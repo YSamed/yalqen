@@ -24,7 +24,6 @@ export interface ExtensionBridgeHost {
   isTab(contents: WebContents): boolean;
   windowId(contents: WebContents): number;
   isActive(contents: WebContents): boolean;
-  // Browser windows extensions may know about, most recently focused first.
   windows(): ExtensionWindowState[];
 }
 
@@ -33,12 +32,8 @@ interface Receiver {
   send(name: ExtensionBridgeEvent, args: unknown[]): void;
 }
 
-// Electron's chrome.tabs has no create/remove and never fires onUpdated/onRemoved, and chrome.cookies,
-// chrome.identity and chrome.windows are missing; sign-in flows such as Grammarly's open a tab, watch it reach the chromiumapp.org
-// redirect and then read the account cookie.
 export class ExtensionBridge {
   private readonly workers = new Map<number, Receiver>();
-  // A worker that stops and starts again keeps its ServiceWorkerMain and the IPC handlers on it.
   private readonly handled = new WeakSet<ServiceWorkerMain>();
   private readonly frames = new Map<WebContents, Receiver>();
   private readonly keepAlive = new Map<number, () => void>();
@@ -52,7 +47,6 @@ export class ExtensionBridge {
     for (const type of ['service-worker', 'frame'] as const) {
       session.registerPreloadScript({ type, filePath: preloadFile, matches: ['chrome-extension://*/*'] });
     }
-    // shortcut: events reach running workers only; Chrome would wake a stopped one, add that if an extension needs it.
     session.serviceWorkers.on('running-status-changed', ({ versionId, runningStatus }) => {
       if (runningStatus === 'stopped') this.workers.delete(versionId);
       else if (!this.workers.has(versionId)) this.attachWorker(versionId);
@@ -69,7 +63,6 @@ export class ExtensionBridge {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
       this.frames.set(contents, {
-        // A tab can navigate away from the extension page that subscribed.
         extensionId: () => (contents.isDestroyed() ? null : extensionIdOf(contents.getURL())),
         send: (name, args) => {
           if (!contents.isDestroyed()) contents.send(ExtensionBridgeChannel.event, name, args);
@@ -136,7 +129,6 @@ export class ExtensionBridge {
         if (!worker.isDestroyed()) worker.send(ExtensionBridgeChannel.event, name, args);
       },
     });
-    // Registering the handlers again would throw and crash the app the second time the worker starts.
     if (this.handled.has(worker)) return;
     this.handled.add(worker);
     worker.ipc.handle(ExtensionBridgeChannel.createTab, (_event, properties) =>
@@ -163,7 +155,6 @@ export class ExtensionBridge {
     };
     const contents = this.host.open(extensionTabUrl(url, extensionId), active !== false);
     if (!contents) throw new Error('No browser window to open the tab in');
-    // The worker would otherwise idle out mid sign-in and lose the listeners watching this tab.
     if (worker && !worker.isDestroyed()) this.keepAlive.set(contents.id, worker.startTask().end);
     return this.tab(contents, extensionId);
   }
@@ -192,7 +183,6 @@ export class ExtensionBridge {
     const updated = (change: Record<string, unknown>, only?: string) => {
       if (!isTab()) return;
       lastWindow = this.host.windowId(contents);
-      // The redirect carries the sign-in code, so only the extension it belongs to may see it.
       this.broadcast(
         'tabs.onUpdated',
         contents,
@@ -245,7 +235,6 @@ export class ExtensionBridge {
     }
   }
 
-  // shortcut: Chrome also shows URLs to extensions with matching host permissions; only "tabs" is checked here.
   private seesUrls(extensionId: string): boolean {
     return this.grant(extensionId).permissions.includes('tabs');
   }

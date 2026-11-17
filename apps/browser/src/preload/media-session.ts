@@ -1,8 +1,6 @@
 import { webFrame } from 'electron';
 import { MediaSessionEvent } from '../shared/sidebar-widgets.js';
 
-// Runs in the page's own world before its scripts: remembers the track handlers the page gives its
-// Media Session, reports which exist, and calls one when the sidebar player asks.
 const PAGE_SCRIPT = `(() => {
   if (!('mediaSession' in navigator)) return;
   const handlers = new Map();

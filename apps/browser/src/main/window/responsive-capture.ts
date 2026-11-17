@@ -7,7 +7,6 @@ interface CaptureContents {
   debugger: { sendCommand(method: string, params?: Record<string, unknown>): Promise<unknown> };
 }
 
-// CDP captures the emulated viewport even when it is larger than the native WebContentsView.
 export async function captureResponsiveScreenshot(
   contents: CaptureContents,
   viewport: ResponsiveScanViewport,

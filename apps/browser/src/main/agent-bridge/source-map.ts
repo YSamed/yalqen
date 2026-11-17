@@ -32,7 +32,6 @@ function decodeSegment(segment: string): number[] {
   return values;
 }
 
-// Lines and columns in and out are one-based, as in stack traces; source maps count from zero.
 export function originalPosition(map: RawSourceMap, line: number, column: number): OriginalPosition | null {
   const lines = map.mappings.split(';');
   if (line < 1 || line > lines.length) return null;
@@ -40,7 +39,6 @@ export function originalPosition(map: RawSourceMap, line: number, column: number
   let sourceLine = 0;
   let sourceColumn = 0;
   let best: OriginalPosition | null = null;
-  // Source fields are deltas across the whole mapping, so earlier lines still have to be walked.
   for (let index = 0; index < line; index++) {
     let generatedColumn = 0;
     for (const segment of lines[index].split(',')) {

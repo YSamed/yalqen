@@ -15,8 +15,6 @@
   import IconButton from '../ui/IconButton.svelte';
   import TextField from '../ui/TextField.svelte';
 
-  // Bookmarks in their folders on the right edge. A bookmark whose page is open looks like a tab, and clicking it
-  // switches to that tab, so the panel can stand in for the tab list.
   let { view, tabs, activeTabId }: { view: BookmarksPanelView; tabs: TabSnapshot[]; activeTabId: TabId | null } =
     $props();
 
@@ -59,8 +57,6 @@
     document.querySelector<HTMLInputElement>('.bookmark-editor input')?.select();
   }
 
-  // A press anywhere outside the edit card cancels it, like Cancel. Pages are other views the interface cannot see,
-  // so main reports presses in them.
   onMount(() =>
     window.yalqen.onPagePress(() => {
       editing = null;
@@ -321,7 +317,6 @@
     border-radius: 3px;
   }
 
-  /* A bookmark whose page is open reads as a tab; the one being viewed is lifted like the active tab. */
   .bookmark.open {
     color: var(--text);
   }

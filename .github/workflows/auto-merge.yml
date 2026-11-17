@@ -1,7 +1,6 @@
 name: Auto-merge
 
 on:
-  # Runs in the base repo context so the token secret is available to Dependabot PRs; no PR code is checked out.
   pull_request_target:
     types: [opened, reopened, ready_for_review]
 
@@ -21,7 +20,6 @@ jobs:
         if: github.event.pull_request.user.login == 'dependabot[bot]'
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
-      # A PAT is required: merges made with GITHUB_TOKEN do not trigger push workflows (CI, Release Please) on main.
       - if: steps.metadata.outcome == 'skipped' || steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr merge --auto --squash "$PR_URL"
         env:

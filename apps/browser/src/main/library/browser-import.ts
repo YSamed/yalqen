@@ -66,11 +66,9 @@ const CHROMIUM_BROWSERS = [
 ] as const;
 const PROFILE_DIR = /^(Default|Profile \d+)$/;
 const CHROMIUM_ROOTS = ['bookmark_bar', 'other', 'synced'] as const;
-// Milliseconds between 1601-01-01 (WebKit epoch) and 1970-01-01.
 const WEBKIT_EPOCH_OFFSET_MS = 11_644_473_600_000;
 const FIREFOX_PLACES = 'places.sqlite';
 const ARC_SIDEBAR = 'StorableSidebar.json';
-// Root guids from Firefox's Bookmarks.sys.mjs. The tags root (`tags________`) holds tags, not bookmarks.
 const FIREFOX_ROOTS = ['toolbar_____', 'menu________', 'unfiled_____', 'mobile______'] as const;
 const FIREFOX_BOOKMARK = 1;
 const FIREFOX_FOLDER = 2;
@@ -115,12 +113,10 @@ export function webkitTimeToUnixMs(value: unknown): number | null {
   return microsToUnixMs(value, WEBKIT_EPOCH_OFFSET_MS);
 }
 
-// Firefox counts microseconds from 1970-01-01, unlike Chromium.
 export function firefoxTimeToUnixMs(value: unknown): number | null {
   return microsToUnixMs(value, 0);
 }
 
-// The legacy display label is retained; structured paths preserve actual nesting.
 function folderTitle(segments: readonly string[]): string | null {
   return (
     segments
@@ -171,7 +167,6 @@ export function parseChromiumBookmarks(data: unknown): ParsedBookmarks {
   return { bookmarks, folders: importedFolders, skipped };
 }
 
-// Profiles of installed Chromium browsers that contain `fileName` (e.g. `Bookmarks`, `History`).
 export function chromiumProfiles(fileName: string, appSupport = APP_SUPPORT): ImportSource[] {
   return CHROMIUM_BROWSERS.flatMap(([browser, dir]) => {
     const root = path.join(appSupport, dir);
@@ -207,12 +202,6 @@ function profileNames(root: string): Record<string, string> {
   }
 }
 
-export async function importChromiumBookmarks(store: BookmarkStore, file: string): Promise<BookmarkImportResult> {
-  const parsed = parseChromiumBookmarks(JSON.parse(await fs.promises.readFile(file, 'utf8')));
-  const added = store.importBookmarks(parsed.bookmarks, parsed.folders);
-  return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
-}
-
 interface ArcItem {
   id?: unknown;
   parentID?: unknown;
@@ -227,7 +216,6 @@ interface ArcSpace {
   newContainerIDs?: unknown;
 }
 
-// Arc keeps pinned tabs, folders and Favorites in StorableSidebar.json, not in the Chromium Bookmarks file.
 export function arcSidebarSources(appSupport = APP_SUPPORT): ImportSource[] {
   const file = path.join(appSupport, 'Arc', ARC_SIDEBAR);
   return fs.existsSync(file) ? [{ label: `Arc — ${t('browserImport.arcSidebar')}`, file }] : [];
@@ -237,7 +225,6 @@ export function isArcSidebar(file: string): boolean {
   return path.basename(file) === ARC_SIDEBAR;
 }
 
-// Arc lists alternate a marker and an id: `["pinned", id]` in older files, `[{ "pinned": {} }, id]` in newer ones.
 function idAfter(list: unknown, matches: (entry: unknown) => boolean): string[] {
   if (!Array.isArray(list)) return [];
   return list.flatMap((entry, index) =>
@@ -253,7 +240,6 @@ export function parseArcSidebar(data: unknown): ParsedArcSidebar {
   const containers = (data as { sidebar?: { containers?: unknown } } | null)?.sidebar?.containers;
   type Container = { global?: unknown; items?: unknown; spaces?: unknown; topAppsContainerIDs?: unknown } | null;
   const list: Container[] = Array.isArray(containers) ? containers : [];
-  // `containers` alternates a marker and its value: `{ global: {} }` is the main sidebar, Little Arc windows come after.
   const global = list.findIndex((entry) => entry?.global !== undefined);
   const sidebar = (entry: Container) => Array.isArray(entry?.items) && Array.isArray(entry?.spaces);
   const container = global >= 0 && sidebar(list[global + 1]) ? list[global + 1] : list.find(sidebar);
@@ -285,7 +271,6 @@ export function parseArcSidebar(data: unknown): ParsedArcSidebar {
       if (tab) {
         const url = typeof tab.savedURL === 'string' ? tab.savedURL : '';
         const tabTitle = title || (typeof tab.savedTitle === 'string' ? tab.savedTitle : '');
-        // Workspaces keep a tab in every space that pins it, so this check is separate from the bookmark one below.
         if (space && canBookmark(url) && !space.has(url)) {
           space.set(url, { url, title: tabTitle, group: folders[1] ?? null });
         }
@@ -302,7 +287,6 @@ export function parseArcSidebar(data: unknown): ParsedArcSidebar {
           createdAt: null,
         });
       } else if (item.data?.list === undefined) {
-        // Split views and other groups hold tabs but are not folders the user named.
         walk(item.id as string, folders);
       } else if (folders.length < 127) {
         const segments = [...folders, title.trim() || t('bookmarks.newFolder')];
@@ -334,7 +318,6 @@ export function parseArcSidebar(data: unknown): ParsedArcSidebar {
   return { bookmarks, folders: importedFolders, skipped, spaces };
 }
 
-// Names that already exist are rejected by the store, so importing again adds nothing.
 function saveSpaces(workspaces: WorkspaceStore, spaces: readonly ImportedSpace[]): number {
   return spaces.filter(({ name, tabs }) =>
     workspaces.save(name.slice(0, 80), {
@@ -362,7 +345,6 @@ export async function importArcSidebar(
   try {
     data = JSON.parse(text);
   } catch {
-    // Arc rewrites the file while it runs, so a broken copy usually means Arc is still open.
     throw Object.assign(new Error('Arc sidebar file is incomplete'), { code: 'ERR_SOURCE_BUSY' });
   }
   const parsed = parseArcSidebar(data);
@@ -390,8 +372,6 @@ export async function importBookmarkFile(
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
 
-// Chromium keeps one row per address with its latest visit; hidden rows are subframes the user never opened.
-// SQLite sorts newest first so reading can stop at the history cap; rowid keeps the source order at equal times.
 const CHROMIUM_HISTORY_QUERY =
   'SELECT url, title, last_visit_time FROM urls WHERE hidden = 0 ORDER BY last_visit_time DESC, rowid';
 
@@ -408,8 +388,6 @@ function newestWebVisits<Row extends { url?: unknown; title?: unknown }>(
 ): ImportedVisit[] {
   type Candidate = { visit: ImportedVisit; order: number };
   const newest: Candidate[] = [];
-  // The oldest retained visit is first; at equal times the last source row is
-  // replaced first, preserving the stable order of the original full-array sort.
   const compare = (a: Candidate, b: Candidate) => a.visit.visitedAt - b.visit.visitedAt || b.order - a.order;
   const siftDown = (start: number): void => {
     let parent = start;
@@ -430,14 +408,10 @@ function newestWebVisits<Row extends { url?: unknown; title?: unknown }>(
     const time = visitedAt(row);
     if (time === null) continue;
     if (newest.length === MAX_VISITS) {
-      // Small histories only need the final sort. Larger sources retain at most
-      // MAX_VISITS candidates instead of materializing and sorting every row.
       if (!heap) {
         for (let index = Math.floor(newest.length / 2) - 1; index >= 0; index--) siftDown(index);
         heap = true;
       }
-      // A later source row also loses an equal-time tie. Discard it before URL
-      // parsing and allocation once it cannot enter the retained results.
       if (time <= newest[0].visit.visitedAt) continue;
     }
     const url = typeof row.url === 'string' ? row.url : '';
@@ -456,7 +430,6 @@ function newestWebVisits<Row extends { url?: unknown; title?: unknown }>(
   return newest.sort((a, b) => compare(b, a)).map(({ visit }) => visit);
 }
 
-// The source browser may be running and writing, so SQLite only ever opens a private copy.
 async function querySqliteCopy<Result>(
   file: string,
   query: string,
@@ -473,12 +446,10 @@ async function querySqliteCopy<Result>(
     }
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- load SQLite only when importing
     const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite');
-    // Not read-only: a journal copied mid-write must be rolled back, and that only touches the copy.
     const db = new DatabaseSync(copy, { readBigInts: true });
     try {
       return read(db.prepare(query).iterate());
     } catch (error) {
-      // SQLITE_ERROR (missing table or column) and SQLITE_NOTADB mean some other kind of file.
       const errcode = (error as { errcode?: unknown } | null)?.errcode;
       throw errcode === 1 || errcode === 26 ? new SyntaxError('Unexpected database') : error;
     } finally {
@@ -497,7 +468,6 @@ export async function importChromiumHistory(store: HistoryStore, file: string): 
   return { visits: added, skipped: visits.length - added };
 }
 
-// Only `[ProfileN]` sections list profiles; `[Install…]` and `[BackgroundTasksProfiles]` point at them again.
 export function parseFirefoxProfiles(ini: string, root: string): FirefoxProfile[] {
   const profiles: Record<string, string>[] = [];
   let section: Record<string, string> | null = null;
@@ -519,7 +489,6 @@ export function parseFirefoxProfiles(ini: string, root: string): FirefoxProfile[
     }));
 }
 
-// Each Firefox profile keeps bookmarks and history together in one places.sqlite.
 export function firefoxProfiles(appSupport = APP_SUPPORT): ImportSource[] {
   const root = path.join(appSupport, 'Firefox');
   let ini: string;
@@ -597,7 +566,6 @@ export async function importFirefoxBookmarks(store: BookmarkStore, file: string)
   return { ...added, skipped: parsed.skipped + parsed.bookmarks.length - added.bookmarks };
 }
 
-// Hidden rows are frames and redirect sources that Firefox leaves out of its own history.
 const FIREFOX_HISTORY_QUERY =
   'SELECT url, title, last_visit_date FROM moz_places WHERE hidden = 0 ORDER BY last_visit_date DESC, rowid';
 

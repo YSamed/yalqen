@@ -21,9 +21,7 @@ interface PermissionHandlerOptions {
   sessions: readonly (readonly [Session, boolean])[];
   storeFor: (isPrivate: boolean) => PermissionStore;
   parentOf: (contents: WebContents) => BaseWindow | undefined;
-  // Kinds the user chose never to be asked about; undecided requests for them are refused silently.
   blockedRequests: () => readonly SitePermission[];
-  // Links to apps (slack://…), which Electron asks about as "openExternal".
   appLinks: AppLinks;
 }
 
@@ -35,8 +33,6 @@ export function installPermissionHandlers({
   appLinks,
 }: PermissionHandlerOptions): void {
   let prompts: Promise<unknown> = Promise.resolve();
-  // Prompts are shown one at a time; a queued request is decided again once its turn comes,
-  // since an earlier answer may already cover it.
   const ask = (
     contents: WebContents,
     isPrivate: boolean,
@@ -68,7 +64,6 @@ export function installPermissionHandlers({
     return answer;
   };
 
-  // A site allowed in Yalqen still gets a silent, empty stream until macOS lets Yalqen itself use the device.
   const systemAccess = async (contents: WebContents, kinds: readonly SitePermission[]): Promise<boolean> => {
     for (const device of mediaDevices(kinds)) {
       if (await requestSystemAccess(device)) continue;
@@ -97,7 +92,6 @@ export function installPermissionHandlers({
         callback(true);
         return;
       }
-      // A sign-in page handing its token back to an app: ask, then Electron passes the link to the system.
       if (permission === 'openExternal') {
         const url = 'externalURL' in details ? details.externalURL : undefined;
         if (!url) {
@@ -107,7 +101,6 @@ export function installPermissionHandlers({
         appLinks.ask(contents, url, details.requestingUrl, isPrivate).then(callback, () => callback(false));
         return;
       }
-      // Let Electron 45 screen-sharing requests proceed to the display-media source picker.
       if (permission === 'display-capture') {
         const origin = permissionOrigin(details.requestingUrl);
         callback(!!origin && origin === permissionOrigin(contents.getURL()));

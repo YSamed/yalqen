@@ -23,7 +23,6 @@
 
   const api = window.yalqenSettings;
 
-  // Enabled extensions can be pinned to the toolbar next to the built-in buttons.
   let installed = $state<ExtensionInfo[]>([]);
   const toolbarExtensions = $derived<ToolbarExtension[]>(
     installed.flatMap((extension) =>
@@ -52,7 +51,6 @@
     ...ACCENT_COLORS.map(({ id, hex }) => ({ id, hex, label: t(`accent.${id}`) })),
   ];
 
-  // Sidebar visibility, width and side are three settings, but people pick them as one layout.
   type Layout = 'left-wide' | 'left-narrow' | 'right-wide' | 'right-narrow' | 'hidden';
   const layoutOptions = [
     { value: 'left-wide', label: t('settings.layoutLeftWide') },

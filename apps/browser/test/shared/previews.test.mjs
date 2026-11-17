@@ -127,9 +127,7 @@ test('previews open beside the sidebar and stay inside the window', () => {
   const size = { width: 300, height: 160 };
   assert.deepEqual(placePreview({ x: 10, y: 50, width: 60, height: 40 }, size, area), { x: 78, y: 50 });
   assert.deepEqual(placePreview({ x: 10, y: 700, width: 60, height: 40 }, size, area), { x: 78, y: 632 });
-  // A sidebar on the right opens it to the left.
   assert.deepEqual(placePreview({ x: 1130, y: 50, width: 60, height: 40 }, size, area), { x: 822, y: 50 });
-  // A wide toolbar tab gets it underneath.
   assert.deepEqual(placePreview({ x: 100, y: 10, width: 1000, height: 30 }, size, area), { x: 100, y: 48 });
 });
 

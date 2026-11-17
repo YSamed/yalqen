@@ -1,4 +1,3 @@
-// Real Chromium requests and cosmetic injection, using a disposable profile and local HTTP server.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -92,7 +91,6 @@ app
     assert.equal(await fetchAd(page), false);
     console.log('PASS: real network and cosmetic filters honor origin and private overrides');
 
-    // Secure SameSite=None cookies are valid on localhost even with an HTTP test server.
     await normal.cookies.set({ url: tracker, name: 'existing', value: '1', secure: true, sameSite: 'no_restriction' });
     cookies.setThirdPartyCookieBlocking(normal, true, (url) => policy.isAllowed('blockThirdPartyCookies', url));
     const fetchCookies = () =>

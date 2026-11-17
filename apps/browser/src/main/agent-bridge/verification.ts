@@ -34,7 +34,6 @@ export function replayPlan(episode: ErrorEpisode): ReplayPlan {
     if (action.kind === 'input') {
       skipped.push(`${event.summary}: typed values are not recorded, so the field keeps what it has now`);
     } else if (action.kind === 'submit') {
-      // The click or Enter that submitted the form is replayed, and submits it again.
       continue;
     } else if (!action.selector) {
       skipped.push(`${event.summary}: no selector was recorded`);

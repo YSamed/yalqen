@@ -4,7 +4,6 @@ import sourceMap from '../../../dist/main/agent-bridge/source-map.js';
 
 const { inlineSourceMap, originalPosition } = sourceMap;
 
-// Line 1: col 0 -> a.jsx 1:1. Line 2: col 0 -> a.jsx 2:1, col 6 -> a.jsx 2:7, col 20 -> b.jsx 9:3.
 const map = { sources: ['a.jsx', 'b.jsx'], mappings: 'AAAA;AACA,MAAM,cCOJ' };
 
 test('originalPosition finds the closest mapping at or before the column', () => {

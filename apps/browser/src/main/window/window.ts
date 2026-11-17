@@ -131,14 +131,11 @@ import { windowColorHex } from '../../shared/window-color.js';
 import { IS_MAC, openAsText } from '../platform.js';
 
 const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
-// The Windows/Linux caption buttons float over the chrome, so their ink has to match the chrome's
-// own ink or the glyphs disappear into it. These track the interface's `--text` token.
 const TITLEBAR_SYMBOL_COLORS = { light: '#1a1b1e', dark: '#f4f4f7' };
 const TITLEBAR_OVERLAY_HEIGHT = 44;
 const CASCADE_OFFSET = 24;
 const REVEAL_FALLBACK_MS = 1000;
 const FIRST_PAINT_WAIT_MS = 200;
-// Resolves when the page has drawn, or after a short wait where a hidden page reports no paint.
 const FIRST_PAINT_SCRIPT = `new Promise((resolve) => {
   if (performance.getEntriesByType('paint').length > 0) return resolve();
   new PerformanceObserver((_list, observer) => {
@@ -150,17 +147,14 @@ const FIRST_PAINT_SCRIPT = `new Promise((resolve) => {
 const MAX_PICKED_ELEMENTS = 5;
 const MAX_AGENT_PROJECTS = 6;
 
-// Built at creation and rebuilt on every theme flip, so the two must not drift apart.
 function titleBarOverlayOptions(): TitleBarOverlay {
   return {
-    // Keeps the buttons floating over whatever the interface paints behind them.
     color: 'rgba(0, 0, 0, 0)',
     symbolColor: nativeTheme.shouldUseDarkColors ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
     height: TITLEBAR_OVERLAY_HEIGHT,
   };
 }
 
-// Native glass cannot be removed from a live window, so every window follows the value read at launch.
 let startupTransparency: boolean | null = null;
 
 export function glassAtLaunch(settings: SettingsStore): boolean {
@@ -208,7 +202,6 @@ export interface AppContext {
   clearClosedTabs(): void;
   pageTheme: string;
   permissionsFor(isPrivate: boolean): PermissionStore;
-  // A page's window.open of an app link (zoommtg://…): ask, then hand it to the system.
   openAppLink(contents: WebContents, url: string, isPrivate: boolean): void;
   zoomFor(isPrivate: boolean): ZoomStore;
   searchEngine(): SearchEngine;
@@ -260,7 +253,6 @@ export class YalqenWindow {
   private agentProviders: AgentProviderId[] = ['claude'];
   private readonly projectFiles = new ProjectFiles();
   private agentPanelOpen = false;
-  // The bookmarks panel shares the right edge with the AI panel; opening one closes the other.
   private bookmarksPanelOpen = false;
   private bookmarksPanelCache: { revision: number; view: BookmarksPanelView } | null = null;
   private signingIn = false;
@@ -270,7 +262,6 @@ export class YalqenWindow {
   private readonly responsiveScans = new Map<string, ResponsiveScanManager>();
   private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
-  // view.webContents reads undefined once the contents are destroyed; this reference keeps answering isDestroyed().
   readonly uiContents: Electron.WebContents;
   private readonly commandHost: CommandBarHost;
   private readonly findHost: FindBarHost;
@@ -322,7 +313,6 @@ export class YalqenWindow {
     this.uiContents.on('will-navigate', (event) => event.preventDefault());
     this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     watchInterfaceBridge(this.uiContents);
-    // The first native window takes about 40 ms to create, so the interface loads meanwhile.
     void loadRenderer(this.uiContents, rendererPath('index.html'), { lang: getLocale() });
 
     const from = options.from?.window.getBounds();
@@ -336,7 +326,6 @@ export class YalqenWindow {
       icon: app.icon,
       titleBarStyle: IS_MAC ? 'hiddenInset' : 'hidden',
       ...(!IS_MAC ? { titleBarOverlay: titleBarOverlayOptions() } : {}),
-      // Vibrancy at creation makes the compositor clear see-through chrome; a transparent window flashes in Stage Manager.
       ...(this.glassApplied ? { vibrancy: 'hud' as const } : {}),
       visualEffectState: 'active',
       show: false,
@@ -414,7 +403,6 @@ export class YalqenWindow {
       tabModes: () => app.settings.get().tabModes,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       onAppLink: (contents, url, isPrivate) => app.openAppLink(contents, url, isPrivate),
-      // Only the bookmarks panel has a popup that closes on clicks outside it, including in the page.
       onPagePress: () => {
         if (this.bookmarksPanelVisible && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.pagePress);
       },
@@ -534,8 +522,6 @@ export class YalqenWindow {
         enabled: app.settings.get().pageTranslation,
         language: getLocale(),
       }),
-      // Developer windows are private only to keep their session apart; they are meant for local work.
-      // Developer windows are private only to keep their session apart; they are meant for local work.
       agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate && !this.isDeveloper),
       agentTracing: () => app.settings.get().agentBridge && app.settings.get().agentTracing,
     });
@@ -569,8 +555,6 @@ export class YalqenWindow {
         else if (direction === 'left') this.navigateByGesture('forward', 'native');
       });
     }
-    // enter/leave-full-screen only fire once the macOS transition animation ends, while the
-    // first resize already reports the new state; waiting would show the bare glass meanwhile.
     let fullScreen = this.window.isFullScreen();
     const syncFullScreen = () => {
       this.applyLayout();
@@ -775,7 +759,6 @@ export class YalqenWindow {
     this.pushState();
   }
 
-  // The tree is rebuilt only when the bookmarks change; the icons come from the newest history visit per site.
   private bookmarksPanelView(): BookmarksPanelView {
     const bookmarks = this.app.bookmarks;
     if (this.bookmarksPanelCache?.revision === bookmarks.revision) return this.bookmarksPanelCache.view;
@@ -820,8 +803,6 @@ export class YalqenWindow {
     this.pushState();
   }
 
-  // Projects are shared by their tabs and tabs without a folder share the folderless project, so choosing a
-  // folder moves this tab to that folder's project instead of pulling the other tabs along.
   async selectAgentDirectory(): Promise<ReturnType<AgentSession['state']>> {
     if ((this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory) return this.agentSession.state();
     this.selectingAgentDirectory = true;
@@ -979,7 +960,6 @@ export class YalqenWindow {
     else if (this.agentProject.focusTab(tab?.id ?? '')) this.showAgentChat();
   }
 
-  // A chat that is still working moves to the background and keeps going; an idle one is just cleared.
   newAgentChat(): void {
     if (this.isPrivate && !this.isDeveloper) return;
     const chat = this.agentChat;
@@ -987,8 +967,6 @@ export class YalqenWindow {
     else if (!['starting', 'thinking', 'approval'].includes(chat.state().status)) chat.reset(chat.state().id);
   }
 
-  // A Claude session belongs to the folder it started in, so another project continues from a digest of
-  // the chat in a new tab rather than from the session itself.
   async continueAgentChatInProject(id: unknown): Promise<boolean> {
     if (typeof id !== 'string' || (this.isPrivate && !this.isDeveloper) || this.selectingAgentDirectory) return false;
     const source = this.agentProject;
@@ -1054,7 +1032,6 @@ export class YalqenWindow {
     return this.agentProjects.find((project) => !project.directory) ?? this.addProject();
   }
 
-  // A project lives as long as one of its tabs: closing the last one ends its chats and dev server.
   private closeAbandonedProjects(): void {
     for (const id of this.projectTabs.release((tabId) => this.tabs.snapshotFor(tabId) !== null)) {
       const project = this.agentProjects.find((candidate) => candidate.id === id);
@@ -1128,7 +1105,6 @@ export class YalqenWindow {
     try {
       const [real, root] = await Promise.all([fs.realpath(file), fs.realpath(directory)]);
       if (!real.startsWith(root + path.sep) || !(await fs.stat(real)).isFile()) return false;
-      // -t opens the file as text, so a script or app bundle Claude wrote is never launched.
       await openAsText(real);
       return true;
     } catch {
@@ -1149,7 +1125,6 @@ export class YalqenWindow {
     }
   }
 
-  // Signing out ends the provider's login on this computer, terminal sessions included, so it is confirmed first.
   async signOutAgent(): Promise<boolean> {
     if ((this.isPrivate && !this.isDeveloper) || this.signingIn) return false;
     const chat = this.agentChat;
@@ -1369,7 +1344,6 @@ export class YalqenWindow {
       .filter((reference) => reference !== undefined);
     const contexts = resolveAgentContexts(tabIds, this.state().tabs, this.isDeveloper);
     if (!contexts) return false;
-    // Pages outside local development are read only when the user attaches them to this message.
     const pages: Record<string, PageText> = Object.create(null);
     const external = contexts.filter((context) => !context.local);
     const capturedPages = await Promise.all(external.map((context) => this.tabs.pageText(context.id)));
@@ -1377,7 +1351,6 @@ export class YalqenWindow {
     external.forEach((context, index) => {
       pages[context.id] = capturedPages[index]!;
     });
-    // A closed, navigated or newly private tab must not send content under its old attachment.
     const current = resolveAgentContexts(
       contexts.map((context) => context.id),
       this.state().tabs,
@@ -1411,7 +1384,6 @@ export class YalqenWindow {
     const changed = (Object.keys(layout) as (keyof ChromeLayout)[]).filter((key) => layout[key] !== this.layout[key]);
     if (changed.length > 0) {
       this.layout = layout;
-      // A sliding panel only moves the page, so it skips the window-wide relayout on every frame.
       if (changed.length === 1 && changed[0] === 'panelSlide') {
         const { width, height } = this.window.getContentBounds();
         this.placePage(width, height);
@@ -1422,12 +1394,9 @@ export class YalqenWindow {
     this.revealWhenPainted();
   }
 
-  // The window stays hidden until the chrome has its real layout and has drawn it, so the page
-  // never jumps from the default bounds and the glass never shows empty first.
   private revealWhenPainted(): void {
     if (this.revealPending || this.revealed) return;
     this.revealPending = true;
-    // A page in a hidden window does not draw; without throttling it does, until the window is shown.
     this.uiContents.setBackgroundThrottling(false);
     void this.uiContents.executeJavaScript(FIRST_PAINT_SCRIPT).then(this.reveal, this.reveal);
   }
@@ -1942,7 +1911,6 @@ export class YalqenWindow {
         tabs.openBookmarks();
         break;
       case 'open-bookmarks-menu':
-        // With the bookmarks panel turned on, the toolbar button opens and closes it instead of the menu.
         if (app.settings.get().bookmarksPanel && !this.webApp) {
           this.toggleBookmarksPanel();
           break;
@@ -1976,7 +1944,6 @@ export class YalqenWindow {
         tabs.toggleTranslation();
         break;
       case 'open-app-menu': {
-        // macOS has a global menu bar, so the button is not shown and this should never arrive.
         if (IS_MAC) break;
         const menu = Menu.getApplicationMenu();
         if (menu && !this.window.isDestroyed()) menu.popup({ window: this.window });
@@ -2012,7 +1979,6 @@ export class YalqenWindow {
     if (template && !this.window.isDestroyed()) this.popup(template);
   }
 
-  // A pinned extension's toolbar button does what its entry in the extensions menu does.
   private openExtensionAction(id: string, anchor: AnchorRect): void {
     if (this.isPrivate) return;
     const action = this.app.extensions.actions().find((candidate) => candidate.id === id);
@@ -2029,7 +1995,6 @@ export class YalqenWindow {
     }
   }
 
-  // Hovering a Gmail or Calendar tile or row shows its unread mail or next events beside it.
   private showPreview(value: unknown): void {
     const request = validPreviewRequest(value);
     if (!request || this.isPrivate || this.isDeveloper) return;
@@ -2054,8 +2019,6 @@ export class YalqenWindow {
     });
   }
 
-  // A click on a message opens its conversation in the Gmail tab, a click on an event opens its details in
-  // the Calendar tab, and anything else in the preview switches to the tab.
   private openFromPreview(choice: PreviewChoice): void {
     const shown = this.previewShown;
     this.previewShown = null;
@@ -2279,7 +2242,6 @@ export class YalqenWindow {
   private showContextMenu(contents: Electron.WebContents, params: Electron.ContextMenuParams): void {
     const tabs = this.tabs;
     const history = contents.navigationHistory;
-    // Pages opened from this one keep its mode, so a developer tab's links stay in the developer session.
     const mode = modeFlags(tabs.modeOfContents(contents));
     const translation = tabs.snapshotFor()?.translation;
     const template = contextMenuTemplate(params, {
@@ -2359,7 +2321,6 @@ export class YalqenWindow {
     if (!this.window.isFullScreen()) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
   }
 
-  // Windows and Linux draw the caption buttons themselves, so a theme flip has to repaint their ink.
   private applyTitleBarTheme(): void {
     if (IS_MAC || this.window.isDestroyed()) return;
     this.window.setTitleBarOverlay(titleBarOverlayOptions());

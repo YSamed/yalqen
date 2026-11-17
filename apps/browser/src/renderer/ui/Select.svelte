@@ -46,7 +46,6 @@
   }
 
   function onListKeydown(event: KeyboardEvent): void {
-    // Tab closes like a native select; focus returns to the trigger, then moves on.
     if (event.key === 'Tab') return list.hidePopover();
     const all = items();
     const index = all.indexOf(document.activeElement as HTMLElement);
@@ -78,7 +77,6 @@
   style:anchor-name={anchor}
   onkeydown={onTriggerKeydown}
 >
-  <!-- every label sits in one grid cell so the trigger keeps the widest option's width -->
   <span class="select-value">
     {#each options as option (option.value)}
       <span class:current={option.value === value}>{option.short ?? option.label}</span>

@@ -89,7 +89,6 @@ test('browser tab switches restore the selected chat and picked elements without
   assert.deepEqual(host.pickedElements, [{ id: 'admin-element' }]);
   assert.equal(JSON.parse(sent.at(-1).data).messages[0].text, 'admin conversation');
   assert.deepEqual(disposed, []);
-  // New tabs start on the folderless project until they are given one.
   assert.deepEqual(cancelled, ['shop', 'loose', 'shop', 'loose', 'admin', 'shop']);
 });
 

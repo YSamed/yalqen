@@ -75,10 +75,10 @@ test('malformed tooltip requests are dropped', () => {
 });
 
 test('overlay shadows stay inside the room around their surface', () => {
-  const { shadowFits, TOOLTIP_PAD, TOOLTIP_SHADOW } = tooltip;
-  // A shadow that reaches past the view is cut off into a hard edge.
-  assert.equal(shadowFits(TOOLTIP_SHADOW, TOOLTIP_PAD), true);
-  assert.equal(shadowFits(previews.PREVIEW_SHADOW, previews.PREVIEW_PAD), true);
-  assert.equal(shadowFits({ y: 6, blur: 18 }, 10), false);
-  assert.equal(shadowFits({ y: -3, blur: 8 }, 10), false);
+  for (const [shadow, pad] of [
+    [tooltip.TOOLTIP_SHADOW, tooltip.TOOLTIP_PAD],
+    [previews.PREVIEW_SHADOW, previews.PREVIEW_PAD],
+  ]) {
+    assert.ok(shadow.blur + Math.abs(shadow.y) <= pad);
+  }
 });

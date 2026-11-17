@@ -16,7 +16,6 @@ interface UpdaterOptions {
   beforeInstall(): void | boolean | Promise<void | boolean>;
 }
 
-// electron-updater loads every platform's updater up front, so it is only required once the first check runs.
 export function loadAutoUpdater(): UpdaterBackend {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- deferred to keep it off the startup path
   return (require('electron-updater') as { autoUpdater: AppUpdater }).autoUpdater;

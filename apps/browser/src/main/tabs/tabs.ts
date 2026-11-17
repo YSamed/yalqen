@@ -130,19 +130,14 @@ interface TabManagerOptions {
   privateWindow: boolean;
   session: Session;
   privateSession: Session;
-  // Developer tabs in an ordinary window browse here; developer windows pass it as their private session too.
   developerSession?: Session;
   developerWindow?: boolean;
-  // The "Tab modes" setting: the mode slider, new tabs taking the mode in front and the modes' looks.
   tabModes?: () => boolean;
   onPrivateEnded: () => void;
-  // window.open of a link to an app (slack://…), which belongs to the app rather than a tab.
   onAppLink?: (contents: WebContents, url: string, isPrivate: boolean) => void;
-  // A mouse press in any page of this window.
   onPagePress?: () => void;
   onDeveloperEnded?: () => void;
   freezeBackground: () => boolean;
-  // "Keep pinned tabs on their site": pinned tabs load at their pinned address and send other sites to new tabs.
   pinnedTabsStayHome?: () => boolean;
   pictureInPicture?: () => boolean;
   onChange: (persist: PersistChange) => void;
@@ -400,7 +395,6 @@ export class TabManager {
     placement.bounds = bounds;
     placement.newTabCenterOffset = newTabCenterOffset;
     for (const tab of this.shown) {
-      // The new tab applies the offset on its own resize, so it has to arrive before the bounds do.
       placement.syncNewTabCenter(tab);
       if (boundsChanged && tab.view) placement.place(tab, tab.view, true);
     }
@@ -461,7 +455,6 @@ export class TabManager {
   ): TabId {
     if (this.routeAppNavigation(null, url)) return this.activeId ?? '';
     const upgraded = this.options.upgradeHttp(url);
-    // Without a mode the tab takes the window's; asking for a private or normal tab in a developer window gets one.
     const windowMode = isPrivate === undefined && developer === undefined;
     const tab = this.createRecord(
       { url: upgraded ?? url },
@@ -512,7 +505,6 @@ export class TabManager {
     this.showVisible();
     const view = next.view!;
     if (next.url !== 'about:blank') view.webContents.focus();
-    // Never wait for a load, screenshot or animation before the page can receive input.
     if (wasLive) view.webContents.send(PageChannel.tabTransition, animate ? Date.now() : null);
     this.changed(true);
   }
@@ -539,7 +531,6 @@ export class TabManager {
     this.split(side === 'left' ? [id, ...current] : [...current, id], true);
   }
 
-  // Makes room beside the visible panes while a tab is dragged over the page.
   previewSplit(id: TabId | null, side: unknown): void {
     const next = id && this.canSplitWithActive(id) ? (side === 'left' ? 'left' : 'right') : null;
     if (next === this.splitPreview) return;
@@ -582,7 +573,6 @@ export class TabManager {
     return id ? this.splits.find((split) => split.includes(id)) : undefined;
   }
 
-  // Returns a remaining member so a closing pane can hand focus to its neighbor.
   private leaveSplit(id: TabId): TabId | null {
     const split = this.splitOf(id);
     if (!split) return null;
@@ -836,7 +826,6 @@ export class TabManager {
     });
   }
 
-  // Unpinned tabs in this space that memory saving has unloaded, the ones the sidebar dims.
   private idleTabs(): Tab[] {
     return this.listOrder().filter(
       (tab) => !tab.pinnedUrl && !tab.isPrivate && tab.view === null && tab.id !== this.activeId,
@@ -875,7 +864,6 @@ export class TabManager {
   private bulkTargets(id: TabId, mode: BulkCloseMode): Tab[] {
     const ordered = this.listOrder();
     const source = this.find(id);
-    // A pinned launcher not opened in the list sits above all ordinary tabs.
     if (source?.pinnedUrl && !ordered.includes(source)) ordered.unshift(source);
     return bulkCloseTargets(ordered, id, mode);
   }
@@ -910,7 +898,6 @@ export class TabManager {
     if (keepId) this.closing.add(keepId);
     for (const tab of targets) this.closing.add(tab.id);
     try {
-      // Consent for the entire group comes before removing any page.
       for (const tab of targets) if (!(await this.confirmClose(tab))) return false;
       if (
         !unchanged() ||
@@ -927,7 +914,6 @@ export class TabManager {
         if (retained) this.activate(retained.id);
         else this.activeId = null;
       }
-      // The active source stays visible and closed tabs reopen in their original list order.
       for (const tab of targets.toReversed()) this.closeApproved(tab.id);
       if (this.activeId === null) this.open();
       return true;
@@ -1022,7 +1008,6 @@ export class TabManager {
     if (direction === 'previous' || direction === 'next') this.runMedia(id, mediaSkipScript(direction));
   }
 
-  // The sidebar player follows the tab that played sound last, until it closes or loses its media.
   mediaState(): MediaInfo | null {
     const tab = this.media ? this.find(this.media.tabId) : undefined;
     const contents = liveContents(tab);
@@ -1035,7 +1020,6 @@ export class TabManager {
       title: info?.title || tab.title || host,
       duration: info?.duration ?? null,
       position: info?.position ?? null,
-      // Chromium keeps a tab audible for a moment after it pauses, so a found element's own state wins.
       playing: info && info.position !== null ? !info.paused : audible,
       canPrevious: info?.canPrevious ?? false,
       canNext: info?.canNext ?? false,
@@ -1064,8 +1048,6 @@ export class TabManager {
       });
   }
 
-  // A paused background tab gets frozen once it falls silent, and a frozen page runs no script,
-  // so the player wakes it before pressing play or seeking.
   private runMedia(id: TabId, code: string): void {
     const tab = this.find(id);
     const contents = liveContents(tab);
@@ -1085,7 +1067,6 @@ export class TabManager {
       .then((raw) => {
         if (this.media?.tabId !== id) return;
         const info = parsePageMedia(raw);
-        // A page whose media went away (navigated, removed) drops the player unless it still plays sound.
         if (info && info.position === null && info.paused && !contents.isCurrentlyAudible()) this.media = null;
         else this.media = { tabId: id, info, updatedAt: Date.now() };
         this.changed();
@@ -1179,8 +1160,6 @@ export class TabManager {
     } else {
       if (tab.isPrivate || !/^https?:/.test(tab.url)) return;
       this.reanchorOpenedPinned(id);
-      // Pinning an existing row keeps it open even in the background. Otherwise
-      // expanded-only/hidden launchers make that row inaccessible in a collapsed panel.
       this.openedPinned.set(id, this.previousUnpinnedId(id));
       tab.pinnedUrl = tab.url;
       this.freezer.unfreeze(tab);
@@ -1214,7 +1193,6 @@ export class TabManager {
     );
   }
 
-  // The other site opens next to the pinned tab and in front of it; closing it comes back to the pinned tab.
   private openFromPinned(pinned: Tab, url: string): void {
     const opened = this.find(this.open(url, { activate: true, isPrivate: false }));
     if (opened && opened !== pinned) opened.openerId = pinned.id;
@@ -1433,8 +1411,6 @@ export class TabManager {
             }
             resolve(success);
           };
-          // Consent was already collected for this exact document and input state.
-          // A new document or fresh page input never inherits that consent.
           const authorize = (event: Electron.Event) => {
             if (valid(true)) event.preventDefault();
           };
@@ -1491,8 +1467,6 @@ export class TabManager {
       });
   }
 
-  // The tab a hover preview reads from: the hovered tab, or for a favourite an open tab on the same site.
-  // Private tabs are never read.
   previewTab(id: TabId | null, url: string): PreviewTab | null {
     const kind = previewKind(url);
     if (!kind) return null;
@@ -1504,7 +1478,6 @@ export class TabManager {
     return tab ? { id: tab.id, url: tab.url, contents: liveContents(tab) } : { id: null, url, contents: null };
   }
 
-  // Previews read from background tabs, which may be frozen; the tab is woken for the read like pageText.
   async readForPreview(contents: WebContents, code: string): Promise<unknown> {
     const tab = this.tabs.find((candidate) => liveContents(candidate) === contents);
     if (!tab || contents.isDestroyed()) return null;
@@ -1517,7 +1490,6 @@ export class TabManager {
     }
   }
 
-  // A frozen background tab never runs the script, so it is woken for the read.
   async pageText(id: TabId, timeoutMs = 2000): Promise<PageText | null> {
     const tab = this.find(id);
     const contents = tab?.view?.webContents;
@@ -1644,8 +1616,6 @@ export class TabManager {
     }
   }
 
-  // Pages outside local development are read once, when the user picks a part of them; the agent gets
-  // no access to the tab itself.
   private async pickReference(tab: Tab, contents: WebContents): Promise<PickOutcome> {
     if (tab.isPrivate || !/^https?:/.test(tab.url)) return { status: 'not-local' };
     this.picking?.cancel();
@@ -1671,7 +1641,6 @@ export class TabManager {
     }
   }
 
-  // Lets the user click an element of the current web page; `read` turns the pick into a value.
   async pickPage<T>(read: PageReader<T>): Promise<PagePick<T>> {
     const tab = this.active();
     const contents = liveContents(tab);
@@ -1740,8 +1709,6 @@ export class TabManager {
     else contents.reload();
   }
 
-  // Only same-origin requests get a trace header: on a cross-origin request it would trigger a CORS
-  // preflight the backend may refuse.
   private traceHeaders(tab: Tab, paused: PausedRequest): HeaderValue[] {
     if (!tab.agent || !this.options.agentTracing()) return [];
     if (paused.resourceType !== 'Fetch' && paused.resourceType !== 'XHR') return [];
@@ -1806,9 +1773,6 @@ export class TabManager {
     else this.openDevTools(tab);
   }
 
-  // Electron's docked DevTools is a square panel inside the page's view, so the page's rounded corners stop
-  // where it starts. DevTools gets its own view instead, placed and rounded by the page placement. Electron
-  // then reports DevTools as closed, so the tab keeps track of it.
   openDevTools(tab = this.active()): void {
     const contents = liveContents(tab);
     if (!tab || !contents) return;
@@ -1816,7 +1780,6 @@ export class TabManager {
       const tools = new WebContentsView();
       tab.devTools = tools;
       contents.setDevToolsWebContents(tools.webContents);
-      // The DevTools page can close or crash on its own; the tab then lets it go and makes a new one next time.
       const gone = () => {
         if (tab.devTools === tools) this.devToolsEnded(tab);
       };
@@ -1840,14 +1803,12 @@ export class TabManager {
     this.changed();
   }
 
-  // The page menu's Inspect: DevTools opens beside the page if it is not open yet, then selects the element.
   inspect(contents: WebContents, x: number, y: number): void {
     const tab = this.tabs.find((item) => item.view?.webContents === contents);
     if (tab) this.openDevTools(tab);
     contents.inspectElement(x, y);
   }
 
-  // Dragging the gap between the page and DevTools; x is where the pointer is in the window.
   resizeDevTools(x: number): void {
     const tab = this.active();
     if (!tab?.devToolsShown || !Number.isFinite(x)) return;
@@ -1862,10 +1823,6 @@ export class TabManager {
     return tab && this.isVisible(tab) ? this.placement.devToolsDivider(tab) : null;
   }
 
-  // DevTools can end without closeDevTools: its own page closes or crashes, which Electron reports to the page as
-  // devtools-closed. (A crashed page drops its whole view, DevTools included.) The tab forgets it, so no empty
-  // DevTools view is left beside the page. Electron sends no event when closeDevTools() is called on a page with a
-  // DevTools view of its own, so closing goes through closeDevTools above.
   private devToolsEnded(tab: Tab): void {
     const tools = tab.devTools;
     if (!tools) return;
@@ -1960,10 +1917,8 @@ export class TabManager {
   openContents(url: string | null, activate: boolean): WebContents | null {
     const previous = this.activeId;
     const id = this.open(url ?? undefined, { activate, isPrivate: false });
-    // A web-app window hands the URL elsewhere and returns its current tab, which is not a new tab.
     if (id === previous) return null;
     const tab = this.find(id);
-    // Sign-in tabs close themselves once done; return to the tab the user was on, not the next one in the list.
     if (tab && activate && previous) tab.openerId = previous;
     return liveContents(tab) ?? null;
   }
@@ -1988,7 +1943,6 @@ export class TabManager {
     );
   }
 
-  // Private tabs, not counting developer tabs, which keep their data in the developer session.
   get hasPrivateTabs(): boolean {
     return this.tabs.some((tab) => tab.isPrivate && !tab.developer);
   }
@@ -1997,13 +1951,11 @@ export class TabManager {
     return this.tabs.some((tab) => tab.developer);
   }
 
-  // When the last tab of a mode goes, that mode's cookies, cache and permissions are forgotten.
   private endMode(mode: TabMode): void {
     if (mode === 'developer' && !this.hasDeveloperTabs) this.options.onDeveloperEnded?.();
     if (mode === 'private' && !this.hasPrivateTabs) this.options.onPrivateEnded();
   }
 
-  // Ordinary windows switch tabs between modes; private and developer windows keep theirs, and web apps have one.
   get canSwitchMode(): boolean {
     return this.modesOn && !this.options.privateWindow && !this.options.webAppScope;
   }
@@ -2019,8 +1971,6 @@ export class TabManager {
     return this.options.privateWindow ? 'private' : 'normal';
   }
 
-  // The plus button and Cmd+T open the new tab in the mode of the tab the user is on.
-  // The bookmarks panel's click: switch to a tab of this space already showing the page, or open it.
   openPage(url: string): TabId {
     const tab = tabForBookmark(url, this.here, this.activeId);
     if (!tab) return this.open(url, { isPrivate: false });
@@ -2032,7 +1982,6 @@ export class TabManager {
     return this.modesOn ? this.open(url, modeFlags(this.activeMode)) : this.open(url);
   }
 
-  // The mode of the tab showing these contents, for pages it opens; the window's mode for anything else.
   modeOfContents(contents: WebContents): TabMode {
     const tab = this.tabs.find((item) => item.view?.webContents === contents);
     if (tab) return modeOf(tab);
@@ -2048,8 +1997,6 @@ export class TabManager {
     );
   }
 
-  // The tab reloads its page in the new mode's session. Back and forward history stays behind, since it belongs
-  // to the old session. A pinned tab keeps its mode and the page opens in a new tab instead.
   async setMode(id: TabId, mode: TabMode): Promise<boolean> {
     const tab = this.find(id);
     if (!tab || !this.canSwitchMode || modeOf(tab) === mode) return false;
@@ -2136,7 +2083,6 @@ export class TabManager {
 
   private createRecord(saved: Partial<SavedTab> & { url: string }, isPrivate = false, developer = false): Tab {
     const tab = createTab(saved, isPrivate, developer);
-    // DevTools opens by itself in developer tabs only while tab modes are on.
     if (!this.modesOn) tab.devToolsOnLoad = false;
     return tab;
   }
@@ -2148,7 +2094,6 @@ export class TabManager {
 
   private ensureLive(tab: Tab): WebContentsView {
     if (tab.view) return tab.view;
-    // A pinned tab coming back after a restart or after memory saving starts again at its pinned address.
     if (tab.pinnedUrl && this.options.pinnedTabsStayHome?.() && tab.url !== tab.pinnedUrl) {
       tab.url = tab.pinnedUrl;
       tab.history = null;
@@ -2172,13 +2117,11 @@ export class TabManager {
     return createPageView(this.options.pagePreload, this.sessionFor(isPrivate, developer));
   }
 
-  // New developer tabs, popups from them and kept peeks open DevTools once their page is there.
   private openDevToolsWhenReady(tab: Tab, view: WebContentsView): void {
     tab.devToolsOnLoad = false;
     const open = () => {
       if (tab.view === view) this.openDevTools(tab);
     };
-    // A page that is already there, a kept peek or a popup, joins the window right after; DevTools follows it.
     if (view.webContents.getURL()) setImmediate(open);
     else view.webContents.once('dom-ready', open);
   }
@@ -2215,9 +2158,6 @@ export class TabManager {
     return this.placement.place(tab, view);
   }
 
-  // Sign-in popups (Google and other OAuth providers) report back through window.opener,
-  // so the tab must host the contents Chromium created for the popup instead of a fresh load.
-  // Electron omits the contents for noopener popups, so those get a regular view.
   private openChild(url: string, opener: Tab, webContents: WebContents | undefined): WebContents {
     const tab = this.createRecord({ url }, opener.isPrivate, opener.developer);
     tab.openerId = opener.id;
@@ -2273,7 +2213,6 @@ export class TabManager {
       const applied = emulation ? this.placement.place(tab, view) : this.placement.clearDevice(tab, view);
       void (applied ?? Promise.resolve()).then(async () => {
         const contents = view.webContents;
-        // Device changes reset the user agent, so the tab's own overrides go back on top.
         if (hasOverrides(tab.overrides) && tab.view === view && !contents.isDestroyed()) {
           await this.applyOverrides(tab, contents).catch((error: unknown) => {
             console.warn('[overrides] could not restore page overrides:', error);
@@ -2298,7 +2237,6 @@ export class TabManager {
     tab.detachListeners = () => {
       for (const dispose of disposers) dispose();
     };
-    // Registration order matters where several listeners share an event, so the groups run in sequence.
     this.listenForInput(tab, view, listen);
     this.listenForPageChrome(tab, view, listen);
     this.listenForWindowRequests(tab, contents, listen);
@@ -2313,13 +2251,10 @@ export class TabManager {
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
     });
 
-    // A page-level wheel listener for pinch would make every scroll wait for the page's main thread,
-    // so pinch uses Chromium's own visual zoom. A new renderer after navigation starts at the defaults.
     const allowPinch = () => void contents.setVisualZoomLevelLimits(1, MAX_PINCH_ZOOM).catch(() => {});
     allowPinch();
     listen('did-navigate', allowPinch);
 
-    // Clicking a split pane makes it the focused tab without the layout change activate() would do.
     listen('focus', () => {
       if (tab.id === this.activeId || !this.shown.includes(tab)) return;
       this.activeId = tab.id;
@@ -2375,7 +2310,6 @@ export class TabManager {
   private listenForWindowRequests(tab: Tab, contents: WebContents, listen: Listen): void {
     listen('will-prevent-unload', (event) => {
       if (event.defaultPrevented) return;
-      // Like Chromium, a page the user never touched cannot hold the window or the app open.
       if (!tab.interacted || this.options.confirmUnload(tab)) event.preventDefault();
     });
     listen('will-navigate', (event) => {
@@ -2423,7 +2357,6 @@ export class TabManager {
           return {
             action: 'allow',
             outlivesOpener: true,
-            // Electron passes the popup's contents in the options, though its typings omit them.
             createWindow: (options) => this.openChild(url, tab, (options as { webContents?: WebContents }).webContents),
           };
         }
@@ -2441,7 +2374,6 @@ export class TabManager {
     listen('destroyed', () => {
       setImmediate(() => {
         if (tab.view !== view || this.find(tab.id) !== tab) return;
-        // The listeners went away with the contents; removing them would touch the destroyed debugger.
         tab.detachListeners = null;
         this.destroyView(tab);
         this.close(tab.id);
@@ -2449,7 +2381,6 @@ export class TabManager {
     });
     listen('page-title-updated', (_event, title) => {
       if (tab.url === contents.getURL()) this.options.onVisitTitle(tab.visitId, title);
-      // Players retitle the page per track, which is the cue to re-read the metadata.
       if (this.media?.tabId === tab.id) void this.refreshMedia(tab.id);
       const unread = unreadCount(contents.getURL(), title, tab.unread);
       if (tab.title === title && tab.unread === unread) return;
@@ -2470,18 +2401,15 @@ export class TabManager {
     });
     listen('did-stop-loading', () => {
       tab.loading = false;
-      // A navigation that started but never committed (a download, an abort) leaves the page where it was.
       this.syncAgentFor(tab, tab.url);
       this.options.onVisitTitle(tab.visitId, contents.getTitle());
       this.freezer.maybeFreeze(tab);
       this.changed();
     });
     listen('audio-state-changed', ({ audible }) => {
-      // The previous page's sound stops after the next one commits, which must not count as the new page's sound.
       if (audible || tab.soundAt) tab.soundAt = Date.now();
       if (audible) this.media = { tabId: tab.id, info: null, updatedAt: Date.now() };
       const read = this.media?.tabId === tab.id ? this.refreshMedia(tab.id) : Promise.resolve();
-      // The player reads the paused state before the tab freezes, or it would keep showing it as playing.
       if (!audible) void read.then(() => this.freezer.freezeAfterGap(tab));
       this.changed();
     });
@@ -2521,9 +2449,6 @@ export class TabManager {
     const contents = view.webContents;
     listen('will-redirect', (event) => {
       if (!event.isMainFrame) return;
-      // A redirect keeps the user agent the navigation started with, so Gmail's hop to Google sign-in
-      // would show the page a Chrome user agent under Firefox headers; restart it with the right one.
-      // Changing it mid-navigation aborts the load, so the restart waits for the cancelled one to unwind.
       const userAgent = signInUserAgent(event.url, process.platform) ?? contents.session.getUserAgent();
       if (contents.getUserAgent() !== userAgent && !authRedirectExtension(event.url)) {
         event.preventDefault();
@@ -2716,7 +2641,6 @@ export class TabManager {
       const toolsContents = tools.webContents as WebContents | undefined;
       if (toolsContents && !toolsContents.isDestroyed()) toolsContents.close();
     }
-    // A view drops its contents once a page closes itself, despite the typings.
     const contents = view.webContents as WebContents | undefined;
     if (contents && !contents.isDestroyed()) contents.close();
   }
@@ -2743,7 +2667,6 @@ export class TabManager {
       autoReloadSeconds: tab.autoReload?.seconds ?? null,
       audible: liveContents(tab)?.isCurrentlyAudible() ?? false,
       muted: tab.muted,
-      // A discarded tab no longer runs the page, so whatever it last showed may be out of date.
       unread: tab.view !== null && (tab.unread ?? 0) > 0,
       canGoBack: history?.canGoBack() ?? false,
       canGoForward: history?.canGoForward() ?? false,

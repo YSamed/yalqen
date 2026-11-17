@@ -1,4 +1,3 @@
-// Run after build:main: electron test/runtime/download-location.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

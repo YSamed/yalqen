@@ -9,12 +9,9 @@ interface FreezeHost {
   changed(): void;
 }
 
-// Players fall quiet between tracks and ads, so a tab that made sound is kept running a while after it stops.
 const MEDIA_GAP_MS = 30_000;
 export const FREEZE_IDLE_MS = 10_000;
 
-// Chromium reports a playing tab as silent during a quiet passage; a muted autoplay that never made sound can still freeze.
-// shortcut: a page that made sound once keeps later muted autoplays running too; track sound per player if feeds stay awake.
 export function keepsPlaying(tab: Tab): boolean {
   return tab.pip || (tab.soundAt > 0 && (tab.playingMedia > 0 || Date.now() - tab.soundAt < MEDIA_GAP_MS));
 }
@@ -29,10 +26,7 @@ export class TabFreezer {
     if (!contents || contents.isDestroyed() || tab.frozen || tab.loading) return;
     if (!this.host.enabled() || this.host.isActive(tab) || tab.pinnedUrl || tab.autoReload) return;
     if (contents.isCurrentlyAudible() || keepsPlaying(tab) || tab.devToolsShown) return;
-    // A frozen opener misses the messages its sign-in popup posts back.
     if (this.host.hasLiveChild(tab)) return;
-    // Keep recently used pages warm while the user compares tabs. Chromium still
-    // throttles background timers; explicit freezing can wait until switching settles.
     const remaining = FREEZE_IDLE_MS - (Date.now() - tab.inactiveSince);
     if (remaining > 0) {
       if (!this.pending.has(tab)) {
@@ -61,7 +55,6 @@ export class TabFreezer {
     this.pending.delete(tab);
   }
 
-  // Resolves once the page runs again, for callers that must execute script in it right away.
   unfreeze(tab: Tab): Promise<void> {
     this.cancel(tab);
     if (!tab.frozen) return Promise.resolve();

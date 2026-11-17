@@ -30,14 +30,12 @@ import {
 
 const SETTLE_MS = 3000;
 const REPLAY_SETTLE_MS = 5000;
-// Exceptions thrown from a response handler land a moment after the network goes quiet.
 const AFTERMATH_MS = 400;
 const STEP_GAP_MS = 300;
 const MAX_WAIT_MS = 30_000;
 const MAX_AGENT_RULES = 20;
 const RESEND_BODY_LIMIT = 64 * 1024;
 const PAGE_WORK_BUSY = 'A browser check is already using this tab. Try again when it finishes.';
-// The session supplies these itself, or they describe the old connection.
 const RESEND_DROPPED_HEADERS = new Set(['host', 'content-length', 'cookie', 'connection', 'accept-encoding']);
 
 class ActionDenied extends Error {}
@@ -83,7 +81,6 @@ function eventsSince(runtime: TabRuntime, time: number): TimelineEvent[] {
 
 export class ActionRunner {
   private queue: Promise<unknown> = Promise.resolve();
-  // After the user presses Stop, the next action in that tab asks again even when actions are allowed.
   private readonly stopped = new Set<string>();
 
   constructor(private readonly options: ActionRunnerOptions) {}

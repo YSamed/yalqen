@@ -2,7 +2,6 @@ import { WebContentsView, type BaseWindow, type Rectangle, type Session, type Si
 import type { AnchorRect } from '../../shared/types.js';
 import { raiseToTop } from '../window/overlay-view.js';
 
-// Chrome's own limits for extension popups.
 const MIN_SIZE = 25;
 const MAX_WIDTH = 800;
 const MAX_HEIGHT = 600;

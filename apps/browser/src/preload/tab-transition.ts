@@ -10,7 +10,6 @@ export function setupTabTransition(): void {
     animation?.cancel();
     animation = null;
   };
-  // Set up lazily: most pages are never involved in an animated tab switch.
   let reducedMotion: MediaQueryList | null = null;
   ipcRenderer.on(PageChannel.tabTransition, (_event, startedAt: number | null) => {
     cancel();
@@ -31,8 +30,6 @@ export function setupTabTransition(): void {
       });
     }
     if (reducedMotion.matches) return;
-    // Opacity only: translating the document would move fixed/sticky controls.
-    // No fill mode or inline style changes; the site's own opacity returns automatically.
     const opacity = Number(getComputedStyle(root).opacity);
     const current = root.animate([{ opacity: opacity * 0.88 }, { opacity }], {
       id: 'yalqen-tab-transition',
@@ -44,9 +41,7 @@ export function setupTabTransition(): void {
       () => {
         if (animation === current) animation = null;
       },
-      () => {
-        /* Cancellation on another tab switch is expected. */
-      },
+      () => {},
     );
   });
   window.addEventListener('pagehide', cancel);

@@ -34,7 +34,6 @@ export interface NetworkRecord {
   url: string;
   resourceType?: string;
   startTime: number;
-  // CDP's monotonic clock in seconds; only differences between two of its values mean anything.
   monotonicStart: number;
   durationMs?: number;
   status?: number;
@@ -94,7 +93,6 @@ function clip(value: string): string {
   return value.length > MAX_TEXT_LENGTH ? `${value.slice(0, MAX_TEXT_LENGTH)}…` : value;
 }
 
-// CDP line and column numbers start at 0; editors and agents expect them to start at 1.
 function oneBased(value: unknown): number | undefined {
   const n = number(value);
   return n === undefined ? undefined : n + 1;
@@ -121,7 +119,6 @@ export function describeRemoteObject(value: unknown): string {
   return object.description ?? object.type ?? '';
 }
 
-// Applies console format specifiers the way DevTools shows them; %c only carries CSS, so it prints nothing.
 export function formatConsoleArgs(args: readonly unknown[]): string {
   const parts = args.map(describeRemoteObject);
   if (record(args[0]).type !== 'string' || parts.length < 2) return parts.join(' ');

@@ -65,7 +65,6 @@ export class BookmarkStore {
   private folderList: BookmarkFolder[] = [];
   private bookmarkList: Bookmark[] = [];
   private urls: Set<string> | null = null;
-  // Goes up on every change, so views built from the bookmarks know when to rebuild.
   private revisionCount = 0;
   private suggestionList: readonly Readonly<Pick<Bookmark, 'title' | 'url'>>[] | null = null;
   private readonly searchTexts = new WeakMap<Bookmark, { title: string; url: string; text: string }>();
@@ -144,8 +143,6 @@ export class BookmarkStore {
       .map((bookmark) => ({ ...bookmark }));
   }
 
-  // Suggestions read only title/address snapshots. Reuse them while bookmarks are
-  // unchanged, and freeze both levels so callers cannot modify store data.
   suggestions(): readonly Readonly<Pick<Bookmark, 'title' | 'url'>>[] {
     this.suggestionList ??= Object.freeze(this.bookmarkList.map(({ title, url }) => Object.freeze({ title, url })));
     return this.suggestionList;
@@ -266,7 +263,6 @@ export class BookmarkStore {
       seen.add(parent);
       parent = byId.get(parent)?.parentId ?? null;
     }
-    // Moving an entire branch must leave room for its deepest descendant.
     if (id) {
       const paths = bookmarkFolderPaths(this.folderList);
       for (const folder of this.folderList) {
@@ -298,7 +294,6 @@ export class BookmarkStore {
     this.save();
   }
 
-  // Imports only add: known addresses are skipped and folders with the same title are reused.
   importBookmarks(
     items: readonly ImportedBookmark[],
     importedFolders: readonly ImportedBookmarkFolder[] = [],
@@ -442,7 +437,6 @@ export function menuTitle(title: string): string {
 interface BookmarksMenuActions {
   open(url: string): void;
   showAll(): void;
-  // Without a file, the user picks one.
   importFrom(file?: string): void;
 }
 

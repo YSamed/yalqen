@@ -105,7 +105,7 @@ test('profile directories cannot redirect operations through symbolic links', (t
   fs.writeFileSync(path.join(outside, 'sentinel'), 'keep');
   const folder = path.join(root, 'profiles', work.id);
   fs.rmSync(folder, { recursive: true });
-  fs.symlinkSync(outside, folder);
+  fs.symlinkSync(outside, folder, process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => registry.activate([`${PROFILE_FLAG}${work.id}`], () => false));
   assert.throws(() => registry.remove(work.id, 'default'));
   assert.equal(fs.readFileSync(path.join(outside, 'sentinel'), 'utf8'), 'keep');

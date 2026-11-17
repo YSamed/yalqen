@@ -6,7 +6,6 @@ export interface SourceLocation {
 
 export interface InspectedSource extends SourceLocation {
   mapped: boolean;
-  // The location before source maps, for maps the page itself cannot fetch.
   raw: SourceLocation | null;
 }
 
@@ -17,7 +16,6 @@ export interface ComponentNode {
 
 export type Framework = 'react' | 'vue' | 'svelte';
 
-// The page-side inspector and the main process share this result format.
 export interface ComponentInspection {
   framework: Framework | null;
   development: boolean;

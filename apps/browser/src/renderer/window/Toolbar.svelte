@@ -27,7 +27,6 @@
     private: 'tabModes.private',
   };
 
-  // Roving focus inside the mode slider.
   function moveModeFocus(event: KeyboardEvent): void {
     const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
     const radios = [...(event.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role="radio"]')];
@@ -42,7 +41,6 @@
     radios[next].focus();
   }
 
-  // On a web page the normal icon is the site's lock, so the site information stays one click away.
   function modeIcon(mode: TabMode, tab: TabSnapshot): IconName {
     if (mode === 'developer') return 'code';
     if (mode === 'private') return 'private';
@@ -84,8 +82,6 @@
     leadingInset: number;
     trailingInset: number;
     centerOffset: number;
-    // Hidden sidebar: the tabs start at the leading edge instead of centering, so the empty space
-    // beside the address bar fills in and the group does not shift as tabs change width.
     alignLeading?: boolean;
     trailingOverhang?: number;
     agentAvailable: boolean;
@@ -150,8 +146,6 @@
     strip?.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   });
 
-  // Read on each alignment instead of tracked by the observer effect, so a sliding panel
-  // re-aligns the group without rebuilding the observer on every frame.
   let alignGroup: (() => void) | null = null;
   $effect(() => {
     void activeTabId;
@@ -167,7 +161,6 @@
     const align = () => {
       const headerBounds = header.getBoundingClientRect();
       const groupBounds = tabGroup.getBoundingClientRect();
-      // The new tab slot is wider than its button, so the visible group ends at the button.
       const contentRight =
         tabGroup.querySelector('.new-tab-slot > *')?.getBoundingClientRect().right ?? groupBounds.right;
       const contentCenter = (contentRight - groupBounds.left) / 2;
@@ -176,10 +169,7 @@
         ? leftLimit
         : headerBounds.left + headerBounds.width / 2 + centerOffset - contentCenter;
       const rightLimit = controls.getBoundingClientRect().left - 8 - groupBounds.width;
-      // Keep the group inside the space between the leading controls and the trailing ones, so
-      // switching tabs does not move it and it never overlaps either side.
       const left = Math.max(leftLimit, Math.min(targetLeft, rightLimit));
-      // Whole device pixels keep the address text from shimmering while the panel moves.
       groupOffset = Math.round((left - (groupBounds.left - groupOffset)) * devicePixelRatio) / devicePixelRatio;
       tabGroup.style.transform = `translateX(${groupOffset}px)`;
     };
@@ -221,7 +211,6 @@
   {@const extensionId = toolbarExtensionId(id)}
   {@const pinned = extensionId ? toolbarExtensions.find((extension) => extension.id === extensionId) : undefined}
   {#if extensionId}
-    <!-- A pinned extension that was removed or disabled simply has no button. -->
     {#if pinned}
       <IconButton class="extension" label={pinned.title} onclick={(event) => openExtensionAction(pinned.id, event)}>
         {#if pinned.icon}<img src={pinned.icon} alt="" width="16" height="16" />{:else}<Icon name="extensions" />{/if}
@@ -357,9 +346,6 @@
             <div class="pill">
               {#if modeSwitch}
                 {@const mode = modeOf(tab)}
-                <!-- Normal, developer and private: the tab reloads in the mode picked. Picking normal again opens
-                     the site information, as the lock did. -->
-                <!-- Arrow keys move between the modes; Space or Enter picks one, since picking reloads the tab. -->
                 <div
                   class="modes {mode}"
                   role="radiogroup"
@@ -482,7 +468,6 @@
                     />
                   {/if}
                   {#if states.length > 0}
-                    <!-- Re-creating the button on each agent read replays its highlight animation once. -->
                     {#key activeTab.agentReadAt}
                       <Button
                         size="sm"
@@ -642,7 +627,6 @@
 
   .new-tab-slot {
     display: flex;
-    /* The spare room beside the button goes first when tabs need the space. */
     flex: 0 1000 92px;
     min-width: var(--chrome-control-size);
   }
@@ -806,7 +790,6 @@
     --mode-color: var(--text);
   }
 
-  /* The highlight slides under the picked icon. */
   .mode-thumb {
     position: absolute;
     top: 2px;

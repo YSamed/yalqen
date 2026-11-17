@@ -8,8 +8,6 @@ import tabs from '../../dist/main/tabs/tabs.js';
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-tab-motion-'));
 app.setPath('userData', profile);
-// Windows occlusion tracking reports the window hidden whenever another window covers it, which
-// suppresses the fade. Disable it so visibility reflects the tab switch instead.
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 let stage = 'Electron ready';
 const deadline = setTimeout(() => {
@@ -59,8 +57,6 @@ app
     await contents.debugger.sendCommand('Emulation.setEmulatedMedia', {
       features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
     });
-    // A freshly attached WebContentsView reports itself hidden until Chromium propagates the change,
-    // so wait for the expected state rather than guessing a timeout.
     const waitHidden = async (hidden) => {
       const until = Date.now() + 5000;
       while ((await contents.executeJavaScript('document.hidden')) !== hidden) {

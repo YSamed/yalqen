@@ -7,7 +7,6 @@ export function isWindowColor(value: unknown): value is WindowColor {
   return value === 'none' || value === 'accent' || isAccentColor(value);
 }
 
-// The hex is the hook for other color sources: a workspace color only has to feed its own hex into BrowserState.windowColor.
 export function windowColorHex(color: WindowColor, accent: AccentColorId): string | null {
   if (color === 'none') return null;
   return accentHex(color === 'accent' ? accent : color);
@@ -16,7 +15,6 @@ export function windowColorHex(color: WindowColor, accent: AccentColorId): strin
 export type Rgb = readonly [number, number, number];
 export type Scheme = 'light' | 'dark';
 
-// Mirrors the neutral surfaces in tokens.css and app.css that the window color is mixed into.
 export const WINDOW_BASES = {
   light: { bg: [238, 238, 240], glass: [250, 247, 243], text: [26, 27, 30], muted: [98, 100, 107] },
   dark: { bg: [10, 10, 11], glass: [0, 0, 0], text: [243, 243, 244], muted: [156, 157, 163] },
@@ -44,7 +42,6 @@ export function contrastRatio(a: Rgb, b: Rgb): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
-// Muted text moves toward the main text color until it is readable on every tinted surface.
 function readableMuted(muted: Rgb, text: Rgb, surfaces: Rgb[]): Rgb {
   for (let step = 0; step <= 10; step++) {
     const candidate = mix(muted, text, step / 10);

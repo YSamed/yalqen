@@ -19,7 +19,6 @@ const WEBMAIL: { host: RegExp; path?: RegExp }[] = [
   { host: /^mail\.zoho\.(com|eu)$/ },
 ];
 
-// Only these signed-in inbox pages are read, and only after the person asks for a code.
 export function isWebmail(value: string): boolean {
   try {
     const url = new URL(value);
@@ -44,7 +43,6 @@ const KEYWORD =
 const CANDIDATE = /(?<![\d.,:/+-])(\d{3}[- ]\d{3}|\d{4,8})(?![\d.,:/%]|\s?(TL|USD|EUR|₺|\$|€))/g;
 const YEAR = /^(19|20)\d{2}$/;
 
-// Inbox lists show the newest mail first, so codes come back in the order they appear.
 export function findOneTimeCodes(text: string, source: string, limit = 5): OneTimeCode[] {
   const lines = text
     .split('\n')
@@ -68,7 +66,6 @@ export function findOneTimeCodes(text: string, source: string, limit = 5): OneTi
 
 const NAMED = /\b(otp|one ?time|verification ?code|verify ?code|2fa|totp|mfa|passcode|sms ?code)\b/i;
 
-// Sites that skip autocomplete="one-time-code" usually still name the field after the code.
 export function isOneTimeCodeField(input: { autocomplete: string; name: string; id: string; type: string }): boolean {
   if (input.autocomplete.trim().toLowerCase().split(/\s+/).at(-1) === 'one-time-code') return true;
   if (!['text', 'tel', 'number', ''].includes(input.type)) return false;

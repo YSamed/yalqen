@@ -1,6 +1,3 @@
-// Runs inside a local development page, on the element the user picked, to find the React, Vue
-// or Svelte component that rendered it. Bundled into one function body by scripts/build-preload.mjs.
-// Only bippy/source is used: bippy's main entry installs a DevTools hook and pulls in React.
 import type { Fiber } from 'bippy';
 import { getRawSource, getSource, isSourceFile, normalizeFileName } from 'bippy/source';
 import type { ComponentInspection, ComponentNode, InspectedSource } from '../shared/component-inspection.js';
@@ -12,7 +9,6 @@ const TREE_DEPTH = 3;
 const TREE_NODES = 40;
 const TREE_VISITS = 2000;
 
-// React work tags for function, class, forwardRef, memo and simple memo components.
 const COMPOSITE_TAGS = new Set([0, 1, 11, 14, 15]);
 
 function getFiberFromHostInstance(element: Element): Fiber | null {
@@ -56,7 +52,6 @@ function nearestComposite(fiber: Fiber): Fiber | null {
   return null;
 }
 
-// React 19 records who rendered each element; older versions only have the parent chain.
 function ownerNames(fiber: Fiber): string[] {
   const names: string[] = [];
   for (let node = ownerOf(fiber); node && names.length < MAX_OWNERS; node = ownerOf(node)) {
@@ -92,7 +87,6 @@ function describeProps(props: unknown): Record<string, string> {
   return described;
 }
 
-// Vite source maps name only the file, relative to the module URL the browser loaded.
 function withDirectory(file: string, fiber: Fiber): string {
   if (file.includes('/')) return file;
   const raw = getRawSource(fiber)?.fileName;
@@ -115,7 +109,6 @@ async function sourceOf(fiber: Fiber | null): Promise<InspectedSource | null> {
   };
 }
 
-// The components rendered below the selected one, so the agent sees what a change there affects.
 function componentChildren(
   fiber: Fiber | null,
   depth = TREE_DEPTH,
@@ -139,14 +132,11 @@ const HOOK = '__REACT_DEVTOOLS_GLOBAL_HOOK__';
 async function inspectFiber(fiber: Fiber): Promise<ComponentInspection> {
   const owners = ownerNames(fiber);
   const nearest = nearestComposite(fiber);
-  // Server components have no fiber, so the owner name is the reliable one; the nearest
-  // client fiber may be a framework wrapper.
   const component = owners[0] ?? (nearest && getDisplayName(nearest.type));
   const componentFiber = nearest && getDisplayName(nearest.type) === component ? nearest : null;
   const [source, componentSource] = await Promise.all([sourceOf(fiber), sourceOf(componentFiber)]);
   return {
     framework: 'react',
-    // Production builds strip the _debug fields, and with them owners and source locations.
     development: '_debugOwner' in fiber || '_debugSource' in fiber || '_debugStack' in fiber,
     component: component ?? null,
     source,
@@ -222,7 +212,6 @@ function vueChildren(vnode: VueVNode | undefined, depth = TREE_DEPTH, budget = {
     : [];
 }
 
-// Vue keeps no element line, only the component's file, so the result is at best "component".
 function inspectVue(element: Element): ComponentInspection | null {
   const instance = closest(
     element,
@@ -282,8 +271,6 @@ interface SvelteMeta {
   parent?: SvelteParent | null;
 }
 
-// Svelte 5 dev builds record each element's location and the chain of component usages above it;
-// Svelte 4 records only the location, with zero-based lines.
 function inspectSvelte(element: Element): ComponentInspection | null {
   const meta = closest(element, (node) => (node as unknown as { __svelte_meta?: SvelteMeta }).__svelte_meta);
   if (!meta?.loc) return null;
@@ -318,7 +305,6 @@ function inspectSvelte(element: Element): ComponentInspection | null {
 export async function inspect(element: Element): Promise<ComponentInspection> {
   const fiber = getFiberFromHostInstance(element);
   if (!fiber) return inspectVue(element) ?? inspectSvelte(element) ?? NOTHING;
-  // bippy installs a DevTools hook while resolving sources; the page should not keep one it never had.
   const hadHook = Object.hasOwn(globalThis, HOOK);
   try {
     return await inspectFiber(fiber);

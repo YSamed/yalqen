@@ -24,8 +24,6 @@
   <span class="title">
     <span>{title}</span>
     {#if hint}
-      <!-- The explanation stays in the label for screen readers and settings search; sighted users open it on demand. -->
-      <!-- A click inside the row's label would otherwise toggle or focus its control. -->
       <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
       <span class="info" tabindex="0" role="note" aria-describedby={hintId} onclick={(event) => event.preventDefault()}>
         <Icon name="info" size={14} />

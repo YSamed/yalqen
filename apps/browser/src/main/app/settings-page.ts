@@ -28,7 +28,6 @@ export function isSettingsFrame(event: IpcMainEvent | IpcMainInvokeEvent): boole
   return !!frame && frame === event.sender.mainFrame && isSettingsUrl(frame.url);
 }
 
-// Settings calls reach stores and dialogs, so only the settings page's own top frame may make them.
 export function handleSettingsCall(
   channel: string,
   listener: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown,

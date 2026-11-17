@@ -30,7 +30,6 @@ const bridge: Bridge = {
   },
 };
 
-// Runs in the extension's own world and is serialized there, so it must not reference anything outside itself.
 function installExtensionApis(api: Bridge): void {
   type Listener = (...args: unknown[]) => void;
   type Callback = ((value?: unknown) => void) | undefined;
@@ -93,15 +92,12 @@ function installExtensionApis(api: Bridge): void {
   }
 
   if (!chromeApi.identity && permissions.includes('identity')) {
-    // shortcut: only the redirect URL; launchWebAuthFlow and getAuthToken stay missing until an extension needs them.
     define(chromeApi, 'identity', {
       getRedirectURL: (path = '') => `https://${runtime.id}.chromiumapp.org/${String(path).replace(/^\//, '')}`,
     });
   }
 
   if (!chromeApi.windows) {
-    // Without chrome.windows, Grammarly's background page throws while starting up and never loads the
-    // signed-in account. shortcut: no create/update/remove; extensions only read windows and follow focus.
     const WINDOW_ID_NONE = -1;
     const WINDOW_ID_CURRENT = -2;
     const lastArgument = (args: unknown[]) => args.find((arg) => typeof arg === 'function') as Callback;
@@ -136,8 +132,6 @@ function installExtensionApis(api: Bridge): void {
     });
   }
 
-  // Electron's chrome.permissions throws on permissions it does not implement, so an extension that checks
-  // for "cookies" before reading its sign-in cookie would treat itself as signed out.
   const bridged = ['cookies', 'identity'].filter((name) => permissions.includes(name));
   const native = chromeApi.permissions as
     | {

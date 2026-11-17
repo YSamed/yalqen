@@ -23,7 +23,6 @@ export function storageDomain(host: string): string {
   return getDomain(host, { allowPrivateDomains: true }) ?? host;
 }
 
-// Retain origins, not URLs or titles, so clearing browsing history does not hide existing storage.
 export class StorageOrigins {
   private origins = new Set<string>();
   private readonly json: JsonFile;
@@ -70,12 +69,10 @@ export function quotaOrigins(directory: string | null): { origins: string[]; lim
       const rows = db.prepare('SELECT DISTINCT storage_key FROM buckets LIMIT ?').all(MAX_ORIGINS + 1);
       limited ||= rows.length > MAX_ORIGINS;
       for (const row of rows.slice(0, MAX_ORIGINS)) {
-        // Serialized storage keys start with their origin; partition metadata follows '^'.
         const origin = storageOrigin(typeof row.storage_key === 'string' ? row.storage_key.split('^')[0] : null);
         if (origin) origins.add(origin);
       }
     } catch {
-      /* Older versions use the root path; an incompatible schema falls back to the origin index. */
     } finally {
       db?.close();
     }
@@ -168,7 +165,6 @@ export class SiteStorageManager {
     }
     if (!allowed()) return false;
     await this.browsing.clearData(options);
-    // Electron's cache data type includes both network cache and partitioned CacheStorage.
     if (!options.origins) this.index.clear();
     return true;
   }

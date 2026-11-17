@@ -2,32 +2,33 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import auth from '../../../dist/main/agent-bridge/auth.js';
 
-const { checkRequest, checkSource, generateToken, tokenMatches } = auth;
+const { bearer, checkSource, generateToken, tokenMatches } = auth;
 const PORT = 47823;
 const TOKEN = 'secret-token';
 const ok = { host: `127.0.0.1:${PORT}`, authorization: `Bearer ${TOKEN}` };
 
-test('a request with the right host and token passes', () => {
-  assert.equal(checkRequest(ok, PORT, TOKEN), null);
-  assert.equal(checkRequest({ ...ok, host: `localhost:${PORT}` }, PORT, TOKEN), null);
+test('loopback hostnames on the bridge port are accepted', () => {
+  assert.equal(checkSource(ok, PORT), null);
+  assert.equal(checkSource({ ...ok, host: `localhost:${PORT}` }, PORT), null);
 });
 
 test('a missing or wrong token is rejected', () => {
-  assert.equal(checkRequest({ host: ok.host }, PORT, TOKEN), 'token');
-  assert.equal(checkRequest({ ...ok, authorization: 'Bearer wrong' }, PORT, TOKEN), 'token');
-  assert.equal(checkRequest({ ...ok, authorization: TOKEN }, PORT, TOKEN), 'token');
-  assert.equal(checkRequest(ok, PORT, ''), 'token');
+  assert.equal(tokenMatches(bearer(ok.authorization), TOKEN), true);
+  assert.equal(tokenMatches(bearer(undefined), TOKEN), false);
+  assert.equal(tokenMatches(bearer('Bearer wrong'), TOKEN), false);
+  assert.equal(tokenMatches(bearer(TOKEN), TOKEN), false);
+  assert.equal(tokenMatches(bearer(ok.authorization), ''), false);
 });
 
 test('any Origin header is rejected, even a local one', () => {
-  assert.equal(checkRequest({ ...ok, origin: 'http://localhost:3000' }, PORT, TOKEN), 'origin');
-  assert.equal(checkRequest({ ...ok, origin: 'null' }, PORT, TOKEN), 'origin');
+  assert.equal(checkSource({ ...ok, origin: 'http://localhost:3000' }, PORT), 'origin');
+  assert.equal(checkSource({ ...ok, origin: 'null' }, PORT), 'origin');
 });
 
 test('a foreign Host is rejected (DNS rebinding)', () => {
-  assert.equal(checkRequest({ ...ok, host: `evil.example:${PORT}` }, PORT, TOKEN), 'host');
-  assert.equal(checkRequest({ ...ok, host: '127.0.0.1:1' }, PORT, TOKEN), 'host');
-  assert.equal(checkRequest({ ...ok, host: undefined }, PORT, TOKEN), 'host');
+  assert.equal(checkSource({ ...ok, host: `evil.example:${PORT}` }, PORT), 'host');
+  assert.equal(checkSource({ ...ok, host: '127.0.0.1:1' }, PORT), 'host');
+  assert.equal(checkSource({ ...ok, host: undefined }, PORT), 'host');
 });
 
 test('tokens are random, url-safe and 32 bytes', () => {

@@ -9,11 +9,8 @@ export function siteOf(url: string, domains?: Map<string, string>): string | nul
     if (!['http:', 'https:', 'ws:', 'wss:'].includes(protocol) || hostname === '') return null;
     const cached = domains?.get(hostname);
     if (cached !== undefined) return cached;
-    // Hosted tenants (for example alice.github.io and bob.github.io) are separate
-    // sites, even though their provider's suffix is in the PSL's private section.
     const site = getDomain(hostname, { allowPrivateDomains: true }) ?? hostname;
     if (domains) {
-      // Bound retention even when a page requests many distinct hosts.
       if (domains.size >= 256) domains.delete(domains.keys().next().value!);
       domains.set(hostname, site);
     }
@@ -44,8 +41,6 @@ export function responseCookieNames(setCookies: readonly string[]): string[] {
 
 const blocking = new WeakSet<Session>();
 
-// webRequest listeners route every request of the session through the main process,
-// so they are attached only while blocking is on.
 export function setThirdPartyCookieBlocking(
   session: Session,
   enabled: boolean,
@@ -79,7 +74,6 @@ export function setThirdPartyCookieBlocking(
   };
 
   webRequest.onBeforeSendHeaders((details, callback) => {
-    // Redirects keep the request id; classification belongs to the current hop.
     existing.delete(details.id);
     const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
     const request = page ? siteOf(details.url, domains) : null;

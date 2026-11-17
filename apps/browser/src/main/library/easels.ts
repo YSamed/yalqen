@@ -20,7 +20,6 @@ const within = (value: unknown, min: number, max: number): value is number =>
 const easelName = (value: unknown): string | null =>
   typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 80) || null : null;
 
-// Clips carry page-derived data, so only the main process may add them.
 export function easelItem(value: unknown, allowClip: boolean, id: string = randomUUID()): EaselItem | null {
   const item = record(value);
   if (!item) return null;

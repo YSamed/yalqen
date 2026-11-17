@@ -45,7 +45,6 @@ function textContent(node: Node): string {
   return parts.join('').replace(/\s+/g, ' ').trim();
 }
 
-// HTML is parsed as data: no page is loaded and no scripts, images or network requests run.
 export async function parseBookmarkHtml(html: string): Promise<ParsedHtmlBookmarks> {
   if (Buffer.byteLength(html, 'utf8') > MAX_BOOKMARK_FILE_BYTES)
     throw new RangeError(t('browserImport.bookmarksTooLarge'));
@@ -167,7 +166,6 @@ export async function writeBookmarkHtml(
   }
 }
 
-// Bounded reads also cover files replaced or enlarged after the chooser opens.
 export async function readBookmarkFile(file: string): Promise<string> {
   const handle = await fs.open(file, 'r');
   try {

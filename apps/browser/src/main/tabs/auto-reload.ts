@@ -23,7 +23,6 @@ export class AutoReloader {
       const contents = tab.view?.webContents;
       if (!tab.autoReload || now < tab.autoReload.dueAt || !contents || contents.isDestroyed()) continue;
       tab.autoReload.dueAt = now + tab.autoReload.seconds * 1000;
-      // Typed but unsent form input would be lost, so the page waits until it is submitted.
       if (!tab.loading && !tab.edited) contents.reload();
     }
   }

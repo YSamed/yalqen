@@ -33,7 +33,6 @@ export function openMiniWindow(url: string, host: MiniWindowHost): void {
     createOverlay: host.createOverlay,
     createPageView: () => {
       const view = host.createPageView();
-      // The menu's close-tab shortcut belongs to the main windows, so the mini window takes it before the menu does.
       view.webContents.on('before-input-event', (event, input) => {
         const modifier = process.platform === 'darwin' ? input.meta : input.control;
         if (window.isDestroyed() || input.type !== 'keyDown' || !modifier || input.key.toLowerCase() !== 'w') return;

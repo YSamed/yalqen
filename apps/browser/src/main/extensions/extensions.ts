@@ -38,7 +38,6 @@ import {
 } from './extension-updates.js';
 
 const MENU_ICON_SIZE = 16;
-// Drawn at 16 points in the toolbar, so twice that keeps it sharp on Retina screens.
 const TOOLBAR_ICON_SIZE = 32;
 const LIST_ICON_SIZE = 64;
 const STORE_DIRECTORY = 'store-extensions';
@@ -172,8 +171,6 @@ export class ExtensionManager {
     });
   }
 
-  // Enabled extensions that can be pinned to the toolbar. Window state is rebuilt often, so the icon is
-  // encoded once per extension version.
   toolbarExtensions(): ToolbarExtension[] {
     return this.entries.flatMap((entry) => {
       const extension = this.loadedAt(entry.path);
@@ -503,7 +500,6 @@ export class ExtensionManager {
         manifest.manifest_version < 3
       )
         throw new Error(t('extensions.updatePackageMismatch'));
-      // The downloaded CRX's verified store identity overrides any declared manifest key.
       fs.writeFileSync(path.join(staging, 'manifest.json'), JSON.stringify({ ...manifest, key }, null, 2));
       clearTimeout(timeout);
       const permissions = addedPermissions(previous, manifest);
@@ -549,7 +545,6 @@ export class ExtensionManager {
       if (!this.isStorePath(entry.path)) continue;
       const backup = `${entry.path}.previous`;
       if (fs.existsSync(backup)) {
-        // A remaining backup means validation never committed, including after a crash.
         fs.rmSync(entry.path, { recursive: true, force: true });
         fs.renameSync(backup, entry.path);
       }

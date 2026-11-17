@@ -11,7 +11,6 @@ interface ProjectTab {
   isPrivate: boolean;
 }
 
-// Explicit tab assignments win over origin matching, including projects sharing a dev server.
 export class AgentProjectTabs {
   private readonly assignments = new Map<string, string>();
 
@@ -31,7 +30,6 @@ export class AgentProjectTabs {
     return owners[0].id;
   }
 
-  // Drops the assignments of closed tabs and returns the projects that just lost their last tab.
   release(isOpen: (tabId: string) => boolean): string[] {
     const before = new Set(this.assignments.values());
     for (const id of [...this.assignments.keys()]) if (!isOpen(id)) this.assignments.delete(id);

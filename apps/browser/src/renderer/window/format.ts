@@ -32,7 +32,6 @@ export function devStates(tab: TabSnapshot): string[] {
   ].filter((state) => state !== null);
 }
 
-// "claude-haiku-4-5-20251001" → "Haiku 4.5"
 export function modelName(id: string): string {
   const match = /^claude-([a-z]+)((?:-\d{1,2})*)(?:-\d{8})?(?:\[.*\])?$/.exec(id);
   if (!match) return id;

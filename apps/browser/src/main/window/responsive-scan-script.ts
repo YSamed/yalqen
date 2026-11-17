@@ -1,7 +1,5 @@
 export const RESPONSIVE_SCAN_WORLD = 1010;
 
-// Geometry is evidence of clipping/overflow, not a judgment that the layout is incorrect.
-// Form values, HTML and scripts are deliberately never included in the report.
 export const RESPONSIVE_SCAN_SCRIPT = `(async () => {
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   await new Promise(resolve => {

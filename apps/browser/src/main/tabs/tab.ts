@@ -20,9 +20,7 @@ export interface Tab {
   space: string;
   muted: boolean;
   isPrivate: boolean;
-  // Developer tabs browse in the developer session; isPrivate is set too.
   developer: boolean;
-  // Open DevTools once the page view exists: new developer tabs and tabs just switched to developer.
   devToolsOnLoad: boolean;
   detachListeners: (() => void) | null;
   upgrade: { https: string; http: string } | null;
@@ -48,11 +46,8 @@ export interface Tab {
   openerId: TabId | null;
   agent: TabRuntime | null;
   agentReadAt: number | null;
-  // DevTools draws in its own view beside the page, rounded like it, instead of Electron's square docked panel.
-  // The view lives as long as the page does; devToolsShown says whether DevTools is open right now.
   devTools: WebContentsView | null;
   devToolsShown: boolean;
-  // Unread items a mail or chat site shows in its title; null on other pages.
   unread: number | null;
 }
 

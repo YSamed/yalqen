@@ -1,5 +1,3 @@
-// Only explicit web addresses are used for automatic navigation. Executable schemes,
-// local files and URLs containing credentials are not accepted by these settings.
 export function webPageUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 8192 || !value.trim()) return null;
   try {

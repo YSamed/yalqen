@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, WebContentsView, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import tabs from '../../dist/main/tabs/tabs.js';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
@@ -64,7 +65,7 @@ app
       toolbarVisible: true,
       toolbarTabs: true,
       toolbarButtons: ['settings'],
-      material: 'opaque',
+      ...windowAppearance,
       defaultZoom: 1,
       downloads: { active: 0, progress: null, started: 0 },
       extensions: false,
@@ -110,7 +111,8 @@ app
     });
     await window.loadFile(path.resolve('dist/renderer/index.html'));
     await eventually("document.querySelectorAll('aside button.select').length === 4");
-    await click('aside button.select[title="https://c.example/"]', ['meta']);
+    const toggleModifier = process.platform === 'darwin' ? 'meta' : 'control';
+    await click('aside button.select[title="https://c.example/"]', [toggleModifier]);
     await eventually("document.querySelectorAll('aside button.select[aria-pressed=true]').length === 2");
     assert.deepEqual(manager.selectedTabIds, ['a', 'c']);
     await click('aside button.select[title="https://d.example/"]', ['shift']);
@@ -120,9 +122,7 @@ app
     assert.deepEqual(manager.selectedTabIds, ['c', 'd']);
     await click('.selection button.clear-selection');
     await eventually("document.querySelectorAll('aside button.select[aria-pressed=true]').length === 0");
-    await click('aside button.select[title="https://c.example/"]', [
-      process.platform === 'darwin' ? 'meta' : 'control',
-    ]);
+    await click('aside button.select[title="https://c.example/"]', [toggleModifier]);
     await eventually("document.querySelectorAll('aside button.select[aria-pressed=true]').length === 2");
     await click('.selection button.icon-btn');
     await eventually("document.querySelectorAll('aside button.select').length === 2");

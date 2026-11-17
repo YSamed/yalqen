@@ -27,7 +27,6 @@ const NS_PER_MS = 1e6;
 
 export const roundMs = (value: number): number => Math.round(value * 10) / 10;
 
-// The histogram records whole timer intervals, so an idle loop reads as the resolution itself.
 export function loopDelayMs(nanoseconds: number): number {
   return roundMs(Math.max(0, nanoseconds / NS_PER_MS - LOOP_RESOLUTION_MS));
 }

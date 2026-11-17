@@ -506,7 +506,6 @@ export function resolveTab(tabs: readonly BridgeTab[], requested: string | undef
   return tab;
 }
 
-// Compact JSON: agents parse it as well as indented JSON, and indentation was about a quarter of every result.
 function json(value: unknown): ToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(value) }] };
 }

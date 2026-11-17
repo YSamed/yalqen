@@ -76,9 +76,7 @@ async function capturePreparedPage(contents: WebContents): Promise<Buffer> {
     if (!contents.isDestroyed()) {
       await contents
         .executeJavaScriptInIsolatedWorld(SCREENSHOT_WORLD_ID, [{ code: RESTORE_SCREENSHOT_CONTENT_SCRIPT }])
-        .catch(() => {
-          // The capture document may have been replaced during navigation.
-        });
+        .catch(() => {});
     }
   }
 }

@@ -136,7 +136,6 @@ export async function downloadCrx(
         chunks.push(Buffer.from(value));
       }
     } catch (error) {
-      // Do not keep downloading an oversized or failed response after rejecting it.
       await reader.cancel().catch(() => undefined);
       throw error;
     } finally {

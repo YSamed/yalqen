@@ -7,8 +7,6 @@ export const SPLIT_GAP = 6;
 export const DEVTOOLS_MIN_WIDTH = 280;
 const PAGE_MIN_WIDTH = 320;
 
-// DevTools sits right of the page, a split pane's gap away. Without a chosen width it takes 40% of the area,
-// and it always leaves the page some room.
 export function devToolsSplit(
   area: Rectangle,
   width: number | null,
@@ -40,7 +38,6 @@ export class PagePlacement {
   bounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   radius = 0;
   newTabCenterOffset = 0;
-  // The DevTools width the user dragged to; null keeps the default share.
   devToolsWidth: number | null = null;
 
   constructor(private readonly slotOf: (tab: Tab) => PaneSlot | null = () => null) {}
@@ -71,7 +68,6 @@ export class PagePlacement {
     });
   }
 
-  // The page's share of its area once DevTools, if open, has taken its own.
   pageArea(tab: Tab): Rectangle {
     const area = this.area(tab);
     const tools = tab.devToolsShown ? tab.devTools : null;
@@ -82,8 +78,6 @@ export class PagePlacement {
     return split.page;
   }
 
-  // The gap between the page and DevTools, which the interface turns into a resize handle.
-  // value is the share of the area DevTools takes, in percent, for assistive technology.
   devToolsDivider(tab: Tab): (Rectangle & { value: number }) | null {
     if (!tab.devToolsShown || !tab.devTools) return null;
     const area = this.area(tab);

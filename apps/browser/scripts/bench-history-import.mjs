@@ -97,8 +97,6 @@ try {
 const report = {
   node: process.version,
   results,
-  // Node reports maxRSS in KiB on all platforms. This is the benchmark process
-  // peak, including synthetic fixture preparation, rather than browser memory.
   maxRSSMB: Number((process.resourceUsage().maxRSS / 1024).toFixed(3)),
 };
 if (values.out) fs.writeFileSync(values.out, `${JSON.stringify(report, null, 2)}\n`);

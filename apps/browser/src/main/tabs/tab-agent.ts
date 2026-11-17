@@ -14,7 +14,6 @@ export async function observeTab(tab: Tab, contents: WebContents): Promise<void>
   tab.agent = runtime;
   try {
     attachDebugger(contents);
-    // Sent together: awaiting each one would let the page's first requests go out before Network is on.
     await Promise.all(
       [OBSERVED_NETWORK_ENABLE, { method: 'Runtime.enable' }, { method: 'Log.enable' }, { method: 'Page.enable' }].map(
         ({ method, params }) => contents.debugger.sendCommand(method, params),
@@ -24,7 +23,6 @@ export async function observeTab(tab: Tab, contents: WebContents): Promise<void>
       name: ACTION_BINDING,
       executionContextName: ACTION_WORLD,
     });
-    // Scripts added this way only reach later documents while the Page domain is on.
     const { identifier } = (await contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
       source: ACTION_SCRIPT,
       worldName: ACTION_WORLD,

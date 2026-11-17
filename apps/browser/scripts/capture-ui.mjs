@@ -100,7 +100,6 @@ async function capture() {
   const { app, BrowserWindow, nativeTheme, session } = require('electron');
   const rendererDir = path.resolve(values['renderer-dir']);
   const moduleDir = path.resolve(values['module-dir']);
-  // Loaded synchronously: the internal scheme must be registered before the app is ready.
   const load = (file) => require(path.join(moduleDir, file));
   const internalPages = load('pages/internal-pages.js');
   internalPages.registerInternalScheme();
@@ -206,7 +205,6 @@ const state = {
   tabs: [0, 1, 2, 3, 4].map(tab), listOrder: ['tab-0', 'tab-1', 'tab-2', 'tab-3', 'tab-4'], developer: false,
   activeTabId: 'tab-0', selectedTabIds: [], pageFullScreen: false, windowFullScreen: false, addressPlaceholder: 'Search or type an address',
   panelCollapsed: false, panelSide: 'left', pinnedDisplay: 'list', favorites: [], sidebarVisible: true, toolbarVisible: true, toolbarTabs: true,
-  // Paused, so the bar and the clock read the same in every capture.
   media: { tabId: 'tab-3', title: 'Page 3', duration: 200, position: 80, playing: false, canPrevious: true, canNext: true, updatedAt: 0 },
   toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'], material: ${JSON.stringify(material)}, device: null,
   glassTint: 25, accent: '#f28c28',
@@ -307,7 +305,6 @@ contextBridge.exposeInMainWorld('yalqen', {
 
     const errorPage = path.join(profile, 'error.html');
     const errorArgs = [-105, 'ERR_NAME_NOT_RESOLVED', 'https://example.invalid/'];
-    // Builds before the shared tokens.css take no theme argument.
     const errorHtml =
       errorPageHtml.length > 3
         ? errorPageHtml(fs.readFileSync(path.join(rendererDir, 'tokens.css'), 'utf8'), ...errorArgs)
@@ -375,7 +372,6 @@ contextBridge.exposeInMainWorld('yalqen', {
           );
           console.log(`${surface.name}-${scheme}: ${styles.length} elements`);
         } finally {
-          // Destroying the window while its renderer still runs makes the next load of the same file fail.
           await new Promise((resolve) => {
             window.once('closed', resolve);
             window.close();

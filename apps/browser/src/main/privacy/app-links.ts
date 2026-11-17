@@ -3,11 +3,6 @@ import { t } from '../../shared/i18n.js';
 import { INTERNAL_SCHEME } from '../../shared/types.js';
 import { permissionOrigin, type PermissionStore } from './permissions.js';
 
-// Sign-in pages hand their token back to an app through a link like slack://… or zoommtg://…. Electron asks the
-// session for an "openExternal" permission before it passes such a link to the system, so Yalqen asks the user,
-// like Chrome's "Open Slack?", and remembers "Always allow" as the site's "Open apps" permission.
-
-// Schemes the browser shows itself, and ones that run code; none of them is an app hand-off.
 const NOT_APP_LINKS = new Set([
   'http',
   'https',
@@ -36,20 +31,17 @@ export function appLinkScheme(url: string | undefined): string | null {
   return /^[a-z][a-z0-9+.-]*$/.test(scheme) && !NOT_APP_LINKS.has(scheme) ? scheme : null;
 }
 
-// macOS reports "Slack.app"; the prompt says "Slack".
 export function appDisplayName(name: string): string {
   return name.replace(/\.app$/i, '').trim();
 }
 
 export interface AppLinkPrompt {
   app: string;
-  // The site asking, for "Always allow"; null for pages that are not web sites.
   host: string | null;
 }
 
 export interface AppLinksOptions {
   storeFor: (isPrivate: boolean) => PermissionStore;
-  // The app the system opens this link with, or '' when there is none.
   appFor?: (url: string) => string;
   confirm: (prompt: AppLinkPrompt, contents: WebContents | null) => Promise<{ open: boolean; always: boolean }>;
 }
@@ -60,8 +52,6 @@ export class AppLinks {
 
   constructor(private readonly options: AppLinksOptions) {}
 
-  // Whether to hand this link to its app. Prompts come one at a time, and a page asking again for the same link
-  // while its prompt is up gets the same answer instead of a second prompt.
   ask(
     contents: WebContents | null,
     url: string,
@@ -87,7 +77,6 @@ export class AppLinks {
     isPrivate: boolean,
   ): Promise<boolean> {
     const name = appDisplayName((this.options.appFor ?? appForUrl)(url));
-    // With no app for the link there is nothing to open; Linux cannot say, so it asks anyway.
     if (!name && process.platform !== 'linux') return false;
     const origin = permissionOrigin(requestingUrl);
     const store = this.options.storeFor(isPrivate);
@@ -112,8 +101,6 @@ function appForUrl(url: string): string {
   }
 }
 
-// The prompt, attached to the window when there is one. Cancel is the safe default only for Escape; Open is the
-// button the page meant the user to press.
 export function confirmAppLink(parentOf: (contents: WebContents) => BaseWindow | undefined) {
   return async (prompt: AppLinkPrompt, contents: WebContents | null): Promise<{ open: boolean; always: boolean }> => {
     const options: MessageBoxOptions = {

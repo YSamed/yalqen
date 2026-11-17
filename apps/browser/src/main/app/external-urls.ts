@@ -10,7 +10,6 @@ function isFile(file: string): boolean {
   }
 }
 
-// Links and files can arrive before any window exists, so they wait until the browser can open them.
 export class ExternalUrlInbox {
   private readonly pending: string[];
   private open: ((urls: string[]) => void) | null = null;

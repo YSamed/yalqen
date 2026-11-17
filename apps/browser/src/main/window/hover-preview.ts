@@ -12,7 +12,6 @@ import { createOverlayView, raiseToTop } from './overlay-view.js';
 
 const CARD_WIDTH = 300;
 const MAX_HEIGHT = 360;
-// Long enough to move the pointer from the tile across the gap onto the card.
 const LEAVE_ANCHOR_MS = 300;
 const LEAVE_CARD_MS = 250;
 
@@ -79,7 +78,6 @@ const PAGE = `<!doctype html>
   const root = document.documentElement;
   const card = document.getElementById('card');
   const node = (tag, className, text) => Object.assign(document.createElement(tag), { className, textContent: text });
-  // The overlay has no channel to the browser; it reports through its title, which the browser watches.
   let count = 0;
   const report = (event) => { document.title = event + ':' + count++; };
   card.addEventListener('mouseenter', () => report('enter'));
@@ -113,11 +111,8 @@ const PAGE = `<!doctype html>
 </body>
 </html>`;
 
-// What a click in the preview asks for: one of its items, or the tab it came from.
 export type PreviewChoice = number | 'tab';
 
-// Floats above the page like the tooltip overlay, since previews open beside the sidebar over the page. It
-// stays while the pointer moves from the tile onto it, so its mail and events can be clicked.
 export class HoverPreview {
   private view: WebContentsView | null = null;
   private loaded: Promise<void> = Promise.resolve();
@@ -132,7 +127,6 @@ export class HoverPreview {
     private readonly onChoose: (choice: PreviewChoice) => void,
   ) {}
 
-  // Each hover takes a ticket; a read that finishes after the pointer left, or after another hover, is dropped.
   begin(): number {
     this.cancelHide();
     return ++this.sequence;
@@ -142,7 +136,6 @@ export class HoverPreview {
     return ticket === this.sequence;
   }
 
-  // The same tile hovered again while its preview is up keeps it instead of reading again.
   isShowing(key: string): boolean {
     return this.shown && this.key === key;
   }
@@ -151,7 +144,6 @@ export class HoverPreview {
     this.cancelHide();
   }
 
-  // The pointer left the tile; the preview waits for it to arrive on the card.
   release(): void {
     if (!this.onCard) this.hideAfter(LEAVE_ANCHOR_MS);
   }
@@ -162,7 +154,6 @@ export class HoverPreview {
     this.onCard = false;
     const overlay = this.ensureView();
     const area = this.window.getContentBounds();
-    // Laid out at full size while invisible, then shrunk to the measured card.
     overlay.setBounds({ x: -10000, y: 0, width: CARD_WIDTH + PAD * 2, height: MAX_HEIGHT });
     raiseToTop(this.window, overlay);
     this.shown = true;

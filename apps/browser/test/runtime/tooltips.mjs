@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import types from '../../dist/shared/types.js';
 import overlay from '../../dist/main/window/tooltip-overlay.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
@@ -63,7 +64,7 @@ const state = {
   toolbarVisible: true,
   toolbarTabs: true,
   toolbarButtons: ['settings'],
-  material: 'opaque',
+  ...windowAppearance,
   device: null,
   zoom: 1,
   defaultZoom: 1,
@@ -128,13 +129,11 @@ app
     const close = '.row .actions button';
     await eventually(`!!document.querySelector('${close}')`);
 
-    // Every tab close button names its shortcut.
     assert.deepEqual(await run(`[...document.querySelectorAll('${close}')].map((button) => button.title)`), [
       'Close tab (⌘W)',
       'Close tab (⌘W)',
     ]);
 
-    // A title with a shortcut is shown by the browser as text and key caps, never by the system.
     const toggle = '.footer button[aria-expanded]';
     const title = await run(`document.querySelector('${toggle}').title`);
     assert.equal(title, 'Collapse sidebar (⇧⌘P)');
@@ -149,7 +148,6 @@ app
     await waitFor('hide-tooltip');
     assert.equal(await run(`document.querySelector('${toggle}').title`), title);
 
-    // Pressing the button dismisses its tooltip before it appears.
     const count = actions.length;
     await new Promise((resolve) => setTimeout(resolve, 400));
     await hover(toggle);
@@ -161,7 +159,6 @@ app
     );
     assert.equal(await run(`document.querySelector('${toggle}').title`), title);
 
-    // The overlay draws the tooltip above everything, sized to its text and kept below the anchor.
     const childrenBefore = window.contentView.children.length;
     const tooltip = new TooltipOverlay(window);
     tooltip.show({ ...shown.tooltip, anchor: { x: 200, y: 20, width: 34, height: 34 } });

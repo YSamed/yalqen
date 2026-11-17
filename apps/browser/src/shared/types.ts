@@ -37,7 +37,6 @@ export interface TabSnapshot {
   group?: string | null;
   security: SecurityState;
   isPrivate: boolean;
-  // A developer tab; it is private too.
   developer?: boolean;
   bookmarked: boolean;
   blockedPopups: number;
@@ -46,7 +45,6 @@ export interface TabSnapshot {
   autoReloadSeconds: number | null;
   audible: boolean;
   muted: boolean;
-  // The site's title shows unread mail or messages (Gmail).
   unread: boolean;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -111,13 +109,11 @@ export const TOOLBAR_BUTTON_IDS = [
 ] as const;
 export type ToolbarButtonId = (typeof TOOLBAR_BUTTON_IDS)[number];
 export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
-// Buttons a new profile starts without; they wait in the toolbar editor until the user adds them.
 export const OPTIONAL_TOOLBAR_BUTTONS: readonly ToolbarButtonId[] = ['devtools'];
 export const DEFAULT_TOOLBAR_BUTTONS: ToolbarButtonId[] = TOOLBAR_BUTTON_IDS.filter(
   (id) => !OPTIONAL_TOOLBAR_BUTTONS.includes(id),
 );
 
-// An extension pinned to the toolbar is stored next to the built-in buttons by its extension id.
 export type ToolbarExtensionItem = `extension:${string}`;
 export type ToolbarItemId = ToolbarButtonId | ToolbarExtensionItem;
 const TOOLBAR_EXTENSION = /^extension:([a-p]{32})$/;
@@ -138,7 +134,6 @@ export interface ToolbarExtension {
 
 export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
 
-// How strongly the glass window is tinted, in percent: 0 leaves the bare glass, 100 is almost solid.
 export const DEFAULT_GLASS_TINT = 25;
 export const DISCARD_AFTER_MINUTES = [0, 15, 30, 60, 120] as const;
 export const AUTO_ARCHIVE_HOURS = [0, 12, 24, 168, 720] as const;
@@ -150,38 +145,28 @@ export interface BrowserState {
   activeTabId: TabId | null;
   selectedTabIds: TabId[];
   splitTabIds: TabId[];
-  // The gap between the active page and its DevTools, a resize handle; null or absent while DevTools is closed.
   devToolsDivider?: { x: number; y: number; width: number; height: number; value: number } | null;
   tabGroups?: import('./tab-groups').TabGroup[];
   liveFolders?: import('./live-folders').LiveFolderView[];
-  // Empty where spaces do not apply (private, developer and web-app windows).
   spaces: import('./workspaces').SpaceView[];
   activeSpaceId: string;
   pageFullScreen: boolean;
   windowFullScreen: boolean;
-  // Whether the toolbar shows the button that pops up the native application menu. False on macOS,
-  // where the menu bar is global and a per-window button would duplicate it.
   windowMenu?: boolean;
   addressPlaceholder: string;
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
-  // Shows the button that cleans unpinned idle tabs out of the sidebar.
   tabCleanup?: boolean;
-  // The "Tab modes" setting: the window takes the look of the active tab's mode.
   tabModes?: boolean;
-  // The bookmarks side panel's contents while it is open; null or absent while it is closed.
   bookmarksPanel?: import('./bookmarks-panel').BookmarksPanelView | null;
-  // Whether tabs in this window can switch between normal, developer and private.
   modeSwitch?: boolean;
   favorites: Favorite[];
   sidebarVisible: boolean;
-  // Filled only while the sidebar media player is on and a tab has played sound.
   media: import('./sidebar-widgets').MediaInfo | null;
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   toolbarButtons: ToolbarItemId[];
-  // Extensions that can be pinned to the toolbar, with their icons.
   toolbarExtensions: ToolbarExtension[];
   material: WindowMaterial;
   glassTint: number;
@@ -203,7 +188,6 @@ export interface BrowserState {
   agentTerminal: boolean;
   agentProjects: AgentProjectSummary[];
   agentProjectId: string;
-  // The active tab's conversation within the project; the chat view starts over when it changes.
   agentConversationId: string;
   agentBackgroundChats: AgentBackgroundChat[];
 }
@@ -355,7 +339,6 @@ export interface AgentElementRef {
   label: string;
   component: string | null;
   source: string | null;
-  // Picked on a site outside local development, as a design reference.
   reference?: boolean;
 }
 
@@ -412,8 +395,6 @@ export interface DownloadsSummary {
 
 export interface ChromeLayout {
   panelWidth: number;
-  // While the panel animates, how far it still is from panelWidth. The page slides by this much
-  // instead of resizing, so it moves with the panel without reflowing every frame.
   panelSlide: number;
   panelSide: PanelSide;
   chromeHeight: number;
@@ -566,7 +547,6 @@ export const IpcChannel = {
   agentChatNew: 'yalqen:agent-chat-new',
   agentChatShowBackground: 'yalqen:agent-chat-show-background',
   agentChatDismissBackground: 'yalqen:agent-chat-dismiss-background',
-  // A press in a page, which the interface cannot see, for popups in the interface that close on outside clicks.
   pagePress: 'yalqen:page-press',
   agentChatOpenBackground: 'yalqen:agent-chat-open-background',
   agentChatContinueBackground: 'yalqen:agent-chat-continue-background',
@@ -592,7 +572,6 @@ export const IpcChannel = {
 
 export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   getState(): Promise<BrowserState>;
-  // State arrives as JSON: the context bridge deep-copies objects, but a string crosses it cheaply.
   onState(listener: (serializedState: string) => void): () => void;
   setLayout(layout: ChromeLayout): void;
   send(action: UiAction): void;
@@ -756,7 +735,6 @@ export interface CommandBarApi {
 
 export type WelcomeTabs = 'left' | 'top';
 
-// Browsers found on this Mac that the invitation can import from; `id` indexes the list main keeps.
 export interface WelcomeImportSource {
   id: number;
   browser: string;
@@ -873,12 +851,9 @@ export interface SettingsValues {
   panelCollapsed: boolean;
   panelSide: PanelSide;
   pinnedDisplay: PinnedDisplay;
-  // Pinned tabs reopen at their pinned address, and links or typed addresses for other sites open new tabs.
   pinnedTabsStayHome: boolean;
   manualTabCleanup: boolean;
-  // Tabs switch between normal, developer and private from the address bar.
   tabModes: boolean;
-  // The toolbar's bookmarks button opens a bookmarks panel on the right instead of a menu.
   bookmarksPanel: boolean;
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
@@ -906,7 +881,6 @@ export interface SettingsValues {
   askBeforeDownload: boolean;
   downloadDirectory: string | null;
   welcomeCompleted: boolean;
-  // The thank-you invitation shown once on first launch, and once to people who installed before it existed.
   invitationSeen: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
@@ -1020,7 +994,6 @@ export interface ProcessUsage {
   pages: PageProcess[];
 }
 
-// 'apps': the site may hand links to apps (slack://, zoommtg://…) without asking each time.
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups' | 'apps';
 export type PromptPermission = Exclude<SitePermission, 'popups' | 'apps'>;
 export type PermissionDecision = 'allow' | 'deny';
@@ -1029,7 +1002,6 @@ export type SystemAccess = 'granted' | 'denied' | 'restricted' | 'not-determined
 
 export interface SitePermissionsView {
   sites: { origin: string; permissions: { kind: SitePermission; decision: PermissionDecision }[] }[];
-  // Null where the OS has no per-app device switches (not macOS).
   system: Record<SystemDevice, SystemAccess> | null;
 }
 
@@ -1119,7 +1091,6 @@ export type AgentSetupResult = { ok: true } | { ok: false; reason: 'not-found' |
 
 export type AgentClientId = 'claude' | 'codex';
 
-// unavailable: the client's CLI is not installed; stale: registered with an old address or token.
 export type AgentConnectionState = 'connected' | 'stale' | 'missing' | 'unavailable';
 
 export type AgentConnections = Record<AgentClientId, AgentConnectionState>;
@@ -1133,12 +1104,10 @@ export interface AgentBridgeView {
   client: string | null;
   staleTokenAt: number | null;
   url: string | null;
-  // Shown with the token hidden; copying puts the real one on the clipboard.
   claudeCommand: string | null;
   codexConfig: string | null;
   otelConfig: string | null;
   observedTabs: number;
-  // Bumped whenever a client registration changes, so the settings page reloads the states it shows.
   connectionsRevision: number;
 }
 

@@ -75,8 +75,6 @@ const PAGE = `<!doctype html>
 </body>
 </html>`;
 
-// The interface view sits beneath web pages, so a tooltip drawn there would be hidden by the page under
-// the toolbar; this overlay floats above everything instead, like the native tooltip it replaces.
 export class TooltipOverlay {
   private view: WebContentsView | null = null;
   private loaded: Promise<void> = Promise.resolve();
@@ -90,7 +88,6 @@ export class TooltipOverlay {
     const view = this.ensureView();
     const id = ++this.sequence;
     const area = this.window.getContentBounds();
-    // Laid out at full size while invisible, then shrunk to the measured tooltip.
     view.setBounds({
       x: Math.max(0, Math.round(request.anchor.x)),
       y: Math.round(request.anchor.y + request.anchor.height),

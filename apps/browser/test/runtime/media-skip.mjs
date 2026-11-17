@@ -1,6 +1,3 @@
-// Run after build:main and build:preload: electron test/runtime/media-skip.mjs
-// Checks that the page preload's hook sees the track handlers a page registers while it loads, that
-// the media scripts read them from their isolated world, and that a skip reaches the page's handler.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -55,7 +52,6 @@ app
     await run(mediaSkipScript('previous'));
     assert.deepEqual(await contents.executeJavaScript('window.ran'), ['nexttrack']);
 
-    // Handlers a page adds or clears later are followed too.
     await contents.executeJavaScript(
       "navigator.mediaSession.setActionHandler('previoustrack', () => window.ran.push('previoustrack')); navigator.mediaSession.setActionHandler('nexttrack', null)",
     );

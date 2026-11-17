@@ -143,8 +143,6 @@ function footprintMB(pids, scratch) {
   return Math.round(bytes / 1024 ** 2);
 }
 
-// A brand-new Chrome profile spends its first minute downloading components, which a real user's profile
-// has long finished; measuring from a copy of a profile that has already been opened once avoids counting that.
 async function warmTemplate(name, browser, settings, scratch) {
   const template = fs.mkdtempSync(path.join(scratch, `${name}-template-`));
   const child = launch(browser, template, ['about:blank']);

@@ -86,7 +86,6 @@ export interface ElementSelection {
   html: Truncated;
   styles: Record<string, string>;
   box: Box | null;
-  // Base64 PNG of the element's box, kept for get_selected_element.
   screenshot: string | null;
   component: ComponentInfo;
 }
@@ -105,7 +104,6 @@ export function attributeMap(flat: readonly string[] | undefined): Record<string
 const UNREMARKABLE_VALUES = new Set(['', 'auto', 'none', 'normal', '0px']);
 const ALWAYS_SHOWN = new Set<string>(['display', 'position', 'width', 'height']);
 
-// Values that are almost always the default only cost the agent tokens, so they are left out.
 export function layoutStyles(computed: readonly { name: string; value: string }[]): Record<string, string> {
   const byName = new Map(computed.map(({ name, value }) => [name, value]));
   const styles: Record<string, string> = {};
@@ -117,7 +115,6 @@ export function layoutStyles(computed: readonly { name: string; value: string }[
   return styles;
 }
 
-// CDP quads list the four corners clockwise as x1, y1, ..., x4, y4.
 export function boxFromQuad(quad: readonly number[] | undefined): Box | null {
   if (!quad || quad.length < 8) return null;
   const xs = [quad[0], quad[2], quad[4], quad[6]];

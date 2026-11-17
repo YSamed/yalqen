@@ -1,7 +1,5 @@
 import type { WebContents } from 'electron';
 
-// Browser checks and agent actions share the page. Keep a viewport sweep from
-// changing the layout underneath a click or a flow assertion.
 const busy = new WeakSet<WebContents>();
 
 export function pageWorkBusy(contents: WebContents): boolean {

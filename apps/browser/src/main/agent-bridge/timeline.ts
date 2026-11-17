@@ -6,12 +6,10 @@ import { spanSummary, type BackendSpan } from './tracing.js';
 const EVENT_LIMIT = 1000;
 const EPISODE_LIMIT = 20;
 export const EPISODE_LOOKBACK_MS = 10_000;
-// Errors that follow each other this closely belong to the same episode.
 const EPISODE_GAP_MS = 3000;
 const LIKELY_CAUSE_MS = 1000;
 const EPISODE_EVENT_LIMIT = 60;
 const SUMMARY_LENGTH = 160;
-// Assets only matter when they fail; requests the app's code makes always do.
 const TRACKED_TYPES = new Set(['Document', 'Fetch', 'XHR', 'EventSource', 'WebSocket', 'Other']);
 
 type ActionKind = 'click' | 'submit' | 'input' | 'key';
@@ -48,9 +46,7 @@ export interface TimelineEvent {
   time: number;
   kind: TimelineKind;
   summary: string;
-  // Kept for actions so an episode can be replayed; typed values are never part of it.
   action?: RecordedAction;
-  // Method and short URL of a request, and the status it got (0 when it failed without one).
   target?: string;
   status?: number;
   requestId?: string;
@@ -124,7 +120,6 @@ function frameKey(frame: StackFrame): string | null {
   return `${frame.url}#${frame.functionName}`;
 }
 
-// An exception thrown by the same function that made the request most likely came from its result.
 export function sharesUserFrame(a: readonly StackFrame[] = [], b: readonly StackFrame[] = []): boolean {
   const keys = new Set(a.map(frameKey).filter((key) => key !== null));
   return b.some((frame) => {
@@ -139,8 +134,6 @@ interface OpenAction {
   time: number;
 }
 
-// A handler that stops propagation never lets the end of its event through, so an open action
-// only counts for as long as a synchronous handler could plausibly run.
 const OPEN_ACTION_MS = 250;
 
 interface OpenEpisode {
@@ -221,8 +214,6 @@ export class Timeline {
     if (failed || status >= 400) this.trigger(event);
   }
 
-  // Backend spans arrive after the response, often after its episode has closed, so they are also
-  // added to any episode that already holds their request.
   backend(span: BackendSpan, requestId: string): void {
     const request = this.requestEvents.get(requestId);
     const event = this.push({
@@ -252,7 +243,6 @@ export class Timeline {
     if (kind === 'exception') this.trigger(event);
   }
 
-  // What the agent does next is its own story, not part of the error the user ran into.
   closeEpisode(): void {
     this.openEpisode = null;
   }

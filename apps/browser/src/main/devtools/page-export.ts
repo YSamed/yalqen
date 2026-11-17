@@ -40,7 +40,6 @@ export function formatAddress(format: AddressFormat, url: string, title: string)
   }
 }
 
-// Keep the output within a conservative raster size without cropping the page.
 const MAX_CAPTURE_PIXELS = 16384;
 
 export function fullPageClip(

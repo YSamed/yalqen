@@ -135,7 +135,6 @@ export class DownloadManager {
   }
 
   private async openChecked(entry: DownloadEntry): Promise<void> {
-    // Recheck old downloads as lists change, and never launch before the check finishes.
     if (this.options.checkFile && !(await this.checkCompleted(entry.id, entry.savePath))) return;
     if (this.options.store.get(entry.id)?.state !== 'completed') return;
     const error = await shell.openPath(entry.savePath);

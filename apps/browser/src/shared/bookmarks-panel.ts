@@ -1,10 +1,8 @@
-// The bookmarks side panel: the bookmark tree, sent to the window only while the panel is open.
 export interface PanelBookmark {
   id: string;
   title: string;
   url: string;
   folderId: string | null;
-  // The site's icon from history, when one was seen.
   icon: string | null;
 }
 
@@ -19,8 +17,6 @@ export interface BookmarksPanelView {
   bookmarks: PanelBookmark[];
 }
 
-// A bookmark and a tab show the same page when their addresses match without the part after # and a trailing
-// slash, so a mail or app bookmark still finds its tab after the page moved within itself.
 export function pageKey(url: string): string {
   let parsed: URL;
   try {
@@ -33,7 +29,6 @@ export function pageKey(url: string): string {
   return key.endsWith('/') ? key.slice(0, -1) : key;
 }
 
-// The open tab for a bookmark: the active tab when it is that page, otherwise the first one.
 export function tabForBookmark<T extends { id: string; url: string }>(
   url: string,
   tabs: readonly T[],
@@ -55,7 +50,6 @@ export interface BookmarkNode {
   bookmarks: PanelBookmark[];
 }
 
-// Folders nest by parentId; the root holds what has no folder. Order is kept as stored.
 export function bookmarkTree(view: BookmarksPanelView): { folders: BookmarkNode[]; bookmarks: PanelBookmark[] } {
   const known = new Set(view.folders.map((folder) => folder.id));
   const childFolders = new Map<string | null, PanelFolder[]>();

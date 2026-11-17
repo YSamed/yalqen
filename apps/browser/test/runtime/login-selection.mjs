@@ -93,7 +93,6 @@ app
     assert.deepEqual(await page.executeJavaScript('[username.value,password.value]'), ['', '']);
     assert.equal(await page.executeJavaScript("document.documentElement.outerHTML.includes('secret-a')"), false);
     assert.equal(await page.executeJavaScript("document.querySelector('[data-yalqen-login-picker]').shadowRoot"), null);
-    // Scripted clicks cannot open the native account menu.
     await page.executeJavaScript("document.querySelector('[data-yalqen-login-picker]').click()");
     assert.equal(prompts, 0);
     await clickPicker(page);

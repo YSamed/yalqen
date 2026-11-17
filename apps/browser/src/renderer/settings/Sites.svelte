@@ -79,20 +79,17 @@
   let details = $state<Record<string, SiteStorageEntry | null>>({});
   let icons = $state<Record<string, string>>({});
   let brokenIcons = $state<Record<string, boolean>>({});
-  // Exceptions switched off stay listed until the page reloads, so they can be switched back on.
   let switchedOff = $state<{ key: ExceptionKey; origin: string }[]>([]);
   let query = $state('');
   let busy = $state(false);
   let error = $state(false);
 
   const term = $derived(query.trim().toLowerCase());
-  // The public suffix list is three quarters of the settings script, so it loads with this pane only.
   let getDomain = $state.raw<typeof import('tldts').getDomain | null>(null);
   const domainOf = (host: string) => getDomain?.(host, { allowPrivateDomains: true }) ?? host;
   const hostOf = (origin: string) => new URL(origin).host;
   const hostnameOf = (origin: string) => new URL(origin).hostname;
 
-  // Sites with a permission or exception come first; the rest of the list is sites that only store data.
   const configured = $derived.by(() => {
     const sites: Record<string, Site> = {};
     const site = (origin: string) => {
@@ -145,7 +142,6 @@
     }
   }
 
-  // Storage for a site with settings may sit on another page, so it is looked up when the site opens.
   async function loadDetails(site: Site): Promise<void> {
     if (site.storage || site.domain in details) return;
     const view = await api.siteStorage(site.domain, 0).catch(() => null);
@@ -214,7 +210,6 @@
     );
     void refreshPermissions();
     void loadStorage();
-    // Picks up switches flipped in System Settings while this page was in the background.
     const onFocus = () => void refreshPermissions();
     window.addEventListener('focus', onFocus);
     return () => {

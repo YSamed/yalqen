@@ -37,7 +37,6 @@ async function eventually(predicate) {
     await new Promise((r) => setTimeout(r, 25));
   }
 }
-// Buttons render disabled until the autofill view loads, and a click on a disabled button is dropped.
 async function button(label) {
   const find = `Array.from(document.querySelector('#pane')?.querySelectorAll('button') ?? []).find(item=>item.textContent.trim()===${JSON.stringify(label)})`;
   await eventually(`!!${find} && !${find}.disabled`);
@@ -63,7 +62,6 @@ app
         return authenticated;
       },
     });
-    // Addresses and cards share a settings pane with passwords, as in the app.
     const passwordStore = new passwordStores.PasswordStore(profile, passwords.safeStorageCipher);
     passwords.installPasswordHandlers({
       store: passwordStore,

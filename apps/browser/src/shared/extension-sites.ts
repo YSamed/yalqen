@@ -1,7 +1,5 @@
 import type { ExtensionSiteAccess } from './types.js';
 
-// Chromium host match patterns apply to all ports of a scheme/hostname pair.
-// Keep that scope explicit instead of storing an origin the engine cannot enforce.
 export function extensionSite(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 2048) return null;
   try {

@@ -16,7 +16,6 @@ const load = async (file, fallback) => {
   const target = fs.existsSync(nested) ? nested : mainModule(values['module-dir'], fallback);
   return (await import(pathToFileURL(target))).default;
 };
-// Renderers moved from the stores into pages/; older builds still export them from their previous modules.
 const { renderHistory } = await load('pages/history-page.js', 'internal-pages.js');
 const { renderBookmarks } = await load('pages/bookmarks-page.js', 'bookmarks.js');
 const { renderDownloads } = await load('pages/downloads-page.js', 'downloads.js');

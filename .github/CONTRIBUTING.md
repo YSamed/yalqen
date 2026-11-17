@@ -22,6 +22,12 @@ npm start
 
 Running `npm install` at the repository root sets up Git hooks: commit messages are checked with commitlint, staged files are linted and formatted with ESLint and Prettier, and typecheck and tests run before each push.
 
+## Running tests
+
+From `apps/browser`, use `npm run test:macos`, `npm run test:windows`, or `npm run test:linux` to run the shared unit tests and the selected platform's tests in `test/platform/`. Platform unit tests use controlled dependencies, so you can also run another platform's cases locally. Use `npm test` for all three suites.
+
+Run `npm run test:runtime` on the target operating system to build the app and exercise Electron. Linux CI uses `xvfb-run -a npm run test:runtime` for a virtual display.
+
 ## Testing Linux
 
 In `apps/browser`, run `npm run check` for the standard checks and `npm run package:linux` to build an AppImage in `release/`. Test the packaged app as well as the development build. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to start with `--no-sandbox`.

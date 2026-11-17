@@ -13,7 +13,6 @@ function populate(select) {
 }
 for (const select of document.querySelectorAll('form.new-folder select, form.bulk select')) populate(select);
 
-// toggle does not bubble, so a capturing listener sees every row's editor open.
 document.addEventListener(
   'toggle',
   (event) => {

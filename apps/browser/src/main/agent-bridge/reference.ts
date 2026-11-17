@@ -74,7 +74,6 @@ export interface ReferenceCapture {
   design: ReferenceDesign;
   outline: string;
   html: Truncated;
-  // Base64 JPEG of the element's box.
   screenshot: string | null;
 }
 
@@ -92,8 +91,6 @@ export const EMPTY_DESIGN: ReferenceDesign = {
   breakpoints: [],
 };
 
-// Runs on the picked node in the page. Scripts, event handlers, inline data and SVG paths are
-// dropped from the HTML: they cost tokens and say nothing about the layout.
 export const DESCRIBE_REFERENCE = `function () {
   const MAX_NODES = 400;
   const MAX_OUTLINE = 120;

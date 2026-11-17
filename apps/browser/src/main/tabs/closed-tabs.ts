@@ -66,7 +66,6 @@ function sanitize(value: unknown): SavedTab | null {
   };
 }
 
-// Shared by normal windows of one persistent profile; private/developer tabs never enter it.
 export class ClosedTabStore {
   readonly tabs: SavedTab[] = [];
   readonly file: string;

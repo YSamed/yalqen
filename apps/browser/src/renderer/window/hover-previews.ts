@@ -3,12 +3,8 @@ import type { UiAction } from '../../shared/types';
 import { interfaceTheme } from './tooltips';
 
 const DELAY_MS = 450;
-// Coming back to the tile from its preview within this time keeps the preview instead of waiting again.
 const RETURN_MS = 600;
 
-// Hovering a Gmail or Calendar tile or row asks the main process for a preview beside it. Leaving the tile
-// lets the main process keep the preview while the pointer moves onto it; pressing, scrolling or typing in the
-// interface puts it away at once.
 export function createHoverPreviews(send: (action: UiAction) => void) {
   let timer: number | undefined;
   let requested: Element | null = null;
@@ -46,8 +42,6 @@ export function createHoverPreviews(send: (action: UiAction) => void) {
     send({ type: 'hide-preview' });
   }
 
-  // Not on blur: clicking the preview moves focus to it, and the click must still reach it. The main process
-  // puts the preview away when the window itself loses focus.
   for (const name of ['pointerdown', 'wheel', 'keydown'] as const) window.addEventListener(name, dismiss, true);
   return { enter, leave, has: (url: string) => previewKind(url) !== null };
 }

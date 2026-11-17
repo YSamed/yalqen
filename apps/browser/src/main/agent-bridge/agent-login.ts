@@ -14,8 +14,6 @@ const LOGIN_TIMEOUT_MS = 10 * 60_000;
 const BROWSER_WAIT_MS = 3000;
 const POLL_MS = 250;
 
-// The CLIs open their sign-in page through $BROWSER. This stand-in records the URL instead, so the page
-// opens in a Yalqen tab and the CLI's localhost callback completes the login there.
 export const BROWSER_SCRIPT = '#!/bin/sh\nprintf \'%s\\n\' "$1" > "$YALQEN_LOGIN_URL_FILE"\n';
 
 export function loginUrlIn(output: string): string | null {
@@ -49,7 +47,6 @@ export async function signIn(provider: AgentProviderId, openUrl: (url: string) =
       };
       child.stdout.on('data', collect);
       child.stderr.on('data', collect);
-      // A URL the CLI handed to the browser carries the localhost callback; the printed one may not.
       const poll = setInterval(() => {
         if (opened) return;
         void fs.readFile(urlFile, 'utf8').then(
@@ -64,7 +61,6 @@ export async function signIn(provider: AgentProviderId, openUrl: (url: string) =
         opened = true;
         openUrl(url);
       };
-      // claude auth login ignores SIGTERM while it waits for the callback.
       const timeout = setTimeout(() => child.kill('SIGKILL'), LOGIN_TIMEOUT_MS);
       const finish = (succeeded: boolean) => {
         clearInterval(poll);

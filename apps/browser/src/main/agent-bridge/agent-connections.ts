@@ -42,8 +42,6 @@ export async function connectionStates(
   return { claude, codex };
 }
 
-// A new token or port silently breaks every client set up earlier, so stale registrations follow the bridge.
-// Clients the user never connected are left alone.
 export async function repairConnections(
   endpoint: McpEndpoint,
   targets: ConnectionTargets = DEFAULT_TARGETS,

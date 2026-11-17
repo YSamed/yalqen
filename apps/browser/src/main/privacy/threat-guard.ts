@@ -21,14 +21,12 @@ function address(url: string): string {
   }
 }
 
-// Grants are bound to one contents and exact page URL, kept only in memory.
 export class ThreatGuard {
   private readonly warnings = new WeakMap<WebContents, Warning>();
   private readonly allowed = new WeakMap<WebContents, string>();
   constructor(private readonly lists: LocalThreatLists) {}
 
   navigating(contents: WebContents, url: string): void {
-    // The internal command starts a navigation before will-navigate validates its token.
     if (url.startsWith(PROCEED_THREAT_URL)) return;
     if (this.allowed.get(contents) !== address(url)) this.allowed.delete(contents);
     if (this.warnings.get(contents)?.url !== address(url)) this.warnings.delete(contents);

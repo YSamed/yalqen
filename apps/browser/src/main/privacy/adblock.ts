@@ -7,8 +7,6 @@ const MIN_IDLE_SECONDS = 10;
 const COSMETIC_FILTERS_CHANNEL = '@ghostery/adblocker/inject-cosmetic-filters';
 const MUTATION_OBSERVER_CHANNEL = '@ghostery/adblocker/is-mutation-observer-enabled';
 
-// Keep Ghostery's module graph out of disabled startup. A synchronous require starts enabled
-// loading before the first cache I/O await, preserving the existing initialization order.
 function engineModule(): typeof import('./adblock-engine.js') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- load only when blocking is requested
   return require('./adblock-engine.js') as typeof import('./adblock-engine.js');
@@ -124,8 +122,6 @@ export class AdBlocker {
   }
 
   private applyRequestGate(): void {
-    // Electron keeps only one listener per webRequest event. Compose both protections,
-    // including after filter refresh or when ad blocking is switched off.
     for (const session of this.sessions) {
       session.webRequest.onBeforeRequest((details, callback) => {
         if (this.blocked(details)) callback({ cancel: true });

@@ -55,7 +55,6 @@ async function run() {
       hasCertificateException: () => false,
       translation: () => ({ enabled: false, language: 'tr' }),
     });
-    // Keep real native contents in a fixed fixture to isolate snapshot preparation from page rendering.
     for (let index = 0; index < tabCount; index++) {
       const tab = manager.createRecord({
         id: `tab-${index}`,

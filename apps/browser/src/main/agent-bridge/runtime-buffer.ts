@@ -19,12 +19,9 @@ export class TabRuntime {
   readonly network = new CappedMap<string, NetworkRecord>(NETWORK_LIMIT);
   readonly selections = new RingBuffer<ElementSelection>(SELECTION_LIMIT);
   readonly timeline: Timeline;
-  // The identifier of the action listener script, needed to remove it again.
   actionScriptId: string | null = null;
   webMcpScriptId: string | null = null;
-  // Temporary request rules the agent set for this tab; they go away with the observation.
   rules: RequestRule[] = [];
-  // Trace ids Yalqen put on requests, and the backend spans that came back for them.
   readonly traces = new CappedMap<string, string>(NETWORK_LIMIT);
   readonly spans = new CappedMap<string, BackendSpan[]>(TRACE_LIMIT);
 
@@ -96,8 +93,6 @@ export class TabRuntime {
 
 const ACTION_KINDS = new Set(['click', 'submit', 'input', 'key']);
 
-// The payload comes from a script in the page's isolated world, but the page can still shape the
-// event it reports, so every field is checked.
 export function parsePageAction(payload: string): PageAction | null {
   let data: Record<string, unknown>;
   try {

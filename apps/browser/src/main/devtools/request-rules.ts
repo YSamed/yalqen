@@ -75,7 +75,6 @@ export interface InterceptPattern {
   requestStage: 'Request';
 }
 
-// Fetch.enable treats an empty pattern list as "intercept everything", so callers disable it instead.
 export function interceptPatterns(rules: readonly RequestRule[]): InterceptPattern[] {
   return rules.filter(isRuleActive).map((rule) => ({
     urlPattern: rule.pattern.replace(/[?\\]/g, '\\$&'),
@@ -110,8 +109,6 @@ function mockBody(rule: RequestRule): string {
   const encoded = Buffer.from(rule.body).toString('base64');
   if (encoded.length > MAX_CACHED_BODY_CHARS) return encoded;
   if (cachedBodyChars + encoded.length > MAX_CACHED_BODY_CHARS) {
-    // Weak keys avoid retaining removed rules. Collected entries may remain in the
-    // budget estimate until this reset, causing only conservative early eviction.
     mockBodies = new WeakMap();
     cachedBodyChars = 0;
   }

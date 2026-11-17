@@ -30,7 +30,6 @@
   const COLLAPSED_WIDTH = 44;
   const CONTROL_SIZE = 34;
   const CHROME_HEIGHT = 44;
-  // macOS draws its traffic lights into the content area and reports no width for them.
   const MAC_TLIGHTS_WIDTH = 88;
   const BOOKMARKS_PANEL_WIDTH = 300;
   const PAGE_INSET = 8;
@@ -108,9 +107,6 @@
   let agentPanelLoading = $state(false);
   let agentPanelLoadFailed = $state(false);
 
-  // Each field gets its own signal so effects and child components run only when their value
-  // changes, not on every state push (a title or download update replaces the whole state).
-  // Passing `browser.x` to a child would subscribe it to the entire state instead.
   const tabs = $derived(browser.tabs);
   const listOrder = $derived(browser.listOrder);
   const activeTabId = $derived(browser.activeTabId);
@@ -120,7 +116,6 @@
   const tabGroups = $derived(browser.tabGroups ?? NO_GROUPS);
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
   const developer = $derived(browser.developer);
-  // The window takes the look of the tab in front: developer and private tabs restyle it while they are shown.
   const mode = $derived(
     !browser.tabModes
       ? 'normal'
@@ -175,18 +170,14 @@
   const material = $derived(browser.material);
   const pageFullScreen = $derived(browser.pageFullScreen);
   const agentVisible = $derived(agentPanelOpen && !pageFullScreen);
-  // The bookmarks panel takes the AI panel's place on the right edge; main keeps only one of them open.
   const bookmarksPanel = $derived(browser.bookmarksPanel ?? null);
   const bookmarksVisible = $derived(bookmarksPanel !== null && !pageFullScreen && !agentVisible);
   const sideVisible = $derived(agentVisible || bookmarksVisible);
   const windowFullScreen = $derived(browser.windowFullScreen);
-  // macOS keeps its menu bar outside the window, so the corner button is Windows and Linux only.
   const windowMenu = $derived(browser.windowMenu ?? false);
   const panelWidth = $derived(sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : PANEL_WIDTH) : PAGE_INSET);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
   const side = $derived(browser.panelSide);
-  // The page already keeps an inset on its right edge, so a collapsed rail beside it takes that
-  // much less to match the tab rail's spacing.
   const collapsedAgentWidth = $derived(side === 'left' ? COLLAPSED_WIDTH - PAGE_INSET : COLLAPSED_WIDTH);
   const agentReservedWidth = $derived(
     agentVisible
@@ -223,9 +214,6 @@
 
     updateRect();
 
-    // The overlay's box only changes when its own size does, so a resize that leaves the caption
-    // cluster untouched fires no geometrychange while the space beside it still moves. Reading the
-    // rect on resize too keeps it and windowWidth on one clock.
     wco.addEventListener('geometrychange', updateRect);
     window.addEventListener('resize', updateRect);
     return () => {
@@ -234,11 +222,7 @@
     };
   });
 
-  // `visible` only promises that not every value is zero, so a squeezed window can still report an
-  // area with no width; without this the trailing inset would swallow the whole toolbar.
   let wcoTbUsable = $derived(wcoVisible && wcoTbRect.width > 0);
-  // macOS lays out no overlay, so its native traffic lights are measured by hand; they sit top-left,
-  // so only the leading edge has to clear them.
   let wcoTbleftInset = $derived(wcoTbUsable ? wcoTbRect.x : IS_MAC ? MAC_TLIGHTS_WIDTH : 0);
   let wcoTbrightInset = $derived(wcoTbUsable ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
 
@@ -264,14 +248,11 @@
     } catch {}
   }
 
-  // These three run before the DOM updates: the first layout reaches the main process, which
-  // then shows the window, while the tab rows are still rendering.
   $effect.pre(() => {
     const target = agentReservedWidth;
     const mode = `${agentCollapsed}|${agentVisible}|${bookmarksVisible}`;
     const previousMode = agentMode;
     agentMode = mode;
-    // Only collapsing or expanding a visible AI panel animates; opening, closing and swapping panels snap.
     const toggled = agentVisible && previousMode !== mode && previousMode.split('|')[1] === 'true';
     cancelAnimationFrame(agentAnimation);
     const from = untrack(() => shownAgentWidth);
@@ -282,8 +263,6 @@
       agentFading = false;
       return;
     }
-    // The native page takes the narrower of both sizes for the whole animation instead of
-    // reflowing every frame; the panel then grows over, or shrinks away from, its edge.
     pageAgentWidth = Math.max(from, target);
     agentFading = true;
     const start = performance.now();
@@ -321,8 +300,6 @@
       contentFading = false;
       return;
     }
-    // Resizing the native page view every frame makes it reflow and lag behind the chrome, so it
-    // takes its final size up front and only slides with the panel. Emulated devices just resize.
     const slides = untrack(() => device === null);
     const start = performance.now();
     const step = (now: number) => {
@@ -336,15 +313,11 @@
       }
     };
     panelSlide = slides ? from - target : 0;
-    // Expanded rows are clipped by the narrowing panel, so collapsing swaps the layout last and
-    // expanding swaps it first. The tab icons sit at the same x in both layouts.
     if (!collapsed) contentCollapsed = false;
     contentFading = true;
     panelAnimation = requestAnimationFrame(step);
   });
   const topInset = $derived(toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
-  // The corner button floats over the toolbar's leading edge unless the sidebar is the leftmost
-  // column and already owns that corner, so the tab group has to start clear of it.
   const menuInset = $derived(
     windowMenu && toolbarVisible && !pageFullScreen && !(side === 'left' && sidebarVisible)
       ? PAGE_INSET + CONTROL_SIZE + 8
@@ -354,7 +327,6 @@
   $effect(() => {
     document.documentElement.dataset.material = material;
     document.documentElement.dataset.mode = mode;
-    // Private mode is monochrome: the accent steps back along with the colour.
     document.documentElement.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : browser.accent);
     document.documentElement.style.setProperty('--glass-tint', String(browser.glassTint / 100));
     for (const [name, value] of Object.entries(windowTintVars(browser.windowColor))) {
@@ -383,7 +355,6 @@
   });
 
   onMount(() => {
-    // Requested first: the reply travels while the first localStorage read blocks on its storage area.
     const initialState = window.yalqen.getState();
     try {
       const savedWidth = Number(localStorage.getItem('yalqen:agent-panel-width'));
@@ -579,8 +550,6 @@
     transition: background-color var(--transition);
   }
 
-  /* The button floats over the grid so it reaches the window's own corner in every panel mode,
-     where the sidebar (left wide and narrow) would otherwise sit under it. */
   .menu-button {
     position: absolute;
     top: 0;
@@ -681,7 +650,6 @@
     box-shadow: none;
   }
 
-  /* Developer mode lights the page's edge in the accent colour, a neon rim around the site being worked on. */
   :global(:root[data-mode='developer']) .page {
     box-shadow:
       0 0 0 1px color-mix(in srgb, var(--accent) 85%, transparent),

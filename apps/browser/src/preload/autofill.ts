@@ -69,7 +69,6 @@ function setValue(input: Control, value: string): void {
 function codeField(input: Control): input is HTMLInputElement {
   return input instanceof HTMLInputElement && editable(input) && isOneTimeCodeField(input);
 }
-// Codes split across one box per character are filled box by box from the focused one.
 function codeBoxes(input: HTMLInputElement, length: number): HTMLInputElement[] {
   if (input.maxLength !== 1) return [input];
   for (let root = input.parentElement, depth = 0; root && depth < 4; root = root.parentElement, depth++) {
@@ -82,7 +81,6 @@ function codeBoxes(input: HTMLInputElement, length: number): HTMLInputElement[] 
   return [];
 }
 
-// Pages without color-scheme resolve Canvas to white, so the colours follow the system theme instead.
 export function stylePickerButton(button: HTMLButtonElement): void {
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   button.style.cssText = `all: initial; box-sizing: border-box; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; border: 1px solid ${dark ? 'rgb(255 255 255 / 0.16)' : 'rgb(0 0 0 / 0.12)'}; background: ${dark ? 'rgb(44 44 46)' : 'rgb(255 255 255)'}; color: ${dark ? 'rgb(235 235 245)' : 'rgb(60 60 67)'}; box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); font: 12px/1 system-ui; cursor: pointer; outline: revert;`;
@@ -146,7 +144,6 @@ export function setupAutofill(): void {
               if (input.maxLength < 0 || input.maxLength >= code.length) setValue(input, code);
             } else boxes.forEach((box, index) => setValue(box, code[index]));
           } catch {
-            /* A dismissed menu or navigation leaves the field as it was. */
           } finally {
             picking = false;
             if (button) button.ariaDisabled = null;
@@ -166,7 +163,6 @@ export function setupAutofill(): void {
         }));
         if (!description || !entries.length) return;
         picking = true;
-        // Not `disabled`: Chromium moves focus off a disabled button, and the focusout would hide it.
         button!.ariaDisabled = 'true';
         try {
           const record = (await ipcRenderer.invoke(
@@ -204,7 +200,6 @@ export function setupAutofill(): void {
             if (value !== null) setValue(entry.input, value);
           }
         } catch {
-          /* A dismissed picker or navigation keeps the form intact. */
         } finally {
           picking = false;
           if (button) button.ariaDisabled = null;

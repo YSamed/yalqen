@@ -12,7 +12,6 @@ export interface FileChange {
 }
 
 const MAX_LINES = 400;
-// Above this many cells the table costs more than the readable diff is worth; fall back to remove-then-add.
 const MAX_CELLS = 160_000;
 
 export const FILE_EDIT_TOOLS = ['Edit', 'MultiEdit', 'Write', 'NotebookEdit'];

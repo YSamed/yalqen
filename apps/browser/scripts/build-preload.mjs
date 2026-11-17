@@ -3,8 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 
-// Sandboxed preloads can only require Electron and a few Node built-ins, so each one is
-// bundled into a single self-contained file.
 const PRELOADS = [
   'preload',
   'command-preload',
@@ -40,7 +38,6 @@ for (const name of PRELOADS) {
   });
 }
 
-// Page scripts run inside local development pages through the debugger, as the body of one function.
 const PAGE_SCRIPTS = { 'component-inspector': 'YalqenComponentInspector', reader: 'YalqenReader' };
 fs.rmSync(path.join(project, 'dist/page-scripts'), { recursive: true, force: true });
 for (const [name, global] of Object.entries(PAGE_SCRIPTS)) {

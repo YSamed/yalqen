@@ -13,7 +13,6 @@ export function sanitizeIconDomains(value: unknown): string[] {
   ];
 }
 
-// History is newest first, so each domain gets the icon from its most recent visit that had one.
 export function siteIcons(
   entries: readonly { url: string; faviconUrl?: string }[],
   domains: readonly string[],

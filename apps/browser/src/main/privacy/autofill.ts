@@ -102,9 +102,7 @@ export class AutofillStore {
         seen.add(record.id);
         return true;
       });
-    } catch {
-      /* A missing or invalid file starts with an empty collection. */
-    }
+    } catch {}
   }
   save(value: unknown): boolean {
     if (!this.cipher.available() || !value || typeof value !== 'object') return false;

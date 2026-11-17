@@ -21,8 +21,6 @@ export function boostOrigin(value: unknown): string | null {
   return url ? new URL(url).origin : null;
 }
 
-// A selector goes into a stylesheet rule, so anything that could end the rule, open a block,
-// swallow the rules after it or start an at-rule is refused.
 export function boostSelector(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const selector = value.trim();

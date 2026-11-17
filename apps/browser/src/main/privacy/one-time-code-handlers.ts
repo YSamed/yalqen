@@ -56,7 +56,6 @@ function chooseCode(parent: BaseWindow, origin: string, codes: OneTimeCode[]): P
   });
 }
 
-// Mail tabs are read only when the person opens the menu, and the text never leaves the main process.
 export function installOneTimeCodeHandlers({
   allowed,
   mailTabs,

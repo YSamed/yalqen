@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
+import { windowAppearance } from '../helpers/window-appearance.mjs';
 import types from '../../dist/shared/types.js';
 import agentPanel from '../../dist/shared/agent-panel.js';
 
@@ -66,7 +67,7 @@ const state = {
   toolbarTabs: true,
   toolbarButtons: ['devtools', `extension:${PINNED}`, `extension:${GONE}`, 'settings'],
   toolbarExtensions: [{ id: PINNED, title: 'Grammar Helper', icon: ICON }],
-  material: 'opaque',
+  ...windowAppearance,
   device: null,
   zoom: 1,
   defaultZoom: 1,
@@ -114,12 +115,10 @@ app
     const pinned = "document.querySelector('header button[aria-label=\\'Grammar Helper\\']')";
     await eventually(`!!${devtools} && !!${pinned}`);
 
-    // Developer tools names its shortcut and toggles them for the active tab.
     assert.equal(await run(`${devtools}.title`), 'Developer tools (⌥⌘I)');
     await run(`${devtools}.click()`);
     assert.deepEqual(actions.at(-1), { type: 'toggle-devtools' });
 
-    // A pinned extension shows its own icon and opens its popup from where the button is.
     assert.equal(await run(`${pinned}.querySelector('img').getAttribute('src')`), ICON);
     await run(`${pinned}.click()`);
     const opened = actions.at(-1);
@@ -127,7 +126,6 @@ app
     assert.equal(opened.id, PINNED);
     assert.ok(opened.anchor.width > 0 && opened.anchor.height > 0);
 
-    // Buttons follow the saved order, and an uninstalled extension leaves no gap.
     const order = await run(`(() => {
       const labels = ['Developer tools', 'Grammar Helper', 'Settings'];
       return [...document.querySelectorAll('header button')]

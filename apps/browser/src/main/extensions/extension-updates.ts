@@ -32,7 +32,6 @@ function permissions(manifest: Manifest, optional = false): Set<string> {
   return new Set([...strings(manifest.permissions), ...strings(manifest.host_permissions), ...matches]);
 }
 
-// Conservative: a changed host pattern needs approval even when it may be a narrower grant.
 export function addedPermissions(previous: Manifest, next: Manifest): string[] {
   const granted = permissions(previous);
   const previousOptional = permissions(previous, true);
@@ -61,8 +60,6 @@ interface StoreUpdate {
   sha256: string;
 }
 
-// The store returns a small, flat Omaha XML document. Accept just its app/updatecheck
-// subset; never expand DTDs or entities. Only a Google HTTPS package URL is accepted.
 export function parseStoreUpdate(xml: string, id: string, installed: string): StoreUpdate | null {
   if (Buffer.byteLength(xml) > MAX_UPDATE_MANIFEST_BYTES || /<!/i.test(xml)) throw new Error('Invalid update manifest');
   const attributes = (text: string): Record<string, string> => {

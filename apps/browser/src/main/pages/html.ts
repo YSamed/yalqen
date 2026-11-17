@@ -2,7 +2,6 @@ export function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
-// A string replacement would expand `$&`, `` $` `` and similar patterns found in page titles.
 export function fillSlot(page: string, marker: string, content: string): string {
   return page.replace(marker, () => content);
 }

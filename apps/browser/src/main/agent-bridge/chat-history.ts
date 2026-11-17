@@ -41,7 +41,6 @@ function textOf(content: unknown): string {
     .join('\n');
 }
 
-// Prompts carry the browser context Yalqen appended; the stored conversation shows only what the user typed.
 function userText(text: string): string {
   return text.replace(/^\[The user reverted[^\]]*\]\n\n/, '').split('\n\nYalqen ')[0];
 }

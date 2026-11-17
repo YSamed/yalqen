@@ -1,8 +1,6 @@
 import { domainToASCII } from 'node:url';
 
-// Only Node built-ins here: the parser also runs in a worker thread.
 export const MAX_ENTRIES = 500_000;
-// Marks a cached list that was already validated, normalized and sorted, so it loads without reparsing.
 const NORMALIZED_HEADER = '# yalqen normalized domains v1\n';
 
 export function parseThreatDomains(text: string): Set<string> {
@@ -34,7 +32,6 @@ export function normalizeThreatDomains(text: string): NormalizedDomains {
   return indexNormalized(NORMALIZED_HEADER + [...parseThreatDomains(text)].sort().join('\n'));
 }
 
-// A cached list from before normalization still goes through full validation.
 export function loadThreatDomains(text: string): NormalizedDomains {
   return text.startsWith(NORMALIZED_HEADER) ? indexNormalized(text) : normalizeThreatDomains(text);
 }
@@ -50,8 +47,6 @@ function indexNormalized(text: string): NormalizedDomains {
   return { text, starts: Uint32Array.from(starts) };
 }
 
-// One sorted string with line offsets: building it costs no per-domain allocations on the main
-// thread, which a Set of several hundred thousand strings would.
 export class DomainList {
   constructor(
     readonly text = '',

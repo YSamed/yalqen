@@ -36,8 +36,6 @@ export class JsonFile {
     private readonly maxWaitMs = MAX_SAVE_WAIT_MS,
   ) {}
 
-  // Each change pushes the save back, but never past maxWaitMs after the first unsaved change,
-  // and a change that may wait longer never delays a save that is already due sooner.
   schedule(data: () => unknown, delayMs = SAVE_DELAY_MS): void {
     this.data = data;
     this.dirty = true;
