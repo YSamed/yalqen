@@ -467,7 +467,7 @@
         buttons={toolbarButtons}
         {toolbarExtensions}
         leadingInset={Math.max(side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset, menuInset)}
-        alignLeading={!sidebarVisible}
+        alignLeading={!sidebarVisible && !IS_MAC}
         trailingInset={PAGE_INSET + wcoTbrightInset}
         centerOffset={(side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
         trailingOverhang={(rightPanel
