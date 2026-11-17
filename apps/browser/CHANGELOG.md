@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.15](https://github.com/YSamed/yalqen/compare/v0.4.14...v0.4.15) (2026-11-17)
+
+
+### Bug Fixes
+
+* set desktopName for linux window association ([#452](https://github.com/YSamed/yalqen/issues/452)) ([476aacd](https://github.com/YSamed/yalqen/commit/476aacd273e6b4fc17dedb3f74bca31680c7b10b))
+
 ## [0.4.14](https://github.com/YSamed/yalqen/compare/v0.4.13...v0.4.14) (2026-11-17)
 
 
