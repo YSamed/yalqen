@@ -26,6 +26,7 @@
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
     "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
+    "dev": "npm run build:main && npm run build:preload && node scripts/dev.mjs",
     "package:mac": "npm run build && npm exec electron-builder -- --mac",
     "package:win": "npm run build && npm exec electron-builder -- --win",
     "package:linux": "npm run build && npm exec electron-builder -- --linux"

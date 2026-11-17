@@ -7,6 +7,7 @@ import {
   type WelcomeOpen,
 } from '../../shared/types.js';
 import { getLocale } from '../../shared/i18n.js';
+import { loadRenderer } from '../app/dev-renderer.js';
 import { createOverlayView, raiseToTop } from './overlay-view.js';
 
 interface WelcomeCardOptions {
@@ -48,7 +49,7 @@ export class WelcomeCard {
     host.window.on('resize', this.fit);
     host.window.once('closed', this.onWindowClosed);
     this.fit();
-    void contents.loadFile(this.options.page, { query: { lang: getLocale() } }).then(() => {
+    void loadRenderer(contents, this.options.page, { lang: getLocale() }).then(() => {
       if (this.view !== view || contents.isDestroyed()) return;
       contents.send(WelcomeChannel.open, host.open);
       contents.focus();

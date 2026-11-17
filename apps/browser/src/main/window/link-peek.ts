@@ -3,6 +3,7 @@ import { getLocale } from '../../shared/i18n.js';
 import { peekLayout } from '../../shared/link-peek.js';
 import { PeekChannel, type PeekAction, type TabId } from '../../shared/types.js';
 import { isActivation, isPeekable } from '../tabs/popups.js';
+import { loadRenderer } from '../app/dev-renderer.js';
 import { raiseToTop } from './overlay-view.js';
 
 const PAGE_RADIUS = 12;
@@ -80,8 +81,10 @@ export class LinkPeek {
     current.dispose = this.listen(current);
     const contents = page.webContents;
     this.go(current, url);
-    void overlay.webContents
-      .loadFile(this.host.page, { query: { lang: getLocale(), ...(this.host.docked && { docked: '1' }) } })
+    void loadRenderer(overlay.webContents, this.host.page, {
+      lang: getLocale(),
+      ...(this.host.docked && { docked: '1' }),
+    })
       .then(() => {
         if (this.current !== current || this.host.window.isDestroyed()) return;
         current.ready = true;

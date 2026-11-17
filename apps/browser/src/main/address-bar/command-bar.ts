@@ -9,6 +9,7 @@ import {
 } from '../../shared/types.js';
 import { isDevCommandId } from '../devtools/dev-commands.js';
 import { getLocale } from '../../shared/i18n.js';
+import { loadRenderer } from '../app/dev-renderer.js';
 import { createOverlayView, raiseToTop } from '../window/overlay-view.js';
 
 const NEXT_FRAME_SCRIPT = 'new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))';
@@ -117,7 +118,7 @@ export class CommandBar {
     const view = createOverlayView(this.options.preload);
     const contents = view.webContents;
     this.view = view;
-    this.loaded = contents.loadFile(this.options.page, { query: { lang: getLocale() } }).then(() => {
+    this.loaded = loadRenderer(contents, this.options.page, { lang: getLocale() }).then(() => {
       this.ready = true;
       if (this.opened && this.lastOpen) contents.send(CommandBarChannel.open, this.lastOpen);
     });
