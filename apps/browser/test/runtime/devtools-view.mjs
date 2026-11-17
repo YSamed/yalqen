@@ -106,7 +106,8 @@ app
     const fresh = tab.devTools;
     assert.notEqual(fresh, tools);
     await eventually(() => fresh.webContents.getURL().startsWith('devtools://'), 'a new DevTools page');
-    fresh.webContents.forcefullyCrashRenderer();
+    // A kill, not forcefullyCrashRenderer: on Linux that path goes through the crash handler and the process outlives the wait.
+    process.kill(fresh.webContents.getOSProcessId(), 'SIGKILL');
     await eventually(() => !tab.devToolsShown && tab.devTools === null, 'DevTools forgotten once its page crashed');
     assert.deepEqual(tab.view.getBounds(), { x: 100, y: 50, width: 1000, height: 700 });
     tabManager.toggleDevTools();

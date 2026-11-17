@@ -65,6 +65,8 @@ export function quotaOrigins(directory: string | null): { origins: string[]; lim
     let db: DatabaseSync | undefined;
     try {
       const url = pathToFileURL(path.join(directory, relative));
+      // Chromium holds an exclusive lock on the live database; on Windows that lock blocks every reader.
+      url.search = 'immutable=1';
       db = new DatabaseSync(url, { readOnly: true, timeout: 600 });
       const rows = db.prepare('SELECT DISTINCT storage_key FROM buckets LIMIT ?').all(MAX_ORIGINS + 1);
       limited ||= rows.length > MAX_ORIGINS;

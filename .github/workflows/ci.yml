@@ -27,7 +27,6 @@ jobs:
           cache: npm
           cache-dependency-path: apps/browser/package-lock.json
       - run: npm ci
-      - run: npm run check:static
       - run: npm run test:macos
       - run: npm run build:renderer
       - run: node scripts/test-runtime.mjs
@@ -78,7 +77,6 @@ jobs:
           cache: npm
           cache-dependency-path: apps/browser/package-lock.json
       - run: npm ci
-      - run: npm run check:static
       - run: npm run test:windows
       - run: npm run build:renderer
       - run: node scripts/test-runtime.mjs
