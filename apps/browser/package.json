@@ -12,6 +12,7 @@
     "postinstall": "node scripts/prepare-terminal.mjs",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
     "build:main": "npm exec rimraf -- dist/main dist/shared && npm exec tsc -- -p tsconfig.main.json",
+    "build:withrenderer": "npm run build:main && npm run build:renderer",
     "build:preload": "node scripts/build-preload.mjs",
     "build:renderer": "vite build",
     "typecheck": "npm exec tsc -- -p tsconfig.main.json --noEmit && npm exec tsc -- -p tsconfig.preload.json && npm exec svelte-check -- --tsconfig ./tsconfig.renderer.json",
@@ -26,6 +27,7 @@
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
     "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
+    "dev": "npm run build:main && npm run build:preload && node scripts/dev.mjs",
     "package:mac": "npm run build && npm exec electron-builder -- --mac",
     "package:win": "npm run build && npm exec electron-builder -- --win",
     "package:linux": "npm run build && npm exec electron-builder -- --linux"

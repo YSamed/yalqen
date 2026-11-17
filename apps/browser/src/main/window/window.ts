@@ -14,6 +14,7 @@ import {
 } from 'electron';
 import { watchInterfaceBridge } from './interface-bridge.js';
 import { getLocale, t } from '../../shared/i18n.js';
+import { loadRenderer } from '../app/dev-renderer.js';
 import { preloadPath, rendererPath } from '../app/paths.js';
 import {
   NEW_TAB_URL,
@@ -307,7 +308,7 @@ export class YalqenWindow {
     this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     watchInterfaceBridge(this.uiContents);
     // The first native window takes about 40 ms to create, so the interface loads meanwhile.
-    void this.uiContents.loadFile(rendererPath('index.html'), { query: { lang: getLocale() } });
+    void loadRenderer(this.uiContents, rendererPath('index.html'), { lang: getLocale() });
 
     const from = options.from?.window.getBounds();
     this.window = new BaseWindow({

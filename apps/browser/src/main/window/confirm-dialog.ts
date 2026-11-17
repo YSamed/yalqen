@@ -1,6 +1,7 @@
 import { dialog, ipcMain, type BaseWindow, type IpcMainEvent, type WebContents, type WebContentsView } from 'electron';
 import { ConfirmChannel, type ConfirmRequest } from '../../shared/types.js';
 import { getLocale } from '../../shared/i18n.js';
+import { loadRenderer } from '../app/dev-renderer.js';
 import { createOverlayView, raiseToTop } from './overlay-view.js';
 
 interface ConfirmDialogOptions {
@@ -50,8 +51,7 @@ export class ConfirmDialog {
       window.on('resize', this.fit);
       window.once('closed', this.cancel);
       this.fit();
-      void contents
-        .loadFile(this.options.page, { query: { lang: getLocale() } })
+      void loadRenderer(contents, this.options.page, { lang: getLocale() })
         .then(() => {
           if (this.current?.view !== view || contents.isDestroyed()) return;
           contents.send(ConfirmChannel.open, { ...request, accent: this.options.accent() });
