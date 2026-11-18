@@ -85,6 +85,13 @@
     onchange={(checked) => update({ httpsOnly: checked })}
   />
 </SettingRow>
+<SettingRow title={t('settings.touchIdPasskeys')} hint={t('settings.touchIdPasskeysHint')}>
+  <Switch
+    label={t('settings.touchIdPasskeys')}
+    checked={values.touchIdPasskeys}
+    onchange={(checked) => update({ touchIdPasskeys: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.blockThirdPartyCookies')} hint={t('settings.blockThirdPartyCookiesHint')}>
   <Switch
     label={t('settings.blockThirdPartyCookies')}

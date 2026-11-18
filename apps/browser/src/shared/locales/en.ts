@@ -1040,6 +1040,14 @@ export const en = {
   'settings.httpsOnly': 'HTTPS only',
   'settings.httpsOnlyHint':
     "Opens HTTP pages over HTTPS; if a site doesn't support it, asks before continuing over HTTP. Local addresses and IP addresses are excluded.",
+  'settings.touchIdPasskeys': 'Touch ID passkeys',
+  'settings.touchIdPasskeysHint':
+    'Sign in to sites with passkeys kept on this Mac and unlocked with Touch ID. Add Yalqen as a passkey in each account’s security settings first. Only in signed releases of Yalqen. Takes effect after a restart.',
+  'passkeys.promptReason': 'sign in to $1',
+  'passkeys.chooseAccount': 'Choose an account for {site}',
+  'passkeys.chooseAccountDetail': 'Yalqen will ask for Touch ID to sign in with the passkey for this account.',
+  'passkeys.account': 'Account {number}',
+  'passkeys.cancel': 'Cancel',
   'settings.blockThirdPartyCookies': 'Block third-party cookies',
   'settings.blockThirdPartyCookiesHint':
     'Makes it harder for other sites to track you across the web through embedded content. Some embedded sign-in and comment fields may not work.',

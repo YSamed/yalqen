@@ -855,6 +855,8 @@ export interface SettingsValues {
   manualTabCleanup: boolean;
   tabModes: boolean;
   bookmarksPanel: boolean;
+  // Passkeys kept on this Mac and unlocked with Touch ID; only signed releases can, and only after a restart.
+  touchIdPasskeys: boolean;
   sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;
