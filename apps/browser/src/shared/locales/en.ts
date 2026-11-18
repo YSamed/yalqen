@@ -1042,7 +1042,7 @@ export const en = {
     "Opens HTTP pages over HTTPS; if a site doesn't support it, asks before continuing over HTTP. Local addresses and IP addresses are excluded.",
   'settings.touchIdPasskeys': 'Touch ID passkeys',
   'settings.touchIdPasskeysHint':
-    'Sign in to sites with passkeys kept on this Mac and unlocked with Touch ID. Add Yalqen as a passkey in each account’s security settings first. Only in signed releases of Yalqen. Takes effect after a restart.',
+    'Sign in to sites with passkeys kept on this Mac and unlocked with Touch ID. Add Yalqen as a passkey in each account’s security settings first. Passkeys created in a private window stay on this Mac after the window closes. Only in signed releases of Yalqen. Takes effect after a restart.',
   'passkeys.promptReason': 'sign in to $1',
   'passkeys.chooseAccount': 'Choose an account for {site}',
   'passkeys.chooseAccountDetail': 'Yalqen will ask for Touch ID to sign in with the passkey for this account.',
