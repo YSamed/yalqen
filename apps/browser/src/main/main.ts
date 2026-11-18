@@ -104,6 +104,7 @@ import { WebAppController } from './app/web-app-controller.js';
 import { webAppContains } from '../shared/web-apps.js';
 import { installDisplayMediaHandler } from './privacy/display-media.js';
 import { AppLinks, confirmAppLink } from './privacy/app-links.js';
+import { enablePasskeys, pickAccountWithDialog, watchAccountChoices } from './privacy/passkeys.js';
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
 import { RequestRuleStore } from './devtools/request-rules.js';
@@ -403,6 +404,10 @@ function startBrowser(): void {
     storeFor: permissionsFor,
     confirm: confirmAppLink((contents) => windowOf(contents)?.window),
   });
+  // Touch ID passkeys are turned on once at startup, when the setting is on and the release is signed for them.
+  enablePasskeys(settings.get().touchIdPasskeys);
+  const pickAccount = pickAccountWithDialog((contents) => windowOf(contents)?.window);
+  for (const browsing of eachSession(sessions)) watchAccountChoices(browsing, pickAccount);
   installPermissionHandlers({
     sessions: [
       [daily, false],

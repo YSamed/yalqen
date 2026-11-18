@@ -1049,6 +1049,14 @@ export const tr: Record<MessageKey, string> = {
   'settings.httpsOnly': 'Yalnızca HTTPS',
   'settings.httpsOnlyHint':
     'HTTP sayfalarını HTTPS ile açar; site desteklemiyorsa HTTP ile devam etmeden önce sorar. Yerel adresler ve IP adresleri hariç.',
+  'settings.touchIdPasskeys': 'Touch ID geçiş anahtarları',
+  'settings.touchIdPasskeysHint':
+    'Sitelere bu Mac’te saklanan ve Touch ID ile açılan geçiş anahtarlarıyla giriş yapın. Önce her hesabın güvenlik ayarlarında Yalqen’i geçiş anahtarı olarak ekleyin. Gizli pencerede oluşturulan geçiş anahtarları, pencere kapandıktan sonra da bu Mac’te kalır. Yalnızca Yalqen’in imzalı sürümlerinde. Yeniden başlatınca geçerli olur.',
+  'passkeys.promptReason': '$1 sitesinde oturum açmak',
+  'passkeys.chooseAccount': '{site} için bir hesap seçin',
+  'passkeys.chooseAccountDetail': 'Yalqen, bu hesabın geçiş anahtarıyla oturum açmak için Touch ID isteyecek.',
+  'passkeys.account': 'Hesap {number}',
+  'passkeys.cancel': 'İptal',
   'settings.blockThirdPartyCookies': 'Üçüncü taraf çerezleri engelle',
   'settings.blockThirdPartyCookiesHint':
     'Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum açma ve yorum alanları çalışmayabilir.',

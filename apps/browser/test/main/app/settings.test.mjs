@@ -52,6 +52,7 @@ test('unknown or mistyped fields fall back', () => {
       manualTabCleanup: false,
       tabModes: false,
       bookmarksPanel: false,
+      touchIdPasskeys: false,
       sidebarVisible: true,
       sidebarWidgets: ['media'],
       toolbarVisible: true,
@@ -140,6 +141,12 @@ test('the bookmarks side panel is off by default and kept once turned on', () =>
   assert.equal(sanitizeSettings(null).bookmarksPanel, false);
   assert.equal(sanitizeSettings({ bookmarksPanel: true }).bookmarksPanel, true);
   assert.equal(sanitizeSettings({ bookmarksPanel: 'yes' }).bookmarksPanel, false);
+});
+
+test('Touch ID passkeys are off by default and kept once turned on', () => {
+  assert.equal(sanitizeSettings(null).touchIdPasskeys, false);
+  assert.equal(sanitizeSettings({ touchIdPasskeys: true }).touchIdPasskeys, true);
+  assert.equal(sanitizeSettings({ touchIdPasskeys: 1 }).touchIdPasskeys, false);
 });
 
 test('tab modes are off by default and kept once turned on', () => {
