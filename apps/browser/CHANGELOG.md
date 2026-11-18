@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.18](https://github.com/YSamed/yalqen/compare/v0.4.17...v0.4.18) (2026-11-18)
+
+
+### Features
+
+* sign in with Touch ID passkeys in signed releases ([#466](https://github.com/YSamed/yalqen/issues/466)) ([e93feb0](https://github.com/YSamed/yalqen/commit/e93feb0445bf93549bd052bdb28e31716a9614a4))
+
 ## [0.4.17](https://github.com/YSamed/yalqen/compare/v0.4.16...v0.4.17) (2026-11-17)
 
 
