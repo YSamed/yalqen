@@ -29,7 +29,13 @@ export function signedForPasskeys(
 
 // Called once at startup, as the setting says; changing it takes effect after a restart.
 export function enablePasskeys(enabled: boolean, signed = signedForPasskeys()): boolean {
-  if (!enabled || !signed) return false;
+  if (!enabled) return false;
+  if (!signed) {
+    console.info(
+      '[passkeys] Touch ID passkeys are on in settings, but this build is not signed for them; only signed releases can use Touch ID.',
+    );
+    return false;
+  }
   try {
     app.configureWebAuthn({
       touchID: { keychainAccessGroup: PASSKEY_KEYCHAIN_GROUP, promptReason: t('passkeys.promptReason') },
