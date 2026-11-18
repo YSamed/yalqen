@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { test } from 'node:test';
 import passkeys from '../../../dist/main/privacy/passkeys.js';
 
 const { signedForPasskeys, enablePasskeys, accountLabel, chooseAccount, PASSKEY_KEYCHAIN_GROUP } = passkeys;
 
 test('only a packaged Mac release with its provisioning profile turns Touch ID passkeys on', () => {
-  const profile = (file) => file.endsWith('Contents/embedded.provisionprofile');
+  const profile = (file) => file.endsWith(path.join('Contents', 'embedded.provisionprofile'));
   const resources = '/Applications/Yalqen.app/Contents/Resources';
   assert.equal(signedForPasskeys('darwin', true, resources, profile), true);
   assert.equal(
