@@ -67,7 +67,7 @@
     "npmRebuild": false,
     "productName": "Yalqen",
     "directories": {
-      "output": "release"
+      "output": "build/release"
     },
     "asarUnpack": [
       "node_modules/node-pty/prebuilds/**/*",

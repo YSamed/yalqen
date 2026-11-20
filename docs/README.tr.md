@@ -38,7 +38,7 @@ npm ci
 npm run package:linux
 ```
 
-AppImage, `apps/browser/release/` klasörüne yazılır. Açmadan önce çalıştırma izni verin. Hazır Linux paketleri henüz yayımlanmıyor. Chromium sandbox koruması için ayrıcalıksız kullanıcı ad alanlarının çalışması gerekir; Yalqen, `--no-sandbox` ile çalışmayı reddeder.
+AppImage, `apps/browser/build/release/` klasörüne yazılır. Açmadan önce çalıştırma izni verin. Hazır Linux paketleri henüz yayımlanmıyor. Chromium sandbox koruması için ayrıcalıksız kullanıcı ad alanlarının çalışması gerekir; Yalqen, `--no-sandbox` ile çalışmayı reddeder.
 
 ## Güncellemeler
 

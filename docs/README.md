@@ -38,7 +38,7 @@ npm ci
 npm run package:linux
 ```
 
-The AppImage is written to `apps/browser/release/`. Make it executable before opening it. Ready-made Linux downloads are not yet published by the release workflow. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to run with `--no-sandbox`.
+The AppImage is written to `apps/browser/build/release/`. Make it executable before opening it. Ready-made Linux downloads are not yet published by the release workflow. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to run with `--no-sandbox`.
 
 ## Updates
 
