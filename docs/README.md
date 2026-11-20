@@ -13,7 +13,7 @@
 
 - **macOS:** macOS 13 Ventura or later on Apple Silicon. Intel Macs are not supported.
 - **Linux:** experimental AppImage built from source with Node.js 24. Initial testing covers Ubuntu with GNOME Wayland; Chromium sandboxing requires working unprivileged user namespaces.
-- **Windows:** not yet supported.
+- **Windows:** preview NSIS installer.
 
 ## Install
 
@@ -27,6 +27,10 @@ brew install --cask YSamed/yalqen/yalqen
 
 Or download the DMG from [Releases](https://github.com/YSamed/yalqen/releases/latest). The app is signed with a Developer ID and notarized, so it opens without a Gatekeeper warning.
 
+### Windows preview
+
+Download the Windows `.exe` installer when it appears under [Releases](https://github.com/YSamed/yalqen/releases). The installer is unsigned, so Windows SmartScreen may show a warning.
+
 ### Linux preview
 
 Build on Linux with Node.js 24 and Git:
@@ -38,7 +42,7 @@ npm ci
 npm run package:linux
 ```
 
-The AppImage is written to `apps/browser/release/`. Make it executable before opening it. Ready-made Linux downloads are not yet published by the release workflow. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to run with `--no-sandbox`.
+The AppImage is written to `apps/browser/build/release/`. Make it executable before opening it. Ready-made Linux downloads are not yet published by the release workflow. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to run with `--no-sandbox`.
 
 ## Updates
 

@@ -1,0 +1,88 @@
+name: Release (Windows)
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to rebuild, e.g. v0.2.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    outputs:
+      windows: ${{ steps.package.outputs.windows }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+      - id: package
+        run: node -p '"windows=" + Boolean(require("./apps/browser/package.json").build?.win)' >> "$GITHUB_OUTPUT"
+
+  win:
+    needs: config
+    if: needs.config.outputs.windows == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        working-directory: apps/browser
+        shell: bash
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/browser/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run test:windows
+      - run: npm run build:renderer
+      - run: node scripts/test-runtime.mjs
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~\AppData\Local\electron-builder\Cache
+          key: electron-builder-${{ runner.os }}-${{ hashFiles('apps/browser/package-lock.json') }}
+          restore-keys: electron-builder-${{ runner.os }}-
+      - name: Package
+        run: |
+          npm run build
+          npx electron-builder --win --publish never -c.extraMetadata.version="${TAG#v}"
+      - id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            apps/browser/build/release/*.exe
+            apps/browser/build/release/latest-win.yml
+      - name: Attach provenance bundle
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: jq -c . "$BUNDLE" > "build/release/yalqen-${TAG#v}-win.intoto.jsonl"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(build/release/*.exe build/release/*.blockmap build/release/latest-win.yml build/release/*.intoto.jsonl)
+          gh release view "$TAG" >/dev/null 2>&1 ||
+            gh release create "$TAG" --title "Yalqen ${TAG#v}" --generate-notes ||
+            true
+          gh release upload "$TAG" "${assets[@]}" --clobber

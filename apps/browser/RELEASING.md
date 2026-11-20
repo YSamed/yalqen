@@ -1,14 +1,14 @@
 # Releasing
 
-Yalqen is distributed as a DMG/ZIP on GitHub Releases, not through the Mac App Store.
+Yalqen release packages are distributed on GitHub Releases as a DMG/ZIP on macOS and an NSIS installer on Windows.
 
 Releases are automated with [release-please](https://github.com/googleapis/release-please):
 
 1. Every push to `main` updates an open "chore(main): release x.y.z" pull request. It bumps the version in `package.json` and adds the Conventional Commits since the last release to `CHANGELOG.md`. Every release bumps the patch version (`0.2.0` → `0.2.1` → `0.2.2`), whatever the commit types are. To release a minor or major version instead, add a `Release-As: x.y.z` footer to a commit on `main` (for example `Release-As: 0.3.0`).
 2. Merging that pull request tags `vx.y.z` and creates the GitHub release with the changelog.
-3. `.github/workflows/release.yml` then checks, builds, signs, notarizes and packages the macOS app, uploads the DMG, ZIP, their blockmaps and `latest-mac.yml` to the release and appends the install notes from `build/release-notes.md`.
+3. `.github/workflows/release.yml` runs the macOS and Windows release workflows. The macOS job signs and notarizes the app, uploads the DMG, ZIP, blockmaps and `latest-mac.yml`, and adds the notes from `build/release-notes.md`. The Windows job uploads the unsigned NSIS installer, blockmap and `latest-win.yml` when the tag includes Windows packaging. Each job attaches its own build provenance file.
 
-The release pull request is opened by GitHub Actions, so CI does not run on it; merge it with the admin bypass. Pushing a `v*` tag by hand still runs the release workflow on its own. If a release ends up without its DMG and ZIP, run the Release workflow from the Actions tab with that tag to build and upload them again.
+The release pull request is opened by GitHub Actions, so CI does not run on it; merge it with the admin bypass. To rebuild release assets for an existing tag, run Release, Release (macOS), or Release (Windows) from the Actions tab with that tag.
 
 ## Announcing a release
 
@@ -31,7 +31,7 @@ Squirrel.Mac only installs an update signed by the same Developer ID as the runn
 
 The app is signed with a Developer ID and notarized, so it opens on any Mac without a Gatekeeper warning. Nothing is submitted to the App Store.
 
-`scripts/sign.mjs` signs by certificate hash instead of name, because `codesign` cannot match a certificate name with non-ASCII letters.
+`scripts/sign-mac.mjs` signs by certificate hash instead of name, because `codesign` cannot match a certificate name with non-ASCII letters.
 
 Signing certificate:
 

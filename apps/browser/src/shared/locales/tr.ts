@@ -1056,6 +1056,8 @@ export const tr: Record<MessageKey, string> = {
   'passkeys.chooseAccount': '{site} için bir hesap seçin',
   'passkeys.chooseAccountDetail': 'Yalqen, bu hesabın geçiş anahtarıyla oturum açmak için Touch ID isteyecek.',
   'passkeys.account': 'Hesap {number}',
+  'passkeys.previousAccounts': 'Önceki hesaplar',
+  'passkeys.nextAccounts': 'Sonraki hesaplar',
   'passkeys.cancel': 'İptal',
   'settings.blockThirdPartyCookies': 'Üçüncü taraf çerezleri engelle',
   'settings.blockThirdPartyCookiesHint':

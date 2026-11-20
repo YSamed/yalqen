@@ -47,7 +47,7 @@ export function enablePasskeys(enabled: boolean, signed = signedForPasskeys()): 
   }
 }
 
-const MOST_ACCOUNTS = 8;
+const ACCOUNTS_PER_PAGE = 8;
 
 export function accountLabel(account: WebAuthnAccount, index: number): string {
   const name = account.name?.trim();
@@ -59,44 +59,63 @@ export function accountLabel(account: WebAuthnAccount, index: number): string {
 export interface AccountChoice {
   site: string;
   accounts: string[];
+  hasPrevious: boolean;
+  hasNext: boolean;
 }
+
+type AccountPick = number | 'previous' | 'next' | null;
+type PickAccount = (choice: AccountChoice) => Promise<AccountPick>;
 
 // A site asking for any passkey it knows gets the user's pick among the ones on this Mac; Cancel refuses.
 export async function chooseAccount(
   site: string,
   accounts: readonly WebAuthnAccount[],
-  pick: (choice: AccountChoice) => Promise<number | null>,
+  pick: PickAccount,
 ): Promise<string | undefined> {
-  const shown = accounts.slice(0, MOST_ACCOUNTS);
-  if (shown.length === 0) return undefined;
-  const index = await pick({ site, accounts: shown.map(accountLabel) });
-  return index === null ? undefined : shown[index]?.credentialId;
+  let offset = 0;
+  while (offset < accounts.length) {
+    const page = accounts.slice(offset, offset + ACCOUNTS_PER_PAGE);
+    const hasPrevious = offset > 0;
+    const hasNext = offset + page.length < accounts.length;
+    const choice = await pick({
+      site,
+      accounts: page.map((account, index) => accountLabel(account, offset + index)),
+      hasPrevious,
+      hasNext,
+    });
+    if (typeof choice === 'number') return page[choice]?.credentialId;
+    if (choice === 'next' && hasNext) offset += ACCOUNTS_PER_PAGE;
+    else if (choice === 'previous' && hasPrevious) offset -= ACCOUNTS_PER_PAGE;
+    else break;
+  }
+  return undefined;
 }
 
 export function pickAccountWithDialog(parentOf: (contents: WebContents) => BaseWindow | undefined) {
-  return (contents: WebContents | null) =>
-    async ({ site, accounts }: AccountChoice): Promise<number | null> => {
+  return (contents: WebContents | null): PickAccount =>
+    async ({ site, accounts, hasPrevious, hasNext }) => {
+      const buttons: { label: string; pick: AccountPick }[] = accounts.map((label, index) => ({ label, pick: index }));
+      if (hasPrevious) buttons.push({ label: t('passkeys.previousAccounts'), pick: 'previous' });
+      if (hasNext) buttons.push({ label: t('passkeys.nextAccounts'), pick: 'next' });
+      buttons.push({ label: t('passkeys.cancel'), pick: null });
       const options: MessageBoxOptions = {
         type: 'question',
         message: t('passkeys.chooseAccount', { site }),
         detail: t('passkeys.chooseAccountDetail'),
-        buttons: [...accounts, t('passkeys.cancel')],
+        buttons: buttons.map(({ label }) => label),
         defaultId: 0,
-        cancelId: accounts.length,
+        cancelId: buttons.length - 1,
         noLink: true,
       };
       const parent = contents && !contents.isDestroyed() ? parentOf(contents) : undefined;
       const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
-      return response < accounts.length ? response : null;
+      return buttons[response]?.pick ?? null;
     };
 }
 
 // Sessions ask once Touch ID passkeys are on and a page wants any passkey it knows. The request waits for the
 // callback, which runs exactly once whatever happens.
-export function watchAccountChoices(
-  browsing: Session,
-  pickFor: (contents: WebContents | null) => (choice: AccountChoice) => Promise<number | null>,
-): void {
+export function watchAccountChoices(browsing: Session, pickFor: (contents: WebContents | null) => PickAccount): void {
   browsing.on('select-webauthn-account', (_event, details, callback) => {
     let answered = false;
     const answer = (credentialId?: string) => {

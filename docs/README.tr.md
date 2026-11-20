@@ -13,7 +13,7 @@
 
 - **macOS:** Apple Silicon üzerinde macOS 13 Ventura veya üzeri. Intel Mac'ler desteklenmez.
 - **Linux:** Node.js 24 ile kaynak koddan derlenen deneysel AppImage. İlk testler Ubuntu ve GNOME Wayland üzerinde yapıldı; Chromium sandbox koruması için ayrıcalıksız kullanıcı ad alanlarının çalışıyor olması gerekir.
-- **Windows:** henüz desteklenmiyor.
+- **Windows:** NSIS kurucusuyla önizleme.
 
 ## Kurulum
 
@@ -27,6 +27,10 @@ brew install --cask YSamed/yalqen/yalqen
 
 Ya da DMG dosyasını [Releases](https://github.com/YSamed/yalqen/releases/latest) sayfasından indirin. Uygulama Developer ID ile imzalı ve notarize edilmiştir, Gatekeeper uyarısı olmadan açılır.
 
+### Windows önizlemesi
+
+Windows `.exe` kurucusu yayımlandığında [Sürümler](https://github.com/YSamed/yalqen/releases) sayfasından indirin. Kurucu imzasız olduğu için Windows SmartScreen uyarı gösterebilir.
+
 ### Linux önizlemesi
 
 Linux üzerinde Node.js 24 ve Git ile derleyin:
@@ -38,7 +42,7 @@ npm ci
 npm run package:linux
 ```
 
-AppImage, `apps/browser/release/` klasörüne yazılır. Açmadan önce çalıştırma izni verin. Hazır Linux paketleri henüz yayımlanmıyor. Chromium sandbox koruması için ayrıcalıksız kullanıcı ad alanlarının çalışması gerekir; Yalqen, `--no-sandbox` ile çalışmayı reddeder.
+AppImage, `apps/browser/build/release/` klasörüne yazılır. Açmadan önce çalıştırma izni verin. Hazır Linux paketleri henüz yayımlanmıyor. Chromium sandbox koruması için ayrıcalıksız kullanıcı ad alanlarının çalışması gerekir; Yalqen, `--no-sandbox` ile çalışmayı reddeder.
 
 ## Güncellemeler
 

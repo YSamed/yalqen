@@ -1,6 +1,6 @@
 node_modules/
 dist/
-apps/browser/release/
+apps/browser/build/release/
 out/
 *.log
 .DS_Store

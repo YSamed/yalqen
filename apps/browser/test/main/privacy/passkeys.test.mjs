@@ -49,14 +49,29 @@ test('picking an account returns its credential; Cancel or no account returns no
     }),
     'two',
   );
-  assert.deepEqual(seen, [{ site: 'example.com', accounts: ['ana@example.com', 'bo@example.com'] }]);
+  assert.deepEqual(seen, [
+    { site: 'example.com', accounts: ['ana@example.com', 'bo@example.com'], hasPrevious: false, hasNext: false },
+  ]);
   assert.equal(await chooseAccount('example.com', accounts, async () => null), undefined);
   assert.equal(await chooseAccount('example.com', [], async () => 0), undefined);
-  const many = Array.from({ length: 12 }, (_, index) => ({ credentialId: `id${index}`, name: `user${index}` }));
-  let shown = 0;
-  await chooseAccount('example.com', many, async (choice) => {
-    shown = choice.accounts.length;
-    return null;
+});
+
+test('the account list can be paged in both directions and selects a credential after the first eight', async () => {
+  const accounts = Array.from({ length: 12 }, (_, index) => ({ credentialId: `id${index}` }));
+  const steps = ['next', 'previous', 'next', 0];
+  const pages = [];
+  const selected = await chooseAccount('example.com', accounts, async (choice) => {
+    pages.push(choice);
+    return steps.shift();
   });
-  assert.equal(shown, 8);
+  assert.equal(selected, 'id8');
+  assert.deepEqual(
+    pages.map(({ accounts, hasPrevious, hasNext }) => [accounts[0], accounts.length, hasPrevious, hasNext]),
+    [
+      ['Account 1', 8, false, true],
+      ['Account 9', 4, true, false],
+      ['Account 1', 8, false, true],
+      ['Account 9', 4, true, false],
+    ],
+  );
 });

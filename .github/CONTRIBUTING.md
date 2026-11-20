@@ -32,7 +32,7 @@ After `npm run build`, you can rerun a single test while editing its assertions,
 
 ## Testing Linux
 
-In `apps/browser`, run `npm run check` for the standard checks and `npm run package:linux` to build an AppImage in `release/`. Test the packaged app as well as the development build. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to start with `--no-sandbox`.
+In `apps/browser`, run `npm run check` for the standard checks and `npm run package:linux` to build an AppImage in `build/release/`. Test the packaged app as well as the development build. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to start with `--no-sandbox`.
 
 When reporting a Linux issue, include your distribution and version, CPU architecture, desktop environment, display server (Wayland or X11), Yalqen version or commit, and steps to reproduce. Do not include credentials or private browsing data in logs.
 
@@ -42,7 +42,7 @@ Share platform test results in the [Linux preview discussion](https://github.com
 
 Install Node.js 24 and [Git for Windows](https://git-scm.com/download/win). Yalqen runs terminal commands and coding agents through the Git Bash that Git for Windows installs; the WSL `bash.exe` in `System32` is not used. Run the setup commands above in PowerShell or Git Bash.
 
-In `apps/browser`, run `npm run test:windows` for the unit tests and `npm run test:runtime` for the Electron tests. `npm exec electron-builder -- --win --publish never` builds an unsigned installer in `release/`, as the Windows CI job does. Releases do not include Windows files yet; packaging, signing and auto-update are tracked in [#192](https://github.com/YSamed/yalqen/issues/192).
+In `apps/browser`, run `npm run test:windows` for the unit tests and `npm run test:runtime` for the Electron tests. `npm run package:win -- --publish never` builds an unsigned installer in `build/release/`, which the Windows CI job also uploads. Signing and auto-update are tracked in [#192](https://github.com/YSamed/yalqen/issues/192).
 
 When reporting a Windows issue, include your Windows version and build, CPU architecture, Yalqen commit, and steps to reproduce. Do not include credentials or private browsing data in logs.
 

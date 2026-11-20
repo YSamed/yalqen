@@ -131,7 +131,7 @@ import {
   forgetSessionData,
   openBrowsingSessions,
 } from './app/sessions.js';
-import { isDefaultBrowser } from './app/default-browser.js';
+import { isDefaultBrowser, refreshDefaultBrowser } from './app/default-browser.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './address-bar/suggestions.js';
 import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
@@ -759,6 +759,7 @@ function startBrowser(): void {
     },
     onWindowFocus: (window) => {
       current = window;
+      if (process.platform === 'win32') void refreshDefaultBrowser().then(() => broadcastSettings(settingsView()));
     },
     onWindowClosing: (window) => {
       if (quitting) return;
