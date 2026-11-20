@@ -31,7 +31,7 @@ Squirrel.Mac only installs an update signed by the same Developer ID as the runn
 
 The app is signed with a Developer ID and notarized, so it opens on any Mac without a Gatekeeper warning. Nothing is submitted to the App Store.
 
-`scripts/sign.mjs` signs by certificate hash instead of name, because `codesign` cannot match a certificate name with non-ASCII letters.
+`scripts/sign-mac.mjs` signs by certificate hash instead of name, because `codesign` cannot match a certificate name with non-ASCII letters.
 
 Signing certificate:
 

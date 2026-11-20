@@ -121,7 +121,7 @@
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "sign": "./scripts/sign.mjs",
+      "sign": "./scripts/sign-mac.mjs",
       "extendInfo": {
         "NSCameraUsageDescription": "Websites can use your camera when you allow it.",
         "NSMicrophoneUsageDescription": "Websites can use your microphone when you allow it.",
