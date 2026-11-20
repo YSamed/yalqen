@@ -130,6 +130,26 @@
       },
       "artifactName": "Yalqen-${version}-${arch}.${ext}"
     },
+    "win": {
+      "files": [
+        "!node_modules/node-pty/prebuilds/darwin-*/**/*"
+      ],
+      "target": "nsis",
+      "icon": "resources/icon-512.png",
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "YSamed",
+          "repo": "yalqen",
+          "channel": "latest-win"
+        }
+      ],
+      "artifactName": "Yalqen-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "include": "build/installer.nsh"
+    },
     "linux": {
       "files": [
         "!node_modules/node-pty/prebuilds/win32-*/**/*"
