@@ -67,7 +67,7 @@
     "npmRebuild": false,
     "productName": "Yalqen",
     "directories": {
-      "output": "release"
+      "output": "build/release"
     },
     "asarUnpack": [
       "node_modules/node-pty/prebuilds/**/*",
@@ -121,7 +121,7 @@
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "sign": "./scripts/sign.mjs",
+      "sign": "./scripts/sign-mac.mjs",
       "extendInfo": {
         "NSCameraUsageDescription": "Websites can use your camera when you allow it.",
         "NSMicrophoneUsageDescription": "Websites can use your microphone when you allow it.",
@@ -129,6 +129,26 @@
         "NSLocationWhenInUseUsageDescription": "Websites can see your location when you allow it."
       },
       "artifactName": "Yalqen-${version}-${arch}.${ext}"
+    },
+    "win": {
+      "files": [
+        "!node_modules/node-pty/prebuilds/darwin-*/**/*"
+      ],
+      "target": "nsis",
+      "icon": "resources/icon-512.png",
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "YSamed",
+          "repo": "yalqen",
+          "channel": "latest-win"
+        }
+      ],
+      "artifactName": "Yalqen-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "include": "build/installer.nsh"
     },
     "linux": {
       "files": [

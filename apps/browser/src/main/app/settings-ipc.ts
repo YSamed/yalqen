@@ -13,7 +13,7 @@ import { isSitePermission, permissionOrigin, type PermissionStore } from '../pri
 import { isSystemDevice, openSystemSettings, systemAccessStatus } from '../privacy/system-access.js';
 import { sanitizeClearRequest } from '../library/clear-data.js';
 import { sanitizeIconDomains } from '../library/site-icons.js';
-import { makeDefaultBrowser } from './default-browser.js';
+import { makeDefaultBrowser, refreshDefaultBrowser } from './default-browser.js';
 import { processUsage } from './process-metrics.js';
 import { handleSettingsCall } from './settings-page.js';
 import { BACKGROUND_EXTENSIONS } from '../pages/new-tab-background.js';
@@ -45,7 +45,10 @@ function sitePermissionsView(store: PermissionStore): SitePermissionsView {
 export function registerSettingsIpc(host: SettingsIpcHost): void {
   handleSettingsCall(SettingsChannel.profiles, () => host.profiles.view());
   handleSettingsCall(SettingsChannel.profileAction, (_event, action, id, name) => host.profiles.run(action, id, name));
-  handleSettingsCall(SettingsChannel.get, () => host.view());
+  handleSettingsCall(SettingsChannel.get, async () => {
+    await refreshDefaultBrowser();
+    return host.view();
+  });
   handleSettingsCall(SettingsChannel.update, (_event, patch) => {
     host.update(patch);
     return host.view();
@@ -57,8 +60,9 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
   handleSettingsCall(SettingsChannel.showImportMenu, (event, kind) => {
     if (kind === 'bookmarks' || kind === 'history') host.showImportMenu(kind, event.sender);
   });
-  handleSettingsCall(SettingsChannel.makeDefault, () => {
-    makeDefaultBrowser();
+  handleSettingsCall(SettingsChannel.makeDefault, async () => {
+    await makeDefaultBrowser();
+    await refreshDefaultBrowser();
     return host.view();
   });
   handleSettingsCall(SettingsChannel.relaunch, () => host.relaunch());

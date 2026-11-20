@@ -13,7 +13,7 @@
 
 - **macOS：**搭载 Apple Silicon 的 macOS 13 Ventura 或更高版本。不支持 Intel Mac。
 - **Linux：**使用 Node.js 24 从源码构建实验性 AppImage。已在 Ubuntu 和 GNOME Wayland 上进行初步测试；Chromium 沙箱需要可用的非特权用户命名空间。
-- **Windows：**暂不支持。
+- **Windows：**通过 NSIS 安装程序提供预览版。
 
 ## 安装
 
@@ -27,6 +27,10 @@ brew install --cask YSamed/yalqen/yalqen
 
 或从 [Releases](https://github.com/YSamed/yalqen/releases/latest) 下载 DMG。应用已使用 Developer ID 签名并经过公证，打开时不会出现 Gatekeeper 警告。
 
+### Windows 预览版
+
+Windows `.exe` 安装程序发布后，可从 [Releases](https://github.com/YSamed/yalqen/releases) 下载。安装程序未经签名，Windows SmartScreen 可能会发出警告。
+
 ### Linux 预览版
 
 在 Linux 上使用 Node.js 24 和 Git 构建：
@@ -38,7 +42,7 @@ npm ci
 npm run package:linux
 ```
 
-AppImage 生成于 `apps/browser/release/`。打开前请添加可执行权限。发布流程尚不提供预构建的 Linux 下载。Chromium 沙箱需要可用的非特权用户命名空间；Yalqen 会拒绝以 `--no-sandbox` 运行。
+AppImage 生成于 `apps/browser/build/release/`。打开前请添加可执行权限。发布流程尚不提供预构建的 Linux 下载。Chromium 沙箱需要可用的非特权用户命名空间；Yalqen 会拒绝以 `--no-sandbox` 运行。
 
 ## 更新
 

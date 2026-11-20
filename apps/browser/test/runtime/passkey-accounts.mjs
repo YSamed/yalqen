@@ -50,7 +50,12 @@ app
         );
       });
     assert.deepEqual(await request(), ['two']);
-    assert.deepEqual(choices[0], { site: 'example.com', accounts: ['Ana (ana@example.com)', 'bo@example.com'] });
+    assert.deepEqual(choices[0], {
+      site: 'example.com',
+      accounts: ['Ana (ana@example.com)', 'bo@example.com'],
+      hasPrevious: false,
+      hasNext: false,
+    });
     reply = null;
     assert.deepEqual(await request(), [undefined]);
     reply = 'throw';

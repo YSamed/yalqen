@@ -1047,6 +1047,8 @@ export const en = {
   'passkeys.chooseAccount': 'Choose an account for {site}',
   'passkeys.chooseAccountDetail': 'Yalqen will ask for Touch ID to sign in with the passkey for this account.',
   'passkeys.account': 'Account {number}',
+  'passkeys.previousAccounts': 'Previous accounts',
+  'passkeys.nextAccounts': 'Next accounts',
   'passkeys.cancel': 'Cancel',
   'settings.blockThirdPartyCookies': 'Block third-party cookies',
   'settings.blockThirdPartyCookiesHint':
