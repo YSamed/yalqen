@@ -1,6 +1,7 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron';
 import { AUTO_RELOAD_SECONDS, type DevCommandId, type DeviceId } from '../../shared/types.js';
 import { t } from '../../shared/i18n.js';
+import { shortcutAccelerator, type ShortcutId, type ShortcutOverrides } from '../../shared/shortcuts.js';
 
 interface DeviceMenuItem {
   id: DeviceId;
@@ -60,11 +61,12 @@ interface MenuActions {
   devCommand(id: DevCommandId): void;
 }
 
-export function buildMenu(actions: MenuActions): Menu {
+export function buildMenu(actions: MenuActions, shortcuts: ShortcutOverrides): Menu {
   const isMac = process.platform === 'darwin';
+  const key = (id: ShortcutId) => shortcutAccelerator(id, shortcuts);
   const settingsItem: MenuItemConstructorOptions = {
     label: t('menu.settings'),
-    accelerator: 'CmdOrCtrl+,',
+    accelerator: key('settings'),
     click: actions.openSettings,
   };
 
@@ -100,24 +102,24 @@ export function buildMenu(actions: MenuActions): Menu {
     {
       label: t('menu.file'),
       submenu: [
-        { label: t('menu.newWindow'), accelerator: 'CmdOrCtrl+N', click: actions.newWindow },
-        { label: t('menu.newPrivateWindow'), accelerator: 'CmdOrCtrl+Shift+N', click: actions.newPrivateWindow },
+        { label: t('menu.newWindow'), accelerator: key('newWindow'), click: actions.newWindow },
+        { label: t('menu.newPrivateWindow'), accelerator: key('newPrivateWindow'), click: actions.newPrivateWindow },
         { label: t('menu.newDeveloperWindow'), click: actions.newDeveloperWindow },
         { type: 'separator' },
-        { label: t('menu.closeWindow'), accelerator: 'CmdOrCtrl+Shift+W', click: actions.closeWindow },
+        { label: t('menu.closeWindow'), accelerator: key('closeWindow'), click: actions.closeWindow },
         { type: 'separator' },
-        { label: t('menu.addressBar'), accelerator: 'CmdOrCtrl+L', click: actions.focusAddress },
-        { label: t('menu.openFile'), accelerator: 'CmdOrCtrl+O', click: actions.openFile },
+        { label: t('menu.addressBar'), accelerator: key('addressBar'), click: actions.focusAddress },
+        { label: t('menu.openFile'), accelerator: key('openFile'), click: actions.openFile },
         { type: 'separator' },
-        { label: t('menu.savePage'), accelerator: 'CmdOrCtrl+S', click: actions.savePage },
-        { label: t('menu.savePdf'), accelerator: 'CmdOrCtrl+Shift+S', click: actions.savePdf },
+        { label: t('menu.savePage'), accelerator: key('savePage'), click: actions.savePage },
+        { label: t('menu.savePdf'), accelerator: key('savePdf'), click: actions.savePdf },
         { label: t('menu.screenshot'), click: () => actions.devCommand('screenshot') },
         {
           label: t('menu.fullPageScreenshot'),
-          accelerator: 'CmdOrCtrl+Alt+S',
+          accelerator: key('fullPageScreenshot'),
           click: () => actions.devCommand('full-page-screenshot'),
         },
-        { label: t('menu.print'), accelerator: 'CmdOrCtrl+P', click: actions.print },
+        { label: t('menu.print'), accelerator: key('print'), click: actions.print },
         ...(isMac ? [] : [{ type: 'separator' } as const, settingsItem]),
       ],
     },
@@ -134,36 +136,36 @@ export function buildMenu(actions: MenuActions): Menu {
         { label: t('menu.delete'), role: 'delete' },
         { label: t('menu.selectAll'), role: 'selectAll' },
         { type: 'separator' },
-        { label: t('menu.find'), accelerator: 'CmdOrCtrl+F', click: actions.find },
-        { label: t('menu.findNext'), accelerator: 'CmdOrCtrl+G', click: () => actions.findNext(true) },
-        { label: t('menu.findPrevious'), accelerator: 'CmdOrCtrl+Shift+G', click: () => actions.findNext(false) },
+        { label: t('menu.find'), accelerator: key('find'), click: actions.find },
+        { label: t('menu.findNext'), accelerator: key('findNext'), click: () => actions.findNext(true) },
+        { label: t('menu.findPrevious'), accelerator: key('findPrevious'), click: () => actions.findNext(false) },
       ],
     },
     {
       label: t('menu.bookmarks'),
       submenu: [
-        { label: t('menu.toggleBookmark'), accelerator: 'CmdOrCtrl+D', click: actions.toggleBookmark },
-        { label: t('menu.allBookmarks'), accelerator: 'CmdOrCtrl+Alt+B', click: actions.showBookmarks },
+        { label: t('menu.toggleBookmark'), accelerator: key('toggleBookmark'), click: actions.toggleBookmark },
+        { label: t('menu.allBookmarks'), accelerator: key('allBookmarks'), click: actions.showBookmarks },
         { type: 'separator' },
-        { label: t('readingList.savePage'), accelerator: 'CmdOrCtrl+Shift+D', click: actions.saveReadingPage },
+        { label: t('readingList.savePage'), accelerator: key('saveReadingPage'), click: actions.saveReadingPage },
         { label: t('readingList.title'), click: actions.showReadingList },
       ],
     },
     {
       label: t('menu.tab'),
       submenu: [
-        { label: t('menu.newTab'), accelerator: 'CmdOrCtrl+T', click: actions.newTab },
+        { label: t('menu.newTab'), accelerator: key('newTab'), click: actions.newTab },
         { label: t('menu.newPrivateTab'), click: actions.newPrivateTab },
-        { label: t('menu.closeTab'), accelerator: 'CmdOrCtrl+W', click: actions.closeTab },
+        { label: t('menu.closeTab'), accelerator: key('closeTab'), click: actions.closeTab },
         {
           label: t('menu.reopenClosedTab'),
-          accelerator: 'CmdOrCtrl+Shift+T',
+          accelerator: key('reopenClosedTab'),
           click: actions.reopenClosedTab,
         },
-        { label: t('menu.cleanTabs'), accelerator: 'CmdOrCtrl+Shift+K', click: actions.cleanTabs },
+        { label: t('menu.cleanTabs'), accelerator: key('cleanTabs'), click: actions.cleanTabs },
         { type: 'separator' },
-        { label: t('menu.nextTab'), accelerator: 'Ctrl+Tab', click: actions.selectNextTab },
-        { label: t('menu.previousTab'), accelerator: 'Ctrl+Shift+Tab', click: actions.selectPreviousTab },
+        { label: t('menu.nextTab'), accelerator: key('nextTab'), click: actions.selectNextTab },
+        { label: t('menu.previousTab'), accelerator: key('previousTab'), click: actions.selectPreviousTab },
         { label: t('menu.moveTabToNewWindow'), click: actions.moveTabToNewWindow },
         { type: 'separator' },
         { label: t('workspaces.title'), click: actions.showWorkspaces },
@@ -192,10 +194,10 @@ export function buildMenu(actions: MenuActions): Menu {
     {
       label: t('menu.view'),
       submenu: [
-        { label: t('toolbar.home'), accelerator: 'Alt+Home', click: actions.home },
-        { label: t('menu.reload'), accelerator: 'CmdOrCtrl+R', click: actions.reload },
-        { label: t('menu.hardReload'), accelerator: 'CmdOrCtrl+Shift+R', click: actions.hardReload },
-        { label: t('reader.toggle'), accelerator: 'CmdOrCtrl+Alt+R', click: actions.toggleReader },
+        { label: t('toolbar.home'), accelerator: key('home'), click: actions.home },
+        { label: t('menu.reload'), accelerator: key('reload'), click: actions.reload },
+        { label: t('menu.hardReload'), accelerator: key('hardReload'), click: actions.hardReload },
+        { label: t('reader.toggle'), accelerator: key('toggleReader'), click: actions.toggleReader },
         { label: t('menu.toggleCache'), click: () => actions.devCommand('toggle-cache') },
         {
           label: t('menu.autoReload'),
@@ -212,8 +214,8 @@ export function buildMenu(actions: MenuActions): Menu {
           ],
         },
         { type: 'separator' },
-        { label: t('menu.actualSize'), accelerator: 'CmdOrCtrl+0', click: () => actions.zoom(0) },
-        { label: t('menu.zoomIn'), accelerator: 'CmdOrCtrl+Plus', click: () => actions.zoom(1) },
+        { label: t('menu.actualSize'), accelerator: key('actualSize'), click: () => actions.zoom(0) },
+        { label: t('menu.zoomIn'), accelerator: key('zoomIn'), click: () => actions.zoom(1) },
         {
           label: t('menu.zoomIn'),
           accelerator: 'CmdOrCtrl+=',
@@ -221,17 +223,17 @@ export function buildMenu(actions: MenuActions): Menu {
           acceleratorWorksWhenHidden: true,
           click: () => actions.zoom(1),
         },
-        { label: t('menu.zoomOut'), accelerator: 'CmdOrCtrl+-', click: () => actions.zoom(-1) },
-        { label: t('menu.cyclePanel'), accelerator: 'CmdOrCtrl+Shift+P', click: actions.cyclePanel },
-        { label: t('menu.toggleToolbar'), accelerator: 'CmdOrCtrl+Shift+B', click: actions.toggleToolbar },
-        { label: t('agentPanel.toggle'), accelerator: 'CmdOrCtrl+Shift+A', click: actions.toggleAgentPanel },
+        { label: t('menu.zoomOut'), accelerator: key('zoomOut'), click: () => actions.zoom(-1) },
+        { label: t('menu.cyclePanel'), accelerator: key('cyclePanel'), click: actions.cyclePanel },
+        { label: t('menu.toggleToolbar'), accelerator: key('toggleToolbar'), click: actions.toggleToolbar },
+        { label: t('agentPanel.toggle'), accelerator: key('toggleAgentPanel'), click: actions.toggleAgentPanel },
         { type: 'separator' },
-        { label: t('menu.viewSource'), accelerator: 'Alt+CmdOrCtrl+U', click: actions.viewSource },
-        { label: t('menu.developerTools'), accelerator: 'Alt+CmdOrCtrl+I', click: actions.toggleDevTools },
-        { label: t('menu.phoneView'), accelerator: 'Alt+CmdOrCtrl+M', click: actions.toggleDeviceView },
+        { label: t('menu.viewSource'), accelerator: key('viewSource'), click: actions.viewSource },
+        { label: t('menu.developerTools'), accelerator: key('developerTools'), click: actions.toggleDevTools },
+        { label: t('menu.phoneView'), accelerator: key('phoneView'), click: actions.toggleDeviceView },
         {
           label: t('menu.pickElement'),
-          accelerator: 'Alt+CmdOrCtrl+P',
+          accelerator: key('pickElement'),
           click: () => actions.devCommand('pick-element'),
         },
         {
@@ -243,7 +245,7 @@ export function buildMenu(actions: MenuActions): Menu {
             click: () => actions.selectDevice(device.id),
           })),
         },
-        { label: t('menu.rotateDevice'), accelerator: 'Shift+Alt+CmdOrCtrl+M', click: actions.rotateDevice },
+        { label: t('menu.rotateDevice'), accelerator: key('rotateDevice'), click: actions.rotateDevice },
       ],
     },
   ];

@@ -77,7 +77,7 @@ import type { ElementSelection } from '../agent-bridge/selection.js';
 import { episodePreview } from '../agent-bridge/timeline.js';
 import { PAGE_TEXT_SCRIPT, PAGE_TEXT_WORLD_ID, parsePageText, type PageText } from '../agent-bridge/page-text.js';
 import { playwrightTest } from '../agent-bridge/playwright.js';
-import { tabForShortcut, tabListOrder } from './tab-shortcuts.js';
+import { cycleRecentTabs, tabForShortcut, tabListOrder, type TabCycle } from './tab-shortcuts.js';
 import { READING_LIST_URL } from '../../shared/reading-list.js';
 import type { MediaInfo, MediaSkip } from '../../shared/sidebar-widgets.js';
 import {
@@ -213,6 +213,8 @@ type PickOutcome =
 export class TabManager {
   private readonly tabs: Tab[] = [];
   private activeId: TabId | null = null;
+  private recentCycle: TabCycle | null = null;
+  private readonly lastShown = new WeakMap<Tab, number>();
   private readonly openedPinned = new Map<TabId, TabId | null>();
   private readonly favoriteTabs = new Map<string, TabId>();
   private space = DEFAULT_SPACE_ID;
@@ -625,6 +627,7 @@ export class TabManager {
       this.options.window.contentView.removeChildView(tab.view);
       if (tab.devTools) this.options.window.contentView.removeChildView(tab.devTools);
       tab.inactiveSince = Date.now();
+      this.lastShown.set(tab, tab.inactiveSince);
       this.freezer.maybeFreeze(tab);
     }
     for (const tab of next) {
@@ -1878,6 +1881,17 @@ export class TabManager {
     const count = here.length;
     const index = (((here.findIndex((tab) => tab.id === this.activeId) + offset) % count) + count) % count;
     this.activate(here[index].id);
+  }
+
+  selectRecent(offset: number): void {
+    if (!this.activeId) return;
+    const visible = this.visibleIds();
+    const tabs = this.listOrder().map((tab) => ({
+      id: tab.id,
+      usedAt: visible.includes(tab.id) ? Infinity : (this.lastShown.get(tab) ?? 0),
+    }));
+    this.recentCycle = cycleRecentTabs(tabs, this.activeId, offset, Date.now(), this.recentCycle);
+    if (this.recentCycle) this.activate(this.recentCycle.ids[this.recentCycle.index]);
   }
 
   restore(session: SavedWindow, url?: string, space?: string): void {

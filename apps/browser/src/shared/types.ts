@@ -901,6 +901,8 @@ export interface SettingsValues {
   agentActions: AgentActionPolicy;
   agentTracing: boolean;
   agentTerminal: boolean;
+  recentTabCycling: boolean;
+  shortcuts: import('./shortcuts').ShortcutOverrides;
 }
 
 export type AgentActionPolicy = 'off' | 'ask' | 'allow';

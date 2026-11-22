@@ -18,6 +18,7 @@
   import ProfilesPane from './ProfilesPane.svelte';
   import RequestRules from './RequestRules.svelte';
   import Sites from './Sites.svelte';
+  import ShortcutsPane from './ShortcutsPane.svelte';
 
   const api = window.yalqenSettings;
 
@@ -29,6 +30,7 @@
     | 'sites'
     | 'passwords'
     | 'performance'
+    | 'shortcuts'
     | 'extensions'
     | 'developer'
     | 'about';
@@ -40,6 +42,7 @@
     { id: 'sites', label: t('settings.paneSites'), icon: 'globe' },
     { id: 'passwords', label: t('settings.panePasswordsAutofill'), icon: 'key' },
     { id: 'performance', label: t('settings.panePerformance'), icon: 'gauge' },
+    { id: 'shortcuts', label: t('settings.paneShortcuts'), icon: 'menu' },
     { id: 'extensions', label: t('settings.paneExtensions'), icon: 'extensions' },
     { id: 'developer', label: t('settings.paneDeveloper'), icon: 'sparkle' },
     { id: 'about', label: t('settings.paneAbout'), icon: 'info' },
@@ -153,6 +156,8 @@
     <Autofill />
   {:else if id === 'extensions'}
     <Extensions values={view.values} {update} />
+  {:else if id === 'shortcuts'}
+    <ShortcutsPane values={view.values} {update} />
   {:else if id === 'developer'}
     <AgentBridge values={view.values} {update} />
     <RequestRules />

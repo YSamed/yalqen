@@ -36,107 +36,112 @@ export function installAppMenu(host: AppMenuHost): void {
         : host.openWindow({ from: window ?? undefined }),
     );
   };
+  const selectTab = (window: YalqenWindow, offset: number) =>
+    settings.get().recentTabCycling ? window.tabs.selectRecent(offset) : window.tabs.selectRelative(offset);
   Menu.setApplicationMenu(
-    buildMenu({
-      newTab: inWindow((window) => window.tabs.openInActiveMode()),
-      newWindow: () => host.openWindow({ from: from() }),
-      newPrivateWindow: () => host.openWindow({ isPrivate: true, from: from() }),
-      newDeveloperWindow: () => host.openWindow({ developer: true, from: from() }),
-      newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
-      closeTab: () => {
-        const window = current();
-        if (window && window.tabs.count === 1) {
-          window.close();
-          return;
-        }
-        const tabs = window?.tabs;
-        if (tabs && tabs.selectedTabIds.length > 1) void tabs.closeSelected();
-        else if (tabs?.activeTabId) tabs.close(tabs.activeTabId);
+    buildMenu(
+      {
+        newTab: inWindow((window) => window.tabs.openInActiveMode()),
+        newWindow: () => host.openWindow({ from: from() }),
+        newPrivateWindow: () => host.openWindow({ isPrivate: true, from: from() }),
+        newDeveloperWindow: () => host.openWindow({ developer: true, from: from() }),
+        newPrivateTab: inWindow((window) => window.tabs.open(NEW_TAB_URL, { isPrivate: true })),
+        closeTab: () => {
+          const window = current();
+          if (window && window.tabs.count === 1) {
+            window.close();
+            return;
+          }
+          const tabs = window?.tabs;
+          if (tabs && tabs.selectedTabIds.length > 1) void tabs.closeSelected();
+          else if (tabs?.activeTabId) tabs.close(tabs.activeTabId);
+        },
+        closeWindow: () => BaseWindow.getFocusedWindow()?.close(),
+        reopenClosedTab: inWindow((window) => window.tabs.reopenClosed()),
+        cleanTabs: () => {
+          if (settings.get().manualTabCleanup) void current()?.tabs.closeIdle();
+        },
+        moveTabToNewWindow: inWindow((window) => window.moveActiveTabToNewWindow()),
+        selectNextTab: inWindow((window) => selectTab(window, 1)),
+        selectPreviousTab: inWindow((window) => selectTab(window, -1)),
+        selectTab: (index) => current()?.tabs.selectByIndex(index),
+        switchSpace: (index) => current()?.tabs.switchSpaceByIndex(index),
+        focusAddress: inWindow((window) => window.openAddress()),
+        find: () => current()?.openFind(),
+        findNext: (forward) => current()?.openFind(forward),
+        home: inWindow((window) => window.goHome()),
+        reload: () => current()?.tabs.reload(),
+        hardReload: () => current()?.tabs.reloadIgnoringCache(),
+        toggleReader: () => {
+          const window = current(),
+            contents = window?.tabs.activeContents();
+          if (!window || !contents) return;
+          const url = contents.getURL();
+          void toggleReader(contents, () => window.tabs.activeContents() === contents).then((opened) => {
+            if (
+              opened === false &&
+              !contents.isDestroyed() &&
+              !window.window.isDestroyed() &&
+              window.tabs.activeContents() === contents &&
+              contents.getURL() === url
+            )
+              void dialog.showMessageBox(window.window, { type: 'info', message: t('reader.unavailable') });
+          });
+        },
+        zoom: (direction) => current()?.tabs.zoom(direction),
+        cyclePanel: () => {
+          const { sidebarVisible, panelCollapsed } = settings.get();
+          if (!sidebarVisible) updateSettings({ sidebarVisible: true, panelCollapsed: false });
+          else if (panelCollapsed) updateSettings({ sidebarVisible: false });
+          else updateSettings({ panelCollapsed: true });
+        },
+        toggleAgentPanel: () => current()?.toggleAgentPanel(),
+        toggleToolbar: () => updateSettings({ toolbarVisible: !settings.get().toolbarVisible }),
+        toggleDevTools: () => current()?.tabs.toggleDevTools(),
+        toggleDeviceView: () => current()?.tabs.toggleEmulation(host.deviceId()),
+        rotateDevice: () => current()?.tabs.rotateDevice(),
+        devices: DEVICES.map((device) => ({
+          id: device.id,
+          label: device.label,
+          checked: device.id === host.deviceId(),
+        })),
+        selectDevice: (id) => {
+          host.selectDevice(id);
+          current()?.tabs.selectDevice(id);
+        },
+        openSettings: inWindow((window) => window.tabs.openSettings()),
+        checkForUpdates:
+          updater.status().state === 'unavailable'
+            ? null
+            : inWindow((window) => {
+                updater.check();
+                window.tabs.openSettings();
+              }),
+        toggleBookmark: () => {
+          const page = current()?.tabs.activePage();
+          if (page) host.toggleBookmark(page.url, page.title);
+        },
+        showBookmarks: inWindow((window) => window.tabs.openBookmarks()),
+        saveReadingPage: inWindow((window) => host.saveReadingPage(window)),
+        showReadingList: inWindow((window) => window.tabs.openReadingList()),
+        showWorkspaces: inWindow((window) => window.tabs.openWorkspaces()),
+        showBoosts: inWindow((window) => window.tabs.openBoosts()),
+        hideElement: inWindow((window) => host.hideElement(window)),
+        showEasels: inWindow((window) => window.tabs.openEasels()),
+        clipToEasel: inWindow((window) => host.clipToEasel(window)),
+        installWebApp: () => {
+          const window = current();
+          if (window) host.installWebApp(window);
+        },
+        manageWebApps: () => host.manageWebApps(current() ?? host.openWindow({})),
+        print: () => current()?.print(),
+        savePdf: () => void current()?.savePageAsPdf(),
+        savePage: () => void current()?.savePageOffline(),
+        openFile: inWindow((window) => void window.openLocalFiles()),
+        viewSource: () => current()?.tabs.viewSource(),
+        devCommand: (id) => current()?.runDevCommand(id),
       },
-      closeWindow: () => BaseWindow.getFocusedWindow()?.close(),
-      reopenClosedTab: inWindow((window) => window.tabs.reopenClosed()),
-      cleanTabs: () => {
-        if (settings.get().manualTabCleanup) void current()?.tabs.closeIdle();
-      },
-      moveTabToNewWindow: inWindow((window) => window.moveActiveTabToNewWindow()),
-      selectNextTab: inWindow((window) => window.tabs.selectRelative(1)),
-      selectPreviousTab: inWindow((window) => window.tabs.selectRelative(-1)),
-      selectTab: (index) => current()?.tabs.selectByIndex(index),
-      switchSpace: (index) => current()?.tabs.switchSpaceByIndex(index),
-      focusAddress: inWindow((window) => window.openAddress()),
-      find: () => current()?.openFind(),
-      findNext: (forward) => current()?.openFind(forward),
-      home: inWindow((window) => window.goHome()),
-      reload: () => current()?.tabs.reload(),
-      hardReload: () => current()?.tabs.reloadIgnoringCache(),
-      toggleReader: () => {
-        const window = current(),
-          contents = window?.tabs.activeContents();
-        if (!window || !contents) return;
-        const url = contents.getURL();
-        void toggleReader(contents, () => window.tabs.activeContents() === contents).then((opened) => {
-          if (
-            opened === false &&
-            !contents.isDestroyed() &&
-            !window.window.isDestroyed() &&
-            window.tabs.activeContents() === contents &&
-            contents.getURL() === url
-          )
-            void dialog.showMessageBox(window.window, { type: 'info', message: t('reader.unavailable') });
-        });
-      },
-      zoom: (direction) => current()?.tabs.zoom(direction),
-      cyclePanel: () => {
-        const { sidebarVisible, panelCollapsed } = settings.get();
-        if (!sidebarVisible) updateSettings({ sidebarVisible: true, panelCollapsed: false });
-        else if (panelCollapsed) updateSettings({ sidebarVisible: false });
-        else updateSettings({ panelCollapsed: true });
-      },
-      toggleAgentPanel: () => current()?.toggleAgentPanel(),
-      toggleToolbar: () => updateSettings({ toolbarVisible: !settings.get().toolbarVisible }),
-      toggleDevTools: () => current()?.tabs.toggleDevTools(),
-      toggleDeviceView: () => current()?.tabs.toggleEmulation(host.deviceId()),
-      rotateDevice: () => current()?.tabs.rotateDevice(),
-      devices: DEVICES.map((device) => ({
-        id: device.id,
-        label: device.label,
-        checked: device.id === host.deviceId(),
-      })),
-      selectDevice: (id) => {
-        host.selectDevice(id);
-        current()?.tabs.selectDevice(id);
-      },
-      openSettings: inWindow((window) => window.tabs.openSettings()),
-      checkForUpdates:
-        updater.status().state === 'unavailable'
-          ? null
-          : inWindow((window) => {
-              updater.check();
-              window.tabs.openSettings();
-            }),
-      toggleBookmark: () => {
-        const page = current()?.tabs.activePage();
-        if (page) host.toggleBookmark(page.url, page.title);
-      },
-      showBookmarks: inWindow((window) => window.tabs.openBookmarks()),
-      saveReadingPage: inWindow((window) => host.saveReadingPage(window)),
-      showReadingList: inWindow((window) => window.tabs.openReadingList()),
-      showWorkspaces: inWindow((window) => window.tabs.openWorkspaces()),
-      showBoosts: inWindow((window) => window.tabs.openBoosts()),
-      hideElement: inWindow((window) => host.hideElement(window)),
-      showEasels: inWindow((window) => window.tabs.openEasels()),
-      clipToEasel: inWindow((window) => host.clipToEasel(window)),
-      installWebApp: () => {
-        const window = current();
-        if (window) host.installWebApp(window);
-      },
-      manageWebApps: () => host.manageWebApps(current() ?? host.openWindow({})),
-      print: () => current()?.print(),
-      savePdf: () => void current()?.savePageAsPdf(),
-      savePage: () => void current()?.savePageOffline(),
-      openFile: inWindow((window) => void window.openLocalFiles()),
-      viewSource: () => current()?.tabs.viewSource(),
-      devCommand: (id) => current()?.runDevCommand(id),
-    }),
+      settings.get().shortcuts,
+    ),
   );
 }

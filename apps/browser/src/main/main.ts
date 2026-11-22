@@ -89,7 +89,7 @@ import { miniWindowUrl } from './app/launch.js';
 import { startAutoArchive } from './tabs/auto-archive.js';
 import { startMemorySaver } from './tabs/memory-saver.js';
 import { LAZY_SAVE_DELAY_MS } from './storage/json-file.js';
-import { installAppMenu } from './app/app-menu.js';
+import { installAppMenu, type AppMenuHost } from './app/app-menu.js';
 import { getLocale, pickLocale, setLocale, t } from '../shared/i18n.js';
 import { installPasswordHandlers, safeStorageCipher } from './privacy/password-handlers.js';
 import { PasswordStore } from './privacy/passwords.js';
@@ -649,10 +649,12 @@ function startBrowser(): void {
       return true;
     },
   });
+  let refreshAppMenu = () => {};
   const updateSettings = (patch: unknown) => {
     const previous = settings.get();
     const next = settings.update(patch);
     if (next === previous) return;
+    if (JSON.stringify(next.shortcuts) !== JSON.stringify(previous.shortcuts)) refreshAppMenu();
     if (next.threatProtection && !previous.threatProtection) void threatLists.update();
     if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
@@ -884,7 +886,7 @@ function startBrowser(): void {
     return browsing;
   };
 
-  installAppMenu({
+  const appMenuHost: AppMenuHost = {
     current: () => current,
     openWindow,
     settings,
@@ -939,7 +941,9 @@ function startBrowser(): void {
     selectDevice: (id) => {
       deviceId = id;
     },
-  });
+  };
+  refreshAppMenu = () => installAppMenu(appMenuHost);
+  refreshAppMenu();
 
   const senderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     windows.find((window) => window.uiContents === event.sender);

@@ -223,6 +223,13 @@
     onchange={(checked) => update({ pinnedTabsStayHome: checked })}
   />
 </SettingRow>
+<SettingRow title={t('settings.recentTabCycling')} hint={t('settings.recentTabCyclingHint')}>
+  <Switch
+    label={t('settings.recentTabCycling')}
+    checked={values.recentTabCycling}
+    onchange={(checked) => update({ recentTabCycling: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
   <Switch
     label={t('settings.tabCleanup')}
