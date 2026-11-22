@@ -27,7 +27,23 @@ export function canViewSource(url: string): boolean {
 
 export type AddressFormat = 'url' | 'markdown' | 'curl';
 
-export function formatAddress(format: AddressFormat, url: string, title: string): string {
+const TRACKING_PARAM = /^(utm_.*|fbclid|gclid|gbraid|wbraid|dclid|msclkid|yclid|twclid|ttclid|igshid|mc_eid|_ga|_gl)$/i;
+
+export function stripTrackingParams(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  const tracking = [...parsed.searchParams.keys()].filter((name) => TRACKING_PARAM.test(name));
+  if (tracking.length === 0) return url;
+  for (const name of tracking) parsed.searchParams.delete(name);
+  return parsed.href;
+}
+
+export function formatAddress(format: AddressFormat, address: string, title: string, stripTracking = false): string {
+  const url = stripTracking ? stripTrackingParams(address) : address;
   switch (format) {
     case 'url':
       return url;

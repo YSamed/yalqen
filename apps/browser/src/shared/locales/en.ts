@@ -40,6 +40,13 @@ export const en = {
   'workspaces.remove': 'Remove',
   'workspaces.confirmRemove': 'Remove this saved workspace? Open tabs will remain.',
   'workspaces.readOnly': 'Workspace changes and opening are available in a normal browser window.',
+  'spaces.separateSignIns': 'Use separate sign-ins',
+  'spaces.export': 'Export space…',
+  'spaces.import': 'Import space…',
+  'spaces.chooseFile': 'Choose Space File',
+  'spaces.exportFailed': "Couldn't export the space.",
+  'spaces.importFailed': "Couldn't import the space.",
+  'spaces.importFailedDetail': 'Choose a Yalqen space file. You can have up to 50 spaces.',
   'boosts.title': 'Site styling',
   'boosts.intro':
     'Give a website its own look. Styles are saved for the site and applied every time it loads. Hide elements with Tab → Hide an element on this site.',
@@ -1757,13 +1764,10 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
-  'spaces.separateSignIns': 'Use separate sign-ins',
-  'spaces.export': 'Export space…',
-  'spaces.import': 'Import space…',
-  'spaces.chooseFile': 'Choose Space File',
-  'spaces.exportFailed': "Couldn't export the space.",
-  'spaces.importFailed': "Couldn't import the space.",
-  'spaces.importFailedDetail': 'Choose a Yalqen space file. You can have up to 50 spaces.',
+  'commandBar.searchOn': 'Search {engine}',
+  'settings.stripTrackingOnCopy': 'Remove tracking from copied addresses',
+  'settings.stripTrackingOnCopyHint':
+    'Remove utm_*, fbclid, gclid and similar parameters when you copy the address of a page.',
 };
 
 export type MessageKey = keyof typeof en;

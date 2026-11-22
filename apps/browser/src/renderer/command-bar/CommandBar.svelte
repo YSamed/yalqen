@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import type { AddressSuggestion, CommandBarAction } from '../../shared/types';
+  import type { AddressSuggestion, CommandBarAction, CommandBarOpen } from '../../shared/types';
+  import { matchSearchKeyword } from '../../shared/search-keyword';
   import { t } from '../../shared/i18n';
   import { displayHost } from '../../shared/hosts';
   import Icon from '../ui/Icon.svelte';
@@ -13,11 +14,14 @@
   let placeholder = $state(t('commandBar.placeholder'));
   let suggestions: AddressSuggestion[] = $state([]);
   let selected = $state(-1);
+  let engines: CommandBarOpen['engines'] = $state([]);
+  let engine: CommandBarOpen['engines'][number] | null = $state(null);
 
   function finish(action: CommandBarAction): void {
     value = '';
     suggestions = [];
     selected = -1;
+    engine = null;
     window.yalqenCommand.send(action);
   }
 
@@ -39,13 +43,14 @@
       return;
     }
     if (value.trim() === '') return;
-    finish({ type: 'submit', input: value });
+    finish({ type: 'submit', input: value, engine: engine?.id });
   }
 
   function onInput(event: Event): void {
     const text = (event.currentTarget as HTMLInputElement).value;
     selected = -1;
-    if (text.trim() === '') suggestions = [];
+    if (text.trim() === '' || engine) suggestions = [];
+    if (engine) return;
     window.yalqenCommand.send({ type: 'input', input: text });
   }
 
@@ -53,6 +58,16 @@
     if (event.key === 'Escape') {
       event.preventDefault();
       finish({ type: 'dismiss' });
+    } else if (event.key === 'Tab' && !event.shiftKey && !engine) {
+      const match = matchSearchKeyword(value, engines);
+      if (!match) return;
+      event.preventDefault();
+      engine = match;
+      value = '';
+      suggestions = [];
+      selected = -1;
+    } else if (event.key === 'Backspace' && engine && value === '') {
+      engine = null;
     } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && suggestions.length > 0) {
       event.preventDefault();
       const step = event.key === 'ArrowDown' ? 1 : -1;
@@ -72,6 +87,8 @@
       document.documentElement.style.setProperty('--accent', open.accent);
       placeholder = open.placeholder;
       value = open.value ?? '';
+      engines = open.engines;
+      engine = null;
       suggestions = [];
       selected = -1;
       void tick().then(() => {
@@ -103,13 +120,17 @@
         bind:ref={input}
         bind:value
         oninput={onInput}
-        {placeholder}
+        placeholder={engine ? t('commandBar.searchOn', { engine: engine.label }) : placeholder}
         aria-label={t('commandBar.placeholder')}
         role="combobox"
         aria-expanded={suggestions.length > 0}
         aria-controls="suggestions"
         aria-activedescendant={selected >= 0 ? `suggestion-${selected}` : undefined}
-      />
+      >
+        {#snippet trailing()}
+          {#if engine}<span class="engine">{engine.label}</span>{/if}
+        {/snippet}
+      </SearchField>
     </form>
     {#if suggestions.length > 0}
       <ul class="suggestions" id="suggestions" role="listbox" aria-label={t('commandBar.suggestions')}>
@@ -162,6 +183,15 @@
     --search-field-bg: rgb(255 255 255 / 0.88);
     --search-field-shadow:
       0 0 0 0.5px rgb(0 0 0 / 0.12), inset 0 1px rgb(255 255 255 / 0.8), 0 12px 40px rgb(0 0 0 / 0.22);
+  }
+
+  .engine {
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .suggestions {

@@ -65,6 +65,7 @@ const DEFAULTS: Settings = {
   adBlockExceptions: [],
   thirdPartyCookieExceptions: [],
   httpsOnly: false,
+  stripTrackingOnCopy: true,
   blockThirdPartyCookies: false,
   clearOnExit: false,
   blockedPermissionRequests: [],
@@ -159,6 +160,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     adBlockExceptions,
     thirdPartyCookieExceptions,
     httpsOnly,
+    stripTrackingOnCopy,
     blockThirdPartyCookies,
     clearOnExit,
     blockedPermissionRequests,
@@ -237,6 +239,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
       ? sanitizeProtectionExceptions(thirdPartyCookieExceptions)
       : base.thirdPartyCookieExceptions,
     httpsOnly: typeof httpsOnly === 'boolean' ? httpsOnly : base.httpsOnly,
+    stripTrackingOnCopy: typeof stripTrackingOnCopy === 'boolean' ? stripTrackingOnCopy : base.stripTrackingOnCopy,
     blockThirdPartyCookies:
       typeof blockThirdPartyCookies === 'boolean' ? blockThirdPartyCookies : base.blockThirdPartyCookies,
     clearOnExit: typeof clearOnExit === 'boolean' ? clearOnExit : base.clearOnExit,

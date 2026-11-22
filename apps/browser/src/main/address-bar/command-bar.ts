@@ -5,8 +5,10 @@ import {
   type CommandBarAction,
   type CommandBarOpen,
   type DevCommandId,
+  type SearchEngineId,
   type TabId,
 } from '../../shared/types.js';
+import { SEARCH_ENGINES } from './search.js';
 import { isDevCommandId } from '../devtools/dev-commands.js';
 import { getLocale } from '../../shared/i18n.js';
 import { loadRenderer } from '../app/dev-renderer.js';
@@ -21,7 +23,7 @@ interface CommandBarOptions {
 
 export interface CommandBarHost {
   window: BaseWindow;
-  onSubmit: (input: string, mode: CommandBarOpen['mode']) => void;
+  onSubmit: (input: string, mode: CommandBarOpen['mode'], engine?: SearchEngineId) => void;
   onDismiss: () => void;
   onInput: (input: string) => void;
   onSwitchTab: (id: TabId) => void;
@@ -138,7 +140,7 @@ export class CommandBar {
     } else if (action.type === 'run-command' && isDevCommandId(action.id)) {
       host.onRunCommand(action.id);
     } else if (action.type === 'submit' && typeof action.input === 'string' && action.input.trim() !== '') {
-      host.onSubmit(action.input, this.mode);
+      host.onSubmit(action.input, this.mode, SEARCH_ENGINES.find(({ id }) => id === action.engine)?.id);
     } else {
       host.onDismiss();
     }
