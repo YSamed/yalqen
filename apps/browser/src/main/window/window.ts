@@ -1614,7 +1614,9 @@ export class YalqenWindow {
   }
 
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
-    if (page && canViewSource(page.url)) clipboard.writeText(formatAddress(format, page.url, page.title));
+    if (page && canViewSource(page.url)) {
+      clipboard.writeText(formatAddress(format, page.url, page.title, this.app.settings.get().stripTrackingOnCopy));
+    }
   }
 
   moveActiveTabToNewWindow(): void {

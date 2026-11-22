@@ -1007,6 +1007,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.tabModes': 'Sekme modları',
   'settings.tabModesHint':
     'Adres çubuğuna Normal, Geliştirici ve Gizli seçicisi ekler. Sekme seçilen modda aynı pencerede yeniden yüklenir ve pencere onun görünümünü alır.',
+  'settings.autoDeveloperMode': 'Yerel adresler için Geliştirici Modu',
+  'settings.autoDeveloperModeHint':
+    'Sekme modları açıkken, Normal bir sekme localhost, 127.0.0.1 veya başka bir yerel adresi açarsa Geliştirici Modunda yeniden yüklenir.',
   'settings.bookmarksPanel': 'Yer imleri yan paneli',
   'settings.bookmarksPanelHint':
     'Yer imleri düğmesi, yer imlerinizi sağdaki bir panelde açar. Açık sekmesi olan yer imleri vurgulanır ve tıklamak o sekmeye geçer.',
@@ -1769,7 +1772,6 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
-  'settings.autoDeveloperMode': 'Yerel adresler için Geliştirici Modu',
-  'settings.autoDeveloperModeHint':
-    'Sekme modları açıkken, Normal bir sekme localhost, 127.0.0.1 veya başka bir yerel adresi açarsa Geliştirici Modunda yeniden yüklenir.',
+  'settings.stripTrackingOnCopy': 'Kopyalanan adreslerden izlemeyi kaldır',
+  'settings.stripTrackingOnCopyHint': 'Sayfa adresini kopyalarken utm_*, fbclid, gclid ve benzeri parametreleri sil.',
 };
