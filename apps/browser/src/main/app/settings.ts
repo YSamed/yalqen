@@ -31,6 +31,7 @@ import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from '../address-bar/search.js';
 import { sanitizeProtectionExceptions } from '../privacy/site-protections.js';
 import { isBackgroundFileName } from '../pages/new-tab-background.js';
+import { sanitizeShortcuts } from '../../shared/shortcuts.js';
 
 export interface Settings extends SettingsValues {
   version: 1;
@@ -93,6 +94,8 @@ const DEFAULTS: Settings = {
   agentActions: 'ask',
   agentTracing: false,
   agentTerminal: false,
+  recentTabCycling: true,
+  shortcuts: {},
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
@@ -188,6 +191,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     agentActions,
     agentTracing,
     agentTerminal,
+    recentTabCycling,
+    shortcuts,
   } = input;
   return {
     version: 1,
@@ -284,6 +289,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.agentActions,
     agentTracing: typeof agentTracing === 'boolean' ? agentTracing : base.agentTracing,
     agentTerminal: typeof agentTerminal === 'boolean' ? agentTerminal : base.agentTerminal,
+    recentTabCycling: typeof recentTabCycling === 'boolean' ? recentTabCycling : base.recentTabCycling,
+    shortcuts: shortcuts === undefined ? base.shortcuts : sanitizeShortcuts(shortcuts),
   };
 }
 

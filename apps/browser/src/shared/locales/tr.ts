@@ -1769,4 +1769,13 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
+  'settings.recentTabCycling': 'Sekmeler arasında son kullanım sırasıyla geç',
+  'settings.recentTabCyclingHint':
+    'Ctrl+Tab son kullandığınız sekmeye gider. Daha geriye gitmek için hızlıca yeniden basın. Kapalıyken sekme listesinin sırasını izler.',
+  'settings.paneShortcuts': 'Kısayollar',
+  'settings.shortcuts': 'Menü kısayolları',
+  'settings.shortcutsHint':
+    'Değiştirici tuşları ve bir tuş yazın, örneğin CmdOrCtrl+Shift+K. Değiştiriciler: CmdOrCtrl, Cmd, Ctrl, Alt ve Shift. Varsayılanı kullanmak için alanı boş bırakın.',
+  'settings.shortcutInvalid': 'Bu geçerli bir tuş birleşimi değil.',
+  'settings.shortcutConflict': 'Bu tuş birleşimini başka bir komut ya da yerleşik bir kısayol da kullanıyor.',
 };

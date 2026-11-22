@@ -47,3 +47,40 @@ export function tabListOrder<T extends Listable>(
 export function tabForShortcut<T>(ordered: readonly T[], index: number): T | undefined {
   return index < 0 ? ordered.at(-1) : ordered[index];
 }
+
+export interface TabCycle {
+  ids: string[];
+  index: number;
+  at: number;
+}
+
+// shortcut: without key-up tracking, presses this close together count as one held-Ctrl cycle; track Ctrl release to drop the timer.
+export const TAB_CYCLE_WINDOW_MS = 1500;
+
+export function cycleRecentTabs(
+  tabs: readonly { id: string; usedAt: number }[],
+  activeId: string,
+  offset: number,
+  now: number,
+  previous: TabCycle | null,
+): TabCycle | null {
+  if (tabs.length < 2 || !tabs.some((tab) => tab.id === activeId)) return null;
+  const continuing =
+    previous !== null &&
+    now - previous.at < TAB_CYCLE_WINDOW_MS &&
+    previous.ids[previous.index] === activeId &&
+    previous.ids.length === tabs.length &&
+    tabs.every((tab) => previous.ids.includes(tab.id));
+  const ids = continuing
+    ? previous.ids
+    : [
+        activeId,
+        ...tabs
+          .filter((tab) => tab.id !== activeId)
+          .sort((a, b) => b.usedAt - a.usedAt)
+          .map((tab) => tab.id),
+      ];
+  const count = ids.length;
+  const start = continuing ? previous.index : 0;
+  return { ids, index: (((start + offset) % count) + count) % count, at: now };
+}

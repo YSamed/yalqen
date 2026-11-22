@@ -92,6 +92,8 @@ test('unknown or mistyped fields fall back', () => {
       agentActions: 'ask',
       agentTracing: false,
       agentTerminal: false,
+      recentTabCycling: true,
+      shortcuts: {},
     },
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');
@@ -141,6 +143,28 @@ test('the bookmarks side panel is off by default and kept once turned on', () =>
   assert.equal(sanitizeSettings(null).bookmarksPanel, false);
   assert.equal(sanitizeSettings({ bookmarksPanel: true }).bookmarksPanel, true);
   assert.equal(sanitizeSettings({ bookmarksPanel: 'yes' }).bookmarksPanel, false);
+});
+
+test('recent tab cycling is on by default and can be turned off', () => {
+  assert.equal(sanitizeSettings(null).recentTabCycling, true);
+  assert.equal(sanitizeSettings({ recentTabCycling: false }).recentTabCycling, false);
+  assert.equal(sanitizeSettings({ recentTabCycling: 'no' }).recentTabCycling, true);
+});
+
+test('shortcut overrides keep only known commands with valid key combinations', () => {
+  assert.deepEqual(
+    sanitizeSettings({
+      shortcuts: {
+        newTab: 'cmdorctrl + alt + t',
+        reload: 'CmdOrCtrl+R',
+        closeTab: 'Hyper+W',
+        unknown: 'Ctrl+U',
+        find: 7,
+      },
+    }).shortcuts,
+    { newTab: 'CmdOrCtrl+Alt+T' },
+  );
+  assert.deepEqual(sanitizeSettings({ shortcuts: 'Ctrl+T' }).shortcuts, {});
 });
 
 test('Touch ID passkeys are off by default and kept once turned on', () => {

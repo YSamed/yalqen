@@ -1757,6 +1757,15 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
+  'settings.recentTabCycling': 'Switch tabs in recently used order',
+  'settings.recentTabCyclingHint':
+    'Ctrl+Tab goes to the tab you used last. Press it again quickly to go further back. When off, it follows the tab list.',
+  'settings.paneShortcuts': 'Shortcuts',
+  'settings.shortcuts': 'Menu shortcuts',
+  'settings.shortcutsHint':
+    'Type modifiers and a key, for example CmdOrCtrl+Shift+K. Modifiers are CmdOrCtrl, Cmd, Ctrl, Alt and Shift. Leave a field empty to use the default.',
+  'settings.shortcutInvalid': 'This is not a valid key combination.',
+  'settings.shortcutConflict': 'Another command or a built-in shortcut also uses this key combination.',
 };
 
 export type MessageKey = keyof typeof en;

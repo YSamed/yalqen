@@ -2,7 +2,48 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import shortcuts from '../../../dist/main/tabs/tab-shortcuts.js';
 
-const { tabForShortcut, tabListOrder } = shortcuts;
+const { cycleRecentTabs, tabForShortcut, tabListOrder, TAB_CYCLE_WINDOW_MS } = shortcuts;
+
+test('next tab goes to the most recently used tab, not the next one in the list', () => {
+  const used = [
+    { id: 'a', usedAt: Infinity },
+    { id: 'b', usedAt: 1 },
+    { id: 'c', usedAt: 3 },
+  ];
+  const next = cycleRecentTabs(used, 'a', 1, 0, null);
+  assert.equal(next.ids[next.index], 'c');
+  const previous = cycleRecentTabs(used, 'a', -1, 0, null);
+  assert.equal(previous.ids[previous.index], 'b');
+});
+
+test('quick repeated presses go further back and a pause starts over', () => {
+  const used = [
+    { id: 'a', usedAt: Infinity },
+    { id: 'b', usedAt: 1 },
+    { id: 'c', usedAt: 3 },
+  ];
+  const first = cycleRecentTabs(used, 'a', 1, 0, null);
+  const second = cycleRecentTabs(used, 'c', 1, 100, first);
+  assert.equal(second.ids[second.index], 'b');
+  const back = cycleRecentTabs(used, 'b', -1, 200, second);
+  assert.equal(back.ids[back.index], 'c');
+  const afterPause = [
+    { id: 'a', usedAt: 5 },
+    { id: 'b', usedAt: 4 },
+    { id: 'c', usedAt: Infinity },
+  ];
+  const later = cycleRecentTabs(afterPause, 'c', 1, 200 + TAB_CYCLE_WINDOW_MS, back);
+  assert.equal(later.ids[later.index], 'a');
+});
+
+test('recent cycling needs a second tab and a known active tab', () => {
+  assert.equal(cycleRecentTabs([{ id: 'a', usedAt: 0 }], 'a', 1, 0, null), null);
+  const two = [
+    { id: 'a', usedAt: 0 },
+    { id: 'b', usedAt: 0 },
+  ];
+  assert.equal(cycleRecentTabs(two, 'x', 1, 0, null), null);
+});
 
 const tabs = [
   { id: 'p1', pinnedUrl: 'https://one.test/' },
