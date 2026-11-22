@@ -41,6 +41,7 @@ test('unknown or mistyped fields fall back', () => {
       customSearchTemplate: null,
       theme: 'light',
       transparency: true,
+      darkSites: false,
       glassTint: 25,
       startupBehavior: 'restore',
       startupUrls: [],

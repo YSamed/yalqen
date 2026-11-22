@@ -844,6 +844,7 @@ export interface SettingsValues {
   customSearchTemplate: string | null;
   theme: ThemeSource;
   transparency: boolean;
+  darkSites: boolean;
   glassTint: number;
   startupBehavior: 'restore' | 'new-tab' | 'pages';
   startupUrls: string[];

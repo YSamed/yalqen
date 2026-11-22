@@ -1757,6 +1757,10 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
+  'settings.darkSites': 'Dark appearance on all sites',
+  'settings.darkSitesHint':
+    'Darkens every web page by inverting its colors. Turn it off for one site under Site styling. Sites that already have a dark theme may look wrong.',
+  'boosts.dark': 'Dark appearance on this site (when enabled in Settings)',
 };
 
 export type MessageKey = keyof typeof en;

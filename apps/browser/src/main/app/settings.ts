@@ -42,6 +42,7 @@ const DEFAULTS: Settings = {
   customSearchTemplate: null,
   theme: 'light',
   transparency: true,
+  darkSites: false,
   glassTint: DEFAULT_GLASS_TINT,
   startupBehavior: 'restore',
   startupUrls: [],
@@ -136,6 +137,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     customSearchTemplate,
     theme,
     transparency,
+    darkSites,
     glassTint,
     startupBehavior,
     startupUrls,
@@ -201,6 +203,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
     transparency: typeof transparency === 'boolean' ? transparency : base.transparency,
+    darkSites: typeof darkSites === 'boolean' ? darkSites : base.darkSites,
     glassTint:
       typeof glassTint === 'number' && Number.isFinite(glassTint)
         ? Math.round(Math.min(100, Math.max(0, glassTint)))

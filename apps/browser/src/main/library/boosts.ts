@@ -47,10 +47,11 @@ const color = (value: unknown): string | null | undefined =>
 
 export function sanitizeBoost(value: unknown): Boost | null {
   if (!value || typeof value !== 'object') return null;
-  const { enabled, accent, background, font, hidden, css } = value as Record<string, unknown>;
+  const { enabled, dark = true, accent, background, font, hidden, css } = value as Record<string, unknown>;
   const selectors = Array.isArray(hidden) && hidden.length <= MAX_HIDDEN ? hidden.map(boostSelector) : null;
   if (
     typeof enabled !== 'boolean' ||
+    typeof dark !== 'boolean' ||
     color(accent) === undefined ||
     color(background) === undefined ||
     (font !== null && !BOOST_FONTS.includes(font as BoostFont)) ||
@@ -62,12 +63,26 @@ export function sanitizeBoost(value: unknown): Boost | null {
     return null;
   return {
     enabled,
+    dark,
     accent: color(accent) as string | null,
     background: color(background) as string | null,
     font: font as BoostFont | null,
     hidden: [...new Set(selectors as string[])],
     css,
   };
+}
+
+// shortcut: inverts every page, so sites with their own dark theme need the per-site opt-out
+const DARK_STYLES =
+  'html{background:#fff!important;color-scheme:dark;filter:invert(1) hue-rotate(180deg)!important}' +
+  'img,picture,video,canvas,iframe,svg image,[style*="background-image"]{filter:invert(1) hue-rotate(180deg)!important}';
+
+export const darkApplies = (everywhere: boolean, boost: Boost | null): boolean => everywhere && boost?.dark !== false;
+
+export function pageStyles(everywhere: boolean, boost: Boost | null): string {
+  return [darkApplies(everywhere, boost) ? DARK_STYLES : '', boost?.enabled ? boostStyles(boost) : '']
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function boostStyles(boost: Boost): string {
@@ -117,7 +132,15 @@ export class BoostStore {
     const key = boostOrigin(origin),
       hidden = boostSelector(selector);
     if (!key || !hidden) return false;
-    const current = this.get(key) ?? { enabled: true, accent: null, background: null, font: null, hidden: [], css: '' };
+    const current = this.get(key) ?? {
+      enabled: true,
+      dark: true,
+      accent: null,
+      background: null,
+      font: null,
+      hidden: [],
+      css: '',
+    };
     return this.save(key, { ...current, enabled: true, hidden: [...current.hidden, hidden] });
   }
   remove(origin: unknown): boolean {

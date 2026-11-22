@@ -1769,4 +1769,8 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
+  'settings.darkSites': 'Tüm sitelerde koyu görünüm',
+  'settings.darkSitesHint':
+    'Renkleri ters çevirerek her web sayfasını koyulaştırır. Tek bir site için Site stili bölümünden kapatabilirsin. Zaten koyu temalı siteler yanlış görünebilir.',
+  'boosts.dark': "Bu sitede koyu görünüm (Ayarlar'ta açıksa)",
 };
