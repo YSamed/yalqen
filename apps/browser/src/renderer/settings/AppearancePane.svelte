@@ -237,6 +237,14 @@
     onchange={(checked) => update({ tabModes: checked })}
   />
 </SettingRow>
+<SettingRow title={t('settings.autoDeveloperMode')} hint={t('settings.autoDeveloperModeHint')}>
+  <Switch
+    label={t('settings.autoDeveloperMode')}
+    checked={values.autoDeveloperMode}
+    disabled={!values.tabModes}
+    onchange={(checked) => update({ autoDeveloperMode: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.bookmarksPanel')} hint={t('settings.bookmarksPanelHint')}>
   <Switch
     label={t('settings.bookmarksPanel')}
@@ -274,6 +282,13 @@
     />
   </SettingRow>
 {/if}
+<SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
+  <Switch
+    label={t('settings.darkSites')}
+    checked={values.darkSites}
+    onchange={(checked) => update({ darkSites: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
   <Select
     id="default-zoom"

@@ -42,6 +42,7 @@ interface ContextMenuActions {
   addToDictionary(word: string): void;
   translation?: { label: string; run(): void };
   translateSelection?: () => void;
+  extensionItems?: MenuItemConstructorOptions[];
 }
 
 export function snippet(text: string): string {
@@ -146,6 +147,7 @@ export function contextMenuTemplate(context: PageContext, actions: ContextMenuAc
         : []),
     ]);
   }
+  if (actions.extensionItems?.length) groups.push(actions.extensionItems);
   groups.push([{ label: t('contextMenu.inspect'), click: actions.inspect }]);
 
   return groups.flatMap((group, index) => (index === 0 ? group : [{ type: 'separator' as const }, ...group]));

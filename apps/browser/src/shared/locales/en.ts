@@ -58,6 +58,10 @@ export const en = {
   'boosts.empty': 'No styled sites yet. Open a website, then choose Tab → Site styling.',
   'boosts.site': 'Site',
   'boosts.enabled': 'Apply styling on this site',
+  'settings.darkSites': 'Dark appearance on all sites',
+  'settings.darkSitesHint':
+    'Darkens every web page by inverting its colors. Turn it off for one site under Site styling. Sites that already have a dark theme may look wrong.',
+  'boosts.dark': 'Dark appearance on this site (when enabled in Settings)',
   'boosts.accent': 'Accent color',
   'boosts.background': 'Background color',
   'boosts.font': 'Font',
@@ -1005,6 +1009,9 @@ export const en = {
   'settings.tabModes': 'Tab modes',
   'settings.tabModesHint':
     'Adds a Normal, Developer and Private switch to the address bar. The tab reloads in the mode picked, in the same window, and the window takes its look.',
+  'settings.autoDeveloperMode': 'Developer Mode for local addresses',
+  'settings.autoDeveloperModeHint':
+    'With tab modes on, a Normal tab that opens localhost, 127.0.0.1 or another local address reloads in Developer Mode.',
   'settings.bookmarksPanel': 'Bookmarks side panel',
   'settings.bookmarksPanelHint':
     'The bookmarks button opens your bookmarks in a panel on the right. Bookmarks with an open tab are highlighted, and a click switches to that tab.',

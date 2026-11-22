@@ -270,6 +270,7 @@ function startBrowser(): void {
     owned,
     writable: regularPage,
     styled: regularPage,
+    darkSites: () => settings.get().darkSites,
   });
   const easels = installEasels({
     store: new EaselStore(userData),
@@ -656,6 +657,7 @@ function startBrowser(): void {
     if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
     nativeTheme.themeSource = next.theme;
+    if (next.darkSites !== previous.darkSites) boosts.refreshAll();
     if (next.accentColor !== previous.accentColor) setPageAccent(accentHex(next.accentColor));
     if (next.discardAfterMinutes > 0 !== previous.discardAfterMinutes > 0)
       eachWindow((window) => window.tabs.applyFreezeSetting());
@@ -712,6 +714,7 @@ function startBrowser(): void {
     spaceSession: (id) => spaceSession(id),
     extensions,
     extensionPopup,
+    extensionBridge,
     extensionAccess,
     certificates,
     httpsOnly,
