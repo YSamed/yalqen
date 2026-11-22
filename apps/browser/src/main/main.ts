@@ -692,6 +692,7 @@ function startBrowser(): void {
     spacesChanged: workspacesChanged,
     extensions,
     extensionPopup,
+    extensionBridge,
     extensionAccess,
     certificates,
     httpsOnly,

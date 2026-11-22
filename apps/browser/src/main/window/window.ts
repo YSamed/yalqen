@@ -192,6 +192,7 @@ export interface AppContext {
   spacesChanged(): void;
   extensions: ExtensionManager;
   extensionPopup: ExtensionPopup;
+  extensionBridge: import('../extensions/extension-bridge.js').ExtensionBridge;
   extensionAccess: import('../extensions/extension-access-controller.js').ExtensionAccessController;
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
@@ -2281,6 +2282,7 @@ export class YalqenWindow {
       copyAddress: (format) => this.copyAddress(format, { url: contents.getURL(), title: contents.getTitle() }),
       replaceMisspelling: (word) => contents.replaceMisspelling(word),
       addToDictionary: (word) => contents.session.addWordToSpellCheckerDictionary(word),
+      extensionItems: this.app.extensionBridge.menuItems(contents, params),
     });
     this.popup(template);
   }
