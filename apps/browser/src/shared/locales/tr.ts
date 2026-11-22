@@ -1769,4 +1769,5 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
+  'commandBar.searchOn': '{engine} içinde ara',
 };

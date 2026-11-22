@@ -1757,6 +1757,7 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
+  'commandBar.searchOn': 'Search {engine}',
 };
 
 export type MessageKey = keyof typeof en;
