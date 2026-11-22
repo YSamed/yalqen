@@ -65,9 +65,12 @@ export class CertificateExceptions {
   }
 }
 
-export function handleCertificateErrors(exceptions: CertificateExceptions, sessions: readonly Session[]): void {
+export function handleCertificateErrors(
+  exceptions: CertificateExceptions,
+  isBrowsing: (session: Session) => boolean,
+): void {
   app.on('certificate-error', (event, contents, url, _error, certificate, callback, isMainFrame) => {
-    const browsing = sessions.includes(contents.session);
+    const browsing = isBrowsing(contents.session);
     if (browsing && exceptions.allows(url, certificate.fingerprint)) {
       event.preventDefault();
       callback(true);

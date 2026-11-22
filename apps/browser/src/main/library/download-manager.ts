@@ -46,9 +46,13 @@ export class DownloadManager {
     private readonly options: DownloadManagerOptions,
     private readonly dialogs: Pick<typeof dialog, 'showMessageBox' | 'showSaveDialog'> = dialog,
   ) {
-    options.daily.on('will-download', this.onWillDownload(false));
-    options.privateBrowsing.on('will-download', this.onWillDownload(true));
-    options.developer.on('will-download', this.onWillDownload(true));
+    this.watch(options.daily, false);
+    this.watch(options.privateBrowsing, true);
+    this.watch(options.developer, true);
+  }
+
+  watch(browsing: Session, isPrivate: boolean): void {
+    browsing.on('will-download', this.onWillDownload(isPrivate));
   }
 
   changed(): void {

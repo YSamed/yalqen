@@ -31,7 +31,7 @@ export function installPermissionHandlers({
   parentOf,
   blockedRequests,
   appLinks,
-}: PermissionHandlerOptions): void {
+}: PermissionHandlerOptions): (browsing: Session, isPrivate: boolean) => void {
   let prompts: Promise<unknown> = Promise.resolve();
   const ask = (
     contents: WebContents,
@@ -86,7 +86,7 @@ export function installPermissionHandlers({
     return true;
   };
 
-  for (const [browsing, isPrivate] of sessions) {
+  const add = (browsing: Session, isPrivate: boolean) => {
     browsing.setPermissionRequestHandler((contents, permission, callback, details) => {
       if (ALLOWED_PERMISSIONS.has(permission)) {
         callback(true);
@@ -127,5 +127,7 @@ export function installPermissionHandlers({
       if (!kinds) return false;
       return storeFor(isPrivate).decide(origin, kinds) === 'allow';
     });
-  }
+  };
+  for (const [browsing, isPrivate] of sessions) add(browsing, isPrivate);
+  return add;
 }

@@ -43,6 +43,13 @@ export const tr: Record<MessageKey, string> = {
   'workspaces.remove': 'Kaldır',
   'workspaces.confirmRemove': 'Kayıtlı çalışma alanı kaldırılsın mı? Açık sekmeler korunur.',
   'workspaces.readOnly': 'Çalışma alanlarını değiştirmek ve açmak için normal bir tarayıcı penceresi kullanın.',
+  'spaces.separateSignIns': 'Ayrı oturum açmaları kullan',
+  'spaces.export': 'Alanı dışa aktar…',
+  'spaces.import': 'Alan içe aktar…',
+  'spaces.chooseFile': 'Alan Dosyası Seçin',
+  'spaces.exportFailed': 'Alan dışa aktarılamadı.',
+  'spaces.importFailed': 'Alan içe aktarılamadı.',
+  'spaces.importFailedDetail': 'Bir Yalqen alan dosyası seçin. En fazla 50 alanınız olabilir.',
   'boosts.title': 'Site stili',
   'boosts.intro':
     'Bir web sitesine kendi görünümünü verin. Stiller site için kaydedilir ve site her yüklendiğinde uygulanır. Öğeleri Sekme → Bu sitede bir öğeyi gizle ile gizleyin.',

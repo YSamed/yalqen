@@ -144,6 +144,7 @@ interface TabManagerOptions {
   onChange: (persist: PersistChange) => void;
   spaceIds?: () => string[];
   spaceSeed?: (id: string) => SavedWindow | null;
+  spaceSession?: (space: string) => Session | null;
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
   onRepoPrompt: (action: RepoPromptAction) => void;
@@ -322,7 +323,22 @@ export class TabManager {
     for (const state of [this.groupStates, this.spaceActive])
       for (const id of state.keys()) if (!ids.includes(id)) state.delete(id);
     for (const id of this.seeded) if (!ids.includes(id)) this.seeded.delete(id);
+    this.realignSessions();
     this.changed(true);
+  }
+
+  private realignSessions(): void {
+    let visible = false;
+    for (const tab of this.tabs) if (this.dropForeignView(tab)) visible ||= this.visibleIds().includes(tab.id);
+    if (visible) this.showVisible();
+  }
+
+  private dropForeignView(tab: Tab): boolean {
+    const contents = liveContents(tab);
+    if (!contents || contents.session === this.sessionFor(tab)) return false;
+    tab.history = captureHistory(tab);
+    this.destroyView(tab);
+    return true;
   }
 
   private enterSpace(id: string): void {
@@ -1349,6 +1365,7 @@ export class TabManager {
       (remembered && this.find(remembered)) || this.here.find((tab) => tab.url === url && !tab.isPrivate);
     if (existing) {
       existing.space = this.space;
+      this.dropForeignView(existing);
       this.activate(existing.id);
     } else this.favoriteTabs.set(url, this.open(url));
   }
@@ -2008,10 +2025,16 @@ export class TabManager {
 
   activeSession(): Session {
     const tab = this.active();
-    return this.sessionFor(
-      tab?.isPrivate ?? this.options.privateWindow,
-      tab?.developer ?? this.options.developerWindow ?? false,
-    );
+    return this.sessionFor({
+      isPrivate: tab?.isPrivate ?? this.options.privateWindow,
+      developer: tab?.developer ?? this.options.developerWindow ?? false,
+      space: tab?.space ?? this.space,
+    });
+  }
+
+  tabSession(id: TabId): Session | null {
+    const tab = this.find(id);
+    return tab ? this.sessionFor(tab) : null;
   }
 
   async setMode(id: TabId, mode: TabMode, target?: string): Promise<boolean> {
@@ -2077,6 +2100,7 @@ export class TabManager {
   adopt(tab: DetachedTab): void {
     tab.space = this.space;
     this.insertAfterActive(tab);
+    this.dropForeignView(tab);
     if (tab.view) this.attachListeners(tab, tab.view);
     this.autoReloader.sync();
     this.activate(tab.id);
@@ -2118,7 +2142,7 @@ export class TabManager {
       tab.upgrade = null;
     }
 
-    const view = this.createPageView(tab.isPrivate, tab.developer);
+    const view = this.createPageView(tab.isPrivate, tab.developer, tab.space);
     const emulated = this.mount(tab, view);
     if (emulated) {
       void emulated.then(() => {
@@ -2130,8 +2154,8 @@ export class TabManager {
     return view;
   }
 
-  createPageView(isPrivate: boolean, developer = false): WebContentsView {
-    return createPageView(this.options.pagePreload, this.sessionFor(isPrivate, developer));
+  createPageView(isPrivate: boolean, developer = false, space = this.space): WebContentsView {
+    return createPageView(this.options.pagePreload, this.sessionFor({ isPrivate, developer, space }));
   }
 
   private openDevToolsWhenReady(tab: Tab, view: WebContentsView): void {
@@ -2143,9 +2167,10 @@ export class TabManager {
     else view.webContents.once('dom-ready', open);
   }
 
-  private sessionFor(isPrivate: boolean, developer: boolean): Session {
+  private sessionFor({ isPrivate, developer, space }: Pick<Tab, 'isPrivate' | 'developer' | 'space'>): Session {
     if (developer) return this.options.developerSession ?? this.options.privateSession;
-    return isPrivate ? this.options.privateSession : this.options.session;
+    if (isPrivate) return this.options.privateSession;
+    return this.options.spaceSession?.(space) ?? this.options.session;
   }
 
   adoptView(
@@ -2154,6 +2179,7 @@ export class TabManager {
   ): void {
     const opener = this.active();
     const tab = this.createRecord({ url: page.url, title: page.title }, page.isPrivate, page.developer ?? false);
+    tab.space = this.space;
     tab.openerId = opener?.id ?? null;
     tab.group = opener?.group ?? null;
     tab.loading = view.webContents.isLoading();
@@ -2162,6 +2188,7 @@ export class TabManager {
     tab.visitId = page.isPrivate ? null : this.options.onVisit(page.url, page.title);
     this.insertAfterActive(tab);
     this.mount(tab, view);
+    this.dropForeignView(tab);
     this.activate(tab.id);
   }
 
@@ -2177,6 +2204,7 @@ export class TabManager {
 
   private openChild(url: string, opener: Tab, webContents: WebContents | undefined): WebContents {
     const tab = this.createRecord({ url }, opener.isPrivate, opener.developer);
+    tab.space = opener.space;
     tab.openerId = opener.id;
     this.insertAfterActive(tab);
     let view: WebContentsView;

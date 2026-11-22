@@ -50,8 +50,8 @@ async function explainScreenAccess(parent: BaseWindow | undefined): Promise<void
   if (response === 0) openSystemSettings('screen');
 }
 
-export function installDisplayMediaHandler({ sessions, parentOf }: DisplayMediaOptions): void {
-  for (const browsing of sessions) {
+export function installDisplayMediaHandler({ sessions, parentOf }: DisplayMediaOptions): (browsing: Session) => void {
+  const add = (browsing: Session) => {
     browsing.setDisplayMediaRequestHandler(
       (request, callback) => {
         const frame = request.frame;
@@ -75,5 +75,7 @@ export function installDisplayMediaHandler({ sessions, parentOf }: DisplayMediaO
       },
       { useSystemPicker: false },
     );
-  }
+  };
+  for (const browsing of sessions) add(browsing);
+  return add;
 }
