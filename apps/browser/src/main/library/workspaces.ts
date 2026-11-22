@@ -12,9 +12,42 @@ interface Workspace {
   icon: string | null;
   savedAt: number;
   window: SavedWindow;
+  isolated?: boolean;
+}
+const SPACE_FILE_FORMAT = 'yalqen-space';
+const MAX_SPACE_FILE_BYTES = 2 * 1024 * 1024;
+export interface SpaceFile {
+  name: string;
+  icon: string | null;
+  isolated: boolean;
+  window: SavedWindow;
+}
+export function spacePartition(id: string, isolated: boolean): string | null {
+  return isolated && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
+    ? `persist:space-${id}`
+    : null;
+}
+export function spaceFileText({ name, icon, isolated, window }: SpaceFile): string | null {
+  const snapshot = workspaceSnapshot(window, true);
+  return snapshot && JSON.stringify({ format: SPACE_FILE_FORMAT, version: 1, name, icon, isolated, window: snapshot });
+}
+export function parseSpaceFile(text: string): SpaceFile | null {
+  if (Buffer.byteLength(text) > MAX_SPACE_FILE_BYTES) return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!value || typeof value !== 'object') return null;
+  const file = value as Record<string, unknown>;
+  if (file.format !== SPACE_FILE_FORMAT || file.version !== 1) return null;
+  const name = tabGroupName(file.name);
+  const window = workspaceSnapshot(file.window as SavedWindow, true);
+  return name && window ? { name, icon: workspaceIcon(file.icon), isolated: file.isolated === true, window } : null;
 }
 export function workspaceSnapshot(value: SavedWindow, allowEmpty = false): SavedWindow | null {
-  if (!value || !Array.isArray(value.tabs) || value.tabs.length > 500) return null;
+  if (!value || typeof value !== 'object' || !Array.isArray(value.tabs) || value.tabs.length > 500) return null;
   const ids = new Map<string, string>();
   const tabs: SavedTab[] = [];
   for (const entry of value.tabs) {
@@ -47,7 +80,10 @@ export function workspaceSnapshot(value: SavedWindow, allowEmpty = false): Saved
 export class WorkspaceStore {
   readonly file: string;
   private entries: Workspace[] = [];
-  constructor(directory: string) {
+  constructor(
+    directory: string,
+    private readonly forgetPartition: (partition: string) => void = () => {},
+  ) {
     this.file = path.join(directory, 'workspaces.json');
     try {
       if (fs.statSync(this.file).size > 8 * 1024 * 1024) return;
@@ -66,7 +102,14 @@ export class WorkspaceStore {
           Number.isFinite(entry.savedAt) &&
           !this.entries.some((item) => item.id === entry.id || item.name === name)
         )
-          this.entries.push({ id: entry.id, name, icon: workspaceIcon(entry.icon), window, savedAt: entry.savedAt });
+          this.entries.push({
+            id: entry.id,
+            name,
+            icon: workspaceIcon(entry.icon),
+            window,
+            savedAt: entry.savedAt,
+            ...(typeof entry.isolated === 'boolean' && { isolated: entry.isolated }),
+          });
       }
     } catch {}
   }
@@ -93,6 +136,35 @@ export class WorkspaceStore {
     const entry = this.entries.find((item) => item.id === id);
     return entry ? workspaceSnapshot(entry.window, true) : null;
   }
+  partition(id: string): string | null {
+    const entry = this.entries.find((item) => item.id === id);
+    return entry ? spacePartition(entry.id, entry.isolated === true) : null;
+  }
+  storedPartitions(): string[] {
+    return this.entries.flatMap((item) => spacePartition(item.id, item.isolated !== undefined) ?? []);
+  }
+  isolated(id: string): boolean {
+    return this.entries.some((item) => item.id === id && item.isolated === true);
+  }
+  setIsolated(id: string, isolated: boolean): boolean {
+    return (
+      this.entries.some((item) => item.id === id) &&
+      this.replace(this.entries.map((item) => (item.id === id ? { ...item, isolated } : item)))
+    );
+  }
+  exportText(id: string, window: SavedWindow | null): string | null {
+    const entry = this.entries.find((item) => item.id === id);
+    if (!entry) return null;
+    const { name, icon } = entry;
+    return spaceFileText({ name, icon, isolated: entry.isolated === true, window: window ?? entry.window });
+  }
+  importText(text: string): string | null {
+    const file = parseSpaceFile(text);
+    if (!file) return null;
+    let name = file.name;
+    for (let n = 2; this.entries.some((item) => item.name === name); n++) name = `${file.name.slice(0, 70)} ${n}`;
+    return this.add(name, file.window, { icon: file.icon, ...(file.isolated && { isolated: true }) });
+  }
   setIcon(id: string, icon: unknown): boolean {
     const valid = workspaceIcon(icon);
     return (
@@ -112,13 +184,21 @@ export class WorkspaceStore {
     return this.replace(this.entries.map((item) => (item.id === id ? { ...item, name: valid } : item)));
   }
   remove(id: string): boolean {
-    return this.entries.some((item) => item.id === id) && this.replace(this.entries.filter((item) => item.id !== id));
+    const entry = this.entries.find((item) => item.id === id);
+    if (!entry || !this.replace(this.entries.filter((item) => item !== entry))) return false;
+    const partition = spacePartition(entry.id, entry.isolated !== undefined);
+    if (partition) this.forgetPartition(partition);
+    return true;
   }
-  private add(name: unknown, window: SavedWindow): string | null {
+  private add(
+    name: unknown,
+    window: SavedWindow,
+    extra: Pick<Workspace, 'icon' | 'isolated'> = { icon: null },
+  ): string | null {
     const valid = tabGroupName(name);
     if (!valid || this.entries.length >= MAX_SPACES || this.entries.some((item) => item.name === valid)) return null;
     const id = randomUUID();
-    return this.replace([{ id, name: valid, icon: null, window, savedAt: Date.now() }, ...this.entries]) ? id : null;
+    return this.replace([{ id, name: valid, window, savedAt: Date.now(), ...extra }, ...this.entries]) ? id : null;
   }
   private replace(entries: Workspace[]): boolean {
     const data = JSON.stringify(entries);

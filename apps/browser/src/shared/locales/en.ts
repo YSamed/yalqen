@@ -1757,6 +1757,13 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
+  'spaces.separateSignIns': 'Use separate sign-ins',
+  'spaces.export': 'Export space…',
+  'spaces.import': 'Import space…',
+  'spaces.chooseFile': 'Choose Space File',
+  'spaces.exportFailed': "Couldn't export the space.",
+  'spaces.importFailed': "Couldn't import the space.",
+  'spaces.importFailedDetail': 'Choose a Yalqen space file. You can have up to 50 spaces.',
 };
 
 export type MessageKey = keyof typeof en;

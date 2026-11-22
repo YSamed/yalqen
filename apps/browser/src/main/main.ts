@@ -2,7 +2,19 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain, Menu, nativeTheme, net, shell, webContents, type WebContents } from 'electron';
+import {
+  app,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeTheme,
+  net,
+  session,
+  shell,
+  webContents,
+  type Session,
+  type WebContents,
+} from 'electron';
 import { ExtensionAccessController } from './extensions/extension-access-controller.js';
 import {
   BOOKMARKS_URL,
@@ -129,7 +141,9 @@ import {
   applyPageLanguage,
   eachSession,
   forgetSessionData,
+  isRegularSession,
   openBrowsingSessions,
+  openSpaceSession,
 } from './app/sessions.js';
 import { isDefaultBrowser, refreshDefaultBrowser } from './app/default-browser.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './address-bar/suggestions.js';
@@ -205,7 +219,12 @@ function startBrowser(): void {
   const downloads = new DownloadStore(userData);
   const bookmarks = new BookmarkStore(userData);
   const readingList = new ReadingListStore(userData);
-  const workspaces = new WorkspaceStore(userData);
+  const partitionSession = (partition: string) => sessions.spaces.get(partition) ?? session.fromPartition(partition);
+  const workspaces = new WorkspaceStore(userData, (partition) => {
+    forgetSessionData(partitionSession(partition));
+    sessions.spaces.delete(partition);
+  });
+  const regularSessions = () => [daily, ...workspaces.storedPartitions().map(partitionSession)];
   const favorites = new FavoriteStore(userData);
   const liveFolders = new LiveFolderStore(userData);
   const webAppStore = new WebAppStore(userData);
@@ -238,12 +257,12 @@ function startBrowser(): void {
     store: readingList,
     owned: (contents) => windows.some((window) => window.tabs.hasContents(contents)),
     writable: (contents) =>
-      contents.session === daily &&
+      isRegularSession(sessions, contents.session) &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
     changed: readingListChanged,
   });
   const regularPage = (contents: WebContents) =>
-    contents.session === daily &&
+    isRegularSession(sessions, contents.session) &&
     windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents));
   const owned = (contents: WebContents) => windows.some((window) => window.tabs.hasContents(contents));
   const boosts = installBoosts({
@@ -270,7 +289,7 @@ function startBrowser(): void {
     store: workspaces,
     owned: (contents) => windows.some((window) => window.tabs.hasContents(contents)),
     writable: (contents) =>
-      contents.session === daily &&
+      isRegularSession(sessions, contents.session) &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
     snapshot: (contents) => {
       const tabs = windows.find((window) => window.tabs.hasContents(contents))?.tabs;
@@ -408,7 +427,7 @@ function startBrowser(): void {
   enablePasskeys(settings.get().touchIdPasskeys);
   const pickAccount = pickAccountWithDialog((contents) => windowOf(contents)?.window);
   for (const browsing of eachSession(sessions)) watchAccountChoices(browsing, pickAccount);
-  installPermissionHandlers({
+  const addPermissionHandlers = installPermissionHandlers({
     sessions: [
       [daily, false],
       [privateBrowsing, true],
@@ -419,14 +438,14 @@ function startBrowser(): void {
     blockedRequests: () => settings.get().blockedPermissionRequests,
     appLinks,
   });
-  installDisplayMediaHandler({
+  const addDisplayMediaHandler = installDisplayMediaHandler({
     sessions: [daily, privateBrowsing, developer],
     parentOf: (contents) => windowOf(contents)?.window,
   });
   installPasswordHandlers({
     store: passwords,
     savesPasswords: (contents) =>
-      contents.session === daily && windows.some((window) => window.tabs.hasContents(contents)),
+      isRegularSession(sessions, contents.session) && windows.some((window) => window.tabs.hasContents(contents)),
     parentOf: (contents) => windowOf(contents)?.window,
     isSettingsFrame,
     onChange: () => broadcastPasswords(passwords.view()),
@@ -434,7 +453,7 @@ function startBrowser(): void {
   installAutofillHandlers({
     store: autofill,
     allowed: (contents) =>
-      contents.session === daily &&
+      isRegularSession(sessions, contents.session) &&
       !certificates.hasException(contents.getURL()) &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.activeContents() === contents),
     parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
@@ -442,7 +461,7 @@ function startBrowser(): void {
   });
   installOneTimeCodeHandlers({
     allowed: (contents) =>
-      contents.session === daily &&
+      isRegularSession(sessions, contents.session) &&
       !certificates.hasException(contents.getURL()) &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.activeContents() === contents),
     mailTabs: () =>
@@ -450,7 +469,7 @@ function startBrowser(): void {
         .getAllWebContents()
         .filter(
           (contents) =>
-            contents.session === daily &&
+            isRegularSession(sessions, contents.session) &&
             windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
         ),
     parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
@@ -573,7 +592,7 @@ function startBrowser(): void {
     },
   });
 
-  handleCertificateErrors(certificates, eachSession(sessions));
+  handleCertificateErrors(certificates, (browsing) => eachSession(sessions).includes(browsing));
   const adBlocker = new AdBlocker(
     [daily, privateBrowsing],
     path.join(userData, 'adblock-engine.bin'),
@@ -690,6 +709,7 @@ function startBrowser(): void {
     liveFoldersChanged: pushState,
     workspaces,
     spacesChanged: workspacesChanged,
+    spaceSession: (id) => spaceSession(id),
     extensions,
     extensionPopup,
     extensionAccess,
@@ -810,11 +830,7 @@ function startBrowser(): void {
     easels: rendererPath('easels.html'),
     settings: rendererPath('settings.html'),
   });
-  for (const [browsing, isPrivate] of [
-    [daily, false],
-    [privateBrowsing, true],
-    [developer, true],
-  ] as const) {
+  const servePages = (browsing: Session, isPrivate: boolean) =>
     serveInternalPages(browsing, internalPages, {
       pinned: () => [
         ...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values(),
@@ -845,7 +861,25 @@ function startBrowser(): void {
           history: isPrivate ? EMPTY_HISTORY_INDEX : history.index(),
         }),
     });
-  }
+  servePages(daily, false);
+  servePages(privateBrowsing, true);
+  servePages(developer, true);
+  const spaceSession = (id: string): Session | null => {
+    const partition = workspaces.partition(id);
+    if (!partition) return null;
+    const existing = sessions.spaces.get(partition);
+    if (existing) return existing;
+    const browsing = openSpaceSession(sessions, partition);
+    applyPageLanguage(sessions, getLocale());
+    applyCookieBlocking(sessions, settings.get().blockThirdPartyCookies, cookiesAllowed);
+    watchAccountChoices(browsing, pickAccount);
+    addPermissionHandlers(browsing, false);
+    addDisplayMediaHandler(browsing);
+    downloadManager.watch(browsing, false);
+    adBlocker.addSession(browsing);
+    servePages(browsing, false);
+    return browsing;
+  };
 
   installAppMenu({
     current: () => current,
@@ -1062,16 +1096,19 @@ function startBrowser(): void {
       downloads.removeSince(since);
       downloadsChanged();
     }
+    const regular = regularSessions();
     if (request.siteData) {
-      await daily.clearStorageData();
+      await Promise.all(regular.map((browsing) => browsing.clearStorageData()));
       storageOrigins.clear();
     }
-    if (request.cache) await daily.clearCache();
+    if (request.cache) await Promise.all(regular.map((browsing) => browsing.clearCache()));
   };
   const forgetOnExit = async () => {
     if (!settings.get().clearOnExit) return;
     storageOrigins.clear();
-    await Promise.allSettled([daily.clearStorageData(), daily.clearCache()]);
+    await Promise.allSettled(
+      regularSessions().flatMap((browsing) => [browsing.clearStorageData(), browsing.clearCache()]),
+    );
   };
   const showImportMenu = (kind: 'bookmarks' | 'history', contents: WebContents) => {
     const window = windowOf(contents);

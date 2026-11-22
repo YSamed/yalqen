@@ -1,4 +1,5 @@
 import { app, dialog, type BaseWindow } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import { t } from '../../shared/i18n.js';
 import { importErrorMessage, type BookmarkImportResult, type HistoryImportResult } from '../library/browser-import.js';
@@ -87,4 +88,60 @@ export async function exportBookmarksWithDialog(window: BaseWindow, store: Bookm
         detail: error instanceof Error ? error.message : String(error),
       });
   }
+}
+
+const SPACE_FILTERS = [{ name: 'Yalqen Space', extensions: ['json'] }];
+const MAX_SPACE_FILE_BYTES = 2 * 1024 * 1024;
+
+export async function exportSpaceWithDialog(window: BaseWindow, name: string, text: string | null): Promise<void> {
+  try {
+    if (!text) {
+      void dialog.showMessageBox(window, { type: 'error', message: t('spaces.exportFailed') });
+      return;
+    }
+    const { canceled, filePath } = await dialog.showSaveDialog(window, {
+      title: t('spaces.export'),
+      defaultPath: path.join(app.getPath('documents'), `${name.replace(/[\\/:*?"<>|]/g, '_')}.json`),
+      filters: SPACE_FILTERS,
+      properties: ['createDirectory', 'showOverwriteConfirmation'],
+    });
+    if (canceled || !filePath || window.isDestroyed()) return;
+    await fs.promises.writeFile(filePath, text, { mode: 0o600 });
+  } catch (error) {
+    console.warn('[spaces] could not export:', error);
+    if (!window.isDestroyed())
+      void dialog.showMessageBox(window, {
+        type: 'error',
+        message: t('spaces.exportFailed'),
+        detail: error instanceof Error ? error.message : String(error),
+      });
+  }
+}
+
+export async function importSpaceWithDialog(
+  window: BaseWindow,
+  importText: (text: string) => string | null,
+): Promise<string | null> {
+  const { canceled, filePaths } = await dialog.showOpenDialog(window, {
+    title: t('spaces.chooseFile'),
+    buttonLabel: t('window.import'),
+    filters: SPACE_FILTERS,
+    properties: ['openFile'],
+  });
+  const file = canceled ? undefined : filePaths[0];
+  if (!file) return null;
+  let id: string | null = null;
+  try {
+    if ((await fs.promises.stat(file)).size <= MAX_SPACE_FILE_BYTES)
+      id = importText(await fs.promises.readFile(file, 'utf8'));
+  } catch (error) {
+    console.warn('[spaces] could not import:', error);
+  }
+  if (!id && !window.isDestroyed())
+    void dialog.showMessageBox(window, {
+      type: 'error',
+      message: t('spaces.importFailed'),
+      detail: t('spaces.importFailedDetail'),
+    });
+  return id;
 }

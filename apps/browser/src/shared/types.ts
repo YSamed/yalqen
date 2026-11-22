@@ -432,6 +432,7 @@ export type UiAction =
   | { type: 'open-live-item'; id: string; itemId: string }
   | { type: 'switch-space'; id: string }
   | { type: 'create-space' }
+  | { type: 'import-space' }
   | { type: 'rename-space'; id: string; name: string }
   | { type: 'open-space-menu'; id: string }
   | { type: 'close-tab'; id: TabId }

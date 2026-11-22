@@ -9,6 +9,7 @@ interface BrowsingSessions {
   daily: Session;
   privateBrowsing: Session;
   developer: Session;
+  spaces: Map<string, Session>;
 }
 
 export function openBrowsingSessions(): BrowsingSessions {
@@ -16,16 +17,30 @@ export function openBrowsingSessions(): BrowsingSessions {
     daily: session.fromPartition('persist:daily'),
     privateBrowsing: session.fromPartition('private'),
     developer: session.fromPartition('developer'),
+    spaces: new Map<string, Session>(),
   };
-  for (const browsing of eachSession(sessions)) {
-    rewriteSignInHeaders(browsing);
-    rememberCertificates(browsing);
-  }
+  for (const browsing of eachSession(sessions)) prepareSession(browsing);
   return sessions;
 }
 
-export function eachSession({ daily, privateBrowsing, developer }: BrowsingSessions): Session[] {
-  return [daily, privateBrowsing, developer];
+export function openSpaceSession(sessions: BrowsingSessions, partition: string): Session {
+  const browsing = session.fromPartition(partition);
+  sessions.spaces.set(partition, browsing);
+  prepareSession(browsing);
+  return browsing;
+}
+
+function prepareSession(browsing: Session): void {
+  rewriteSignInHeaders(browsing);
+  rememberCertificates(browsing);
+}
+
+export function eachSession({ daily, privateBrowsing, developer, spaces }: BrowsingSessions): Session[] {
+  return [daily, privateBrowsing, developer, ...spaces.values()];
+}
+
+export function isRegularSession({ daily, spaces }: BrowsingSessions, browsing: Session): boolean {
+  return browsing === daily || [...spaces.values()].includes(browsing);
 }
 
 export function applyPageLanguage(sessions: BrowsingSessions, language: PageLanguage): void {
@@ -36,12 +51,13 @@ export function applyPageLanguage(sessions: BrowsingSessions, language: PageLang
 }
 
 export function applyCookieBlocking(
-  { daily, privateBrowsing, developer }: BrowsingSessions,
+  { daily, privateBrowsing, developer, spaces }: BrowsingSessions,
   enabled: boolean,
   allowed: (url: string, isPrivate: boolean) => boolean = () => false,
 ): void {
   const darkColors = () => nativeTheme.shouldUseDarkColors;
-  setThirdPartyCookieBlocking(daily, enabled, (url) => allowed(url, false), darkColors);
+  for (const regular of [daily, ...spaces.values()])
+    setThirdPartyCookieBlocking(regular, enabled, (url) => allowed(url, false), darkColors);
   setThirdPartyCookieBlocking(privateBrowsing, enabled, (url) => allowed(url, true), darkColors);
   setThirdPartyCookieBlocking(developer, false);
 }

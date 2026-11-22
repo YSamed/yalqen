@@ -946,6 +946,18 @@
             >
               {t('spaces.add')}
             </button>
+            {#if profile !== 'private'}
+              <button
+                type="button"
+                class="select-item"
+                onclick={() => {
+                  addMenu?.hidePopover();
+                  send({ type: 'import-space' });
+                }}
+              >
+                {t('spaces.import')}
+              </button>
+            {/if}
             {#if !collapsed && profile !== 'private'}
               <button
                 type="button"

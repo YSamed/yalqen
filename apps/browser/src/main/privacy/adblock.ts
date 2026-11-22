@@ -22,7 +22,7 @@ export class AdBlocker {
   private destroyed = false;
 
   constructor(
-    private readonly sessions: readonly Session[],
+    private readonly sessions: Session[],
     private readonly cacheFile: string,
     private readonly allowed: (session: Session, url: string) => boolean = () => false,
     private readonly blocked: (details: OnBeforeRequestListenerDetails) => boolean = () => false,
@@ -40,6 +40,12 @@ export class AdBlocker {
     else if (!enabled) this.applyRequestGate();
     else if (enabled) this.loading ??= this.load();
     if (enabled && this.stale) this.scheduleRefresh();
+  }
+
+  addSession(session: Session): void {
+    this.sessions.push(session);
+    if (this.blocker) this.apply(this.blocker);
+    else this.applyRequestGate();
   }
 
   whenReady(): Promise<void> {

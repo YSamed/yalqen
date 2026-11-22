@@ -1769,4 +1769,11 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
+  'spaces.separateSignIns': 'Ayrı oturum açmaları kullan',
+  'spaces.export': 'Alanı dışa aktar…',
+  'spaces.import': 'Alan içe aktar…',
+  'spaces.chooseFile': 'Alan Dosyası Seçin',
+  'spaces.exportFailed': 'Alan dışa aktarılamadı.',
+  'spaces.importFailed': 'Alan içe aktarılamadı.',
+  'spaces.importFailedDetail': 'Bir Yalqen alan dosyası seçin. En fazla 50 alanınız olabilir.',
 };
