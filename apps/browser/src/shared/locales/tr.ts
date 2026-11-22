@@ -54,6 +54,10 @@ export const tr: Record<MessageKey, string> = {
   'boosts.empty': 'Henüz stil verilmiş site yok. Bir web sitesi açın, sonra Sekme → Site stili seçeneğini kullanın.',
   'boosts.site': 'Site',
   'boosts.enabled': 'Bu sitede stili uygula',
+  'settings.darkSites': 'Tüm sitelerde koyu görünüm',
+  'settings.darkSitesHint':
+    'Renkleri ters çevirerek her web sayfasını koyulaştırır. Tek bir site için Site stili bölümünden kapatabilirsin. Zaten koyu temalı siteler yanlış görünebilir.',
+  'boosts.dark': "Bu sitede koyu görünüm (Ayarlar'ta açıksa)",
   'boosts.accent': 'Vurgu rengi',
   'boosts.background': 'Arka plan rengi',
   'boosts.font': 'Yazı tipi',
@@ -1769,8 +1773,7 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
-  'settings.darkSites': 'Tüm sitelerde koyu görünüm',
-  'settings.darkSitesHint':
-    'Renkleri ters çevirerek her web sayfasını koyulaştırır. Tek bir site için Site stili bölümünden kapatabilirsin. Zaten koyu temalı siteler yanlış görünebilir.',
-  'boosts.dark': "Bu sitede koyu görünüm (Ayarlar'ta açıksa)",
+  'commandBar.searchOn': '{engine} içinde ara',
+  'settings.stripTrackingOnCopy': 'Kopyalanan adreslerden izlemeyi kaldır',
+  'settings.stripTrackingOnCopyHint': 'Sayfa adresini kopyalarken utm_*, fbclid, gclid ve benzeri parametreleri sil.',
 };

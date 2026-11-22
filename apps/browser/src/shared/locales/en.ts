@@ -51,6 +51,10 @@ export const en = {
   'boosts.empty': 'No styled sites yet. Open a website, then choose Tab → Site styling.',
   'boosts.site': 'Site',
   'boosts.enabled': 'Apply styling on this site',
+  'settings.darkSites': 'Dark appearance on all sites',
+  'settings.darkSitesHint':
+    'Darkens every web page by inverting its colors. Turn it off for one site under Site styling. Sites that already have a dark theme may look wrong.',
+  'boosts.dark': 'Dark appearance on this site (when enabled in Settings)',
   'boosts.accent': 'Accent color',
   'boosts.background': 'Background color',
   'boosts.font': 'Font',
@@ -1757,10 +1761,10 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
-  'settings.darkSites': 'Dark appearance on all sites',
-  'settings.darkSitesHint':
-    'Darkens every web page by inverting its colors. Turn it off for one site under Site styling. Sites that already have a dark theme may look wrong.',
-  'boosts.dark': 'Dark appearance on this site (when enabled in Settings)',
+  'commandBar.searchOn': 'Search {engine}',
+  'settings.stripTrackingOnCopy': 'Remove tracking from copied addresses',
+  'settings.stripTrackingOnCopyHint':
+    'Remove utm_*, fbclid, gclid and similar parameters when you copy the address of a page.',
 };
 
 export type MessageKey = keyof typeof en;
