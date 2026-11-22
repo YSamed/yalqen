@@ -237,6 +237,14 @@
     onchange={(checked) => update({ tabModes: checked })}
   />
 </SettingRow>
+<SettingRow title={t('settings.autoDeveloperMode')} hint={t('settings.autoDeveloperModeHint')}>
+  <Switch
+    label={t('settings.autoDeveloperMode')}
+    checked={values.autoDeveloperMode}
+    disabled={!values.tabModes}
+    onchange={(checked) => update({ autoDeveloperMode: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.bookmarksPanel')} hint={t('settings.bookmarksPanelHint')}>
   <Switch
     label={t('settings.bookmarksPanel')}
