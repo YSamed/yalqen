@@ -1,7 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import {
   app,
   ipcMain,
+  Notification,
+  type ContextMenuParams,
   type IpcMainInvokeEvent,
+  type MenuItemConstructorOptions,
   type ServiceWorkerMain,
   type Session,
   type WebContents,
@@ -15,8 +19,11 @@ import {
   type ExtensionBridgeEvent,
   type ExtensionWindowState,
   type ExtensionWindows,
+  shortcutMatches,
+  suggestedShortcut,
 } from '../../shared/extension-bridge.js';
 import { callCookies, chromeCookieChange, cookieUrl, extensionGrant, hostPermitted } from './extension-cookies.js';
+import { ExtensionMenus } from './extension-menus.js';
 
 export interface ExtensionBridgeHost {
   open(url: string | null, active: boolean): WebContents | null;
@@ -38,6 +45,8 @@ export class ExtensionBridge {
   private readonly frames = new Map<WebContents, Receiver>();
   private readonly keepAlive = new Map<number, () => void>();
   private readonly watched = new Set<WebContents>();
+  private readonly menus = new ExtensionMenus();
+  private readonly notifications = new Map<string, Map<string, Notification>>();
 
   constructor(
     private readonly session: Session,
@@ -55,10 +64,20 @@ export class ExtensionBridge {
       this.create(this.frameExtension(event), properties),
     );
     ipcMain.handle(ExtensionBridgeChannel.removeTabs, (event, ids) => this.remove(this.frameExtension(event), ids));
+    ipcMain.handle(ExtensionBridgeChannel.currentTab, (event) => {
+      const extensionId = this.frameExtension(event);
+      return this.host.isTab(event.sender) ? this.tab(event.sender, extensionId) : undefined;
+    });
     ipcMain.handle(ExtensionBridgeChannel.cookies, (event, method, details) =>
       this.cookies(this.frameExtension(event), method, details),
     );
     ipcMain.handle(ExtensionBridgeChannel.windows, (event) => this.windows(this.frameExtension(event), event.sender));
+    ipcMain.handle(ExtensionBridgeChannel.contextMenus, (event, method, args) =>
+      this.contextMenus(this.frameExtension(event), method, args),
+    );
+    ipcMain.handle(ExtensionBridgeChannel.notifications, (event, method, args) =>
+      this.notify(this.frameExtension(event), method, args),
+    );
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -71,6 +90,11 @@ export class ExtensionBridge {
       contents.once('destroyed', () => this.frames.delete(contents));
     });
     app.on('web-contents-created', (_event, contents) => this.watch(contents));
+    session.extensions.on('extension-unloaded', (_event, { id }) => {
+      this.menus.call(id, 'removeAll', []);
+      for (const notification of this.notifications.get(id)?.values() ?? []) notification.close();
+      this.notifications.delete(id);
+    });
     session.cookies.on('changed', (_event, cookie, cause, removed) => {
       const change = chromeCookieChange(cookie, cause, removed);
       if (!change) return;
@@ -94,6 +118,109 @@ export class ExtensionBridge {
 
   windowRemoved(id: number): void {
     this.emit('windows.onRemoved', [id]);
+  }
+
+  menuItems(contents: WebContents, params: ContextMenuParams): MenuItemConstructorOptions[] {
+    if (contents.session !== this.session) return [];
+    return this.session.extensions
+      .getAllExtensions()
+      .flatMap(({ id, name }) =>
+        this.grant(id).permissions.includes('contextMenus')
+          ? this.menus.template(id, name, params, (info) =>
+              this.deliver(id, 'contextMenus.onClicked', [
+                info,
+                this.host.isTab(contents) ? this.tab(contents, id) : undefined,
+              ]),
+            )
+          : [],
+      );
+  }
+
+  private permitted(extensionId: string, permission: string): void {
+    if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
+    if (!this.grant(extensionId).permissions.includes(permission)) throw new Error(`Missing ${permission} permission`);
+  }
+
+  private contextMenus(extensionId: string, method: unknown, args: unknown): void {
+    this.permitted(extensionId, 'contextMenus');
+    this.menus.call(extensionId, method, Array.isArray(args) ? args : []);
+  }
+
+  // shortcut: no icon, image or progress, and buttons show only where Electron supports actions (macOS).
+  private notify(extensionId: string, method: unknown, args: unknown): unknown {
+    this.permitted(extensionId, 'notifications');
+    const [id, options] = Array.isArray(args) ? args : [];
+    const shown = this.notifications.get(extensionId) ?? new Map<string, Notification>();
+    this.notifications.set(extensionId, shown);
+    if (method === 'getAll') return Object.fromEntries([...shown.keys()].map((key) => [key, true]));
+    if (method === 'getPermissionLevel') return Notification.isSupported() ? 'granted' : 'denied';
+    if (method === 'clear') {
+      const notification = typeof id === 'string' ? shown.get(id) : undefined;
+      if (!notification) return false;
+      shown.delete(id as string);
+      notification.close();
+      return true;
+    }
+    if (method !== 'create') throw new Error('Unsupported notifications method');
+    if (!Notification.isSupported()) throw new Error('Notifications are not supported');
+    const { title, message, buttons, silent } = (typeof options === 'object' && options !== null ? options : {}) as {
+      title?: unknown;
+      message?: unknown;
+      buttons?: unknown;
+      silent?: unknown;
+    };
+    if (typeof title !== 'string' || typeof message !== 'string')
+      throw new Error('Notification title and message are required');
+    const notificationId = typeof id === 'string' && id ? id : randomUUID();
+    shown.get(notificationId)?.close();
+    const notification = new Notification({
+      title,
+      body: message,
+      silent: silent === true,
+      actions: (Array.isArray(buttons) ? buttons : []).slice(0, 2).map((button: { title?: unknown }) => ({
+        type: 'button' as const,
+        text: String(button?.title ?? ''),
+      })),
+    });
+    shown.set(notificationId, notification);
+    notification.on('click', () => this.deliver(extensionId, 'notifications.onClicked', [notificationId]));
+    notification.on('action', (event) =>
+      this.deliver(extensionId, 'notifications.onButtonClicked', [notificationId, event.actionIndex]),
+    );
+    notification.on('close', () => {
+      if (shown.get(notificationId) !== notification) return;
+      shown.delete(notificationId);
+      this.deliver(extensionId, 'notifications.onClosed', [notificationId, true]);
+    });
+    notification.show();
+    return notificationId;
+  }
+
+  // A sleeping MV3 worker has no receiver, so start it before handing over a user action.
+  private deliver(extensionId: string, name: ExtensionBridgeEvent, args: unknown[]): void {
+    for (const receiver of this.frames.values()) if (receiver.extensionId() === extensionId) receiver.send(name, args);
+    const extension = this.session.extensions.getExtension(extensionId);
+    const background = (extension?.manifest as { background?: { service_worker?: unknown } } | undefined)?.background;
+    if (!extension || typeof background?.service_worker !== 'string') return;
+    this.session.serviceWorkers.startWorkerForScope(extension.url).then(
+      (worker) => {
+        if (!worker.isDestroyed()) worker.send(ExtensionBridgeChannel.event, name, args);
+      },
+      (error: unknown) => console.error(error),
+    );
+  }
+
+  // shortcut: only fires while a page has focus, and _execute_* commands are not bound; route browser UI keys when needed.
+  private command(input: Electron.Input): { extensionId: string; name: string } | null {
+    for (const { id, manifest } of this.session.extensions.getAllExtensions()) {
+      const commands = (manifest as { commands?: Record<string, { suggested_key?: unknown }> }).commands ?? {};
+      for (const [name, { suggested_key }] of Object.entries(commands)) {
+        if (name.startsWith('_execute_')) continue;
+        if (shortcutMatches(suggestedShortcut(suggested_key, process.platform), input, process.platform))
+          return { extensionId: id, name };
+      }
+    }
+    return null;
   }
 
   private windows(extensionId: string, contents?: WebContents): ExtensionWindows {
@@ -135,10 +262,17 @@ export class ExtensionBridge {
       this.create(extensionId, properties, worker),
     );
     worker.ipc.handle(ExtensionBridgeChannel.removeTabs, (_event, ids) => this.remove(extensionId, ids));
+    worker.ipc.handle(ExtensionBridgeChannel.currentTab, () => undefined);
     worker.ipc.handle(ExtensionBridgeChannel.cookies, (_event, method, details) =>
       this.cookies(extensionId, method, details),
     );
     worker.ipc.handle(ExtensionBridgeChannel.windows, () => this.windows(extensionId));
+    worker.ipc.handle(ExtensionBridgeChannel.contextMenus, (_event, method, args) =>
+      this.contextMenus(extensionId, method, args),
+    );
+    worker.ipc.handle(ExtensionBridgeChannel.notifications, (_event, method, args) =>
+      this.notify(extensionId, method, args),
+    );
   }
 
   private frameExtension(event: IpcMainInvokeEvent): string {
@@ -200,6 +334,31 @@ export class ExtensionBridge {
       if (isMainFrame) updated({ url });
     });
     contents.on('did-stop-loading', () => updated({ status: 'complete' }));
+    contents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown' || input.isAutoRepeat || !isTab()) return;
+      const command = this.command(input);
+      if (!command) return;
+      event.preventDefault();
+      this.deliver(command.extensionId, 'commands.onCommand', [command.name, this.tab(contents, command.extensionId)]);
+    });
+    const navigation = (name: ExtensionBridgeEvent, details: Record<string, unknown> = {}) => {
+      if (isTab()) this.navigation(name, contents, details);
+    };
+    contents.on('did-start-navigation', ({ url, isMainFrame, isSameDocument }) => {
+      if (isMainFrame && !isSameDocument) navigation('webNavigation.onBeforeNavigate', { url });
+    });
+    contents.on('did-navigate', () =>
+      navigation('webNavigation.onCommitted', { transitionType: 'link', transitionQualifiers: [] }),
+    );
+    contents.on('did-navigate-in-page', (_event, url, isMainFrame) => {
+      if (isMainFrame)
+        navigation('webNavigation.onHistoryStateUpdated', { url, transitionType: 'link', transitionQualifiers: [] });
+    });
+    contents.on('dom-ready', () => navigation('webNavigation.onDOMContentLoaded'));
+    contents.on('did-finish-load', () => navigation('webNavigation.onCompleted'));
+    contents.on('did-fail-load', (_event, _code, error, url, isMainFrame) => {
+      if (isMainFrame) navigation('webNavigation.onErrorOccurred', { url, error });
+    });
     const catchAuthRedirect = (event: Electron.Event<{ url: string; isMainFrame: boolean }>) => {
       const extensionId = event.isMainFrame ? authRedirectExtension(event.url) : null;
       if (!extensionId || !isTab()) return;
@@ -232,6 +391,22 @@ export class ExtensionBridge {
       if (!seesUrls && !('status' in change)) continue;
       const visible = seesUrls ? change : { status: change.status };
       receiver.send(name, [contents.id, visible, this.tab(contents, extensionId)]);
+    }
+  }
+
+  // shortcut: main frame only (frameId 0); report subframes when an extension needs them.
+  private navigation(name: ExtensionBridgeEvent, contents: WebContents, details: Record<string, unknown>): void {
+    const event = {
+      tabId: contents.id,
+      url: contents.getURL(),
+      frameId: 0,
+      parentFrameId: -1,
+      timeStamp: Date.now(),
+      ...details,
+    };
+    for (const receiver of this.receivers()) {
+      const extensionId = receiver.extensionId();
+      if (extensionId && this.grant(extensionId).permissions.includes('webNavigation')) receiver.send(name, [event]);
     }
   }
 

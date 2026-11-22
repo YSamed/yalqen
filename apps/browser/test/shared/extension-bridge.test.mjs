@@ -2,7 +2,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import tabs from '../../dist/shared/extension-bridge.js';
 
-const { authRedirectExtension, chromeWindow, extensionIdOf, extensionTabUrl, WINDOW_ID_NONE } = tabs;
+const {
+  authRedirectExtension,
+  chromeWindow,
+  extensionIdOf,
+  extensionTabUrl,
+  shortcutMatches,
+  suggestedShortcut,
+  WINDOW_ID_NONE,
+} = tabs;
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
 
 test('extension pages and workers are recognized by their origin', () => {
@@ -43,4 +51,37 @@ test('windows are described to extensions as normal, non-incognito windows', () 
     alwaysOnTop: false,
   });
   assert.equal(WINDOW_ID_NONE, -1);
+});
+
+test('command shortcuts pick the platform key and fall back to default', () => {
+  const suggested = { default: 'Ctrl+Shift+Y', mac: 'Command+Shift+Y' };
+  assert.equal(suggestedShortcut(suggested, 'darwin'), 'Command+Shift+Y');
+  assert.equal(suggestedShortcut(suggested, 'win32'), 'Ctrl+Shift+Y');
+  assert.equal(suggestedShortcut({ linux: 'Alt+L' }, 'linux'), 'Alt+L');
+  assert.equal(suggestedShortcut('Alt+K', 'win32'), 'Alt+K');
+  assert.equal(suggestedShortcut(undefined, 'darwin'), '');
+  assert.equal(suggestedShortcut({ windows: 'Alt+L' }, 'darwin'), '');
+});
+
+test('command shortcuts match the physical key and the exact modifiers', () => {
+  const input = (code, modifiers = {}) => ({
+    code,
+    control: false,
+    meta: false,
+    alt: false,
+    shift: false,
+    ...modifiers,
+  });
+  assert.equal(shortcutMatches('Ctrl+Shift+L', input('KeyL', { control: true, shift: true }), 'win32'), true);
+  assert.equal(shortcutMatches('Ctrl+Shift+L', input('KeyL', { meta: true, shift: true }), 'darwin'), true);
+  assert.equal(shortcutMatches('Ctrl+Shift+L', input('KeyL', { control: true, shift: true }), 'darwin'), false);
+  assert.equal(shortcutMatches('MacCtrl+Shift+L', input('KeyL', { control: true, shift: true }), 'darwin'), true);
+  assert.equal(shortcutMatches('Alt+Shift+9', input('Digit9', { alt: true, shift: true }), 'linux'), true);
+  assert.equal(shortcutMatches('Alt+Up', input('ArrowUp', { alt: true }), 'linux'), true);
+  assert.equal(shortcutMatches('Ctrl+Shift+L', input('KeyL', { control: true }), 'win32'), false);
+  assert.equal(shortcutMatches('Ctrl+L', input('KeyL', { control: true, alt: true }), 'win32'), false);
+  assert.equal(shortcutMatches('Ctrl+Shift+L', input('KeyK', { control: true, shift: true }), 'win32'), false);
+  assert.equal(shortcutMatches('L', input('KeyL'), 'win32'), false);
+  assert.equal(shortcutMatches('', input('KeyL'), 'win32'), false);
+  assert.equal(shortcutMatches('Ctrl+toString', input('KeyL', { control: true }), 'win32'), false);
 });
