@@ -1772,6 +1772,7 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
+  'commandBar.searchOn': '{engine} içinde ara',
   'settings.stripTrackingOnCopy': 'Kopyalanan adreslerden izlemeyi kaldır',
   'settings.stripTrackingOnCopyHint': 'Sayfa adresini kopyalarken utm_*, fbclid, gclid ve benzeri parametreleri sil.',
 };
