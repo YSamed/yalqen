@@ -1769,4 +1769,7 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
+  'settings.autoDeveloperMode': 'Yerel adresler için Geliştirici Modu',
+  'settings.autoDeveloperModeHint':
+    'Sekme modları açıkken, Normal bir sekme localhost, 127.0.0.1 veya başka bir yerel adresi açarsa Geliştirici Modunda yeniden yüklenir.',
 };

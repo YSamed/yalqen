@@ -1757,6 +1757,9 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
+  'settings.autoDeveloperMode': 'Developer Mode for local addresses',
+  'settings.autoDeveloperModeHint':
+    'With tab modes on, a Normal tab that opens localhost, 127.0.0.1 or another local address reloads in Developer Mode.',
 };
 
 export type MessageKey = keyof typeof en;
