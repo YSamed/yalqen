@@ -1096,6 +1096,15 @@ export const tr: Record<MessageKey, string> = {
     'Terk ettiğiniz sekmelerde kod ve animasyonlar durur. Bu süre boyunca görüntülemediğiniz sekmeler ayrıca bellekten çıkar ve tıkladığınızda yeniden yüklenir. Ses çalan, sabitlenmiş ve yazılmış metni olan sekmeler korunur. Hiçbir sekmeyi durdurmamak için Kapalı seçin.',
 
   'menu.settings': 'Ayarlar…',
+  'settings.recentTabCycling': 'Sekmeler arasında son kullanım sırasıyla geç',
+  'settings.recentTabCyclingHint':
+    'Ctrl+Tab son kullandığınız sekmeye gider. Daha geriye gitmek için hızlıca yeniden basın. Kapalıyken sekme listesinin sırasını izler.',
+  'settings.paneShortcuts': 'Kısayollar',
+  'settings.shortcuts': 'Menü kısayolları',
+  'settings.shortcutsHint':
+    'Değiştirici tuşları ve bir tuş yazın, örneğin CmdOrCtrl+Shift+K. Değiştiriciler: CmdOrCtrl, Cmd, Ctrl, Alt ve Shift. Varsayılanı kullanmak için alanı boş bırakın.',
+  'settings.shortcutInvalid': 'Bu geçerli bir tuş birleşimi değil.',
+  'settings.shortcutConflict': 'Bu tuş birleşimini başka bir komut ya da yerleşik bir kısayol da kullanıyor.',
   'menu.about': 'Yalqen Hakkında',
   'menu.checkForUpdates': 'Güncellemeleri Denetle…',
   'menu.services': 'Servisler',
@@ -1769,13 +1778,7 @@ export const tr: Record<MessageKey, string> = {
   'welcome.keySidebar': 'Kenar çubuğunu değiştir',
   'welcome.keyDevTools': 'Geliştirici araçları',
   'welcome.start': 'Keşfetmeye başla',
-  'settings.recentTabCycling': 'Sekmeler arasında son kullanım sırasıyla geç',
-  'settings.recentTabCyclingHint':
-    'Ctrl+Tab son kullandığınız sekmeye gider. Daha geriye gitmek için hızlıca yeniden basın. Kapalıyken sekme listesinin sırasını izler.',
-  'settings.paneShortcuts': 'Kısayollar',
-  'settings.shortcuts': 'Menü kısayolları',
-  'settings.shortcutsHint':
-    'Değiştirici tuşları ve bir tuş yazın, örneğin CmdOrCtrl+Shift+K. Değiştiriciler: CmdOrCtrl, Cmd, Ctrl, Alt ve Shift. Varsayılanı kullanmak için alanı boş bırakın.',
-  'settings.shortcutInvalid': 'Bu geçerli bir tuş birleşimi değil.',
-  'settings.shortcutConflict': 'Bu tuş birleşimini başka bir komut ya da yerleşik bir kısayol da kullanıyor.',
+  'commandBar.searchOn': '{engine} içinde ara',
+  'settings.stripTrackingOnCopy': 'Kopyalanan adreslerden izlemeyi kaldır',
+  'settings.stripTrackingOnCopyHint': 'Sayfa adresini kopyalarken utm_*, fbclid, gclid ve benzeri parametreleri sil.',
 };

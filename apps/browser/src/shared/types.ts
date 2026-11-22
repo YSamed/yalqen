@@ -630,6 +630,7 @@ export interface CommandBarOpen {
   placeholder: string;
   mode: 'navigate' | 'new-tab';
   value?: string;
+  engines: { id: SearchEngineId; label: string }[];
   material: WindowMaterial;
   accent: string;
 }
@@ -715,7 +716,7 @@ export interface CommandBarSuggestions {
 }
 
 export type CommandBarAction =
-  | { type: 'submit'; input: string }
+  | { type: 'submit'; input: string; engine?: SearchEngineId }
   | { type: 'switch-tab'; id: TabId }
   | { type: 'run-command'; id: DevCommandId }
   | { type: 'dismiss' }
@@ -868,6 +869,7 @@ export interface SettingsValues {
   adBlockExceptions: string[];
   thirdPartyCookieExceptions: string[];
   httpsOnly: boolean;
+  stripTrackingOnCopy: boolean;
   blockThirdPartyCookies: boolean;
   clearOnExit: boolean;
   blockedPermissionRequests: PromptPermission[];
