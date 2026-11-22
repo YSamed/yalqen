@@ -64,6 +64,7 @@ test('unknown or mistyped fields fall back', () => {
       adBlockExceptions: [],
       thirdPartyCookieExceptions: [],
       httpsOnly: false,
+      stripTrackingOnCopy: true,
       blockThirdPartyCookies: false,
       clearOnExit: false,
       blockedPermissionRequests: [],
@@ -129,6 +130,9 @@ test('keeping pinned tabs on their site is off by default and kept once turned o
   assert.equal(sanitizeSettings(null).pinnedTabsStayHome, false);
   assert.equal(sanitizeSettings({ pinnedTabsStayHome: true }).pinnedTabsStayHome, true);
   assert.equal(sanitizeSettings({ pinnedTabsStayHome: 'yes' }).pinnedTabsStayHome, false);
+  assert.equal(sanitizeSettings(null).stripTrackingOnCopy, true);
+  assert.equal(sanitizeSettings({ stripTrackingOnCopy: false }).stripTrackingOnCopy, false);
+  assert.equal(sanitizeSettings({ stripTrackingOnCopy: 'no' }).stripTrackingOnCopy, true);
 });
 
 test('the button to close idle tabs is off by default and kept once turned on', () => {

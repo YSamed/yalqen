@@ -1758,6 +1758,9 @@ export const en = {
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
   'commandBar.searchOn': 'Search {engine}',
+  'settings.stripTrackingOnCopy': 'Remove tracking from copied addresses',
+  'settings.stripTrackingOnCopyHint':
+    'Remove utm_*, fbclid, gclid and similar parameters when you copy the address of a page.',
 };
 
 export type MessageKey = keyof typeof en;

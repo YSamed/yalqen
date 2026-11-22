@@ -869,6 +869,7 @@ export interface SettingsValues {
   adBlockExceptions: string[];
   thirdPartyCookieExceptions: string[];
   httpsOnly: boolean;
+  stripTrackingOnCopy: boolean;
   blockThirdPartyCookies: boolean;
   clearOnExit: boolean;
   blockedPermissionRequests: PromptPermission[];
