@@ -6,8 +6,16 @@ import { test } from 'node:test';
 import boosts from '../../../dist/main/library/boosts.js';
 import { IS_POSIX } from '../../../dist/main/platform.js';
 
-const { BoostStore, boostOrigin, boostSelector, boostStyles, sanitizeBoost } = boosts;
-const full = { enabled: true, accent: '#AABBCC', background: null, font: 'serif', hidden: ['.ad'], css: 'a{x:y}' };
+const { BoostStore, boostOrigin, boostSelector, boostStyles, darkApplies, pageStyles, sanitizeBoost } = boosts;
+const full = {
+  enabled: true,
+  dark: true,
+  accent: '#AABBCC',
+  background: null,
+  font: 'serif',
+  hidden: ['.ad'],
+  css: 'a{x:y}',
+};
 
 function withDir(run) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-boosts-'));
@@ -75,7 +83,25 @@ test('styles hide each selector in its own rule and keep custom CSS last', () =>
   assert.match(css, /font-family:Georgia/);
   assert.ok(css.indexOf('.a{display:none!important}') < css.indexOf('#b{display:none!important}'));
   assert.ok(css.endsWith('a{x:y}'));
-  assert.equal(boostStyles({ enabled: true, accent: null, background: null, font: null, hidden: [], css: '' }), '');
+  assert.equal(
+    boostStyles({ enabled: true, dark: true, accent: null, background: null, font: null, hidden: [], css: '' }),
+    '',
+  );
+});
+
+test('dark appearance applies when set for all sites unless the site opts out', () => {
+  assert.equal(darkApplies(true, null), true);
+  assert.equal(darkApplies(true, full), true);
+  assert.equal(darkApplies(true, { ...full, dark: false }), false);
+  assert.equal(darkApplies(false, full), false);
+  assert.equal(darkApplies(false, null), false);
+  assert.equal(sanitizeBoost({ ...full, dark: undefined }).dark, true);
+  assert.equal(sanitizeBoost({ ...full, dark: 'no' }), null);
+  assert.match(pageStyles(true, null), /invert\(1\)/);
+  assert.match(pageStyles(true, { ...full, enabled: false }), /invert\(1\)/);
+  assert.doesNotMatch(pageStyles(true, { ...full, dark: false }), /invert/);
+  assert.equal(pageStyles(false, { ...full, enabled: false }), '');
+  assert.ok(pageStyles(true, full).endsWith('a{x:y}'));
 });
 
 test('the store persists per origin, appends hidden elements and caps its size', () =>

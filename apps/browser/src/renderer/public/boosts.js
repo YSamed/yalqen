@@ -5,7 +5,7 @@ const form = document.querySelector('form'),
   readonly = document.querySelector('[data-readonly]'),
   empty = document.querySelector('[data-empty]');
 const requested = new URLSearchParams(location.search).get('site');
-const blank = { enabled: true, accent: null, background: null, font: null, hidden: [], css: '' };
+const blank = { enabled: true, dark: true, accent: null, background: null, font: null, hidden: [], css: '' };
 let sites = new Map(),
   writable = false;
 
@@ -13,6 +13,7 @@ function show(origin) {
   const boost = sites.get(origin) ?? blank;
   field('site').value = origin;
   field('enabled').checked = boost.enabled;
+  field('dark').checked = boost.dark;
   field('useAccent').checked = boost.accent !== null;
   field('accent').value = boost.accent ?? '#2563eb';
   field('useBackground').checked = boost.background !== null;
@@ -59,6 +60,7 @@ form.addEventListener('submit', (event) => {
   event.preventDefault();
   const boost = {
     enabled: field('enabled').checked,
+    dark: field('dark').checked,
     accent: field('useAccent').checked ? field('accent').value : null,
     background: field('useBackground').checked ? field('background').value : null,
     font: field('font').value || null,

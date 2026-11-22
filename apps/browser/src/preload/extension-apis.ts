@@ -3,6 +3,7 @@ import {
   ExtensionBridgeChannel,
   type ExtensionBridgeEvent,
   type ExtensionWindows,
+  suggestedShortcut,
 } from '../shared/extension-bridge.js';
 
 type Dispatch = (...args: unknown[]) => void;
@@ -10,8 +11,12 @@ type Dispatch = (...args: unknown[]) => void;
 interface Bridge {
   createTab(properties: unknown): Promise<unknown>;
   removeTabs(ids: unknown): Promise<void>;
+  currentTab(): Promise<unknown>;
   cookies(method: string, details: unknown): Promise<unknown>;
   windows(): Promise<ExtensionWindows>;
+  contextMenus(method: string, args: unknown[]): Promise<void>;
+  notifications(method: string, args: unknown[]): Promise<unknown>;
+  shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
 
@@ -23,8 +28,12 @@ ipcRenderer.on(ExtensionBridgeChannel.event, (_event, name: ExtensionBridgeEvent
 const bridge: Bridge = {
   createTab: (properties) => ipcRenderer.invoke(ExtensionBridgeChannel.createTab, properties),
   removeTabs: (ids) => ipcRenderer.invoke(ExtensionBridgeChannel.removeTabs, ids),
+  currentTab: () => ipcRenderer.invoke(ExtensionBridgeChannel.currentTab),
   cookies: (method, details) => ipcRenderer.invoke(ExtensionBridgeChannel.cookies, method, details),
   windows: () => ipcRenderer.invoke(ExtensionBridgeChannel.windows),
+  contextMenus: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.contextMenus, method, args),
+  notifications: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.notifications, method, args),
+  shortcut: (suggested) => suggestedShortcut(suggested, globalThis.process?.platform ?? ''),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
   },
@@ -35,7 +44,15 @@ function installExtensionApis(api: Bridge): void {
   type Callback = ((value?: unknown) => void) | undefined;
   const chromeApi = (globalThis as { chrome?: Record<string, unknown> }).chrome;
   const tabs = chromeApi?.tabs as Record<string, unknown> | undefined;
-  const runtime = chromeApi?.runtime as { id: string; getManifest(): { permissions?: string[] } } | undefined;
+  const runtime = chromeApi?.runtime as
+    | {
+        id: string;
+        getManifest(): {
+          permissions?: string[];
+          commands?: Record<string, { description?: string; suggested_key?: unknown }>;
+        };
+      }
+    | undefined;
   if (!chromeApi || !tabs || !runtime) return;
   const permissions = runtime.getManifest().permissions ?? [];
 
@@ -50,17 +67,20 @@ function installExtensionApis(api: Bridge): void {
     );
     return undefined;
   };
-  const event = (name: ExtensionBridgeEvent) => {
+  const lastArgument = (args: unknown[]) => args.find((arg) => typeof arg === 'function') as Callback;
+  const event = (name?: ExtensionBridgeEvent) => {
     const listeners = new Set<Listener>();
-    api.subscribe(name, (...args) => {
-      for (const listener of [...listeners]) {
-        try {
-          listener(...args);
-        } catch (error) {
-          console.error(error);
+    if (name) {
+      api.subscribe(name, (...args) => {
+        for (const listener of [...listeners]) {
+          try {
+            listener(...args);
+          } catch (error) {
+            console.error(error);
+          }
         }
-      }
-    });
+      });
+    }
     return {
       addListener: (listener: Listener) => void listeners.add(listener),
       removeListener: (listener: Listener) => void listeners.delete(listener),
@@ -68,13 +88,26 @@ function installExtensionApis(api: Bridge): void {
       hasListeners: () => listeners.size > 0,
     };
   };
-  const define = (target: Record<string, unknown>, key: string, value: unknown) =>
-    Object.defineProperty(target, key, { value, configurable: true, enumerable: true, writable: true });
+  // Extensions such as uBlock Origin Lite read `self.browser || self.chrome`, and Electron defines both.
+  const browserApi = (globalThis as { browser?: Record<string, unknown> }).browser;
+  const counterpart = (target: Record<string, unknown>): Record<string, unknown> | null => {
+    if (!browserApi || browserApi === chromeApi) return null;
+    if (target === chromeApi) return browserApi;
+    const name = ['tabs', 'permissions'].find((key) => chromeApi[key] === target);
+    const mirror = name ? browserApi[name] : null;
+    return mirror && typeof mirror === 'object' && mirror !== target ? (mirror as Record<string, unknown>) : null;
+  };
+  const define = (target: Record<string, unknown>, key: string, value: unknown) => {
+    for (const object of [target, counterpart(target)]) {
+      if (object) Object.defineProperty(object, key, { value, configurable: true, enumerable: true, writable: true });
+    }
+  };
 
   define(tabs, 'create', (properties: unknown, callback: Callback) =>
     settle(api.createTab(properties ?? {}), callback),
   );
   define(tabs, 'remove', (ids: unknown, callback: Callback) => settle(api.removeTabs(ids), callback));
+  define(tabs, 'getCurrent', (callback: Callback) => settle(api.currentTab(), callback));
   define(tabs, 'onUpdated', event('tabs.onUpdated'));
   define(tabs, 'onRemoved', event('tabs.onRemoved'));
 
@@ -97,10 +130,78 @@ function installExtensionApis(api: Bridge): void {
     });
   }
 
+  if (!chromeApi.commands) {
+    const commands = Object.entries(runtime.getManifest().commands ?? {}).map(
+      ([name, { description = '', suggested_key }]) => ({ name, description, shortcut: api.shortcut(suggested_key) }),
+    );
+    define(chromeApi, 'commands', {
+      getAll: (callback: Callback) => settle(Promise.resolve(commands), callback),
+      onCommand: event('commands.onCommand'),
+    });
+  }
+
+  if (!chromeApi.contextMenus && permissions.includes('contextMenus')) {
+    let nextId = Date.now();
+    const call = (method: string, args: unknown[], callback: Callback) =>
+      settle(api.contextMenus(method, args), callback);
+    const plain = (properties: unknown) => {
+      const { onclick: _onclick, ...rest } = (
+        typeof properties === 'object' && properties !== null ? properties : {}
+      ) as Record<string, unknown>;
+      return rest;
+    };
+    define(chromeApi, 'contextMenus', {
+      ACTION_MENU_TOP_LEVEL_LIMIT: 6,
+      create: (properties: unknown, callback: Callback) => {
+        const options = plain(properties);
+        const id = options.id ?? ++nextId;
+        void call('create', [{ ...options, id }], callback ?? (() => {}));
+        return id;
+      },
+      update: (id: unknown, properties: unknown, callback: Callback) =>
+        call('update', [id, plain(properties)], callback),
+      remove: (id: unknown, callback: Callback) => call('remove', [id], callback),
+      removeAll: (callback: Callback) => call('removeAll', [], callback),
+      onClicked: event('contextMenus.onClicked'),
+    });
+  }
+
+  if (!chromeApi.notifications && permissions.includes('notifications')) {
+    const call = (method: string, args: unknown[], callback: Callback) =>
+      settle(api.notifications(method, args), callback);
+    define(chromeApi, 'notifications', {
+      create: (...args: unknown[]) => {
+        const [id, options] = typeof args[0] === 'object' && args[0] !== null ? [undefined, args[0]] : args;
+        return call('create', [id, options], lastArgument(args));
+      },
+      clear: (id: unknown, callback: Callback) => call('clear', [id], callback),
+      getAll: (callback: Callback) => call('getAll', [], callback),
+      getPermissionLevel: (callback: Callback) => call('getPermissionLevel', [], callback),
+      onClicked: event('notifications.onClicked'),
+      onButtonClicked: event('notifications.onButtonClicked'),
+      onClosed: event('notifications.onClosed'),
+      onShowSettings: event(),
+      onPermissionLevelChanged: event(),
+    });
+  }
+
+  if (!chromeApi.webNavigation && permissions.includes('webNavigation')) {
+    define(chromeApi, 'webNavigation', {
+      onBeforeNavigate: event('webNavigation.onBeforeNavigate'),
+      onCommitted: event('webNavigation.onCommitted'),
+      onDOMContentLoaded: event('webNavigation.onDOMContentLoaded'),
+      onCompleted: event('webNavigation.onCompleted'),
+      onErrorOccurred: event('webNavigation.onErrorOccurred'),
+      onHistoryStateUpdated: event('webNavigation.onHistoryStateUpdated'),
+      onReferenceFragmentUpdated: event(),
+      onCreatedNavigationTarget: event(),
+      onTabReplaced: event(),
+    });
+  }
+
   if (!chromeApi.windows) {
     const WINDOW_ID_NONE = -1;
     const WINDOW_ID_CURRENT = -2;
-    const lastArgument = (args: unknown[]) => args.find((arg) => typeof arg === 'function') as Callback;
     type Window = ExtensionWindows['windows'][number];
     const pick = (choose: (result: ExtensionWindows) => Window | undefined) =>
       api.windows().then((result) => {

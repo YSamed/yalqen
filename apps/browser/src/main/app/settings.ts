@@ -43,6 +43,7 @@ const DEFAULTS: Settings = {
   customSearchTemplate: null,
   theme: 'light',
   transparency: true,
+  darkSites: false,
   glassTint: DEFAULT_GLASS_TINT,
   startupBehavior: 'restore',
   startupUrls: [],
@@ -53,6 +54,7 @@ const DEFAULTS: Settings = {
   pinnedTabsStayHome: false,
   manualTabCleanup: false,
   tabModes: false,
+  autoDeveloperMode: true,
   bookmarksPanel: false,
   touchIdPasskeys: false,
   sidebarVisible: true,
@@ -140,6 +142,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     customSearchTemplate,
     theme,
     transparency,
+    darkSites,
     glassTint,
     startupBehavior,
     startupUrls,
@@ -150,6 +153,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     pinnedTabsStayHome,
     manualTabCleanup,
     tabModes,
+    autoDeveloperMode,
     bookmarksPanel,
     touchIdPasskeys,
     sidebarVisible,
@@ -208,6 +212,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
     transparency: typeof transparency === 'boolean' ? transparency : base.transparency,
+    darkSites: typeof darkSites === 'boolean' ? darkSites : base.darkSites,
     glassTint:
       typeof glassTint === 'number' && Number.isFinite(glassTint)
         ? Math.round(Math.min(100, Math.max(0, glassTint)))
@@ -227,6 +232,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     pinnedTabsStayHome: typeof pinnedTabsStayHome === 'boolean' ? pinnedTabsStayHome : base.pinnedTabsStayHome,
     manualTabCleanup: typeof manualTabCleanup === 'boolean' ? manualTabCleanup : base.manualTabCleanup,
     tabModes: typeof tabModes === 'boolean' ? tabModes : base.tabModes,
+    autoDeveloperMode: typeof autoDeveloperMode === 'boolean' ? autoDeveloperMode : base.autoDeveloperMode,
     bookmarksPanel: typeof bookmarksPanel === 'boolean' ? bookmarksPanel : base.bookmarksPanel,
     touchIdPasskeys: typeof touchIdPasskeys === 'boolean' ? touchIdPasskeys : base.touchIdPasskeys,
     sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,

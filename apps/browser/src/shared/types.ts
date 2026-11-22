@@ -432,6 +432,7 @@ export type UiAction =
   | { type: 'open-live-item'; id: string; itemId: string }
   | { type: 'switch-space'; id: string }
   | { type: 'create-space' }
+  | { type: 'import-space' }
   | { type: 'rename-space'; id: string; name: string }
   | { type: 'open-space-menu'; id: string }
   | { type: 'close-tab'; id: TabId }
@@ -845,6 +846,7 @@ export interface SettingsValues {
   customSearchTemplate: string | null;
   theme: ThemeSource;
   transparency: boolean;
+  darkSites: boolean;
   glassTint: number;
   startupBehavior: 'restore' | 'new-tab' | 'pages';
   startupUrls: string[];
@@ -855,6 +857,7 @@ export interface SettingsValues {
   pinnedTabsStayHome: boolean;
   manualTabCleanup: boolean;
   tabModes: boolean;
+  autoDeveloperMode: boolean;
   bookmarksPanel: boolean;
   // Passkeys kept on this Mac and unlocked with Touch ID; only signed releases can, and only after a restart.
   touchIdPasskeys: boolean;

@@ -43,6 +43,13 @@ export const tr: Record<MessageKey, string> = {
   'workspaces.remove': 'Kaldır',
   'workspaces.confirmRemove': 'Kayıtlı çalışma alanı kaldırılsın mı? Açık sekmeler korunur.',
   'workspaces.readOnly': 'Çalışma alanlarını değiştirmek ve açmak için normal bir tarayıcı penceresi kullanın.',
+  'spaces.separateSignIns': 'Ayrı oturum açmaları kullan',
+  'spaces.export': 'Alanı dışa aktar…',
+  'spaces.import': 'Alan içe aktar…',
+  'spaces.chooseFile': 'Alan Dosyası Seçin',
+  'spaces.exportFailed': 'Alan dışa aktarılamadı.',
+  'spaces.importFailed': 'Alan içe aktarılamadı.',
+  'spaces.importFailedDetail': 'Bir Yalqen alan dosyası seçin. En fazla 50 alanınız olabilir.',
   'boosts.title': 'Site stili',
   'boosts.intro':
     'Bir web sitesine kendi görünümünü verin. Stiller site için kaydedilir ve site her yüklendiğinde uygulanır. Öğeleri Sekme → Bu sitede bir öğeyi gizle ile gizleyin.',
@@ -54,6 +61,10 @@ export const tr: Record<MessageKey, string> = {
   'boosts.empty': 'Henüz stil verilmiş site yok. Bir web sitesi açın, sonra Sekme → Site stili seçeneğini kullanın.',
   'boosts.site': 'Site',
   'boosts.enabled': 'Bu sitede stili uygula',
+  'settings.darkSites': 'Tüm sitelerde koyu görünüm',
+  'settings.darkSitesHint':
+    'Renkleri ters çevirerek her web sayfasını koyulaştırır. Tek bir site için Site stili bölümünden kapatabilirsin. Zaten koyu temalı siteler yanlış görünebilir.',
+  'boosts.dark': "Bu sitede koyu görünüm (Ayarlar'ta açıksa)",
   'boosts.accent': 'Vurgu rengi',
   'boosts.background': 'Arka plan rengi',
   'boosts.font': 'Yazı tipi',
@@ -1007,6 +1018,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.tabModes': 'Sekme modları',
   'settings.tabModesHint':
     'Adres çubuğuna Normal, Geliştirici ve Gizli seçicisi ekler. Sekme seçilen modda aynı pencerede yeniden yüklenir ve pencere onun görünümünü alır.',
+  'settings.autoDeveloperMode': 'Yerel adresler için Geliştirici Modu',
+  'settings.autoDeveloperModeHint':
+    'Sekme modları açıkken, Normal bir sekme localhost, 127.0.0.1 veya başka bir yerel adresi açarsa Geliştirici Modunda yeniden yüklenir.',
   'settings.bookmarksPanel': 'Yer imleri yan paneli',
   'settings.bookmarksPanelHint':
     'Yer imleri düğmesi, yer imlerinizi sağdaki bir panelde açar. Açık sekmesi olan yer imleri vurgulanır ve tıklamak o sekmeye geçer.',

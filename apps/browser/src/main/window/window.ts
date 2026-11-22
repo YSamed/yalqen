@@ -85,7 +85,13 @@ import { blockedPopupsTemplate } from '../tabs/popups.js';
 import { Preconnector } from '../address-bar/preconnect.js';
 import type { RepoPrompt } from '../app/repo-prompt.js';
 import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
-import { exportBookmarksWithDialog, importBookmarksWithDialog, importHistoryWithDialog } from './import-dialogs.js';
+import {
+  exportBookmarksWithDialog,
+  exportSpaceWithDialog,
+  importBookmarksWithDialog,
+  importHistoryWithDialog,
+  importSpaceWithDialog,
+} from './import-dialogs.js';
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
 import { showCertificateDetails } from '../privacy/certificate-details.js';
 import { saveOfflinePage, openLocalFiles } from './page-files.js';
@@ -190,8 +196,10 @@ export interface AppContext {
   liveFoldersChanged(): void;
   workspaces: WorkspaceStore;
   spacesChanged(): void;
+  spaceSession(id: string): Session | null;
   extensions: ExtensionManager;
   extensionPopup: ExtensionPopup;
+  extensionBridge: import('../extensions/extension-bridge.js').ExtensionBridge;
   extensionAccess: import('../extensions/extension-access-controller.js').ExtensionAccessController;
   certificates: CertificateExceptions;
   httpsOnly: HttpsOnly;
@@ -407,6 +415,7 @@ export class YalqenWindow {
       developerSession: app.developer,
       developerWindow: this.isDeveloper,
       tabModes: () => app.settings.get().tabModes,
+      autoDeveloperMode: () => app.settings.get().autoDeveloperMode,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       onAppLink: (contents, url, isPrivate) => app.openAppLink(contents, url, isPrivate),
       onPagePress: () => {
@@ -432,6 +441,7 @@ export class YalqenWindow {
       pictureInPicture: () => app.settings.get().pictureInPicture,
       spaceIds: () => this.spaces().map((space) => space.id),
       spaceSeed: (id) => app.workspaces.open(id),
+      spaceSession: (id) => app.spaceSession(id),
       onChange: (persist) => {
         this.syncAgentProjectWithTab();
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
@@ -1662,6 +1672,14 @@ export class YalqenWindow {
       case 'create-space':
         this.createSpace();
         break;
+      case 'import-space':
+        if (this.isPrivate || this.webApp) break;
+        void importSpaceWithDialog(this.window, (text) => {
+          const id = app.workspaces.importText(text);
+          if (id) app.spacesChanged();
+          return id;
+        }).then((id) => id && !this.window.isDestroyed() && this.tabs.switchSpace(id));
+        break;
       case 'rename-space':
         if (action.id === DEFAULT_SPACE_ID || !app.workspaces.rename(action.id, action.name)) {
           this.notice.show([t('spaces.failed')]);
@@ -2015,7 +2033,7 @@ export class YalqenWindow {
     const tab = this.tabs.previewTab(request.tabId, request.url);
     const read = tab
       ? readPreview(tab, {
-          session: this.app.daily,
+          session: (tab.id && this.tabs.tabSession(tab.id)) || this.app.daily,
           readInTab: (contents, code) => this.tabs.readForPreview(contents, code),
         })
       : null;
@@ -2184,6 +2202,22 @@ export class YalqenWindow {
         })),
       },
       {
+        label: t('spaces.separateSignIns'),
+        type: 'checkbox',
+        checked: this.app.workspaces.isolated(id),
+        click: (item) => {
+          if (this.app.workspaces.setIsolated(id, item.checked)) this.app.spacesChanged();
+        },
+      },
+      {
+        label: t('spaces.export'),
+        click: () => {
+          const live = this.tabs.toSavedWindow(id);
+          const text = this.app.workspaces.exportText(id, live.tabs.length ? live : null);
+          void exportSpaceWithDialog(this.window, space.name, text);
+        },
+      },
+      {
         label: t('spaces.delete'),
         click: () => {
           const confirmed =
@@ -2290,6 +2324,7 @@ export class YalqenWindow {
       copyAddress: (format) => this.copyAddress(format, { url: contents.getURL(), title: contents.getTitle() }),
       replaceMisspelling: (word) => contents.replaceMisspelling(word),
       addToDictionary: (word) => contents.session.addWordToSpellCheckerDictionary(word),
+      extensionItems: this.app.extensionBridge.menuItems(contents, params),
     });
     this.popup(template);
   }
