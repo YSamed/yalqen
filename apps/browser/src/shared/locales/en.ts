@@ -998,6 +998,9 @@ export const en = {
   'settings.tabModes': 'Tab modes',
   'settings.tabModesHint':
     'Adds a Normal, Developer and Private switch to the address bar. The tab reloads in the mode picked, in the same window, and the window takes its look.',
+  'settings.autoDeveloperMode': 'Developer Mode for local addresses',
+  'settings.autoDeveloperModeHint':
+    'With tab modes on, a Normal tab that opens localhost, 127.0.0.1 or another local address reloads in Developer Mode.',
   'settings.bookmarksPanel': 'Bookmarks side panel',
   'settings.bookmarksPanelHint':
     'The bookmarks button opens your bookmarks in a panel on the right. Bookmarks with an open tab are highlighted, and a click switches to that tab.',
@@ -1757,6 +1760,10 @@ export const en = {
   'welcome.keySidebar': 'Change the sidebar',
   'welcome.keyDevTools': 'Developer tools',
   'welcome.start': 'Start exploring',
+  'commandBar.searchOn': 'Search {engine}',
+  'settings.stripTrackingOnCopy': 'Remove tracking from copied addresses',
+  'settings.stripTrackingOnCopyHint':
+    'Remove utm_*, fbclid, gclid and similar parameters when you copy the address of a page.',
 };
 
 export type MessageKey = keyof typeof en;

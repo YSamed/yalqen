@@ -96,7 +96,7 @@ import {
   siteInfoMenu,
   tabMenuTemplate,
 } from './window-menus.js';
-import { buildSearchUrl, type SearchEngine } from '../address-bar/search.js';
+import { SEARCH_ENGINES, buildSearchUrl, resolveSearchEngine, type SearchEngine } from '../address-bar/search.js';
 import type { SettingsStore } from '../app/settings.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
@@ -338,8 +338,14 @@ export class YalqenWindow {
 
     this.commandHost = {
       window: this.window,
-      onSubmit: (input, mode) => {
+      onSubmit: (input, mode, engine) => {
         this.preconnector.cancel();
+        if (engine) {
+          const url = buildSearchUrl(resolveSearchEngine(engine, null), input.trim());
+          if (mode === 'new-tab') this.tabs.open(url);
+          else this.tabs.navigate(url);
+          return;
+        }
         if (isDevCommandInput(input)) {
           const command = matchDevCommands(input)[0]?.commandId;
           if (command) this.runDevCommand(command);
@@ -402,6 +408,7 @@ export class YalqenWindow {
       developerSession: app.developer,
       developerWindow: this.isDeveloper,
       tabModes: () => app.settings.get().tabModes,
+      autoDeveloperMode: () => app.settings.get().autoDeveloperMode,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       onAppLink: (contents, url, isPrivate) => app.openAppLink(contents, url, isPrivate),
       onPagePress: () => {
@@ -1417,6 +1424,7 @@ export class YalqenWindow {
       placeholder: this.app.searchEngine().placeholder,
       mode: 'navigate',
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
+      engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
       material: this.material(),
       accent: accentHex(this.app.settings.get().accentColor),
     });
@@ -1614,7 +1622,9 @@ export class YalqenWindow {
   }
 
   private copyAddress(format: AddressFormat, page = this.tabs.activePage()): void {
-    if (page && canViewSource(page.url)) clipboard.writeText(formatAddress(format, page.url, page.title));
+    if (page && canViewSource(page.url)) {
+      clipboard.writeText(formatAddress(format, page.url, page.title, this.app.settings.get().stripTrackingOnCopy));
+    }
   }
 
   moveActiveTabToNewWindow(): void {

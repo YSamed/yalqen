@@ -85,6 +85,13 @@
     onchange={(checked) => update({ httpsOnly: checked })}
   />
 </SettingRow>
+<SettingRow title={t('settings.stripTrackingOnCopy')} hint={t('settings.stripTrackingOnCopyHint')}>
+  <Switch
+    label={t('settings.stripTrackingOnCopy')}
+    checked={values.stripTrackingOnCopy}
+    onchange={(checked) => update({ stripTrackingOnCopy: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.touchIdPasskeys')} hint={t('settings.touchIdPasskeysHint')}>
   <Switch
     label={t('settings.touchIdPasskeys')}

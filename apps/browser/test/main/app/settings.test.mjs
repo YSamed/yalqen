@@ -51,6 +51,7 @@ test('unknown or mistyped fields fall back', () => {
       pinnedTabsStayHome: false,
       manualTabCleanup: false,
       tabModes: false,
+      autoDeveloperMode: true,
       bookmarksPanel: false,
       touchIdPasskeys: false,
       sidebarVisible: true,
@@ -64,6 +65,7 @@ test('unknown or mistyped fields fall back', () => {
       adBlockExceptions: [],
       thirdPartyCookieExceptions: [],
       httpsOnly: false,
+      stripTrackingOnCopy: true,
       blockThirdPartyCookies: false,
       clearOnExit: false,
       blockedPermissionRequests: [],
@@ -129,12 +131,21 @@ test('keeping pinned tabs on their site is off by default and kept once turned o
   assert.equal(sanitizeSettings(null).pinnedTabsStayHome, false);
   assert.equal(sanitizeSettings({ pinnedTabsStayHome: true }).pinnedTabsStayHome, true);
   assert.equal(sanitizeSettings({ pinnedTabsStayHome: 'yes' }).pinnedTabsStayHome, false);
+  assert.equal(sanitizeSettings(null).stripTrackingOnCopy, true);
+  assert.equal(sanitizeSettings({ stripTrackingOnCopy: false }).stripTrackingOnCopy, false);
+  assert.equal(sanitizeSettings({ stripTrackingOnCopy: 'no' }).stripTrackingOnCopy, true);
 });
 
 test('the button to close idle tabs is off by default and kept once turned on', () => {
   assert.equal(sanitizeSettings(null).manualTabCleanup, false);
   assert.equal(sanitizeSettings({ manualTabCleanup: true }).manualTabCleanup, true);
   assert.equal(sanitizeSettings({ manualTabCleanup: 1 }).manualTabCleanup, false);
+});
+
+test('local addresses open in Developer Mode unless the setting is turned off', () => {
+  assert.equal(sanitizeSettings(null).autoDeveloperMode, true);
+  assert.equal(sanitizeSettings({ autoDeveloperMode: false }).autoDeveloperMode, false);
+  assert.equal(sanitizeSettings({ autoDeveloperMode: 'no' }).autoDeveloperMode, true);
 });
 
 test('the bookmarks side panel is off by default and kept once turned on', () => {

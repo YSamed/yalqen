@@ -5,7 +5,7 @@ import i18n from '../../../dist/shared/i18n.js';
 
 i18n.setLocale('tr');
 
-const { canViewSource, formatAddress, fullPageClip, pageFileName } = pageExport;
+const { canViewSource, formatAddress, fullPageClip, pageFileName, stripTrackingParams } = pageExport;
 const pdfFileName = (title, url) => pageFileName(title, url, 'pdf');
 
 test('PDF names come from the title, cleaned for file systems', () => {
@@ -64,4 +64,15 @@ test('long and wide pages scale uniformly instead of losing their bottom or righ
       assert.ok(clip.scale > 0 && clip.scale < 1);
     }
   }
+});
+
+test('tracking parameters are removed from copied addresses', () => {
+  const tracked = 'https://a.com/p?id=7&utm_source=x&UTM_medium=y&fbclid=1&gclid=2&q=a+b#top';
+  assert.equal(stripTrackingParams(tracked), 'https://a.com/p?id=7&q=a+b#top');
+  assert.equal(stripTrackingParams('https://a.com/p?utm_source=x&fbclid=1'), 'https://a.com/p');
+  assert.equal(stripTrackingParams('https://a.com/p?q=%C3%A7'), 'https://a.com/p?q=%C3%A7');
+  assert.equal(stripTrackingParams('not a url'), 'not a url');
+  assert.equal(formatAddress('url', tracked, '', true), 'https://a.com/p?id=7&q=a+b#top');
+  assert.equal(formatAddress('url', tracked, ''), tracked);
+  assert.equal(formatAddress('markdown', tracked, 'T', true), '[T](https://a.com/p?id=7&q=a+b#top)');
 });
