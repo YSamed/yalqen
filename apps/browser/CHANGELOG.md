@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.19](https://github.com/YSamed/yalqen/compare/v0.4.18...v0.4.19) (2026-11-22)
+
+
+### Features
+
+* add dark appearance option for all sites ([#475](https://github.com/YSamed/yalqen/issues/475)) ([9c004f1](https://github.com/YSamed/yalqen/commit/9c004f15c3c9ca9fa94ed65e159ddc783eb7bdf3))
+* add extension context menus, notifications and shortcuts ([#473](https://github.com/YSamed/yalqen/issues/473)) ([88a75e3](https://github.com/YSamed/yalqen/commit/88a75e3d6db62e3dae8a7bae766f0fb304736e3d))
+* add recent-tab cycling and editable menu shortcuts ([#476](https://github.com/YSamed/yalqen/issues/476)) ([7889d33](https://github.com/YSamed/yalqen/commit/7889d33a0a6e2b7df746b798991b18030b27c240))
+* add separate-session spaces and space export and import ([#471](https://github.com/YSamed/yalqen/issues/471)) ([006a991](https://github.com/YSamed/yalqen/commit/006a9915b0396a811486088c1a90cb731e813f9d))
+* open local addresses in developer mode automatically ([#474](https://github.com/YSamed/yalqen/issues/474)) ([72ca0a8](https://github.com/YSamed/yalqen/commit/72ca0a8e48064e509961f51b5213c60b721a6e9e))
+* select built-in search engines with tab in command bar ([#470](https://github.com/YSamed/yalqen/issues/470)) ([ef63872](https://github.com/YSamed/yalqen/commit/ef6387202fc420336ca91bd0c6ce2aaa2bfee7e8))
+* strip tracking params when copying page address ([#472](https://github.com/YSamed/yalqen/issues/472)) ([d5cc986](https://github.com/YSamed/yalqen/commit/d5cc986df83384f1ad9a5b97a753509a046e4846))
+
 ## [0.4.18](https://github.com/YSamed/yalqen/compare/v0.4.17...v0.4.18) (2026-11-18)
 
 
