@@ -9,6 +9,7 @@ export const BOOST_FONTS = ['system', 'serif', 'mono'] as const;
 export type BoostFont = (typeof BOOST_FONTS)[number];
 export interface Boost {
   enabled: boolean;
+  dark: boolean;
   accent: string | null;
   background: string | null;
   font: BoostFont | null;

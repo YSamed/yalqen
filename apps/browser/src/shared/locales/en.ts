@@ -51,6 +51,10 @@ export const en = {
   'boosts.empty': 'No styled sites yet. Open a website, then choose Tab → Site styling.',
   'boosts.site': 'Site',
   'boosts.enabled': 'Apply styling on this site',
+  'settings.darkSites': 'Dark appearance on all sites',
+  'settings.darkSitesHint':
+    'Darkens every web page by inverting its colors. Turn it off for one site under Site styling. Sites that already have a dark theme may look wrong.',
+  'boosts.dark': 'Dark appearance on this site (when enabled in Settings)',
   'boosts.accent': 'Accent color',
   'boosts.background': 'Background color',
   'boosts.font': 'Font',

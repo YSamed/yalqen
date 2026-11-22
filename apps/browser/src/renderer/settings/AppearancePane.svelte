@@ -282,6 +282,13 @@
     />
   </SettingRow>
 {/if}
+<SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
+  <Switch
+    label={t('settings.darkSites')}
+    checked={values.darkSites}
+    onchange={(checked) => update({ darkSites: checked })}
+  />
+</SettingRow>
 <SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
   <Select
     id="default-zoom"
