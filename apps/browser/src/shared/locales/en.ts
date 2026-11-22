@@ -998,6 +998,9 @@ export const en = {
   'settings.tabModes': 'Tab modes',
   'settings.tabModesHint':
     'Adds a Normal, Developer and Private switch to the address bar. The tab reloads in the mode picked, in the same window, and the window takes its look.',
+  'settings.autoDeveloperMode': 'Developer Mode for local addresses',
+  'settings.autoDeveloperModeHint':
+    'With tab modes on, a Normal tab that opens localhost, 127.0.0.1 or another local address reloads in Developer Mode.',
   'settings.bookmarksPanel': 'Bookmarks side panel',
   'settings.bookmarksPanelHint':
     'The bookmarks button opens your bookmarks in a panel on the right. Bookmarks with an open tab are highlighted, and a click switches to that tab.',

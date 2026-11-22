@@ -39,6 +39,18 @@ test('isDevelopmentHost accepts local suffixes', () => {
   }
 });
 
+test('isDevelopmentHost accepts the hostname of a local URL', () => {
+  for (const url of [
+    'http://localhost:3000/',
+    'http://127.0.0.1:8080/x',
+    'http://[::1]:5173/',
+    'https://app.localhost/',
+  ]) {
+    assert.equal(isDevelopmentHost(new URL(url).hostname), true, url);
+  }
+  assert.equal(isDevelopmentHost(new URL('https://example.com/').hostname), false);
+});
+
 test('isDevelopmentHost rejects other hosts', () => {
   for (const host of ['localhost.com', '128.0.0.1', 'test.example.com', 'example.com', '127.0.0', '127.0.0.1.5', '']) {
     assert.equal(isDevelopmentHost(host), false, host);

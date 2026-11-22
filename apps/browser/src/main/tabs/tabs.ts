@@ -133,6 +133,7 @@ interface TabManagerOptions {
   developerSession?: Session;
   developerWindow?: boolean;
   tabModes?: () => boolean;
+  autoDeveloperMode?: () => boolean;
   onPrivateEnded: () => void;
   onAppLink?: (contents: WebContents, url: string, isPrivate: boolean) => void;
   onPagePress?: () => void;
@@ -459,7 +460,7 @@ export class TabManager {
     const tab = this.createRecord(
       { url: upgraded ?? url },
       isPrivate ?? this.options.privateWindow,
-      developer ?? (windowMode && (this.options.developerWindow ?? false)),
+      developer ?? (windowMode && ((this.options.developerWindow ?? false) || this.opensInDeveloper(upgraded ?? url))),
     );
     tab.space = this.spaceIds().includes(space) ? space : this.space;
     tab.group = tab.space === this.space ? (this.active()?.group ?? null) : null;
@@ -1248,6 +1249,10 @@ export class TabManager {
       return;
     }
     if (this.routeAppNavigation(tab, url)) return;
+    if (modeOf(tab) === 'normal' && this.opensInDeveloper(url)) {
+      void this.setMode(tab.id, 'developer', url);
+      return;
+    }
     const upgraded = this.options.upgradeHttp(url);
     tab.upgrade = upgraded ? { https: upgraded, http: url } : null;
     if (upgraded) url = upgraded;
@@ -1979,7 +1984,19 @@ export class TabManager {
   }
 
   openInActiveMode(url?: string): TabId {
-    return this.modesOn ? this.open(url, modeFlags(this.activeMode)) : this.open(url);
+    if (!this.modesOn) return this.open(url);
+    const mode = this.activeMode === 'normal' && this.opensInDeveloper(url) ? 'developer' : this.activeMode;
+    return this.open(url, modeFlags(mode));
+  }
+
+  private opensInDeveloper(url?: string): boolean {
+    return (
+      !!url &&
+      (this.options.autoDeveloperMode?.() ?? false) &&
+      this.canSwitchMode &&
+      /^https?:/i.test(url) &&
+      isDevelopmentUrl(url)
+    );
   }
 
   modeOfContents(contents: WebContents): TabMode {
@@ -1997,10 +2014,10 @@ export class TabManager {
     );
   }
 
-  async setMode(id: TabId, mode: TabMode): Promise<boolean> {
+  async setMode(id: TabId, mode: TabMode, target?: string): Promise<boolean> {
     const tab = this.find(id);
     if (!tab || !this.canSwitchMode || modeOf(tab) === mode) return false;
-    const url = liveContents(tab)?.getURL() || tab.url;
+    const url = target ?? (liveContents(tab)?.getURL() || tab.url);
     if (tab.pinnedUrl) {
       this.open(url, modeFlags(mode));
       return true;

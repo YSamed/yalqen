@@ -407,6 +407,7 @@ export class YalqenWindow {
       developerSession: app.developer,
       developerWindow: this.isDeveloper,
       tabModes: () => app.settings.get().tabModes,
+      autoDeveloperMode: () => app.settings.get().autoDeveloperMode,
       onPrivateEnded: () => app.onPrivateTabsClosed(),
       onAppLink: (contents, url, isPrivate) => app.openAppLink(contents, url, isPrivate),
       onPagePress: () => {
