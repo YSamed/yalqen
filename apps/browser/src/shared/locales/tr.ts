@@ -1134,6 +1134,7 @@ export const tr: Record<MessageKey, string> = {
   'menu.newDeveloperWindow': 'Yeni geliştirici penceresi',
   'menu.closeTab': 'Sekmeyi kapat',
   'menu.closeWindow': 'Pencereyi kapat',
+  'menu.copyAddress': 'Sayfa Adresini Kopyala',
   'menu.cleanTabs': 'Sekmeleri Temizle',
   'menu.reopenClosedTab': 'Kapatılan sekmeyi aç',
   'menu.addressBar': 'Adres çubuğu',

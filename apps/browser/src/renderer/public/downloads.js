@@ -30,4 +30,11 @@ async function watch() {
   }
 }
 
+list.addEventListener('dragstart', (event) => {
+  const row = event.target instanceof Element ? event.target.closest('[data-drag]') : null;
+  if (!row) return;
+  event.preventDefault();
+  location.href = row.dataset.drag;
+});
+
 void watch();

@@ -136,6 +136,12 @@ export function buildMenu(actions: MenuActions, shortcuts: ShortcutOverrides): M
         { label: t('menu.delete'), role: 'delete' },
         { label: t('menu.selectAll'), role: 'selectAll' },
         { type: 'separator' },
+        {
+          label: t('menu.copyAddress'),
+          accelerator: key('copyAddress'),
+          click: () => actions.devCommand('copy-address'),
+        },
+        { type: 'separator' },
         { label: t('menu.find'), accelerator: key('find'), click: actions.find },
         { label: t('menu.findNext'), accelerator: key('findNext'), click: () => actions.findNext(true) },
         { label: t('menu.findPrevious'), accelerator: key('findPrevious'), click: () => actions.findNext(false) },

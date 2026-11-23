@@ -11,6 +11,7 @@ export const SHORTCUTS = [
   { id: 'savePdf', label: 'menu.savePdf', accelerator: 'CmdOrCtrl+Shift+S' },
   { id: 'fullPageScreenshot', label: 'menu.fullPageScreenshot', accelerator: 'CmdOrCtrl+Alt+S' },
   { id: 'print', label: 'menu.print', accelerator: 'CmdOrCtrl+P' },
+  { id: 'copyAddress', label: 'menu.copyAddress', accelerator: 'CmdOrCtrl+Shift+C' },
   { id: 'find', label: 'menu.find', accelerator: 'CmdOrCtrl+F' },
   { id: 'findNext', label: 'menu.findNext', accelerator: 'CmdOrCtrl+G' },
   { id: 'findPrevious', label: 'menu.findPrevious', accelerator: 'CmdOrCtrl+Shift+G' },

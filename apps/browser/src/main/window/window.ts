@@ -219,7 +219,7 @@ export interface AppContext {
   runBookmarksCommand(command: string, params: URLSearchParams): void;
   importBookmarks(file: string): Promise<BookmarkImportResult>;
   importHistory(file: string): Promise<HistoryImportResult>;
-  runDownloadsCommand(command: string, params: URLSearchParams): void;
+  runDownloadsCommand(command: string, params: URLSearchParams, contents: WebContents): void;
   updateSettings(patch: unknown): void;
   deviceId(): DeviceId;
   openWindow(options: WindowOptions): YalqenWindow;
@@ -495,12 +495,12 @@ export class YalqenWindow {
         app.clearClosedTabs();
       },
       isBookmarked: (url) => app.bookmarks.has(url),
-      onPageCommand: (page, command, params) => {
+      onPageCommand: (page, command, params, contents) => {
         if (page === 'bookmarks') {
           if (command === 'import') void importBookmarksWithDialog(this.window, app.importBookmarks);
           else if (command === 'export') void exportBookmarksWithDialog(this.window, app.bookmarks);
           else app.runBookmarksCommand(command, params);
-        } else app.runDownloadsCommand(command, params);
+        } else app.runDownloadsCommand(command, params, contents);
       },
       onFindResult: (result) => this.findBar.showResult(this.window, result),
       zoomFor: (url, isPrivate) => app.zoomFor(isPrivate).get(url),

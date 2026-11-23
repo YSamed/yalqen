@@ -1124,6 +1124,7 @@ export const en = {
   'menu.newDeveloperWindow': 'New Developer Window',
   'menu.closeTab': 'Close Tab',
   'menu.closeWindow': 'Close Window',
+  'menu.copyAddress': 'Copy Page Address',
   'menu.cleanTabs': 'Clean Tabs',
   'menu.reopenClosedTab': 'Reopen Closed Tab',
   'menu.addressBar': 'Open Location…',

@@ -151,6 +151,22 @@ test('the downloads page updates itself when the list changes', async () => {
   assert.equal(update.html, downloadsPage.renderDownloads(entries));
 });
 
+test('only completed downloads are draggable rows', () => {
+  const entry = {
+    id: 'a b',
+    url: 'https://a.com/f',
+    filename: 'f.zip',
+    savePath: '/tmp/f.zip',
+    receivedBytes: 1,
+    totalBytes: 1,
+    startedAt: 1,
+  };
+  const done = downloadsPage.renderDownloads([{ ...entry, state: 'completed' }]);
+  assert.match(done, /<li class="completed" draggable="true" data-drag="yalqen:\/\/downloads\/drag\?id=a%20b">/);
+  const active = downloadsPage.renderDownloads([{ ...entry, state: 'progressing' }]);
+  assert.doesNotMatch(active, /draggable/);
+});
+
 test('unchanged download polls omit HTML and do not read the list', async () => {
   let reads = 0;
   const handle = serve({

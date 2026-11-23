@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  app,
   dialog,
   shell,
   type BaseWindow,
@@ -114,7 +115,11 @@ export class DownloadManager {
     };
   }
 
-  runCommand(command: string, params: URLSearchParams): void {
+  runCommand(command: string, params: URLSearchParams, contents?: WebContents): void {
+    if (command === 'drag') {
+      if (contents) void this.dragFile(params.get('id') ?? '', contents);
+      return;
+    }
     if (command === 'clear') {
       this.options.store.clearFinished();
       this.changed();
@@ -130,6 +135,13 @@ export class DownloadManager {
     if (this.pageTimer) clearTimeout(this.pageTimer);
     this.stateTimer = null;
     this.pageTimer = null;
+  }
+
+  private async dragFile(id: string, contents: WebContents): Promise<void> {
+    const entry = this.options.store.get(id);
+    if (entry?.state !== 'completed' || !fs.existsSync(entry.savePath)) return;
+    const icon = await app.getFileIcon(entry.savePath, { size: 'normal' });
+    if (!contents.isDestroyed()) contents.startDrag({ file: entry.savePath, icon });
   }
 
   private withEntry(id: string, run: (entry: DownloadEntry) => void): void {

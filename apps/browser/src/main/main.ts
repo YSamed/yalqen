@@ -756,7 +756,7 @@ function startBrowser(): void {
       if (result.visits > 0) reloadPages(HISTORY_URL);
       return result;
     },
-    runDownloadsCommand: (command, params) => downloadManager.runCommand(command, params),
+    runDownloadsCommand: (command, params, contents) => downloadManager.runCommand(command, params, contents),
     updateSettings,
     deviceId: () => deviceId,
     openWindow: (options) => openWindow(options),
