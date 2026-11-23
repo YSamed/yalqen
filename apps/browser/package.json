@@ -190,7 +190,7 @@
     "cygpath": "^1.0.0",
     "dompurify": "^3.4.17",
     "electron-updater": "^6.8.11",
-    "marked": "^18.2.0",
+    "marked": "^18.2.1",
     "node-pty": "^1.1.0",
     "open": "^11.0.4",
     "parse5": "^8.1.1",
