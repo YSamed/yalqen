@@ -10,6 +10,7 @@ export const SHORTCUTS = [
   { id: 'savePage', label: 'menu.savePage', accelerator: 'CmdOrCtrl+S' },
   { id: 'savePdf', label: 'menu.savePdf', accelerator: 'CmdOrCtrl+Shift+S' },
   { id: 'fullPageScreenshot', label: 'menu.fullPageScreenshot', accelerator: 'CmdOrCtrl+Alt+S' },
+  { id: 'captureArea', label: 'menu.captureArea', accelerator: 'CmdOrCtrl+Shift+X' },
   { id: 'print', label: 'menu.print', accelerator: 'CmdOrCtrl+P' },
   { id: 'copyAddress', label: 'menu.copyAddress', accelerator: 'CmdOrCtrl+Shift+C' },
   { id: 'find', label: 'menu.find', accelerator: 'CmdOrCtrl+F' },

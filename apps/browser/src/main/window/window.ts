@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
   BaseWindow,
+  ClipboardItem,
   Menu,
   WebContentsView,
   app,
@@ -93,6 +94,7 @@ import {
   importSpaceWithDialog,
 } from './import-dialogs.js';
 import { printPage, savePdfFile, saveScreenshotFile } from './page-capture.js';
+import { CAPTURE_AREA_SCRIPT, CAPTURE_AREA_WORLD_ID, captureRect } from './capture-area.js';
 import { showCertificateDetails } from '../privacy/certificate-details.js';
 import { saveOfflinePage, openLocalFiles } from './page-files.js';
 import {
@@ -296,6 +298,7 @@ export class YalqenWindow {
   private readonly preview: HoverPreview;
   private previewShown: { tab: PreviewTab; content: PreviewContent } | null = null;
   private readonly notice: PageNotice;
+  private capturingArea = false;
   private readonly agentControl: AgentControl;
   private readonly peek: LinkPeek;
   private lastNavigationGesture: { source: 'native' | 'page'; direction: 'back' | 'forward'; at: number } | null = null;
@@ -1468,6 +1471,9 @@ export class YalqenWindow {
       case 'full-page-screenshot':
         void this.saveScreenshot(true);
         break;
+      case 'capture-area':
+        void this.captureArea();
+        break;
       case 'copy-address':
         this.copyAddress('url');
         break;
@@ -1572,6 +1578,33 @@ export class YalqenWindow {
       hideControl: () => this.agentControl.hide(),
       showVerification: (verification) => this.notice.show(verificationLines(verification)),
     };
+  }
+
+  private async captureArea(): Promise<void> {
+    const contents = this.tabs.activeContents();
+    if (!contents || this.capturingArea) return;
+    this.capturingArea = true;
+    try {
+      contents.focus();
+      this.notice.show([t('capture.start'), t('picker.cancelHint')]);
+      const selection: unknown = await contents.executeJavaScriptInIsolatedWorld(
+        CAPTURE_AREA_WORLD_ID,
+        [{ code: CAPTURE_AREA_SCRIPT }],
+        true,
+      );
+      const rect = captureRect(selection, contents.getZoomFactor());
+      if (!rect || contents.isDestroyed()) return;
+      const image = await contents.capturePage(rect);
+      if (image.isEmpty()) return;
+      await clipboard.write([
+        new ClipboardItem({ 'image/png': new Blob([new Uint8Array(image.toPNG())], { type: 'image/png' }) }),
+      ]);
+      this.notice.show([t('capture.copied')]);
+    } catch (error) {
+      console.warn('[capture] could not capture the area:', error);
+    } finally {
+      this.capturingArea = false;
+    }
   }
 
   private async pickElement(): Promise<void> {
