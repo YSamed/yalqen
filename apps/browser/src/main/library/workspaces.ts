@@ -13,7 +13,19 @@ interface Workspace {
   savedAt: number;
   window: SavedWindow;
   isolated?: boolean;
+  profile?: string;
 }
+interface ProfileFile {
+  default: string | null;
+  known: string[];
+}
+export interface SpaceProfile {
+  id: string;
+  spaceIds: string[];
+}
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const isProfileId = (value: unknown): value is string => typeof value === 'string' && UUID.test(value);
+const profileOf = (entry: Workspace): string | null => entry.profile ?? (entry.isolated === true ? entry.id : null);
 const SPACE_FILE_FORMAT = 'yalqen-space';
 const MAX_SPACE_FILE_BYTES = 2 * 1024 * 1024;
 export interface SpaceFile {
@@ -23,9 +35,7 @@ export interface SpaceFile {
   window: SavedWindow;
 }
 export function spacePartition(id: string, isolated: boolean): string | null {
-  return isolated && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
-    ? `persist:space-${id}`
-    : null;
+  return isolated && UUID.test(id) ? `persist:space-${id}` : null;
 }
 export function spaceFileText({ name, icon, isolated, window }: SpaceFile): string | null {
   const snapshot = workspaceSnapshot(window, true);
@@ -80,11 +90,21 @@ export function workspaceSnapshot(value: SavedWindow, allowEmpty = false): Saved
 export class WorkspaceStore {
   readonly file: string;
   private entries: Workspace[] = [];
+  private readonly profileFile: string;
+  private profileState: ProfileFile = { default: null, known: [] };
   constructor(
     directory: string,
     private readonly forgetPartition: (partition: string) => void = () => {},
   ) {
     this.file = path.join(directory, 'workspaces.json');
+    this.profileFile = path.join(directory, 'space-profiles.json');
+    try {
+      const value = JSON.parse(fs.readFileSync(this.profileFile, 'utf8')) as Partial<ProfileFile>;
+      this.profileState = {
+        default: isProfileId(value.default) ? value.default : null,
+        known: Array.isArray(value.known) ? [...new Set(value.known.filter(isProfileId))].slice(0, 200) : [],
+      };
+    } catch {}
     try {
       if (fs.statSync(this.file).size > 8 * 1024 * 1024) return;
       const values: unknown = JSON.parse(fs.readFileSync(this.file, 'utf8'));
@@ -109,6 +129,7 @@ export class WorkspaceStore {
             window,
             savedAt: entry.savedAt,
             ...(typeof entry.isolated === 'boolean' && { isolated: entry.isolated }),
+            ...(isProfileId(entry.profile) && { profile: entry.profile }),
           });
       }
     } catch {}
@@ -136,27 +157,68 @@ export class WorkspaceStore {
     const entry = this.entries.find((item) => item.id === id);
     return entry ? workspaceSnapshot(entry.window, true) : null;
   }
-  partition(id: string): string | null {
+  profile(id: string): string | null {
+    if (id === '') return this.profileState.default;
     const entry = this.entries.find((item) => item.id === id);
-    return entry ? spacePartition(entry.id, entry.isolated === true) : null;
+    return entry ? profileOf(entry) : null;
+  }
+  partition(id: string): string | null {
+    const profile = this.profile(id);
+    return profile && spacePartition(profile, true);
   }
   storedPartitions(): string[] {
-    return this.entries.flatMap((item) => spacePartition(item.id, item.isolated !== undefined) ?? []);
+    const ids = new Set([
+      ...this.profileState.known,
+      ...(this.profileState.default ? [this.profileState.default] : []),
+      ...this.entries.flatMap((item) => [
+        ...(item.isolated !== undefined ? [item.id] : []),
+        ...(item.profile ? [item.profile] : []),
+      ]),
+    ]);
+    return [...ids].flatMap((id) => spacePartition(id, true) ?? []);
+  }
+  profiles(): SpaceProfile[] {
+    const byProfile = new Map<string, string[]>();
+    const use = (profile: string | null, spaceId: string) => {
+      if (profile) byProfile.set(profile, [...(byProfile.get(profile) ?? []), spaceId]);
+    };
+    use(this.profileState.default, '');
+    for (const entry of this.entries.toSorted((a, b) => a.savedAt - b.savedAt)) use(profileOf(entry), entry.id);
+    return [...byProfile].map(([id, spaceIds]) => ({ id, spaceIds }));
   }
   isolated(id: string): boolean {
-    return this.entries.some((item) => item.id === id && item.isolated === true);
+    return this.profile(id) !== null;
   }
   setIsolated(id: string, isolated: boolean): boolean {
-    return (
-      this.entries.some((item) => item.id === id) &&
-      this.replace(this.entries.map((item) => (item.id === id ? { ...item, isolated } : item)))
-    );
+    return this.setProfile(id, isolated ? (this.profile(id) ?? (id === '' ? 'new' : id)) : null);
+  }
+  setProfile(id: string, profile: string | null | 'new'): boolean {
+    const known = profile === null || profile === 'new' || profile === id;
+    if (!known && !this.profiles().some((item) => item.id === profile)) return false;
+    const next = profile === 'new' ? randomUUID() : profile;
+    if (id === '') {
+      if (!this.saveProfiles({ ...this.profileState, default: next })) return false;
+    } else {
+      const entry = this.entries.find((item) => item.id === id);
+      if (!entry) return false;
+      const { profile: _old, ...rest } = entry;
+      const own = next === entry.id;
+      const updated: Workspace = {
+        ...rest,
+        ...((own || entry.isolated !== undefined) && { isolated: own }),
+        ...(next && { profile: next }),
+      };
+      if (!this.replace(this.entries.map((item) => (item === entry ? updated : item)))) return false;
+    }
+    if (next && !this.profileState.known.includes(next))
+      this.saveProfiles({ ...this.profileState, known: [...this.profileState.known, next] });
+    return true;
   }
   exportText(id: string, window: SavedWindow | null): string | null {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry) return null;
     const { name, icon } = entry;
-    return spaceFileText({ name, icon, isolated: entry.isolated === true, window: window ?? entry.window });
+    return spaceFileText({ name, icon, isolated: profileOf(entry) !== null, window: window ?? entry.window });
   }
   importText(text: string): string | null {
     const file = parseSpaceFile(text);
@@ -186,9 +248,32 @@ export class WorkspaceStore {
   remove(id: string): boolean {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry || !this.replace(this.entries.filter((item) => item !== entry))) return false;
-    const partition = spacePartition(entry.id, entry.isolated !== undefined);
-    if (partition) this.forgetPartition(partition);
+    this.forgetUnused([profileOf(entry), entry.isolated !== undefined ? entry.id : null]);
     return true;
+  }
+  private forgetUnused(candidates: (string | null)[]): void {
+    const used = new Set(this.profiles().map((item) => item.id));
+    const unused = [...new Set(candidates)].filter((id): id is string => !!id && !used.has(id));
+    if (unused.length === 0) return;
+    this.saveProfiles({ ...this.profileState, known: this.profileState.known.filter((id) => !unused.includes(id)) });
+    for (const id of unused) {
+      const partition = spacePartition(id, true);
+      if (partition) this.forgetPartition(partition);
+    }
+  }
+  private saveProfiles(state: ProfileFile): boolean {
+    const temp = `${this.profileFile}.${randomUUID()}.tmp`;
+    try {
+      fs.mkdirSync(path.dirname(this.profileFile), { recursive: true });
+      fs.writeFileSync(temp, JSON.stringify(state), { mode: 0o600 });
+      fs.renameSync(temp, this.profileFile);
+      this.profileState = state;
+      return true;
+    } catch {
+      return false;
+    } finally {
+      fs.rmSync(temp, { force: true });
+    }
   }
   private add(
     name: unknown,
