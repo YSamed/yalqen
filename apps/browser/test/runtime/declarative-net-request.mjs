@@ -102,6 +102,7 @@ app
     await page.loadURL(`chrome-extension://${extension.id}/page.html`);
     assert.equal(await page.webContents.executeJavaScript("chrome.runtime.sendMessage({ block: '/later/' })"), 'added');
     await eventually(async () => (await load('/later/track.js')) === 'blocked');
+    assert.equal(await load('/ads/banner.js'), 'blocked');
     assert.equal(await load('/app.js'), 'loaded');
     console.log('PASS: extension declarativeNetRequest static and dynamic rules block through the webRequest gate');
   })

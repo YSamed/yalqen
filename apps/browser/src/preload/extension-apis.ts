@@ -212,9 +212,10 @@ function installExtensionApis(api: Bridge): void {
   const rules = chromeApi.declarativeNetRequest as Record<string, Method> | undefined;
   if (rules && typeof rules.getDynamicRules === 'function') {
     const read = (name: string) => (typeof rules[name] === 'function' ? rules[name]() : Promise.resolve([]));
-    const sync = () =>
-      Promise.all([read('getEnabledRulesets'), read('getDynamicRules'), read('getSessionRules')])
-        .then(([enabled, dynamic, session]) => api.declarativeNetRequest({ enabled, dynamic, session }))
+    // Chromium can report no enabled rulesets before it has indexed them, so rulesets travel as changes instead.
+    const sync = (rulesets?: unknown) =>
+      Promise.all([read('getDynamicRules'), read('getSessionRules')])
+        .then(([dynamic, session]) => api.declarativeNetRequest({ dynamic, session, rulesets }))
         .catch((error: unknown) => console.error(error));
     for (const name of ['updateDynamicRules', 'updateSessionRules', 'updateEnabledRulesets']) {
       const original = rules[name];
@@ -227,7 +228,7 @@ function installExtensionApis(api: Bridge): void {
             args.filter((arg) => arg !== callback),
           )
           .then((value) => {
-            void sync();
+            void sync(name === 'updateEnabledRulesets' ? args[0] : undefined);
             return value;
           });
         return settle(done, callback);

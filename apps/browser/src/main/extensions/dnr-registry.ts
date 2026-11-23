@@ -91,12 +91,17 @@ export class DeclarativeNetRequest {
   update(extensionId: string, state: unknown): void {
     const loaded = this.loaded.get(extensionId);
     if (!loaded || !state || typeof state !== 'object') return;
-    const { enabled, dynamic, session } = state as Record<string, unknown>;
+    const { rulesets, dynamic, session } = state as Record<string, unknown>;
     const dynamicRules = ruleArray(dynamic, MAX_DYNAMIC_RULES);
     const sessionRules = ruleArray(session, MAX_SESSION_RULES);
-    if (!Array.isArray(enabled) || !dynamicRules || !sessionRules) return;
+    if (!dynamicRules || !sessionRules) return;
+    const { enableRulesetIds: enable, disableRulesetIds: disable } = (rulesets ?? {}) as Record<string, unknown>;
+    const ids = (value: unknown) => (Array.isArray(value) ? value.filter((id) => typeof id === 'string') : []);
     const known = new Set(loaded.resources.map((item) => item.id));
-    loaded.enabled = enabled.filter((id): id is string => typeof id === 'string' && known.has(id));
+    const enabled = new Set(loaded.enabled);
+    for (const id of ids(disable)) enabled.delete(id);
+    for (const id of ids(enable)) if (known.has(id)) enabled.add(id);
+    loaded.enabled = [...enabled];
     loaded.dynamic = dynamicRules;
     loaded.session = sessionRules;
     this.saved[extensionId] = { enabled: loaded.enabled, dynamic: loaded.dynamic };

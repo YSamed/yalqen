@@ -211,18 +211,29 @@ test('the registry applies enabled rulesets, mirrors updates and persists dynami
     { requestDomains: ['trusted.test'], resourceTypes: ['main_frame'] },
     100,
   );
-  rules.update(EXT, { enabled: ['extra', 'unknown'], dynamic: [trusted], session: [] });
+  rules.update(EXT, { dynamic: [], session: [] });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(rules.decide(details('https://ads.test/a.js'))?.cancel, true);
+  rules.update(EXT, {
+    rulesets: { enableRulesetIds: ['extra', 'unknown'], disableRulesetIds: ['ads'] },
+    dynamic: [trusted],
+    session: [],
+  });
   await until(() => rules.decide(details('https://extra.test/a.js'))?.cancel === true);
   assert.equal(rules.decide(details('https://ads.test/a.js')), null);
 
-  rules.update(EXT, { enabled: ['ads'], dynamic: [trusted], session: [] });
+  rules.update(EXT, {
+    rulesets: { enableRulesetIds: ['ads'], disableRulesetIds: ['extra'] },
+    dynamic: [trusted],
+    session: [],
+  });
   await until(() => rules.decide(details('https://ads.test/a.js'))?.cancel === true);
   assert.equal(rules.decide(details('https://trusted.test/', 'mainFrame', { initiatorOrigin: undefined })), null);
   assert.equal(rules.decide(details('https://ads.test/a.js')), null);
   rules.decide(details('https://other.test/', 'mainFrame', { initiatorOrigin: undefined }));
   assert.equal(rules.decide(details('https://ads.test/a.js'))?.cancel, true);
 
-  rules.update(EXT, { enabled: 'nope', dynamic: [], session: [] });
+  rules.update(EXT, { dynamic: 'nope', session: [] });
   rules.saveNow();
   const restarted = new registry.DeclarativeNetRequest(file);
   restarted.load(extension);
