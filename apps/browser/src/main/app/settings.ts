@@ -76,7 +76,7 @@ const DEFAULTS: Settings = {
   defaultZoom: 1,
   interfaceLanguage: 'system',
   pageTranslation: true,
-  miniWindow: false,
+  miniWindow: true,
   pictureInPicture: false,
   autoUpdate: true,
   autoUpdateExtensions: true,

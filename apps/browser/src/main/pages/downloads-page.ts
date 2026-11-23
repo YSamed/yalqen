@@ -30,7 +30,7 @@ export function renderDownloads(entries: readonly DownloadEntry[]): string {
         )
         .join('');
       return (
-        `<li class="${entry.state}"><div class="file"><strong>${escapeHtml(entry.filename)}</strong>` +
+        `<li class="${entry.state}"${entry.state === 'completed' ? ` draggable="true" data-drag="${DOWNLOADS_URL}drag?id=${encodeURIComponent(entry.id)}"` : ''}><div class="file"><strong>${escapeHtml(entry.filename)}</strong>` +
         `<span>${escapeHtml(downloadStatus(entry))} · ${escapeHtml(hostOf(entry.url) ?? entry.url)}</span></div>` +
         `<div class="commands">${commands}</div></li>`
       );

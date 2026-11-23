@@ -166,7 +166,7 @@ interface TabManagerOptions {
   certificateToken: (url: string) => string | null;
   onCertificateProceed: (token: string, url: string) => boolean;
   popupsAllowed: (url: string, isPrivate: boolean) => boolean;
-  onPageCommand: (page: CommandPage, command: string, params: URLSearchParams) => void;
+  onPageCommand: (page: CommandPage, command: string, params: URLSearchParams, contents: WebContents) => void;
   isBookmarked: (url: string) => boolean;
   upgradeHttp: (url: string) => string | null;
   httpsOnlyWarning: (https: string, http: string) => string;
@@ -2638,7 +2638,7 @@ export class TabManager {
         if (this.options.onCertificateProceed(navigation.token, contents.getURL())) contents.reload();
         return;
       case 'page-command':
-        this.options.onPageCommand(navigation.page, navigation.name, navigation.params);
+        this.options.onPageCommand(navigation.page, navigation.name, navigation.params, contents);
         return;
       case 'history-delete':
         this.options.onHistoryDelete(navigation.id);
