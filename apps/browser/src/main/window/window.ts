@@ -2186,7 +2186,34 @@ export class YalqenWindow {
     this.tabs.switchSpace(id);
   }
 
+  private profileMenu(id: string): Electron.MenuItemConstructorOptions {
+    const { workspaces } = this.app;
+    const current = workspaces.profile(id);
+    const names = new Map([this.defaultSpace(), ...this.spaces()].map((space) => [space.id, space.name]));
+    const choose = (profile: string | null | 'new') => {
+      if (workspaces.setProfile(id, profile)) this.app.spacesChanged();
+    };
+    return {
+      label: t('spaces.profile'),
+      submenu: [
+        { label: t('spaces.defaultProfile'), type: 'radio', checked: current === null, click: () => choose(null) },
+        ...workspaces.profiles().map((profile): Electron.MenuItemConstructorOptions => ({
+          label: profile.spaceIds.map((spaceId) => names.get(spaceId) ?? '').join(', '),
+          type: 'radio',
+          checked: profile.id === current,
+          click: () => choose(profile.id),
+        })),
+        { type: 'separator' },
+        { label: t('spaces.newProfile'), click: () => choose('new') },
+      ],
+    };
+  }
+
   private openSpaceMenu(id: string): void {
+    if (id === DEFAULT_SPACE_ID) {
+      if (this.spaces().length > 0) this.popup([this.profileMenu(id)]);
+      return;
+    }
     const space = this.spaces().find((item) => item.id === id);
     if (!space) return;
     this.popup([
@@ -2201,14 +2228,7 @@ export class YalqenWindow {
           },
         })),
       },
-      {
-        label: t('spaces.separateSignIns'),
-        type: 'checkbox',
-        checked: this.app.workspaces.isolated(id),
-        click: (item) => {
-          if (this.app.workspaces.setIsolated(id, item.checked)) this.app.spacesChanged();
-        },
-      },
+      this.profileMenu(id),
       {
         label: t('spaces.export'),
         click: () => {

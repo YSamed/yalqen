@@ -138,3 +138,53 @@ test('the partition flag persists and removing a space forgets its partition dat
     assert.deepEqual(forgotten, [`persist:space-${isolated}`]);
   });
 });
+
+test('spaces can share a profile and its data is kept until the last space using it is removed', () => {
+  withStore((store, forgotten, dir) => {
+    const work = store.create('Work');
+    const client = store.create('Client');
+    assert.equal(store.setProfile(work, 'new'), true);
+    const profile = store.profile(work);
+    assert.match(profile, /^[0-9a-f-]{36}$/);
+    assert.equal(store.setProfile(client, profile), true);
+    assert.equal(store.partition(client), `persist:space-${profile}`);
+    const [shared, ...others] = store.profiles();
+    assert.deepEqual(others, []);
+    assert.equal(shared.id, profile);
+    assert.deepEqual(shared.spaceIds.toSorted(), [work, client].toSorted());
+    assert.equal(store.setProfile(client, ID), false);
+
+    assert.equal(store.remove(work), true);
+    assert.deepEqual(forgotten, []);
+    assert.equal(new WorkspaceStore(dir).partition(client), `persist:space-${profile}`);
+    assert.equal(store.remove(client), true);
+    assert.deepEqual(forgotten, [`persist:space-${profile}`]);
+  });
+});
+
+test('the default space can use a profile and it is cleared with the others', () => {
+  withStore((store, forgotten, dir) => {
+    assert.equal(store.partition(''), null);
+    const work = store.create('Work');
+    assert.equal(store.setProfile('', 'new'), true);
+    const profile = store.profile('');
+    assert.equal(new WorkspaceStore(dir).partition(''), `persist:space-${profile}`);
+    assert.equal(store.setProfile(work, profile), true);
+    assert.deepEqual(store.storedPartitions(), [`persist:space-${profile}`]);
+    assert.equal(store.remove(work), true);
+    assert.deepEqual(forgotten, []);
+
+    assert.equal(store.setProfile('', null), true);
+    assert.equal(store.partition(''), null);
+    assert.deepEqual(store.storedPartitions(), [`persist:space-${profile}`]);
+  });
+});
+
+test('hand-edited profile ids that are not ids are ignored', () => {
+  withStore((store, forgotten, dir) => {
+    fs.writeFileSync(path.join(dir, 'space-profiles.json'), JSON.stringify({ default: '../daily', known: ['x', ID] }));
+    const reloaded = new WorkspaceStore(dir);
+    assert.equal(reloaded.partition(''), null);
+    assert.deepEqual(reloaded.storedPartitions(), [`persist:space-${ID}`]);
+  });
+});
