@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.20](https://github.com/YSamed/yalqen/compare/v0.4.19...v0.4.20) (2026-11-23)
+
+
+### Features
+
+* add archived tabs list ([#480](https://github.com/YSamed/yalqen/issues/480)) ([255fc89](https://github.com/YSamed/yalqen/commit/255fc890d92989afb4e527336733d308bbdbffca))
+* add capture area to copy a page region ([#482](https://github.com/YSamed/yalqen/issues/482)) ([c7ee766](https://github.com/YSamed/yalqen/commit/c7ee76609141b69d1e858ceeaf9514ccf24985ef))
+* add mini window default, copy address shortcut and download drag ([#478](https://github.com/YSamed/yalqen/issues/478)) ([1b9db95](https://github.com/YSamed/yalqen/commit/1b9db9549b6574e5d6255080a90b32d52f99b0a4))
+* add shareable space profiles ([#481](https://github.com/YSamed/yalqen/issues/481)) ([23d3556](https://github.com/YSamed/yalqen/commit/23d3556cee96c0840e50b55933f0a47c30e81650))
+
 ## [0.4.19](https://github.com/YSamed/yalqen/compare/v0.4.18...v0.4.19) (2026-11-22)
 
 
