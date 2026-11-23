@@ -120,6 +120,11 @@ export function buildMenu(actions: MenuActions, shortcuts: ShortcutOverrides): M
           accelerator: key('fullPageScreenshot'),
           click: () => actions.devCommand('full-page-screenshot'),
         },
+        {
+          label: t('menu.captureArea'),
+          accelerator: key('captureArea'),
+          click: () => actions.devCommand('capture-area'),
+        },
         { label: t('menu.print'), accelerator: key('print'), click: actions.print },
         ...(isMac ? [] : [{ type: 'separator' } as const, settingsItem]),
       ],

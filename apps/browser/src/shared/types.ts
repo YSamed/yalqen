@@ -695,6 +695,7 @@ export type DevCommandId =
   | 'rotate-device'
   | 'screenshot'
   | 'full-page-screenshot'
+  | 'capture-area'
   | 'copy-address'
   | 'copy-markdown'
   | 'copy-curl'
