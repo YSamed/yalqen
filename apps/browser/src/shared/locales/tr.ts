@@ -1105,7 +1105,7 @@ export const tr: Record<MessageKey, string> = {
   'settings.discardUnusedTabs': 'Arka plan sekmelerinin belleğini boşalt',
   'settings.autoArchiveTabs': 'Kullanılmayan sekmeleri kapat',
   'settings.autoArchiveTabsHint':
-    'Bu süre boyunca görüntülemediğiniz sekmeler kendiliğinden kapanır. Sekmeleri Kapatılan Sekmeyi Yeniden Aç ile geri getirin veya sayfaları Geçmiş içinde bulun. Sabitlenmiş sekmeler, açık sekme, ses çalan sekmeler ve yazılmış metni olan sekmeler korunur. Hiçbir sekmeyi kapatmamak için Kapalı seçin.',
+    'Bu süre boyunca görüntülemediğiniz sekmeler kendiliğinden kapanır. Kapanan sekmeleri Sekme menüsündeki Arşivlenen Sekmeler listesinden geri açın. Sabitlenmiş sekmeler, açık sekme, ses çalan sekmeler ve yazılmış metni olan sekmeler korunur. Hiçbir sekmeyi kapatmamak için Kapalı seçin.',
   'settings.discardUnusedTabsHint':
     'Terk ettiğiniz sekmelerde kod ve animasyonlar durur. Bu süre boyunca görüntülemediğiniz sekmeler ayrıca bellekten çıkar ve tıkladığınızda yeniden yüklenir. Ses çalan, sabitlenmiş ve yazılmış metni olan sekmeler korunur. Hiçbir sekmeyi durdurmamak için Kapalı seçin.',
 
@@ -1480,6 +1480,10 @@ export const tr: Record<MessageKey, string> = {
   'newTab.suggestions': 'Öneriler',
 
   'historyPage.title': 'Geçmiş',
+  'archivePage.title': 'Arşivlenen Sekmeler',
+  'archivePage.empty': 'Kapattığınız veya kendiliğinden kapanan sekmeler burada görünür.',
+  'archivePage.count': '{count} sekme',
+  'archivePage.restore': '{title} sekmesini yeniden aç',
 
   'downloadsPage.title': 'İndirilenler',
 

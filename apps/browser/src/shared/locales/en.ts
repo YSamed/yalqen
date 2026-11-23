@@ -1095,7 +1095,7 @@ export const en = {
   'settings.discardUnusedTabs': 'Free memory from background tabs',
   'settings.autoArchiveTabs': 'Close tabs you have not used',
   'settings.autoArchiveTabsHint':
-    "Tabs you haven't viewed for this long close on their own. Reopen them with Reopen Closed Tab, or find the pages in History. Pinned tabs, the open tab, tabs playing audio and tabs with typed text are kept. Choose Off to keep every tab.",
+    "Tabs you haven't viewed for this long close on their own. Reopen them from Archived Tabs in the Tab menu. Pinned tabs, the open tab, tabs playing audio and tabs with typed text are kept. Choose Off to keep every tab.",
   'settings.discardUnusedTabsHint':
     "Code and animations stop in tabs you leave. Tabs you haven't viewed for this long also free their memory and reload when you click them. Tabs playing audio, pinned tabs and tabs with typed text are kept. Choose Off to keep every tab running.",
 
@@ -1469,6 +1469,10 @@ export const en = {
   'newTab.suggestions': 'Suggestions',
 
   'historyPage.title': 'History',
+  'archivePage.title': 'Archived Tabs',
+  'archivePage.empty': 'Tabs you close or that close on their own appear here.',
+  'archivePage.count': '{count} tabs',
+  'archivePage.restore': 'Reopen {title}',
 
   'downloadsPage.title': 'Downloads',
 

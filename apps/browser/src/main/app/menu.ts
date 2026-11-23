@@ -19,6 +19,7 @@ interface MenuActions {
   closeWindow(): void;
   moveTabToNewWindow(): void;
   reopenClosedTab(): void;
+  showArchive(): void;
   cleanTabs(): void;
   selectNextTab(): void;
   selectPreviousTab(): void;
@@ -168,6 +169,7 @@ export function buildMenu(actions: MenuActions, shortcuts: ShortcutOverrides): M
           accelerator: key('reopenClosedTab'),
           click: actions.reopenClosedTab,
         },
+        { label: t('archivePage.title'), click: actions.showArchive },
         { label: t('menu.cleanTabs'), accelerator: key('cleanTabs'), click: actions.cleanTabs },
         { type: 'separator' },
         { label: t('menu.nextTab'), accelerator: key('nextTab'), click: actions.selectNextTab },

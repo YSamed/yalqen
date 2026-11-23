@@ -10,6 +10,7 @@ import {
   BOOKMARKS_URL,
   DOWNLOADS_URL,
   HISTORY_URL,
+  ARCHIVE_URL,
   NEW_TAB_URL,
   PageChannel,
   SETTINGS_URL,
@@ -1005,10 +1006,12 @@ export class TabManager {
     return (order[position + 1] ?? order[position - 1])?.id ?? null;
   }
 
-  reopenClosed(): void {
+  reopenClosed(id?: string): void {
     if (this.options.privateWindow || this.activeIsPrivate) return;
-    const saved = this.options.closed.pop();
-    if (!saved) return;
+    const { closed } = this.options;
+    const index = id === undefined ? closed.length - 1 : closed.findIndex((tab) => tab.id === id);
+    if (index < 0) return;
+    const [saved] = closed.splice(index, 1);
     this.options.onClosedChanged?.();
     const tab = this.createRecord({ ...saved, id: undefined, space: this.space });
     this.insertAfterActive(tab);
@@ -1286,6 +1289,10 @@ export class TabManager {
 
   openHistory(): void {
     this.openSingle(HISTORY_URL);
+  }
+
+  openArchive(): void {
+    this.openSingle(ARCHIVE_URL);
   }
 
   openDownloads(): void {
@@ -2642,6 +2649,10 @@ export class TabManager {
         return;
       case 'history-delete':
         this.options.onHistoryDelete(navigation.id);
+        contents.reload();
+        return;
+      case 'archive-restore':
+        this.reopenClosed(navigation.id);
         contents.reload();
         return;
       case 'history-clear':

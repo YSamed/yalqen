@@ -5,7 +5,8 @@ import type { NavigationEntry } from 'electron';
 import { JsonFile } from '../storage/json-file.js';
 import { trimHistory, type SavedHistory, type SavedTab } from './persistence.js';
 
-export const MAX_CLOSED_TABS = 20;
+export const MAX_CLOSED_TABS = 100;
+const MAX_SAVED_HISTORIES = 20;
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_PAGE_STATE = 64 * 1024;
 const PROTOCOLS = new Set([
@@ -95,9 +96,13 @@ export class ClosedTabStore {
   private snapshot(): unknown {
     return {
       version: 1,
-      tabs: this.tabs
-        .slice(-MAX_CLOSED_TABS)
-        .flatMap((tab) => sanitize({ ...tab, history: tab.history && trimHistory(tab.history) }) ?? []),
+      tabs: this.tabs.slice(-MAX_CLOSED_TABS).flatMap(
+        (tab, index, kept) =>
+          sanitize({
+            ...tab,
+            history: index >= kept.length - MAX_SAVED_HISTORIES && tab.history ? trimHistory(tab.history) : null,
+          }) ?? [],
+      ),
     };
   }
 }
