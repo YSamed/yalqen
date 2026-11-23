@@ -905,7 +905,7 @@
                 ondblclick={() => startSpaceRename(space)}
                 oncontextmenu={(e) => {
                   e.preventDefault();
-                  if (space.id) send({ type: 'open-space-menu', id: space.id });
+                  send({ type: 'open-space-menu', id: space.id });
                 }}
                 onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
               >
