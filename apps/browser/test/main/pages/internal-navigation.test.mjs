@@ -16,6 +16,8 @@ test('command addresses are recognised with their arguments', () => {
   assert.deepEqual(internalNavigation('yalqen://proceed/abc'), { type: 'proceed-certificate', token: 'abc' });
   assert.deepEqual(internalNavigation('yalqen://history/delete?id=7'), { type: 'history-delete', id: '7' });
   assert.deepEqual(internalNavigation('yalqen://history/clear'), { type: 'history-clear' });
+  assert.deepEqual(internalNavigation('yalqen://archive/restore?id=a%20b'), { type: 'archive-restore', id: 'a b' });
+  assert.equal(internalNavigation('yalqen://archive/'), null);
   assert.deepEqual(internalNavigation('yalqen://newtab/search?q=%C3%A7ay'), { type: 'new-tab-search', query: 'çay' });
   assert.deepEqual(internalNavigation('yalqen://newtab/search'), { type: 'new-tab-search', query: '' });
   assert.equal(internalNavigation('yalqen://newtab/forget?url=https%3A%2F%2Fa.com%2F'), null);
@@ -55,4 +57,11 @@ test('commands only run from the page that offers them', () => {
   assert.equal(isAllowedFrom(search, 'yalqen://newtab/'), true);
   assert.equal(isAllowedFrom(search, 'yalqen://history/'), false);
   assert.equal(isAllowedFrom(internalNavigation('yalqen://proceed/t'), 'https://expired.example/'), true);
+});
+
+test('archived tabs can only be restored from the archive page', () => {
+  const restore = internalNavigation('yalqen://archive/restore?id=a');
+  assert.equal(isAllowedFrom(restore, 'yalqen://archive/'), true);
+  assert.equal(isAllowedFrom(restore, 'yalqen://history/'), false);
+  assert.equal(isAllowedFrom(restore, 'https://example.com/'), false);
 });

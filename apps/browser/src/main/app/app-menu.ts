@@ -58,6 +58,7 @@ export function installAppMenu(host: AppMenuHost): void {
         },
         closeWindow: () => BaseWindow.getFocusedWindow()?.close(),
         reopenClosedTab: inWindow((window) => window.tabs.reopenClosed()),
+        showArchive: inWindow((window) => window.tabs.openArchive()),
         cleanTabs: () => {
           if (settings.get().manualTabCleanup) void current()?.tabs.closeIdle();
         },

@@ -52,15 +52,18 @@ test('closed tabs survive restart in order with history and consumed entries sta
 });
 test('the persisted list stays bounded and history clearing removes the selected time range immediately', (t) => {
   const { directory, store } = fixture(t);
-  store.tabs.push(...Array.from({ length: 30 }, (_, i) => record(String(i), i)));
+  store.tabs.push(...Array.from({ length: 130 }, (_, i) => record(String(i), i)));
   store.changed();
   store.saveNow();
-  assert.equal(new closed.ClosedTabStore(directory).tabs.length, 20);
+  const reloaded = new closed.ClosedTabStore(directory).tabs;
+  assert.equal(reloaded.length, closed.MAX_CLOSED_TABS);
+  assert.equal(reloaded.filter(({ history }) => history).length, 20);
+  assert.ok(reloaded.slice(-20).every(({ history }) => history));
   const array = store.tabs;
-  store.clearSince(20);
+  store.clearSince(120);
   assert.equal(store.tabs, array);
-  assert.ok(store.tabs.every(({ closedAt }) => closedAt < 20));
-  assert.ok(new closed.ClosedTabStore(directory).tabs.every(({ closedAt }) => closedAt < 20));
+  assert.ok(store.tabs.every(({ closedAt }) => closedAt < 120));
+  assert.ok(new closed.ClosedTabStore(directory).tabs.every(({ closedAt }) => closedAt < 120));
   store.clearSince(0);
   assert.deepEqual(new closed.ClosedTabStore(directory).tabs, []);
 });
@@ -96,4 +99,22 @@ test('private and developer windows cannot consume normal closed-tab history', (
   manager.reopenClosed();
   assert.equal(store.tabs.length, 1);
   assert.equal(manager.count, 0);
+});
+
+test('an archived tab reopens by id and leaves the others in the archive', (t) => {
+  const { store } = fixture(t);
+  store.tabs.push(record('a'), record('b'), record('c'));
+  const manager = new tabs.TabManager({ closed: store.tabs });
+  manager.activate = (id) => {
+    manager.activeId = id;
+  };
+  manager.reopenClosed('b');
+  assert.deepEqual(
+    store.tabs.map(({ id }) => id),
+    ['a', 'c'],
+  );
+  assert.equal(manager.tabs[0].url, 'https://example.com/b');
+  manager.reopenClosed('missing');
+  assert.equal(manager.count, 1);
+  assert.equal(store.tabs.length, 2);
 });

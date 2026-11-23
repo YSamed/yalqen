@@ -6,6 +6,7 @@ export type TabId = string;
 export const INTERNAL_SCHEME = 'yalqen';
 export const NEW_TAB_URL = 'yalqen://newtab/';
 export const HISTORY_URL = 'yalqen://history/';
+export const ARCHIVE_URL = 'yalqen://archive/';
 export const DOWNLOADS_URL = 'yalqen://downloads/';
 export const BOOKMARKS_URL = 'yalqen://bookmarks/';
 export const SETTINGS_URL = 'yalqen://settings/';

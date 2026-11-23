@@ -4,6 +4,8 @@ import { protocol, type Session } from 'electron';
 import { getLocale, t, type MessageKey } from '../../shared/i18n.js';
 import { INTERNAL_SCHEME } from '../../shared/types.js';
 import type { HistoryEntry } from '../library/history.js';
+import { serveArchive } from './archive-page.js';
+import type { SavedTab } from '../tabs/persistence.js';
 import { serveBookmarks, type BookmarksPageAssets } from './bookmarks-page.js';
 import { serveDownloads, type DownloadsPageAssets, type DownloadsPageSource } from './downloads-page.js';
 import { serveHistory } from './history-page.js';
@@ -30,6 +32,7 @@ interface InternalPageFiles {
   newTab: string;
   newTabScript: string;
   history: string;
+  archive?: string;
   downloads: string;
   bookmarks: string;
   readingList?: string;
@@ -41,6 +44,7 @@ interface InternalPageFiles {
 
 interface InternalPageSources extends NewTabSources {
   visits: (query: string) => HistoryEntry[];
+  archived?: () => readonly SavedTab[];
   downloads: DownloadsPageSource;
   bookmarks: (query: string) => { folders: BookmarkFolder[]; bookmarks: Bookmark[] };
 }
@@ -48,6 +52,7 @@ interface InternalPageSources extends NewTabSources {
 interface InternalPages {
   newTab: NewTabAssets;
   history: string;
+  archive?: string;
   downloads: DownloadsPageAssets;
   bookmarks: BookmarksPageAssets;
   readingList?: { template: string; script: string };
@@ -79,6 +84,7 @@ export function loadInternalPages(files: InternalPageFiles): InternalPages {
       mark: fs.readFileSync(path.join(publicDir, 'newtab-mark.png')),
     },
     history: readPage(files.history),
+    archive: files.archive ? readPage(files.archive) : undefined,
     downloads: { template: readPage(files.downloads), script: readScript(files.downloads, 'downloads.js') },
     bookmarks: { template: readPage(files.bookmarks), script: readScript(files.bookmarks, 'bookmarks.js') },
     readingList: files.readingList
@@ -139,6 +145,8 @@ export function serveInternalPages(session: Session, pages: InternalPages, sourc
         return serveDownloads(url, pages.downloads, sources.downloads, request.signal);
       case 'history':
         return serveHistory(url, pages.history, sources.visits);
+      case 'archive':
+        return pages.archive ? serveArchive(url, pages.archive, sources.archived?.() ?? []) : notFound();
       case 'bookmarks':
         return serveBookmarks(url, pages.bookmarks, sources.bookmarks);
       case 'reading-list':

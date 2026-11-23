@@ -827,6 +827,7 @@ function startBrowser(): void {
     newTab: rendererPath('newtab.html'),
     newTabScript: rendererPath('newtab-suggestions.js'),
     history: rendererPath('history.html'),
+    archive: rendererPath('archive.html'),
     downloads: rendererPath('downloads.html'),
     bookmarks: rendererPath('bookmarks.html'),
     readingList: rendererPath('reading-list.html'),
@@ -841,6 +842,7 @@ function startBrowser(): void {
         ...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values(),
       ],
       visits: (query) => history.list(query),
+      archived: () => (isPrivate ? [] : closedTabs),
       downloads: { list: () => downloads.list(), changes: downloadManager.changes },
       bookmarks: (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
       showWelcome: () => {
