@@ -516,6 +516,7 @@ export interface SubmittedCredential {
 export interface NewTabCenter {
   offset: number;
   width: number | null;
+  opaque?: boolean;
 }
 
 export const IpcChannel = {

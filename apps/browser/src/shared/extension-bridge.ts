@@ -6,6 +6,7 @@ export const ExtensionBridgeChannel = {
   windows: 'yalqen-extension-bridge:windows',
   contextMenus: 'yalqen-extension-bridge:context-menus',
   notifications: 'yalqen-extension-bridge:notifications',
+  declarativeNetRequest: 'yalqen-extension-bridge:declarative-net-request',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;

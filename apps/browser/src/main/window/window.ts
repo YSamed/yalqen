@@ -2435,7 +2435,11 @@ export class YalqenWindow {
 
   private placePage(width: number, height: number): number {
     const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
-    this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
+    this.tabs.setPageLayout(
+      bounds,
+      this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset,
+      this.material() === 'opaque',
+    );
     this.pageArea = bounds;
     this.findBar.relayout(this.window);
     this.peek.relayout();

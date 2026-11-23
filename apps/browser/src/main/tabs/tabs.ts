@@ -403,7 +403,7 @@ export class TabManager {
     return tab ? this.snapshot(tab) : null;
   }
 
-  setPageLayout(bounds: Rectangle, newTabCenterOffset: number): void {
+  setPageLayout(bounds: Rectangle, newTabCenterOffset: number, opaque?: boolean): void {
     const { placement } = this;
     const current = placement.bounds;
     const boundsChanged =
@@ -411,9 +411,10 @@ export class TabManager {
       bounds.y !== current.y ||
       bounds.width !== current.width ||
       bounds.height !== current.height;
-    if (!boundsChanged && newTabCenterOffset === placement.newTabCenterOffset) return;
+    if (!boundsChanged && newTabCenterOffset === placement.newTabCenterOffset && opaque === placement.opaque) return;
     placement.bounds = bounds;
     placement.newTabCenterOffset = newTabCenterOffset;
+    placement.opaque = opaque;
     for (const tab of this.shown) {
       placement.syncNewTabCenter(tab);
       if (boundsChanged && tab.view) placement.place(tab, tab.view, true);

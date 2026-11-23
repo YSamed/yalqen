@@ -69,7 +69,7 @@ app
       [browsing, privateBrowsing, developer],
       filters,
       () => false,
-      (details) => guard.blocked(details),
+      (details) => (guard.blocked(details) ? { cancel: true } : null),
     );
     blocker.setEnabled(true);
     await blocker.whenReady();

@@ -16,6 +16,7 @@ interface Bridge {
   windows(): Promise<ExtensionWindows>;
   contextMenus(method: string, args: unknown[]): Promise<void>;
   notifications(method: string, args: unknown[]): Promise<unknown>;
+  declarativeNetRequest(state: unknown): Promise<void>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
@@ -33,6 +34,7 @@ const bridge: Bridge = {
   windows: () => ipcRenderer.invoke(ExtensionBridgeChannel.windows),
   contextMenus: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.contextMenus, method, args),
   notifications: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.notifications, method, args),
+  declarativeNetRequest: (state) => ipcRenderer.invoke(ExtensionBridgeChannel.declarativeNetRequest, state),
   shortcut: (suggested) => suggestedShortcut(suggested, globalThis.process?.platform ?? ''),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
@@ -197,6 +199,42 @@ function installExtensionApis(api: Bridge): void {
       onCreatedNavigationTarget: event(),
       onTabReplaced: event(),
     });
+  }
+
+  // Dark Reader asks this at startup; Electron loads extensions without file access.
+  const extensionApi = chromeApi.extension as Record<string, unknown> | undefined;
+  if (extensionApi && typeof extensionApi.isAllowedFileSchemeAccess !== 'function')
+    define(extensionApi, 'isAllowedFileSchemeAccess', (callback: Callback) => settle(Promise.resolve(false), callback));
+  if (extensionApi && typeof extensionApi.isAllowedIncognitoAccess !== 'function')
+    define(extensionApi, 'isAllowedIncognitoAccess', (callback: Callback) => settle(Promise.resolve(false), callback));
+
+  type Method = (...args: unknown[]) => Promise<unknown>;
+  const rules = chromeApi.declarativeNetRequest as Record<string, Method> | undefined;
+  if (rules && typeof rules.getDynamicRules === 'function') {
+    const read = (name: string) => (typeof rules[name] === 'function' ? rules[name]() : Promise.resolve([]));
+    const sync = () =>
+      Promise.all([read('getEnabledRulesets'), read('getDynamicRules'), read('getSessionRules')])
+        .then(([enabled, dynamic, session]) => api.declarativeNetRequest({ enabled, dynamic, session }))
+        .catch((error: unknown) => console.error(error));
+    for (const name of ['updateDynamicRules', 'updateSessionRules', 'updateEnabledRulesets']) {
+      const original = rules[name];
+      if (typeof original !== 'function') continue;
+      define(rules, name, (...args: unknown[]) => {
+        const callback = lastArgument(args);
+        const done = original
+          .apply(
+            rules,
+            args.filter((arg) => arg !== callback),
+          )
+          .then((value) => {
+            void sync();
+            return value;
+          });
+        return settle(done, callback);
+      });
+    }
+    if (typeof (globalThis as { ServiceWorkerGlobalScope?: unknown }).ServiceWorkerGlobalScope !== 'undefined')
+      void sync();
   }
 
   if (!chromeApi.windows) {

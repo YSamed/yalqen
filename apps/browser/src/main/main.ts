@@ -120,6 +120,7 @@ import { enablePasskeys, pickAccountWithDialog, watchAccountChoices } from './pr
 import { installPermissionHandlers } from './privacy/permission-handlers.js';
 import { PermissionStore } from './privacy/permissions.js';
 import { RequestRuleStore } from './devtools/request-rules.js';
+import { DeclarativeNetRequest } from './extensions/dnr-registry.js';
 import { SessionStore, pinnedOnly, type SavedSession } from './tabs/persistence.js';
 import { ClosedTabStore } from './tabs/closed-tabs.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './address-bar/search.js';
@@ -342,6 +343,10 @@ function startBrowser(): void {
     },
   );
   persistentProfiles.start();
+  const declarativeNetRequest = new DeclarativeNetRequest(path.join(userData, 'declarative-net-request.json'));
+  for (const extension of daily.extensions.getAllExtensions()) declarativeNetRequest.load(extension);
+  daily.extensions.on('extension-loaded', (_event, extension) => declarativeNetRequest.load(extension));
+  daily.extensions.on('extension-unloaded', (_event, extension) => declarativeNetRequest.unload(extension.id));
   const extensions = new ExtensionManager(
     userData,
     daily,
@@ -369,6 +374,7 @@ function startBrowser(): void {
       windowId: (contents) => tabsWindowOf(contents)?.window.id ?? extensionPopup.windowId(contents) ?? WINDOW_ID_NONE,
       isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
       windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
+      declarativeNetRequest: (extensionId, state) => declarativeNetRequest.update(extensionId, state),
     },
     preloadPath('extension-apis'),
   );
@@ -598,7 +604,12 @@ function startBrowser(): void {
     [daily, privateBrowsing],
     path.join(userData, 'adblock-engine.bin'),
     (session, url) => siteProtections.isAllowed('adBlocking', url, session === privateBrowsing),
-    (details) => threatGuard.blocked(details),
+    (details, browsing) =>
+      threatGuard.blocked(details)
+        ? { cancel: true }
+        : browsing === daily
+          ? declarativeNetRequest.decide(details)
+          : null,
   );
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () => resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
@@ -1224,6 +1235,7 @@ function startBrowser(): void {
     passwords.saveNow();
     closedTabStore.saveNow();
     requestRules.saveNow();
+    declarativeNetRequest.saveNow();
   });
   app.on('activate', () => {
     if (started && windows.length === 0 && !quitting) openWindow({});

@@ -134,9 +134,6 @@
   );
   const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
-  const activeSpaceName = $derived(
-    spaces.length > 1 ? spaces.find((space) => space.id === activeSpaceId)?.name : undefined,
-  );
   const inSpaceRow = $derived(!collapsed && spaces.length > 0);
   const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
   const entries = $derived(
@@ -711,10 +708,6 @@
         {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
       {/if}
 
-      {#if !collapsed && activeSpaceName}
-        <p class="space-name">{activeSpaceName}</p>
-      {/if}
-
       {#if showPinned && pinned.length > 0}
         <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
           {#each pinned as tab, index (tab.id)}
@@ -1171,16 +1164,6 @@
     margin: 0 0 8px;
     padding: 0;
     list-style: none;
-  }
-
-  .space-name {
-    margin: 0 0 6px;
-    padding: 0 10px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .section-divider {

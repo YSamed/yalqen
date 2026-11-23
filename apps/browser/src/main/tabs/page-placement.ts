@@ -38,6 +38,7 @@ export class PagePlacement {
   bounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   radius = 0;
   newTabCenterOffset = 0;
+  opaque: boolean | undefined;
   devToolsWidth: number | null = null;
 
   constructor(private readonly slotOf: (tab: Tab) => PaneSlot | null = () => null) {}
@@ -103,9 +104,10 @@ export class PagePlacement {
   newTabCenter(tab: Tab): NewTabCenter {
     const contents = liveContents(tab);
     const zoom = contents ? contents.getZoomFactor() : 1;
-    if (tab.emulation) return { offset: 0, width: null };
-    if (this.slotOf(tab)) return { offset: 0, width: this.area(tab).width / zoom };
-    return { offset: this.newTabCenterOffset / zoom, width: this.bounds.width / zoom };
+    const { opaque } = this;
+    if (tab.emulation) return { offset: 0, width: null, opaque };
+    if (this.slotOf(tab)) return { offset: 0, width: this.area(tab).width / zoom, opaque };
+    return { offset: this.newTabCenterOffset / zoom, width: this.bounds.width / zoom, opaque };
   }
 
   syncNewTabCenter(tab: Tab): void {

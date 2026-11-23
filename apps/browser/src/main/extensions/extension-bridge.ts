@@ -32,6 +32,7 @@ export interface ExtensionBridgeHost {
   windowId(contents: WebContents): number;
   isActive(contents: WebContents): boolean;
   windows(): ExtensionWindowState[];
+  declarativeNetRequest?(extensionId: string, state: unknown): void;
 }
 
 interface Receiver {
@@ -74,6 +75,9 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.windows, (event) => this.windows(this.frameExtension(event), event.sender));
     ipcMain.handle(ExtensionBridgeChannel.contextMenus, (event, method, args) =>
       this.contextMenus(this.frameExtension(event), method, args),
+    );
+    ipcMain.handle(ExtensionBridgeChannel.declarativeNetRequest, (event, state) =>
+      this.host.declarativeNetRequest?.(this.frameExtension(event), state),
     );
     ipcMain.handle(ExtensionBridgeChannel.notifications, (event, method, args) =>
       this.notify(this.frameExtension(event), method, args),
@@ -269,6 +273,9 @@ export class ExtensionBridge {
     worker.ipc.handle(ExtensionBridgeChannel.windows, () => this.windows(extensionId));
     worker.ipc.handle(ExtensionBridgeChannel.contextMenus, (_event, method, args) =>
       this.contextMenus(extensionId, method, args),
+    );
+    worker.ipc.handle(ExtensionBridgeChannel.declarativeNetRequest, (_event, state) =>
+      this.host.declarativeNetRequest?.(extensionId, state),
     );
     worker.ipc.handle(ExtensionBridgeChannel.notifications, (_event, method, args) =>
       this.notify(extensionId, method, args),

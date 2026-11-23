@@ -107,10 +107,14 @@ let gestureInScroller = false;
 
 if (location.href === NEW_TAB_URL && window === window.top) {
   let centerOffset = 0;
+  let opaque: boolean | undefined;
   let pending: NewTabCenter | null = null;
   let pendingTimer = 0;
   const applyCenterOffset = () => {
     document.documentElement?.style.setProperty('--newtab-center-offset', `${centerOffset}px`);
+  };
+  const applyOpaque = () => {
+    if (opaque !== undefined) document.documentElement?.toggleAttribute('data-opaque', opaque);
   };
   const apply = (offset: number) => {
     pending = null;
@@ -120,6 +124,8 @@ if (location.href === NEW_TAB_URL && window === window.top) {
   };
   const receive = (center: NewTabCenter | undefined) => {
     if (!center || !Number.isFinite(center.offset)) return;
+    opaque = center.opaque;
+    applyOpaque();
     if (center.width === null || Math.abs(window.innerWidth - center.width) < 1) {
       apply(center.offset);
       return;
@@ -133,7 +139,14 @@ if (location.href === NEW_TAB_URL && window === window.top) {
   });
   ipcRenderer.on(PageChannel.newTabCenter, (_event, center: NewTabCenter) => receive(center));
   receive(ipcRenderer.sendSync(PageChannel.newTabCenter));
-  window.addEventListener('DOMContentLoaded', applyCenterOffset, { once: true });
+  window.addEventListener(
+    'DOMContentLoaded',
+    () => {
+      applyCenterOffset();
+      applyOpaque();
+    },
+    { once: true },
+  );
 }
 
 function hasHorizontalScroller(event: WheelEvent): boolean {
