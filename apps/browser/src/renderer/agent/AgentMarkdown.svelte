@@ -1,38 +1,9 @@
 <script lang="ts">
-  import DOMPurify from 'dompurify';
-  import { marked } from 'marked';
+  import { markdownBlocks, type MarkdownBlock } from './markdown-blocks';
 
   let { text }: { text: string } = $props();
-  const html = $derived(
-    DOMPurify.sanitize(marked.parse(text, { async: false, breaks: true }), {
-      ALLOWED_TAGS: [
-        'p',
-        'br',
-        'strong',
-        'em',
-        'del',
-        'a',
-        'code',
-        'pre',
-        'ul',
-        'ol',
-        'li',
-        'blockquote',
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'hr',
-        'table',
-        'thead',
-        'tbody',
-        'tr',
-        'th',
-        'td',
-      ],
-      ALLOWED_ATTR: ['href', 'title', 'start'],
-    }),
-  );
+  let previous: MarkdownBlock[] = [];
+  const blocks = $derived.by(() => (previous = markdownBlocks(text, previous)));
 
   function links(element: HTMLDivElement): { destroy(): void } {
     const click = (event: MouseEvent) => {
@@ -50,8 +21,12 @@
   }
 </script>
 
-<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-<div class="markdown" use:links>{@html html}</div>
+<div class="markdown" use:links>
+  {#each blocks as block, index (index)}
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html block.html}
+  {/each}
+</div>
 
 <style>
   .markdown {
