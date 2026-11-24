@@ -28,7 +28,7 @@
   import { complete, findTrigger } from '../../shared/composer-trigger';
   import { FILE_EDIT_TOOLS } from '../../shared/file-change';
   import ElementChip from './ElementChip.svelte';
-  import { modelName } from './format';
+  import { modelName } from '../window/format';
   import ComposerSettings from './ComposerSettings.svelte';
   import ProviderMark from './ProviderMark.svelte';
   import TabAttachments from './TabAttachments.svelte';

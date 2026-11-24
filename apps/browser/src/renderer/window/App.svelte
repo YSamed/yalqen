@@ -15,7 +15,7 @@
   import TabPanel from './TabPanel.svelte';
   import Toolbar from './Toolbar.svelte';
   import MenuButton from './MenuButton.svelte';
-  import type AgentPanel from './AgentPanel.svelte';
+  import type AgentPanel from '../agent/AgentPanel.svelte';
   import {
     EMPTY_AGENT_SESSION,
     EMPTY_AGENT_CHAT,
@@ -194,7 +194,7 @@
   $effect(() => {
     if (!agentPanelOpen || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;
     agentPanelLoading = true;
-    void import('./AgentPanel.svelte')
+    void import('../agent/AgentPanel.svelte')
       .then((module) => {
         AgentPanelComponent = module.default;
       })

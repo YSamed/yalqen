@@ -3,7 +3,7 @@
   import { reuseBrowserState } from '../../shared/browser-state';
   import type { BrowserState } from '../../shared/types';
   import AgentPanel from './AgentPanel.svelte';
-  import { applyRootTheme, chromeMode } from './root-theme';
+  import { applyRootTheme, chromeMode } from '../window/root-theme';
 
   let browser = $state.raw<BrowserState | null>(null);
   let width = $state(window.innerWidth);
