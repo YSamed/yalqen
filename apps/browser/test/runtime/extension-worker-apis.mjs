@@ -47,6 +47,8 @@ webext.notifications.onClicked.addListener(() => {});
 webext.notifications.onButtonClicked.addListener(() => {});
 webext.webNavigation.onCommitted.addListener((details) => seen.push('committed:' + details.frameId + ':' + details.url));
 chrome.webNavigation.onCompleted.addListener((details) => seen.push('completed:' + details.tabId));
+chrome.webNavigation.onReferenceFragmentUpdated.addListener((details) => seen.push('fragment:' + details.frameId + ':' + details.url));
+chrome.webNavigation.onHistoryStateUpdated.addListener((details) => seen.push('history:' + details.frameId + ':' + details.url));
 chrome.webNavigation.onCompleted.addListener((details) => {
   if (details.frameId > 0) seen.push('subframe:' + details.parentFrameId + ':' + details.url);
 });
@@ -169,6 +171,14 @@ app
     await tab.loadURL(url);
     await eventually(async () => (await ask()).seen.includes(`completed:${tab.webContents.id}`));
     assert.ok((await ask()).seen.includes(`committed:0:${url}`));
+
+    await tab.webContents.executeJavaScript("location.hash = 'a'");
+    await eventually(async () => (await ask()).seen.includes(`fragment:0:${url}#a`));
+    await tab.webContents.executeJavaScript("history.pushState({}, '', '/pushed')");
+    await eventually(async () => (await ask()).seen.includes(`history:0:${url}pushed`));
+    const seenNow = (await ask()).seen;
+    assert.ok(!seenNow.includes(`history:0:${url}#a`), 'a fragment change fired onHistoryStateUpdated');
+    assert.ok(!seenNow.includes(`fragment:0:${url}pushed`), 'pushState fired onReferenceFragmentUpdated');
 
     tab.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Y', modifiers: ['alt', 'shift'] });
     await eventually(async () => (await ask()).seen.includes(`command:toggle-blocking:${tab.webContents.id}`));

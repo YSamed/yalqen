@@ -22,6 +22,7 @@ import {
   type ExtensionBridgeEvent,
   type ExtensionWindowState,
   type ExtensionWindows,
+  fragmentOnly,
   shortcutMatches,
   suggestedShortcut,
 } from '../../shared/extension-bridge.js';
@@ -526,15 +527,22 @@ export class ExtensionBridge {
       if (!isSameDocument)
         navigation('webNavigation.onBeforeNavigate', isMainFrame ? contents.mainFrame : frame, { url });
     });
-    contents.on('did-frame-navigate', (_event, url, _code, _status, isMainFrame, processId, routingId) =>
-      navigation('webNavigation.onCommitted', frameOf(isMainFrame, processId, routingId), { url, ...committed }),
-    );
-    contents.on('did-navigate-in-page', (_event, url, isMainFrame, processId, routingId) =>
-      navigation('webNavigation.onHistoryStateUpdated', frameOf(isMainFrame, processId, routingId), {
-        url,
-        ...committed,
-      }),
-    );
+    const lastUrls = new Map<number, string>();
+    const frameKey = (frame: WebFrameMain | null | undefined) => (frame?.parent ? frame.frameTreeNodeId : 0);
+    contents.on('did-frame-navigate', (_event, url, _code, _status, isMainFrame, processId, routingId) => {
+      const frame = frameOf(isMainFrame, processId, routingId);
+      lastUrls.set(frameKey(frame), url);
+      navigation('webNavigation.onCommitted', frame, { url, ...committed });
+    });
+    contents.on('did-navigate-in-page', (_event, url, isMainFrame, processId, routingId) => {
+      const frame = frameOf(isMainFrame, processId, routingId);
+      const key = frameKey(frame);
+      const name = fragmentOnly(lastUrls.get(key), url)
+        ? 'webNavigation.onReferenceFragmentUpdated'
+        : 'webNavigation.onHistoryStateUpdated';
+      lastUrls.set(key, url);
+      navigation(name, frame, { url, ...committed });
+    });
     contents.on('dom-ready', () => navigation('webNavigation.onDOMContentLoaded', contents.mainFrame));
     // shortcut: a subframe whose frame object is replaced mid-load (process swap) may miss onDOMContentLoaded.
     contents.on('frame-created', (_event, { frame }) => {

@@ -27,6 +27,7 @@ export type ExtensionBridgeEvent =
   | 'webNavigation.onCompleted'
   | 'webNavigation.onErrorOccurred'
   | 'webNavigation.onHistoryStateUpdated'
+  | 'webNavigation.onReferenceFragmentUpdated'
   | 'commands.onCommand'
   | 'contextMenus.onClicked'
   | 'notifications.onClicked'
@@ -80,6 +81,13 @@ export function authRedirectExtension(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+export function fragmentOnly(before: string | undefined, after: string): boolean {
+  if (before === undefined || before === after) return false;
+  const [beforePath] = before.split('#', 1);
+  const [afterPath] = after.split('#', 1);
+  return beforePath === afterPath;
 }
 
 export function extensionTabUrl(raw: unknown, extensionId: string): string | null {

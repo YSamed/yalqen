@@ -245,7 +245,7 @@ function installExtensionApis(api: Bridge): void {
       onCompleted: event('webNavigation.onCompleted'),
       onErrorOccurred: event('webNavigation.onErrorOccurred'),
       onHistoryStateUpdated: event('webNavigation.onHistoryStateUpdated'),
-      onReferenceFragmentUpdated: event(),
+      onReferenceFragmentUpdated: event('webNavigation.onReferenceFragmentUpdated'),
       onCreatedNavigationTarget: event(),
       onTabReplaced: event(),
     });

@@ -7,6 +7,7 @@ const {
   chromeWindow,
   extensionIdOf,
   extensionTabUrl,
+  fragmentOnly,
   shortcutMatches,
   suggestedShortcut,
   WINDOW_ID_NONE,
@@ -84,4 +85,14 @@ test('command shortcuts match the physical key and the exact modifiers', () => {
   assert.equal(shortcutMatches('L', input('KeyL'), 'win32'), false);
   assert.equal(shortcutMatches('', input('KeyL'), 'win32'), false);
   assert.equal(shortcutMatches('Ctrl+toString', input('KeyL', { control: true }), 'win32'), false);
+});
+
+test('fragmentOnly detects a hash-only change', () => {
+  assert.equal(fragmentOnly('https://a.test/p', 'https://a.test/p#x'), true);
+  assert.equal(fragmentOnly('https://a.test/p#x', 'https://a.test/p#y'), true);
+  assert.equal(fragmentOnly('https://a.test/p#x', 'https://a.test/p'), true);
+  assert.equal(fragmentOnly('https://a.test/p', 'https://a.test/q#x'), false);
+  assert.equal(fragmentOnly('https://a.test/p?a=1', 'https://a.test/p?a=2#x'), false);
+  assert.equal(fragmentOnly('https://a.test/p#x', 'https://a.test/p#x'), false);
+  assert.equal(fragmentOnly(undefined, 'https://a.test/p#x'), false);
 });
