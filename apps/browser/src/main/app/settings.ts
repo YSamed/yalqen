@@ -13,7 +13,6 @@ import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSpaceRules } from '../../shared/space-rules.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
-import { DEFAULT_WINDOW_COLOR, isWindowColor } from '../../shared/window-color.js';
 import { DEFAULT_FRAME_THEME, sanitizeFrameTheme } from '../../shared/frame-theme.js';
 import { JsonFile } from '../storage/json-file.js';
 import { isAutoArchiveHours } from '../tabs/auto-archive.js';
@@ -72,7 +71,6 @@ const DEFAULTS: Settings = {
   invitationSeen: false,
   displayName: '',
   accentColor: DEFAULT_ACCENT,
-  windowColor: DEFAULT_WINDOW_COLOR,
   dismissedAnnouncement: '',
   dismissedFeedback: '',
   dismissedUpdate: '',
@@ -156,7 +154,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen,
     displayName,
     accentColor,
-    windowColor,
     dismissedAnnouncement,
     dismissedFeedback,
     dismissedUpdate,
@@ -241,7 +238,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     invitationSeen: typeof invitationSeen === 'boolean' ? invitationSeen : base.invitationSeen,
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
-    windowColor: isWindowColor(windowColor) ? windowColor : base.windowColor,
     dismissedAnnouncement:
       typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,
     dismissedFeedback: typeof dismissedFeedback === 'string' ? dismissedFeedback.slice(0, 64) : base.dismissedFeedback,

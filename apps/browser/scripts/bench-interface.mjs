@@ -13,7 +13,6 @@ const { values } = parseArgs({
     'renderer-dir': { type: 'string', default: fileURLToPath(new URL('../dist/renderer/', import.meta.url)) },
     tabs: { type: 'string', default: '200' },
     updates: { type: 'string', default: '200' },
-    'active-only': { type: 'boolean', default: false },
     'state-format': { type: 'string', default: 'json' },
     out: { type: 'string' },
   },
@@ -57,7 +56,7 @@ const listeners = new Set();
 contextBridge.exposeInMainWorld('yalqen', {
   getState: () => ipcRenderer.invoke('bench:initial'),
   onState: (listener) => { listeners.add(listener); return () => listeners.delete(listener); },
-  setLayout: () => {}, send: () => {},
+  onAddLiveFolder: () => () => {}, setLayout: () => {}, send: () => {},
 });
 ipcRenderer.on('bench:state', (_event, state) => {
   const start = performance.now();
@@ -105,16 +104,15 @@ ipcRenderer.on('bench:state', (_event, state) => {
     windowFullScreen: false,
     addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
-    panelSide: 'left',
-    pinnedDisplay: 'always',
     favorites: [],
+    splitTabIds: [],
+    activeSpaceId: '',
+    spaces: [{ id: '', name: 'Default', icon: null }],
+    sidebarFooterItems: ['downloads'],
     sidebarVisible: true,
     media: null,
-    toolbarVisible: true,
-    toolbarTabs: !values['active-only'],
     toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'],
     material: 'opaque',
-    glassTint: 25,
     accent: '#0a84ff',
     device: null,
     zoom: 1,
@@ -187,10 +185,8 @@ ipcRenderer.on('bench:state', (_event, state) => {
         );
       } else {
         assert.equal(
-          await window.webContents.executeJavaScript(
-            "document.querySelector('.toolbar .ring circle').getAttribute('stroke-dasharray')",
-          ),
-          `${Math.max(2, (((updates + 19) % 100) / 100) * 100)} 100`,
+          await window.webContents.executeJavaScript("!!document.querySelector('.footer-tools .download-dot')"),
+          true,
         );
       }
       const median = (list) => Number(list[Math.floor(list.length / 2)].toFixed(3));
@@ -210,7 +206,6 @@ ipcRenderer.on('bench:state', (_event, state) => {
       chromium: process.versions.chrome,
       tabs: tabCount,
       updates,
-      toolbarTabs: initial.toolbarTabs,
       stateFormat,
       results,
     };

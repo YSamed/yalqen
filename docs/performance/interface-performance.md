@@ -76,7 +76,6 @@ Run from `apps/browser`:
 ```bash
 npm run bench:interface
 node scripts/bench-interface.mjs --tabs 500 --out /tmp/interface-after.json
-node scripts/bench-interface.mjs --active-only --out /tmp/interface-active-only.json
 npm run bench:backend
 node scripts/bench.mjs --scenario startup --runs 3 --adblock both --out /tmp/startup-after.jsonl
 ```

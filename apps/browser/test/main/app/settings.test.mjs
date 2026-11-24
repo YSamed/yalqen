@@ -12,6 +12,7 @@ test('unknown or mistyped fields fall back', () => {
     sanitizeSettings({
       searchEngine: 'altavista',
       theme: 'blue',
+      windowColor: 'mint',
       startupBehavior: 'close-all',
       panelCollapsed: 'yes',
       sidebarWidgets: 'media',
@@ -77,7 +78,6 @@ test('unknown or mistyped fields fall back', () => {
       invitationSeen: false,
       displayName: '',
       accentColor: 'orange',
-      windowColor: 'none',
       dismissedAnnouncement: '',
       dismissedFeedback: '',
       dismissedUpdate: '',

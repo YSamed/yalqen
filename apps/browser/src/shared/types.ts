@@ -175,7 +175,6 @@ export interface BrowserState {
   material: WindowMaterial;
   frameTheme?: import('./frame-theme').FrameTheme;
   accent: string;
-  windowColor: string | null;
   device: DeviceFrame | null;
   zoom: number;
   defaultZoom: number;
@@ -938,7 +937,6 @@ export interface SettingsValues {
   invitationSeen: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
-  windowColor: import('./window-color').WindowColor;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
   dismissedUpdate: string;

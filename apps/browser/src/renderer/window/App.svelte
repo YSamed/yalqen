@@ -28,12 +28,10 @@
   import Button from '../ui/Button.svelte';
   import { IS_MAC } from '../platform';
 
-  const COLLAPSED_WIDTH = 44;
   const CONTROL_SIZE = 34;
   const MAC_TLIGHTS_WIDTH = 88;
   const BOOKMARKS_PANEL_WIDTH = 300;
   const PAGE_INSET = 8;
-  const PANEL_ROW_INSET = PAGE_INSET + 3;
   const PANEL_WIDTH = 190;
   const PAGE_RADIUS = 4;
   const CARD_PAGE_INSET = 7;
@@ -64,7 +62,6 @@
     sidebarFooterItems: [],
     material: 'opaque',
     accent: accentHex(DEFAULT_ACCENT),
-    windowColor: null,
     device: null,
     zoom: 1,
     defaultZoom: 1,
@@ -112,7 +109,6 @@
   const downloads = $derived(browser.downloads);
   const extensions = $derived(browser.extensions);
   const device = $derived(browser.device);
-  const toolbarTabs = $derived(activeTab ? [activeTab] : []);
   const agentPanelOpen = $derived(browser.agentPanelOpen);
   const agentSession = $derived(browser.agentSession);
   const agentChat = $derived(browser.agentChat);
@@ -333,11 +329,7 @@
         groups={tabGroups}
         slide={shownWidth - fullPanelWidth}
         {topInset}
-        rowInset={PANEL_ROW_INSET}
-        edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={fullPanelWidth}
-        card
-        toggleInToolbar={spanToolbar}
         {agents}
         updateReady={browser.updateReady ?? false}
         {downloads}
@@ -352,15 +344,13 @@
       />
     {/if}
     <Toolbar
-      card
       sidebarMenu={sidebarVisible && !collapsed}
       panelCollapsed={collapsed}
       panes={splitPanes}
       {developer}
       modeSwitch={browser.modeSwitch ?? false}
       bookmarksPanelOpen={bookmarksVisible}
-      tabs={toolbarTabs}
-      {activeTabId}
+      {activeTab}
       {zoom}
       {defaultZoom}
       {downloads}

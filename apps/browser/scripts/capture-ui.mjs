@@ -204,10 +204,11 @@ const tab = (index) => ({
 const state = {
   tabs: [0, 1, 2, 3, 4].map(tab), listOrder: ['tab-0', 'tab-1', 'tab-2', 'tab-3', 'tab-4'], developer: false,
   activeTabId: 'tab-0', selectedTabIds: [], pageFullScreen: false, windowFullScreen: false, addressPlaceholder: 'Search or type an address',
-  panelCollapsed: false, panelSide: 'left', pinnedDisplay: 'list', favorites: [], sidebarVisible: true, toolbarVisible: true, toolbarTabs: true,
+  panelCollapsed: false, favorites: [], sidebarVisible: true, splitTabIds: [],
+  activeSpaceId: '', spaces: [{ id: '', name: 'Default', icon: null }], sidebarFooterItems: ['downloads'],
   media: { tabId: 'tab-3', title: 'Page 3', duration: 200, position: 80, playing: false, canPrevious: true, canNext: true, updatedAt: 0 },
   toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'], material: ${JSON.stringify(material)}, device: null,
-  glassTint: 25, accent: '#f28c28',
+  accent: '#f28c28',
   zoom: 1, defaultZoom: 1, downloads: { active: 1, progress: 0.4, started: 1 }, extensions: false, profile: 'personal',
   agentPanelOpen: false, agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
   agentChat: { id: null, directory: null, status: 'idle', model: null, error: null }, agentProviders: ['claude'],
@@ -217,7 +218,7 @@ const state = {
   agentProjects: [], agentProjectId: '', agentConversationId: '', agentBackgroundChats: [],
 };
 contextBridge.exposeInMainWorld('yalqen', {
-  getState: async () => state, onState: () => () => {}, setLayout: () => {}, send: () => {},
+  getState: async () => state, onState: () => () => {}, onAddLiveFolder: () => () => {}, setLayout: () => {}, send: () => {},
 });`,
   };
   for (const [name, source] of Object.entries({

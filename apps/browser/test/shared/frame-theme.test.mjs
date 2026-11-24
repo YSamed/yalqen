@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import frame from '../../dist/shared/frame-theme.js';
 
 test('bright colors are softened so dark-mode sidebar text stays readable', () => {
-  const amount = frame.readableFrameAmount(['#ffe600'], 100, 'dark', false);
+  const amount = frame.readableFrameAmount(['#ffe600'], 100, 'dark');
   assert.ok(amount < 100);
-  assert.equal(frame.readableFrameAmount(['#1b2a6b'], 80, 'dark', false), 80);
+  assert.equal(frame.readableFrameAmount(['#1b2a6b'], 80, 'dark'), 80);
 });
 
 test('several colors make a diagonal gradient', () => {

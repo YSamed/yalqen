@@ -46,15 +46,13 @@
   }
 
   let {
-    card = false,
     sidebarMenu = false,
     panelCollapsed = false,
     panes = [],
     leadingWidth = 0,
     span = false,
-    tabs,
+    activeTab,
     developer,
-    activeTabId,
     zoom,
     defaultZoom,
     downloads,
@@ -71,15 +69,13 @@
     modeSwitch = false,
     bookmarksPanelOpen = false,
   }: {
-    card?: boolean;
     sidebarMenu?: boolean;
     panelCollapsed?: boolean;
     panes?: { tab: TabSnapshot | null; x: number; width: number }[];
     leadingWidth?: number;
     span?: boolean;
-    tabs: TabSnapshot[];
+    activeTab: TabSnapshot | null;
     developer: boolean;
-    activeTabId: TabId | null;
     zoom: number;
     defaultZoom: number;
     downloads: DownloadsSummary;
@@ -97,7 +93,6 @@
     bookmarksPanelOpen?: boolean;
   } = $props();
 
-  let brokenIcons: Record<string, true> = $state({});
   let toolbar: HTMLElement | undefined = $state();
   let group: HTMLElement | undefined = $state();
   let strip: HTMLElement | undefined = $state();
@@ -112,19 +107,16 @@
   };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
-  const split = $derived(card && span && panes.length > 1);
+  const split = $derived(span && panes.length > 1);
   let trailingWidth = $state(0);
   const PANE_CLOSE_WIDTH = 36;
 
   function paneAction(id: TabId, action: Parameters<typeof send>[0]): void {
-    if (id !== activeTabId) send({ type: 'activate-tab', id });
+    if (id !== activeTab?.id) send({ type: 'activate-tab', id });
     send(action);
   }
-  const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
-  const surface = $derived(
-    card && span && activeTab && !isNewTab(activeTab.url) ? (activeTab.pageColor ?? null) : null,
-  );
-  const chatPill = $derived(card && span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
+  const surface = $derived(span && activeTab && !isNewTab(activeTab.url) ? (activeTab.pageColor ?? null) : null);
+  const chatPill = $derived(span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
   const bookmarkable = $derived(
     activeTab !== null && (activeTab.url.startsWith('http') || activeTab.url.startsWith('file:')),
   );
@@ -150,15 +142,9 @@
     seenStarts = started;
   });
 
-  $effect(() => {
-    void activeTabId;
-    strip?.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  });
-
   let alignGroup: (() => void) | null = null;
   $effect(() => {
-    void activeTabId;
-    void tabs;
+    void activeTab;
     if (!toolbar || !group || !strip || !trailing) return;
     const header = toolbar;
     const tabGroup = group;
@@ -168,7 +154,7 @@
     if (!active || !controls) return;
 
     const align = () => {
-      if (card && span) {
+      if (span) {
         groupOffset = 0;
         tabGroup.style.transform = '';
         return;
@@ -203,7 +189,6 @@
   $effect(() => {
     void centerOffset;
     void leadingInset;
-    void card;
     void span;
     void alignLeading;
     untrack(() => alignGroup?.());
@@ -214,19 +199,6 @@
     return 0.299 * red! + 0.587 * green! + 0.114 * blue! > 150 ? 'light' : 'dark';
   }
 </script>
-
-{#snippet favicon(tab: TabSnapshot)}
-  <span class="favicon">
-    {#if isNewTab(tab.url)}
-      <Icon name="search" size={14} />
-    {:else if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
-      <img src={tab.faviconUrl} alt="" width="16" height="16" onerror={() => (brokenIcons[tab.faviconUrl!] = true)} />
-    {:else}
-      <Icon name="globe" size={14} />
-    {/if}
-    {#if tab.unread}<span class="unread-dot" aria-hidden="true"></span>{/if}
-  </span>
-{/snippet}
 
 {#snippet button(id: ToolbarButtonId)}
   {#if id === 'home'}
@@ -311,26 +283,22 @@
 {/snippet}
 
 {#snippet navigation()}
-  {#if activeTab?.canGoBack || card}
-    <IconButton
-      size="lg"
-      variant="surface"
-      icon={card ? 'nav-back' : 'back'}
-      label={t('toolbar.back')}
-      disabled={!activeTab?.canGoBack}
-      onclick={() => send({ type: 'go-back' })}
-    />
-  {/if}
-  {#if activeTab?.canGoForward || card}
-    <IconButton
-      size="lg"
-      variant="surface"
-      icon={card ? 'nav-forward' : 'forward'}
-      label={t('toolbar.forward')}
-      disabled={!activeTab?.canGoForward}
-      onclick={() => send({ type: 'go-forward' })}
-    />
-  {/if}
+  <IconButton
+    size="lg"
+    variant="surface"
+    icon="nav-back"
+    label={t('toolbar.back')}
+    disabled={!activeTab?.canGoBack}
+    onclick={() => send({ type: 'go-back' })}
+  />
+  <IconButton
+    size="lg"
+    variant="surface"
+    icon="nav-forward"
+    label={t('toolbar.forward')}
+    disabled={!activeTab?.canGoForward}
+    onclick={() => send({ type: 'go-forward' })}
+  />
   {#if activeTab?.loading}
     <IconButton
       size="lg"
@@ -344,7 +312,7 @@
     <IconButton
       size="lg"
       variant="surface"
-      icon={card ? 'nav-reload' : 'reload'}
+      icon="nav-reload"
       label={t('toolbar.reload')}
       title={t('toolbar.reloadTitle')}
       onclick={() => send({ type: 'reload' })}
@@ -353,8 +321,7 @@
 {/snippet}
 
 <header
-  class="toolbar"
-  class:card
+  class="toolbar card"
   class:span
   class:split
   class:blank-page={activeTab !== null && isNewTab(activeTab.url)}
@@ -368,16 +335,16 @@
   style:--bar-card-left="{leadingInset + leadingWidth + 8}px"
   style:--bar-group-offset="{Math.max(0, 9 + Math.min(0, leadingWidth))}px"
 >
-  <div class="side leading" style:flex={card && span ? `0 0 ${Math.max(0, leadingWidth)}px` : undefined}></div>
+  <div class="side leading" style:flex={span ? `0 0 ${Math.max(0, leadingWidth)}px` : undefined}></div>
 
   <div class="tab-group" bind:this={group}>
-    {#if card && span}{@render panelToggle()}{/if}
+    {#if span}{@render panelToggle()}{/if}
     {@render navigation()}
     <ol class="strip" bind:this={strip} aria-label={t('toolbar.openTabs')}>
-      {#each tabs as tab (tab.id)}
-        {@const active = tab.id === activeTabId}
-        <li class="chip" class:active>
-          {#if active}
+      {#if activeTab}
+        {#key activeTab.id}
+          {@const tab = activeTab}
+          <li class="chip active">
             <div class="pill">
               {#if modeSwitch}
                 {@const mode = modeOf(tab)}
@@ -438,13 +405,10 @@
                 aria-current="page"
                 onclick={() => send({ type: 'open-address' })}
               >
-                {#if !card}{@render favicon(tab)}{/if}
                 {#if isNewTab(tab.url)}
                   <span class="label hint">{t('commandBar.placeholder')}</span>
-                {:else if card}
-                  <span class="label crumb">{siteLabel(tab)}</span>
                 {:else}
-                  <span class="label">{siteLabel(tab)}</span>
+                  <span class="label crumb">{siteLabel(tab)}</span>
                 {/if}
               </button>
               {#if tab.audible || tab.muted}
@@ -545,44 +509,12 @@
                 title={t('toolbar.closeTitle')}
                 onclick={() => send({ type: 'close-tab', id: tab.id })}
               />
-              {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}
             </div>
-          {:else}
-            <button
-              class="select"
-              class:private={tab.isPrivate}
-              title={tab.isPrivate ? t('toolbar.privateTabTitle', { title: tab.title }) : tab.title}
-              onclick={(event) => send({ type: 'activate-tab', id: tab.id, animate: event.detail > 0 })}
-              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-            >
-              {@render favicon(tab)}
-              <span class="label">{siteLabel(tab)}</span>
-            </button>
-            {#if tab.audible || tab.muted}
-              <IconButton
-                size="sm"
-                icon={tab.muted ? 'muted' : 'sound'}
-                tone="muted"
-                label={tab.muted ? t('toolbar.unmute') : t('toolbar.mute')}
-                aria-pressed={tab.muted}
-                onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-              />
-            {/if}
-            <IconButton
-              size="sm"
-              icon="close"
-              tone="muted"
-              class="close"
-              label={t('toolbar.close')}
-              title={t('toolbar.closeTitle')}
-              onclick={() => send({ type: 'close-tab', id: tab.id })}
-            />
-            {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}
-          {/if}
-        </li>
-      {/each}
+          </li>
+        {/key}
+      {/if}
     </ol>
-    {#if !card || !sidebarMenu}
+    {#if !sidebarMenu}
       <div class="new-tab-slot">
         <NewTabButton />
       </div>
@@ -594,7 +526,7 @@
       {@const tab = pane.tab}
       <div
         class="pane-bar"
-        class:active={tab?.id === activeTabId}
+        class:active={tab !== null && tab.id === activeTab?.id}
         style:left="{pane.x}px"
         style:width="{pane.width}px"
         style:--reserve={index === panes.length - 1 ? `${trailingWidth}px` : undefined}
@@ -685,7 +617,7 @@
         </IconButton>
       {/if}
       <!-- Like Dia, the card style keeps the toolbar to navigation; these actions live in the sidebar menu when it shows. -->
-      {#if !card || !sidebarMenu}
+      {#if !sidebarMenu}
         {#each buttons as id (id)}
           {@render button(id)}
         {/each}
@@ -1057,10 +989,6 @@
     -webkit-app-region: no-drag;
   }
 
-  .chip:not(.active):hover {
-    background: var(--surface-hover);
-  }
-
   .chip.active {
     gap: 6px;
     width: clamp(280px, 34vw, 480px);
@@ -1089,26 +1017,11 @@
     gap: 2px;
   }
 
-  .chip:not(.active) :global(.close) {
-    position: absolute;
-    right: 5px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition);
-  }
-
-  .chip:not(.active):hover :global(.close),
   .chip :global(.close:focus-visible) {
     opacity: 1;
     pointer-events: auto;
   }
 
-  .chip:not(.active):hover .label,
-  .chip:not(.active):focus-within .label {
-    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent calc(100% - 8px));
-  }
-
-  .select,
   .address {
     display: flex;
     flex: 1;
@@ -1245,10 +1158,6 @@
     .mode-thumb {
       transition: none;
     }
-  }
-
-  .select.private {
-    font-style: italic;
   }
 
   .chip :global(.site) {
@@ -1428,38 +1337,6 @@
     }
   }
 
-  .unread-dot {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 1.5px var(--surface-strong);
-    pointer-events: none;
-  }
-
-  .favicon {
-    position: relative;
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 16px;
-    height: 16px;
-    color: var(--text-muted);
-  }
-
-  .chip:not(.active) .favicon {
-    opacity: 0.7;
-  }
-
-  .favicon img {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-  }
-
   .label {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1468,63 +1345,5 @@
 
   .label.hint {
     color: var(--text-muted);
-  }
-
-  .loading {
-    position: absolute;
-    right: 16px;
-    bottom: 1px;
-    left: 16px;
-    height: 2px;
-    border-radius: 1px;
-    background: var(--accent);
-    animation: pulse 1.2s ease-in-out infinite alternate;
-  }
-
-  .toolbar.card .chip.active .loading {
-    display: none;
-  }
-
-  .chip.active .loading {
-    overflow: hidden;
-    background: transparent;
-    animation: none;
-  }
-
-  .chip.active .loading::after {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 28%;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--accent);
-    content: '';
-    animation: search-sweep 1.4s ease-in-out infinite;
-  }
-
-  @keyframes search-sweep {
-    from {
-      transform: translateX(-100%);
-    }
-    to {
-      transform: translateX(360%);
-    }
-  }
-
-  @keyframes pulse {
-    from {
-      opacity: 0.2;
-    }
-    to {
-      opacity: 0.7;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chip.active .loading::after {
-      width: 100%;
-      animation: none;
-    }
   }
 </style>

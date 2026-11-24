@@ -1,6 +1,5 @@
 import { DEFAULT_FRAME_THEME, frameGradient, readableFrameAmount } from '../../shared/frame-theme';
 import type { BrowserState, TabSnapshot } from '../../shared/types';
-import { windowTintVars } from '../../shared/window-color';
 
 export type ChromeMode = 'normal' | 'developer' | 'private';
 
@@ -19,19 +18,13 @@ export function applyRootTheme(browser: BrowserState, mode: ChromeMode, dark: bo
   root.dataset.mode = mode;
   root.dataset.style = 'card';
   root.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : browser.accent);
-  for (const [name, value] of Object.entries(windowTintVars(browser.windowColor))) {
-    if (value) root.style.setProperty(name, value);
-    else root.style.removeProperty(name);
-  }
-  // The frame palette colors the card frame, so the window color never applies there.
-  root.removeAttribute('data-window-color');
   root.toggleAttribute('data-fullscreen', browser.windowFullScreen);
   const frameTheme =
     browser.spaces.find((space) => space.id === browser.activeSpaceId)?.theme ??
     browser.frameTheme ??
     DEFAULT_FRAME_THEME;
   const frameColors = frameTheme.colors;
-  const frameAmount = readableFrameAmount(frameColors, frameTheme.intensity, dark ? 'dark' : 'light', false);
+  const frameAmount = readableFrameAmount(frameColors, frameTheme.intensity, dark ? 'dark' : 'light');
   const framed = frameColors.length > 0 && frameAmount > 0;
   if (framed) {
     root.style.setProperty('--frame-gradient', frameGradient(frameColors, frameAmount));

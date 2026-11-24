@@ -13,7 +13,6 @@
   import { t } from '../../shared/i18n';
   import { placeSidebarFooterItem } from '../../shared/types';
   import { cubicOut } from 'svelte/easing';
-  import { scale } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { devStates } from './format';
   import Icon, { type IconName } from '../ui/Icon.svelte';
@@ -35,13 +34,8 @@
     splitTabIds,
     splitGroups = [],
     groups,
-    collapsed = false,
-    fading = false,
-    closing = false,
     slide = 0,
     topInset,
-    rowInset,
-    edgeInset,
     fullWidth,
     profile,
     tabCleanup = false,
@@ -52,8 +46,6 @@
     media,
     pageRect,
     onSplitDrop,
-    card = false,
-    toggleInToolbar = false,
     agents = { waiting: 0, working: 0 },
     updateReady = false,
     downloads = { active: 0, progress: null, started: 0 },
@@ -67,13 +59,8 @@
     splitTabIds: TabId[];
     splitGroups?: TabId[][];
     groups: TabGroup[];
-    collapsed?: boolean;
-    fading?: boolean;
-    closing?: boolean;
     slide?: number;
     topInset: number;
-    rowInset: number;
-    edgeInset: number;
     fullWidth: number;
     profile: ProfileKind;
     tabCleanup?: boolean;
@@ -84,8 +71,6 @@
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
-    card?: boolean;
-    toggleInToolbar?: boolean;
     agents?: { waiting: number; working: number };
     updateReady?: boolean;
     downloads?: DownloadsSummary;
@@ -129,7 +114,6 @@
   let dropFolder: string | null = $state(null);
   let renaming: string | null = $state(null);
   let renameValue = $state('');
-  let renamingSpace: string | null = $state(null);
   let addingLiveFolder = $state(false);
   const SPACE_SWIPE_COMMIT = 64;
   const SPACE_SWIPE_IDLE_MS = 160;
@@ -147,7 +131,6 @@
   let spaceSettle: ReturnType<typeof setTimeout> | undefined;
   let shownSpaceId: string | undefined;
   let swipedDirection: 1 | -1 | null = null;
-  let addMenu: HTMLDivElement | undefined = $state();
   let moreButton: HTMLButtonElement | undefined = $state();
 
   $effect(() => window.yalqen.onAddLiveFolder(() => (addingLiveFolder = true)));
@@ -255,7 +238,7 @@
   );
   const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const mergedSplits = $derived.by(() => {
-    const merged = (card && !collapsed ? splitGroups : []).flatMap((group) => {
+    const merged = splitGroups.flatMap((group) => {
       const members = group.flatMap((id) => tabsById.get(id) ?? []);
       if (members.length !== group.length || members.some((tab) => !listedIndex.has(tab.id))) return [];
       const head = members.reduce((first, tab) =>
@@ -271,16 +254,11 @@
     };
   });
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
-  const activeSpaceName = $derived(
-    !card && !collapsed && spaces.length > 1 ? spaces.find((space) => space.id === activeSpaceId)?.name : undefined,
-  );
-  const wide = $derived(card && !collapsed);
   const activeSpace = $derived(spaces.find((space) => space.id === activeSpaceId));
-  const inSpaceRow = $derived(!collapsed && spaces.length > 0);
   const visibleEntries = $derived(
     listOrder.flatMap((id) => {
       const tab = tabsById.get(id);
-      return tab && !(collapsed && tab.pinned) ? [tab] : [];
+      return tab ? [tab] : [];
     }),
   );
   const entriesByGroup = $derived(
@@ -316,10 +294,6 @@
     for (let next = groupsByName.get(group.parent ?? ''); next; next = groupsByName.get(next.parent ?? ''))
       chain.push(next);
     return chain;
-  }
-
-  function indent(depth: number): string | undefined {
-    return collapsed || wide || depth === 0 ? undefined : `${depth * 12}px`;
   }
 
   function folderAt(): string | null {
@@ -371,7 +345,6 @@
   }
 
   function startRename(name: string): void {
-    if (collapsed) return;
     renaming = name;
     renameValue = name;
   }
@@ -440,55 +413,13 @@
     requestAnimationFrame(() => requestAnimationFrame(() => shiftSpace(0, false)));
   });
 
-  function startSpaceRename(space: SpaceView): void {
-    if (collapsed || !space.id) return;
-    renamingSpace = space.id;
-    renameValue = space.name;
-  }
-
-  function commitSpaceRename(): void {
-    if (renamingSpace === null) return;
-    const id = renamingSpace;
-    renamingSpace = null;
-    if (renameValue.trim() && renameValue !== spaces.find((space) => space.id === id)?.name)
-      send({ type: 'rename-space', id, name: renameValue });
-  }
-
   function focusSelect(node: HTMLInputElement): void {
     node.focus();
     node.select();
   }
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  function popIn(node: Element) {
-    return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
-  }
-  let layoutRects: [Element, DOMRect][] = [];
-  $effect.pre(() => {
-    void collapsed;
-    if (!lists || reducedMotion.matches) return;
-    layoutRects = [...lists.querySelectorAll('li')].map((li) => [li, li.getBoundingClientRect()]);
-  });
-  $effect(() => {
-    void collapsed;
-    queueMicrotask(() => {
-      for (const [li, from] of layoutRects) {
-        const to = li.getBoundingClientRect();
-        const dx = from.left - to.left;
-        const dy = from.top - to.top;
-        if (li.isConnected && (dx || dy))
-          li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
-            duration: 200,
-            easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-          });
-      }
-      layoutRects = [];
-    });
-  });
-
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
-    const before = layoutRects.findIndex(([li]) => li === node);
-    if (before >= 0) [, from] = layoutRects.splice(before, 1)[0];
     return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
   }
   const draggingPinned = $derived(dragGroup === 'pinned');
@@ -616,7 +547,7 @@
 
   function track(): void {
     if (!press || !lists) return;
-    const horizontal = press.group === 'pinned' && !collapsed;
+    const horizontal = press.group === 'pinned';
     const bounds = lists.getBoundingClientRect();
     const scrolled = lists.scrollTop - press.scrollTop;
     const content = lists.lastElementChild?.getBoundingClientRect();
@@ -762,34 +693,6 @@
   </span>
 {/snippet}
 
-{#snippet panelToggle()}
-  {#if !toggleInToolbar}<IconButton
-      size="lg"
-      variant="surface"
-      tone="muted"
-      class="panel-toggle"
-      icon={collapsed ? 'panel-expand' : 'panel-close'}
-      label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
-      title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
-      aria-expanded={!collapsed}
-      onclick={() => send({ type: 'toggle-panel' })}
-    />{/if}
-{/snippet}
-
-{#snippet compactTab(tab: TabSnapshot)}
-  <IconButton
-    size="lg"
-    variant={tab.id === activeTabId ? 'surface' : 'ghost'}
-    label={label(tab)}
-    aria-current={tab.id === activeTabId ? 'page' : undefined}
-    aria-pressed={selected.has(tab.id)}
-    onclick={(e) => selectTab(e, tab.id)}
-    onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-  >
-    {@render favicon(tab, 16, tab.unread)}
-  </IconButton>
-{/snippet}
-
 {#snippet tabRow(tab: TabSnapshot)}
   {@const tabLabel = label(tab)}
   <IconButton
@@ -797,17 +700,16 @@
     variant={tab.id === activeTabId ? 'surface' : 'ghost'}
     class="tab-icon"
     label={tabLabel}
-    tabindex={collapsed ? 0 : -1}
-    aria-current={collapsed && tab.id === activeTabId ? 'page' : undefined}
+    tabindex={-1}
     aria-pressed={selected.has(tab.id)}
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
-    {@render favicon(tab, 16, tab.unread && !wide)}
+    {@render favicon(tab, 16)}
   </IconButton>
   <div class="pill">
     {@render selectButton(tab, tabLabel)}
-    {#if wide && tab.unread}<span class="unread-dot trailing" aria-hidden="true"></span>{/if}
+    {#if tab.unread}<span class="unread-dot trailing" aria-hidden="true"></span>{/if}
     <span class="actions">
       <IconButton
         size="sm"
@@ -876,7 +778,6 @@
     {#if renaming === group.name}
       <input
         class="group-rename"
-        style:margin-inline-start={indent(section.depth)}
         aria-label={t('tabPanel.renameFolder')}
         maxlength="80"
         bind:value={renameValue}
@@ -892,7 +793,6 @@
       <button
         class="group-heading"
         class:drop-target={dropFolder === group.name}
-        style:margin-inline-start={indent(section.depth)}
         data-folder={group.name}
         title={group.name}
         aria-label={`${group.name} (${group.count})`}
@@ -906,24 +806,20 @@
         }}
         onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
       >
-        {#if wide}
-          <Icon name="folder" size={15} />
-          <span class="folder-name">{group.name}</span>
-          <Icon name={group.collapsed ? 'down' : 'up'} size={12} />
-          {#if group.collapsed}
-            <span class="folder-peek" aria-hidden="true">
-              {#each section.entries.slice(0, 3) as tab (tab.id)}{@render favicon(tab, 14)}{/each}
-            </span>
-            <small>{group.count}</small>
-          {/if}
-        {:else}
-          <span>{collapsed ? group.name.slice(0, 1) : group.name}</span><small>{group.count}</small>
+        <Icon name="folder" size={15} />
+        <span class="folder-name">{group.name}</span>
+        <Icon name={group.collapsed ? 'down' : 'up'} size={12} />
+        {#if group.collapsed}
+          <span class="folder-peek" aria-hidden="true">
+            {#each section.entries.slice(0, 3) as tab (tab.id)}{@render favicon(tab, 14)}{/each}
+          </span>
+          <small>{group.count}</small>
         {/if}
       </button>
     {/if}
   {/if}
   {#if !section.group?.collapsed}
-    <ol class="rows" style:margin-inline-start={indent(section.depth)}>
+    <ol class="rows">
       {#each section.entries.filter((entry) => !mergedSplits.hidden.has(entry.id)) as tab (tab.id)}
         {@const index = listedIndex.get(tab.id) ?? -1}
         {@const merged = mergedSplits.heads.get(tab.id)}
@@ -968,16 +864,11 @@
 />
 
 <aside
-  class="panel"
-  class:card
-  class:collapsed
+  class="panel card"
   class:dragging={dragId !== null}
-  class:fading
-  class:closing
-  class:opening={fading && !closing}
   aria-label={t('tabPanel.tabs')}
   onwheel={switchSpaceBySwipe}
-  style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px; --panel-full-width: ${fullWidth}px`}
+  style:--panel-full-width="{fullWidth}px"
 >
   <div class="top" style:height="{topInset}px"></div>
 
@@ -991,7 +882,7 @@
       bind:this={lists}
     >
       {#if favorites.length > 0}
-        <ul class="favorites global" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
+        <ul class="favorites global" aria-label={t('tabPanel.favorites')}>
           {#each favorites as favorite (favorite.url)}
             <li
               class="favorite"
@@ -1011,20 +902,15 @@
                 label={favorite.title}
                 onclick={() => send({ type: 'open-favorite', url: favorite.url })}
               >
-                {@render favicon(favorite, wide ? 18 : 16, favoriteUnread(favorite.url))}
+                {@render favicon(favorite, 18, favoriteUnread(favorite.url))}
               </IconButton>
             </li>
           {/each}
         </ul>
-        {#if collapsed}<span class="divider global" aria-hidden="true"></span>{/if}
-      {/if}
-
-      {#if activeSpaceName}
-        <p class="space-name">{activeSpaceName}</p>
       {/if}
 
       {#if pinned.length > 0}
-        <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
+        <ul class="favorites" aria-label={t('tabPanel.pinned')}>
           {#each pinned as tab, index (tab.id)}
             <li
               class="favorite"
@@ -1047,31 +933,27 @@
                 send({ type: 'open-tab-menu', id: tab.id });
               }}
             >
-              {#if collapsed}
-                {@render compactTab(tab)}
-              {:else}
-                <IconButton
-                  size="lg"
-                  variant="surface"
-                  class="tile"
-                  label={label(tab)}
-                  aria-current={tab.id === activeTabId ? 'page' : undefined}
-                  aria-pressed={selected.has(tab.id)}
-                  onclick={(e) => selectTab(e, tab.id)}
-                  onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-                >
-                  {@render favicon(tab, wide ? 18 : 16, tab.unread)}
-                  {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
-                </IconButton>
-              {/if}
+              <IconButton
+                size="lg"
+                variant="surface"
+                class="tile"
+                label={label(tab)}
+                aria-current={tab.id === activeTabId ? 'page' : undefined}
+                aria-pressed={selected.has(tab.id)}
+                onclick={(e) => selectTab(e, tab.id)}
+                onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+              >
+                {@render favicon(tab, 18, tab.unread)}
+                {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
+              </IconButton>
             </li>
           {/each}
         </ul>
       {/if}
 
       {#if tabCleanup && listed.length > 0}
-        <div class="tab-cleanup" class:compact={collapsed}>
-          {#if !collapsed}<span class="cleanup-line" aria-hidden="true"></span>{/if}
+        <div class="tab-cleanup">
+          <span class="cleanup-line" aria-hidden="true"></span>
           <IconButton
             size="sm"
             icon="broom"
@@ -1084,17 +966,15 @@
               if (idleCount > 0) send({ type: 'clean-tabs' });
             }}
           >
-            {#if wide}<span class="tidy-label">{t('tabPanel.tidy')}</span>{/if}
+            <span class="tidy-label">{t('tabPanel.tidy')}</span>
           </IconButton>
         </div>
-      {:else if !collapsed && (favorites.length > 0 || pinned.length > 0)}
+      {:else if favorites.length > 0 || pinned.length > 0}
         <span class="section-divider" aria-hidden="true"></span>
-      {:else if collapsed && pinned.length > 0 && listed.length > 0}
-        <span class="divider" aria-hidden="true"></span>
       {/if}
 
       {#each sections as section (section.key)}
-        {#if wide && section.group}
+        {#if section.group}
           <div
             class="folder"
             class:open={!section.group.collapsed}
@@ -1107,30 +987,22 @@
         {/if}
       {/each}
 
-      {#if wide}
-        <div class="new-tab-row">
-          <NewTabButton compact={false} />
-        </div>
-      {/if}
-
-      {#if collapsed}
-        <div class="new-tab-position" in:popIn>
-          <NewTabButton />
-        </div>
-      {/if}
+      <div class="new-tab-row">
+        <NewTabButton compact={false} />
+      </div>
     </div>
 
-    {#if !collapsed && profile !== 'private'}
+    {#if profile !== 'private'}
       <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} />
     {/if}
 
     <div class="spacer"></div>
 
     {#if media}
-      <MediaPlayer {media} compact={collapsed} />
+      <MediaPlayer {media} />
     {/if}
 
-    {#if wide && agents.waiting + agents.working > 0}
+    {#if agents.waiting + agents.working > 0}
       <button
         type="button"
         class="agents"
@@ -1146,7 +1018,7 @@
       </button>
     {/if}
 
-    {#if wide && updateReady}
+    {#if updateReady}
       <div class="update-card">
         <Icon name="download" size={16} />
         <span class="update-label">{t('tabPanel.updateReady')}</span>
@@ -1157,201 +1029,100 @@
     {/if}
 
     {#if spaces.length > 0}
-      <div class="spaces" class:compact={collapsed}>
-        {#if inSpaceRow}{@render panelToggle()}{/if}
-        {#if renamingSpace !== null}
-          <input
-            class="group-rename"
-            aria-label={t('spaces.rename')}
-            maxlength="80"
-            bind:value={renameValue}
-            use:focusSelect
-            onblur={commitSpaceRename}
-            onkeydown={(e) => {
-              if (e.key === 'Enter') commitSpaceRename();
-              else if (e.key === 'Escape') renamingSpace = null;
-              e.stopPropagation();
-            }}
-          />
+      <div class="spaces">
+        {#if profile === 'developer'}
+          <button type="button" class="footer-button chats-button" onclick={() => openSidebarMenu('chats')}>
+            <Icon name="chats" size={16} />
+            <span class="footer-label">{t('sidebarMenu.chats')}</span>
+          </button>
         {:else}
-          {#if wide}
-            {#if profile === 'developer'}
-              <button type="button" class="footer-button chats-button" onclick={() => openSidebarMenu('chats')}>
-                <Icon name="chats" size={16} />
-                <span class="footer-label">{t('sidebarMenu.chats')}</span>
-              </button>
-            {:else}
-              <div
-                class="footer-tools"
-                role="toolbar"
-                tabindex="-1"
-                aria-label={t('sidebarMenu.footerTools')}
-                bind:this={footerTools}
-                ondragover={(e) => {
-                  if (!draggedFooterItem) return;
-                  e.preventDefault();
-                  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-                }}
-                ondrop={(e) => {
-                  if (!draggedFooterItem) return;
-                  e.preventDefault();
-                  setFooterItems(placeSidebarFooterItem(footerItems, draggedFooterItem, footerSlot(e)));
-                  draggedFooterItem = null;
-                }}
-              >
-                {#each footerItems as item (item)}
-                  {#if item !== 'spaces' || spaces.length > 0}
-                    {@const button = footerButton(item)}
-                    <button
-                      type="button"
-                      class="footer-button tool-button"
-                      aria-label={button.label}
-                      title={button.label}
-                      aria-haspopup={button.popup ? 'dialog' : undefined}
-                      disabled={item === 'screenshot' && !activeTabId}
-                      draggable="true"
-                      ondragstart={(e) => {
-                        draggedFooterItem = item;
-                        e.dataTransfer?.setData(FOOTER_ITEM_TYPE, item);
-                        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-                      }}
-                      ondragend={(e) => {
-                        // Dropped anywhere outside the footer takes the button off it.
-                        if (draggedFooterItem === item && e.dataTransfer?.dropEffect === 'none')
-                          setFooterItems(footerItems.filter((candidate) => candidate !== item));
-                        draggedFooterItem = null;
-                      }}
-                      onclick={(e) => button.run(e.currentTarget)}
-                    >
-                      {#if item === 'spaces' && activeSpace?.icon}<span class="space-icon">{activeSpace.icon}</span
-                        >{:else}<Icon name={button.icon} size={16} />{/if}
-                      {#if item === 'downloads' && downloads.active > 0}<span class="download-dot" aria-hidden="true"
-                        ></span>{/if}
-                    </button>
-                  {/if}
-                {/each}
-              </div>
-            {/if}
-            <button
-              bind:this={moreButton}
-              type="button"
-              class="footer-button more-button"
-              aria-label={t('sidebarMenu.more')}
-              title={t('sidebarMenu.more')}
-              aria-haspopup="dialog"
-              onclick={() => openSidebarMenu('tabs')}
-            >
-              <Icon name="down" size={16} />
-              {#if downloads.active > 0 && profile === 'developer'}<span class="download-dot" aria-hidden="true"
-                ></span>{/if}
-            </button>
-          {:else}
-            <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
-              {#each spaces.length > 1 ? spaces : [] as space (space.id)}
+          <div
+            class="footer-tools"
+            role="toolbar"
+            tabindex="-1"
+            aria-label={t('sidebarMenu.footerTools')}
+            bind:this={footerTools}
+            ondragover={(e) => {
+              if (!draggedFooterItem) return;
+              e.preventDefault();
+              if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            }}
+            ondrop={(e) => {
+              if (!draggedFooterItem) return;
+              e.preventDefault();
+              setFooterItems(placeSidebarFooterItem(footerItems, draggedFooterItem, footerSlot(e)));
+              draggedFooterItem = null;
+            }}
+          >
+            {#each footerItems as item (item)}
+              {#if item !== 'spaces' || spaces.length > 0}
+                {@const button = footerButton(item)}
                 <button
-                  class="space-dot"
-                  aria-pressed={space.id === activeSpaceId}
-                  aria-label={space.name}
-                  title={space.name}
-                  onclick={() => send({ type: 'switch-space', id: space.id })}
-                  ondblclick={() => startSpaceRename(space)}
-                  oncontextmenu={(e) => {
-                    e.preventDefault();
-                    send({ type: 'open-space-menu', id: space.id });
+                  type="button"
+                  class="footer-button tool-button"
+                  aria-label={button.label}
+                  title={button.label}
+                  aria-haspopup={button.popup ? 'dialog' : undefined}
+                  disabled={item === 'screenshot' && !activeTabId}
+                  draggable="true"
+                  ondragstart={(e) => {
+                    draggedFooterItem = item;
+                    e.dataTransfer?.setData(FOOTER_ITEM_TYPE, item);
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
                   }}
-                  onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
+                  ondragend={(e) => {
+                    // Dropped anywhere outside the footer takes the button off it.
+                    if (draggedFooterItem === item && e.dataTransfer?.dropEffect === 'none')
+                      setFooterItems(footerItems.filter((candidate) => candidate !== item));
+                    draggedFooterItem = null;
+                  }}
+                  onclick={(e) => button.run(e.currentTarget)}
                 >
-                  {#if space.icon}{space.icon}{:else}<span class="dot" aria-hidden="true"></span>{/if}
+                  {#if item === 'spaces' && activeSpace?.icon}<span class="space-icon">{activeSpace.icon}</span
+                    >{:else}<Icon name={button.icon} size={16} />{/if}
+                  {#if item === 'downloads' && downloads.active > 0}<span class="download-dot" aria-hidden="true"
+                    ></span>{/if}
                 </button>
-              {/each}
-            </div>
-          {/if}
-          {#if !collapsed && !wide}
-            <IconButton
-              size="lg"
-              variant="surface"
-              tone="muted"
-              icon="plus"
-              class="space-add"
-              label={t('tabPanel.addMenu')}
-              aria-haspopup="true"
-              popovertarget="sidebar-add-menu"
-            />
-          {/if}
-          <div bind:this={addMenu} id="sidebar-add-menu" class="select-content up add-menu" popover="auto">
-            <button
-              type="button"
-              class="select-item"
-              onclick={() => {
-                addMenu?.hidePopover();
-                send({ type: 'new-tab' });
-              }}
-            >
-              {t('newTabButton.label')}
-            </button>
-            <button
-              type="button"
-              class="select-item"
-              onclick={() => {
-                addMenu?.hidePopover();
-                send({ type: 'create-space' });
-              }}
-            >
-              {t('spaces.add')}
-            </button>
-            {#if profile !== 'private'}
-              <button
-                type="button"
-                class="select-item"
-                onclick={() => {
-                  addMenu?.hidePopover();
-                  send({ type: 'import-space' });
-                }}
-              >
-                {t('spaces.import')}
-              </button>
-            {/if}
-            {#if !collapsed && profile !== 'private'}
-              <button
-                type="button"
-                class="select-item"
-                onclick={() => {
-                  addMenu?.hidePopover();
-                  addingLiveFolder = true;
-                }}
-              >
-                {t('liveFolders.add')}
-              </button>
-            {/if}
+              {/if}
+            {/each}
           </div>
         {/if}
+        <button
+          bind:this={moreButton}
+          type="button"
+          class="footer-button more-button"
+          aria-label={t('sidebarMenu.more')}
+          title={t('sidebarMenu.more')}
+          aria-haspopup="dialog"
+          onclick={() => openSidebarMenu('tabs')}
+        >
+          <Icon name="down" size={16} />
+          {#if downloads.active > 0 && profile === 'developer'}<span class="download-dot" aria-hidden="true"
+            ></span>{/if}
+        </button>
       </div>
     {/if}
 
-    {#if selectedTabIds.length > 1 || !inSpaceRow}
-      <footer class="footer" class:compact={collapsed}>
-        {#if selectedTabIds.length > 1}
-          <div
-            class="selection"
-            aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
-            title={t('tabPanel.selectionHint')}
+    {#if selectedTabIds.length > 1}
+      <footer class="footer">
+        <div
+          class="selection"
+          aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
+          title={t('tabPanel.selectionHint')}
+        >
+          <span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span>
+          <IconButton
+            icon="close"
+            size="sm"
+            label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
+            onclick={() => send({ type: 'close-selected-tabs' })}
+          />
+          <button
+            class="clear-selection"
+            aria-label={t('tabPanel.clearSelection')}
+            onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
           >
-            {#if !collapsed}<span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span
-              >{/if}
-            <IconButton
-              icon="close"
-              size="sm"
-              label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
-              onclick={() => send({ type: 'close-selected-tabs' })}
-            />
-            <button
-              class="clear-selection"
-              aria-label={t('tabPanel.clearSelection')}
-              onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
-            >
-          </div>
-        {/if}
-        {#if !inSpaceRow}{@render panelToggle()}{/if}
+        </div>
       </footer>
     {/if}
   </div>
@@ -1394,14 +1165,6 @@
   .group-heading small {
     font-size: 10px;
   }
-  .collapsed .group-heading {
-    width: 34px;
-    justify-content: center;
-    padding: 4px;
-  }
-  .collapsed .group-heading small {
-    display: none;
-  }
   .panel {
     position: relative;
     display: flex;
@@ -1409,17 +1172,12 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    padding: 0 var(--panel-row-inset) 8px var(--panel-edge-inset);
+    padding: 0 6px 8px;
     overflow-x: clip;
   }
 
-  .panel:not(.collapsed) .lists {
+  .panel.card .lists {
     padding-top: 4px;
-  }
-
-  .panel.collapsed {
-    align-items: center;
-    padding: 0 0 8px;
   }
 
   .top {
@@ -1451,11 +1209,6 @@
     display: none;
   }
 
-  .collapsed .lists {
-    align-items: center;
-    width: 100%;
-  }
-
   .body {
     display: flex;
     flex: 1;
@@ -1464,43 +1217,10 @@
     transition: opacity 120ms ease-out;
   }
 
-  .collapsed .body {
-    align-items: center;
-    width: 100%;
-  }
-
   .body > :not(.lists, .spaces, .footer),
   .spaces > :global(:not(.panel-toggle)),
   .footer > :global(:not(.panel-toggle)) {
     transition: opacity 120ms ease-out;
-  }
-
-  .fading .body > :not(.lists, .spaces, .footer),
-  .fading .spaces > :global(:not(.panel-toggle)),
-  .fading .footer > :global(:not(.panel-toggle)) {
-    opacity: 0;
-  }
-
-  .collapsed .pill {
-    display: none;
-  }
-
-  .closing .pill {
-    opacity: 0;
-  }
-
-  .opening .pill {
-    animation: pill-in 160ms var(--ease-out) 80ms backwards;
-  }
-
-  @keyframes pill-in {
-    from {
-      opacity: 0;
-    }
-  }
-
-  .panel:not(.collapsed) .body {
-    width: calc(var(--panel-full-width) - var(--panel-row-inset) - var(--panel-edge-inset));
   }
 
   .rows {
@@ -1515,11 +1235,6 @@
       padding 160ms var(--ease-out);
   }
 
-  .collapsed .rows {
-    gap: 6px;
-    padding: 4px 0;
-  }
-
   .favorites:not(.rows) {
     display: grid;
     grid-template-columns: repeat(4, var(--chrome-control-size));
@@ -1527,16 +1242,6 @@
     margin: 0 0 8px;
     padding: 0;
     list-style: none;
-  }
-
-  .space-name {
-    margin: 0 0 6px;
-    padding: 0 10px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .section-divider {
@@ -1554,10 +1259,6 @@
     margin: -4px 4px 2px 10px;
   }
 
-  .tab-cleanup.compact {
-    margin: 2px 0;
-  }
-
   .cleanup-line {
     flex: 1;
     height: 1px;
@@ -1566,13 +1267,6 @@
 
   .tab-cleanup :global(.tab-cleanup-button[aria-disabled='true']) {
     opacity: 0.4;
-  }
-
-  .divider {
-    width: 16px;
-    height: 1px;
-    margin: 4px 0;
-    background: var(--page-divider);
   }
 
   .favorite {
@@ -1587,8 +1281,7 @@
   }
 
   .favorite.selected :global(.icon-btn),
-  .row.selected .pill,
-  .collapsed .row.selected :global(.icon-btn) {
+  .row.selected .pill {
     box-shadow: inset 0 0 0 1.5px var(--accent);
     background-color: color-mix(in srgb, var(--accent) 12%, transparent);
   }
@@ -1611,10 +1304,6 @@
     background: var(--surface);
     color: inherit;
     font: inherit;
-  }
-  .compact .selection {
-    flex-direction: column;
-    flex-basis: auto;
   }
 
   .favorite.discarded .favicon {
@@ -1652,24 +1341,6 @@
     right: -2px;
   }
 
-  .collapsed .favorite.drop-before::before,
-  .collapsed .favorite.drop-after::after {
-    top: auto;
-    bottom: auto;
-    right: 6px;
-    left: 6px;
-    width: auto;
-    height: 2px;
-  }
-
-  .collapsed .favorite.drop-before::before {
-    top: -4px;
-  }
-
-  .collapsed .favorite.drop-after::after {
-    bottom: -4px;
-  }
-
   .row {
     position: relative;
     display: flex;
@@ -1683,11 +1354,7 @@
       color var(--transition);
   }
 
-  .collapsed .row {
-    height: auto;
-  }
-
-  .panel:not(.collapsed) .row {
+  .panel.card .row {
     gap: 6px;
   }
 
@@ -1750,65 +1417,61 @@
     box-shadow: var(--card-shadow);
   }
 
-  .card:not(.collapsed) .rows {
+  .panel.card .rows {
     gap: 5px;
   }
 
-  .card:not(.collapsed) .row {
+  .panel.card .row {
     gap: 0;
     height: 36px;
     border-radius: 10px;
   }
 
-  .card:not(.collapsed) .row :global(.tab-icon),
-  .card:not(.collapsed) .row .pill {
+  .panel.card .row :global(.tab-icon),
+  .panel.card .row .pill {
     background: transparent;
     box-shadow: none;
   }
 
-  .panel.card:not(.dragging, .collapsed) .row:not(.active):hover .pill {
+  .panel.card:not(.dragging) .row:not(.active):hover .pill {
     background: transparent;
   }
 
-  .panel.card:not(.collapsed) {
-    padding-inline: 6px;
-  }
-
-  .panel.card:not(.collapsed) .body {
+  .panel.card .body {
     width: calc(var(--panel-full-width) - 12px);
   }
 
-  .card:not(.collapsed) .select {
+  .panel.card .select {
     padding-left: 0;
     font-size: 13px;
     font-weight: 500;
   }
 
-  .card:not(.collapsed) .row,
-  .card:not(.collapsed) .row.discarded .title {
+  .panel.card .row,
+  .panel.card .row.discarded .title {
     color: var(--text);
     opacity: 1;
   }
 
-  .card:not(.collapsed) .row .favicon,
-  .card:not(.collapsed) .row.discarded .favicon img,
-  .card:not(.collapsed) .row.discarded .favicon > :global(svg),
-  .card:not(.collapsed) .row.discarded :global(.tab-icon),
-  .card:not(.collapsed) .favorite.discarded .favicon {
+  .panel.card .row .favicon,
+  .panel.card .row.discarded .favicon img,
+  .panel.card .row.discarded .favicon > :global(svg),
+  .panel.card .row.discarded :global(.tab-icon),
+  .panel.card .favorite.discarded .favicon {
     opacity: 1;
     filter: none;
   }
 
-  .card:not(.dragging, .collapsed) .row:not(.active):hover {
+  .card:not(.dragging) .row:not(.active):hover {
     background: var(--surface-hover);
   }
 
-  .card:not(.collapsed) .row.active {
+  .panel.card .row.active {
     background: var(--card-active);
     box-shadow: var(--card-shadow);
   }
 
-  .card:not(.collapsed) .row.selected {
+  .panel.card .row.selected {
     box-shadow: inset 0 0 0 1.5px var(--accent);
     background-color: color-mix(in srgb, var(--accent) 12%, transparent);
   }
@@ -2026,11 +1689,6 @@
     line-height: 1;
   }
 
-  .panel.card .add-menu {
-    left: anchor(left);
-    right: anchor(right);
-  }
-
   .split-row {
     display: flex;
     flex: 1;
@@ -2230,11 +1888,6 @@
     bottom: -2px;
   }
 
-  .new-tab-position {
-    flex: none;
-    margin-top: 6px;
-  }
-
   .footer {
     display: flex;
     flex-wrap: wrap;
@@ -2248,12 +1901,6 @@
     padding-top: 8px;
   }
 
-  .footer.compact {
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px 0 0;
-  }
-
   .spacer {
     flex: 1;
   }
@@ -2263,77 +1910,5 @@
     flex: none;
     align-items: center;
     padding-top: 8px;
-  }
-
-  .spaces.compact {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .space-dots {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: safe center;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .compact .space-dots {
-    flex-direction: column;
-  }
-
-  .space-dot {
-    width: 16px;
-  }
-
-  .spaces :global(.space-add) {
-    anchor-name: --sidebar-add;
-  }
-
-  .space-dot {
-    display: grid;
-    flex: none;
-    place-items: center;
-    height: var(--control-sm);
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-  }
-
-  .space-dot:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
-  .space-dot .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-  }
-
-  .space-dot[aria-pressed='true'] {
-    color: var(--accent);
-    cursor: default;
-  }
-
-  .space-dot[aria-pressed='true'] .dot {
-    width: 8px;
-    height: 8px;
-  }
-
-  .add-menu {
-    position-anchor: --sidebar-add;
-    left: auto;
-    right: anchor(right);
-  }
-
-  .add-menu .select-item {
-    padding-inline: 8px;
   }
 </style>

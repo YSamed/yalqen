@@ -83,23 +83,6 @@
   }
 }
 
-:root[data-window-color]:not([data-material='glass']) {
-  --bg: light-dark(var(--tint-bg-light), var(--tint-bg-dark));
-  --text-muted: light-dark(var(--tint-muted-light), var(--tint-muted-dark));
-}
-
-:root:where([data-window-color])[data-material='glass'] {
-  --chrome-base: rgb(from var(--tint-glass-light) r g b / calc(var(--glass-tint, 0.25) * 0.88));
-  --text-muted: var(--tint-muted-light);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:where([data-window-color])[data-material='glass'] {
-    --chrome-base: rgb(from var(--tint-glass-dark) r g b / min(0.96, calc(var(--glass-tint, 0.25) * 1.28)));
-    --text-muted: var(--tint-muted-dark);
-  }
-}
-
 @media (prefers-contrast: more) {
   :root[data-material='glass'] {
     --chrome-base: rgb(246 245 243 / 0.94);
@@ -197,18 +180,6 @@ button:not(:disabled) {
     --card-sidebar-bottom: rgb(58 52 96 / min(0.96, calc(var(--glass-tint, 0.25) * 1.28)));
     --card-frame-alpha: min(0.9, calc(var(--glass-tint, 0.25) * 1.6));
   }
-}
-
-:root[data-style='card'][data-window-color] {
-  --card-sidebar-top: rgb(from light-dark(var(--tint-bg-light), var(--tint-bg-dark)) r g b / 0.92);
-  --card-sidebar-bottom: var(--card-sidebar-top);
-}
-
-:root[data-style='card'][data-window-color][data-material='glass'] {
-  --card-sidebar-top: rgb(
-    from light-dark(var(--tint-glass-light), var(--tint-glass-dark)) r g b /
-      min(0.96, calc(var(--glass-tint, 0.25) * 1.1))
-  );
 }
 
 :root[data-style='card'] {

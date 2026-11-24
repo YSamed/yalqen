@@ -155,7 +155,6 @@ import { readingUrl } from '../../shared/reading-list.js';
 import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
 import { accentHex } from '../../shared/accent.js';
-import { windowColorHex } from '../../shared/window-color.js';
 import { IS_MAC, openAsText } from '../platform.js';
 import { FloatingChat } from './floating-chat.js';
 import { hideFullScreenTitlebar, menuBarEdge } from './fullscreen-titlebar.js';
@@ -795,7 +794,6 @@ export class YalqenWindow {
       material: this.material(),
       frameTheme: this.app.settings.get().frameTheme,
       accent: accentHex(this.app.settings.get().accentColor),
-      windowColor: windowColorHex(this.app.settings.get().windowColor, this.app.settings.get().accentColor),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
