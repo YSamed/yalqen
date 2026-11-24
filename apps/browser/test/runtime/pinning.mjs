@@ -144,18 +144,18 @@ app
       ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => `https://${id}.example/`),
     );
     assert.equal(manager.options.closed.length, 0);
+    const persisted = new persistence.SessionStore(profile);
+    persisted.saveNow({ version: 2, windows: [saved] });
+    const restored = new persistence.SessionStore(profile).load();
+    assert.equal(restored.windows[0].tabs.filter((tab) => tab.pinnedUrl).length, 8);
     for (const tab of manager.tabs) manager.togglePin(tab.id);
     changed();
     await eventually("document.querySelectorAll('aside .row').length === 8");
     assert.equal(await window.webContents.executeJavaScript("document.querySelectorAll('aside .favorite').length"), 0);
-    const persisted = new persistence.SessionStore(profile);
-    persisted.saveNow({ version: 2, windows: [manager.toSavedWindow()] });
-    const restored = new persistence.SessionStore(profile).load();
-    assert.equal(restored.windows[0].tabs.filter((tab) => tab.pinnedUrl).length, 8);
-    assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, 8);
+    assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, 0);
     assert.equal(manager.count, 8);
     console.log(
-      'PASS: eight successive production sidebar pin actions remain visible in the expanded sidebar, including background tabs, and persist without a two-pin limit',
+      'PASS: eight successive production sidebar pin actions remain visible in the expanded sidebar, including background tabs, persist without a two-pin limit and unpin back into rows',
     );
   })
   .then(() => app.quit())
