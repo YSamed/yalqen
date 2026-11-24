@@ -122,28 +122,6 @@ app
     window.webContents.on('console-message', ({ level, message }) => {
       if (level === 'error') rendererErrors.push(message);
     });
-    await window.loadURL('yalqen://settings/tabs');
-    await eventually(`!!${choice('Right, narrow')}`);
-
-    await run(`${choice('Right, narrow')}.click()`);
-    await eventually(`${choice('Right, narrow')}.getAttribute('aria-checked')==='true'`);
-    assert.deepEqual(
-      (({ sidebarVisible, panelSide, panelCollapsed }) => ({ sidebarVisible, panelSide, panelCollapsed }))(
-        preferences.get(),
-      ),
-      { sidebarVisible: true, panelSide: 'right', panelCollapsed: true },
-    );
-    await run(`${choice('Hidden, tabs on top')}.click()`);
-    await eventually(`${choice('Hidden, tabs on top')}.getAttribute('aria-checked')==='true'`);
-    assert.equal(preferences.get().sidebarVisible, false);
-    assert.equal(preferences.get().panelSide, 'right');
-    await run(
-      `${choice('Hidden, tabs on top')}.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))`,
-    );
-    await eventually(`${choice('Left, wide')}.getAttribute('aria-checked')==='true'`);
-    assert.equal(preferences.get().sidebarVisible, true);
-    assert.equal(preferences.get().panelCollapsed, false);
-
     await window.loadURL('yalqen://settings/');
     await eventually(`!!${choice('Dark')}`);
     await run(`${choice('Dark')}.click()`);
@@ -224,7 +202,7 @@ app
     await window.loadURL('yalqen://settings/advanced');
     await eventually(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`);
     await window.loadURL('yalqen://settings/tabs');
-    await eventually(`!!${choice('Left, wide')}`);
+    await eventually(`!!${labelled('Remove History button')}`);
 
     assert.deepEqual(rendererErrors, []);
 
@@ -234,7 +212,7 @@ app
     await eventually(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`);
 
     console.log(
-      'PASS: appearance settings pick theme and sidebar layout from cards, edit toolbar buttons from the preview and show advanced settings for matching searches, and clear browsing data from a dialog',
+      'PASS: appearance settings pick theme from cards, edit toolbar buttons from the preview and show advanced settings for matching searches, and clear browsing data from a dialog',
     );
   })
   .catch((error) => {

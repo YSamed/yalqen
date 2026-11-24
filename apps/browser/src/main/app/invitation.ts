@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { ImportSource } from '../library/browser-import.js';
 import { isFirefoxPlaces } from '../library/browser-import.js';
-import type { SettingsValues, WelcomeAction, WelcomeImportSource, WelcomeTabs } from '../../shared/types.js';
+import type { SettingsValues, WelcomeAction, WelcomeImportSource } from '../../shared/types.js';
 
 const MAX_SOURCES = 4;
 
@@ -28,15 +28,9 @@ export function invitationSources(
   });
 }
 
-export function invitationTabs(values: Pick<SettingsValues, 'sidebarVisible'>): WelcomeTabs {
-  return values.sidebarVisible ? 'left' : 'top';
-}
-
 export function appearancePatch(action: Extract<WelcomeAction, { type: 'appearance' }>): Partial<SettingsValues> {
   const patch: Partial<SettingsValues> = {};
   if (action.accent !== undefined) patch.accentColor = action.accent;
   if (action.theme !== undefined) patch.theme = action.theme;
-  if (action.tabs === 'left') Object.assign(patch, { sidebarVisible: true, panelSide: 'left' });
-  if (action.tabs === 'top') Object.assign(patch, { sidebarVisible: false, toolbarVisible: true });
   return patch;
 }

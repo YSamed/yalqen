@@ -16,8 +16,6 @@ app.setPath('userData', profile);
 const deadline = setTimeout(() => app.exit(1), 30_000);
 let window;
 let manager;
-let collapsed = false;
-let pinnedDisplay = 'always';
 const { IpcChannel } = types;
 const { EMPTY_AGENT_SESSION, EMPTY_AGENT_CHAT, EMPTY_PROJECT_RUN } = agentPanel;
 async function eventually(predicate) {
@@ -49,16 +47,13 @@ app
       pageFullScreen: false,
       windowFullScreen: false,
       addressPlaceholder: 'Search',
-      panelCollapsed: collapsed,
-      panelSide: collapsed ? 'right' : 'left',
-      pinnedDisplay,
+      panelCollapsed: false,
       favorites: [],
       spaces: [],
       activeSpaceId: '',
       sidebarVisible: true,
       media: null,
       toolbarVisible: true,
-      toolbarTabs: true,
       toolbarButtons: ['settings'],
       ...windowAppearance,
       defaultZoom: 1,
@@ -154,31 +149,17 @@ app
     );
     assert.equal(manager.options.closed.length, 0);
     for (const tab of manager.tabs) manager.togglePin(tab.id);
-    collapsed = true;
-    pinnedDisplay = 'expanded';
     changed();
-    await eventually(
-      "document.querySelectorAll('aside .row').length === 8 && document.querySelector('aside').classList.contains('collapsed')",
-    );
-    for (const id of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
-      await window.webContents.executeJavaScript(
-        `document.querySelector('aside .row button[aria-label^="Tab ${id}"]').dispatchEvent(new MouseEvent('contextmenu', {bubbles:true,cancelable:true}))`,
-      );
-      await eventually("document.querySelectorAll('aside .row').length === 8");
-      assert.equal(manager.tabs.find((tab) => tab.id === id).pinnedUrl, `https://${id}.example/`);
-    }
+    await eventually("document.querySelectorAll('aside .row').length === 8");
     assert.equal(await window.webContents.executeJavaScript("document.querySelectorAll('aside .favorite').length"), 0);
     const persisted = new persistence.SessionStore(profile);
     persisted.saveNow({ version: 2, windows: [manager.toSavedWindow()] });
     const restored = new persistence.SessionStore(profile).load();
     assert.equal(restored.windows[0].tabs.filter((tab) => tab.pinnedUrl).length, 8);
-    collapsed = false;
-    changed();
-    await eventually("!document.querySelector('aside').classList.contains('collapsed')");
     assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, 8);
     assert.equal(manager.count, 8);
     console.log(
-      'PASS: eight successive production sidebar pin actions remain visible in expanded and collapsed/expanded-only modes, including background tabs, and persist without a two-pin limit',
+      'PASS: eight successive production sidebar pin actions remain visible in the expanded sidebar, including background tabs, and persist without a two-pin limit',
     );
   })
   .then(() => app.quit())

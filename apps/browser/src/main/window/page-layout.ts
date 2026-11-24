@@ -20,7 +20,7 @@ export function pageFrame(
   const slide = layout.panelSlide;
   const panel = layout.panelWidth + (reflow ? slide : 0);
   return {
-    x: layout.panelSide === 'left' ? layout.panelWidth + slide : layout.pageInset - (reflow ? 0 : slide),
+    x: layout.panelWidth + slide,
     y: layout.chromeHeight,
     width: Math.max(0, width - panel - layout.pageInset - (layout.agentPanelWidth ?? 0)),
     height: Math.max(0, height - layout.chromeHeight - layout.pageInset),

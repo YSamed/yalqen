@@ -68,7 +68,6 @@
     trailingInset,
     centerOffset,
     alignLeading = false,
-    trailingOverhang = 0,
     agentAvailable,
     agentPanelOpen,
     agentStatus,
@@ -95,7 +94,6 @@
     trailingInset: number;
     centerOffset: number;
     alignLeading?: boolean;
-    trailingOverhang?: number;
     agentAvailable: boolean;
     agentPanelOpen: boolean;
     agentStatus: AgentSessionState['status'];
@@ -692,7 +690,7 @@
     class="side trailing"
     bind:this={trailing}
     bind:clientWidth={trailingWidth}
-    style:margin-right="{(split ? PANE_CLOSE_WIDTH : 0) - trailingOverhang}px"
+    style:margin-right="{split ? PANE_CLOSE_WIDTH : 0}px"
   >
     <Capsule>
       {#if agentAvailable && !chatPill}

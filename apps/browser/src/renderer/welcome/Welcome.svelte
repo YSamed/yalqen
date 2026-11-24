@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { accentHex, type AccentColorId } from '../../shared/accent';
   import { t } from '../../shared/i18n';
-  import type { ThemeSource, WelcomeImportResult, WelcomeOpen, WelcomeTabs } from '../../shared/types';
+  import type { ThemeSource, WelcomeImportResult, WelcomeOpen } from '../../shared/types';
   import AccentPicker from '../ui/AccentPicker.svelte';
 
   type Step = 'thanks' | 'name' | 'import' | 'look' | 'ready';
@@ -13,10 +13,6 @@
     { value: 'system', label: t('settings.themeSystem') },
     { value: 'light', label: t('settings.themeLight') },
     { value: 'dark', label: t('settings.themeDark') },
-  ];
-  const layouts: { value: WelcomeTabs; label: string }[] = [
-    { value: 'left', label: t('welcome.tabsLeft') },
-    { value: 'top', label: t('welcome.tabsTop') },
   ];
   const keys = [
     { label: t('welcome.keyNewTab'), keys: '⌘ T' },
@@ -30,7 +26,6 @@
   let name = $state('');
   let accent = $state<AccentColorId>('orange');
   let theme = $state<ThemeSource>('system');
-  let tabs = $state<WelcomeTabs>('left');
   let source = $state(0);
   let bookmarks = $state(true);
   let history = $state(true);
@@ -80,11 +75,6 @@
     api.send({ type: 'appearance', theme: value });
   }
 
-  function pickTabs(value: WelcomeTabs): void {
-    tabs = value;
-    api.send({ type: 'appearance', tabs: value });
-  }
-
   async function runImport(): Promise<void> {
     if (importState === 'running') return;
     if (importState === 'done' || (!bookmarks && !history)) {
@@ -115,7 +105,6 @@
       name = next.name;
       accent = next.accent;
       theme = next.theme;
-      tabs = next.tabs;
       source = next.sources[0]?.id ?? 0;
       step = 0;
       importState = 'idle';
@@ -256,17 +245,6 @@
                     role="radio"
                     aria-checked={theme === option.value}
                     onclick={() => pickTheme(option.value)}>{option.label}</button
-                  >
-                {/each}
-              </div>
-              <p class="label">{t('welcome.tabs')}</p>
-              <div class="choices" role="radiogroup" aria-label={t('welcome.tabs')}>
-                {#each layouts as option (option.value)}
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={tabs === option.value}
-                    onclick={() => pickTabs(option.value)}>{option.label}</button
                   >
                 {/each}
               </div>

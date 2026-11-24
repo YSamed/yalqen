@@ -39,7 +39,6 @@
   const CARD_PAGE_INSET = 7;
   const CHROME_HEIGHT = 47;
   const DEVICE_BEZEL = 10;
-  const PANEL_ANIMATION_MS = 240;
   // Measured from Dia: the full-width sidebar slides out and back in, with no squeeze or fade.
   const TUCK_ANIMATION_MS = 160;
   const NO_GROUPS: TabGroup[] = [];
@@ -56,15 +55,12 @@
     windowFullScreen: false,
     addressPlaceholder: t('app.addressPlaceholder'),
     panelCollapsed: true,
-    panelSide: 'left',
-    pinnedDisplay: 'always',
     favorites: [],
     spaces: [],
     activeSpaceId: '',
     sidebarVisible: true,
     media: null,
     toolbarVisible: true,
-    toolbarTabs: true,
     toolbarButtons: [],
     sidebarFooterItems: [],
     toolbarExtensions: [],
@@ -108,7 +104,6 @@
   const mode = $derived(chromeMode(browser, activeTab));
   const profile = $derived(browser.profile);
   const media = $derived(browser.media);
-  const pinnedDisplay = $derived(browser.pinnedDisplay);
   const favorites = $derived(browser.favorites);
   const spaces = $derived(browser.spaces);
   const activeSpaceId = $derived(browser.activeSpaceId);
@@ -121,10 +116,7 @@
   const downloads = $derived(browser.downloads);
   const extensions = $derived(browser.extensions);
   const device = $derived(browser.device);
-  const showToolbarTabs = $derived(browser.toolbarTabs);
-  const toolbarTabs = $derived(
-    showToolbarTabs ? tabs.filter((tab) => !tab.pinned || tab.id === activeTab?.id) : activeTab ? [activeTab] : [],
-  );
+  const toolbarTabs = $derived(activeTab ? [activeTab] : []);
   const agentPanelOpen = $derived(browser.agentPanelOpen);
   const agentSession = $derived(browser.agentSession);
   const agentChat = $derived(browser.agentChat);
@@ -161,11 +153,8 @@
   const windowFullScreen = $derived(browser.windowFullScreen);
   const windowMenu = $derived(browser.windowMenu ?? false);
   // Card style tucks a collapsed sidebar away entirely; the traffic lights then sit inside the page card's toolbar.
-  const collapsedWidth = $derived(browser.panelSide === 'left' ? pageInset : COLLAPSED_WIDTH);
-  const tucked = $derived(collapsedWidth < COLLAPSED_WIDTH);
-  const panelWidth = $derived(sidebarVisible ? (collapsed ? collapsedWidth : fullPanelWidth) : pageInset);
+  const panelWidth = $derived(sidebarVisible && !collapsed ? fullPanelWidth : pageInset);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
-  const side = $derived(browser.panelSide);
   const agentReservedWidth = $derived(
     agentVisible ? agentWidth + pageInset : bookmarksVisible ? BOOKMARKS_PANEL_WIDTH + pageInset : 0,
   );
@@ -183,9 +172,6 @@
   let animateModeChanges = false;
   let panelAnimation = 0;
   let contentCollapsed = $state(untrack(() => browser.panelCollapsed));
-  let contentFading = $state(false);
-  const panelSettled = $derived(shownWidth === panelWidth);
-  const rightPanel = $derived(side === 'right' && sidebarVisible);
 
   let wcoVisible = $state(false);
   let wcoTbRect = $state({ x: 0, y: 0, width: 0, height: 0 });
@@ -247,11 +233,10 @@
       shownWidth = target;
       panelSlide = 0;
       contentCollapsed = collapsed;
-      contentFading = false;
       return;
     }
     const slides = untrack(() => device === null);
-    const duration = untrack(() => tucked) ? TUCK_ANIMATION_MS : PANEL_ANIMATION_MS;
+    const duration = TUCK_ANIMATION_MS;
     const start = performance.now();
     const step = (now: number) => {
       const progress = Math.min(1, (now - start) / duration);
@@ -260,15 +245,13 @@
       if (progress < 1) panelAnimation = requestAnimationFrame(step);
       else {
         contentCollapsed = collapsed;
-        contentFading = false;
       }
     };
     panelSlide = slides ? from - target : 0;
     if (!collapsed) contentCollapsed = false;
-    contentFading = true;
     panelAnimation = requestAnimationFrame(step);
   });
-  const spanToolbar = $derived(side === 'left' && sidebarVisible);
+  const spanToolbar = $derived(sidebarVisible);
   const pageLeft = $derived(panelWidth + panelSlide);
   const splitPanes = $derived.by(() => {
     if (!spanToolbar || !toolbarVisible || pageFullScreen || !activeTabId) return [];
@@ -292,9 +275,7 @@
   const topInset = $derived(toolbarVisible ? CHROME_HEIGHT : pageInset);
   const pageRadius = PAGE_RADIUS;
   const menuInset = $derived(
-    windowMenu && toolbarVisible && !pageFullScreen && !(side === 'left' && sidebarVisible)
-      ? pageInset + CONTROL_SIZE + 8
-      : 0,
+    windowMenu && toolbarVisible && !pageFullScreen && !sidebarVisible ? pageInset + CONTROL_SIZE + 8 : 0,
   );
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => applyRootTheme(browser, mode, prefersDark));
@@ -304,7 +285,6 @@
     window.yalqen.setLayout({
       panelWidth,
       panelSlide,
-      panelSide: side,
       chromeHeight: topInset,
       pageInset,
       pageRadius,
@@ -337,18 +317,15 @@
 
 <div
   class="shell"
-  class:right={side === 'right'}
   class:fullscreen={pageFullScreen}
   class:with-agent={sideVisible}
   style:grid-template-columns={pageFullScreen
     ? 'minmax(0, 1fr)'
-    : side === 'left'
-      ? `${shownWidth}px minmax(0, 1fr)${sideVisible ? ` ${agentReservedWidth}px` : ''}`
-      : `minmax(0, 1fr) ${shownWidth}px${sideVisible ? ` ${agentReservedWidth}px` : ''}`}
+    : `${shownWidth}px minmax(0, 1fr)${sideVisible ? ` ${agentReservedWidth}px` : ''}`}
   style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !pageFullScreen}
-    {#if sidebarVisible && !(tucked && collapsed && contentCollapsed)}
+    {#if sidebarVisible && !(collapsed && contentCollapsed)}
       <TabPanel
         {tabs}
         {listOrder}
@@ -360,11 +337,7 @@
         pageRect={() => pageElement?.getBoundingClientRect()}
         onSplitDrop={(next) => (splitDrop = next)}
         groups={tabGroups}
-        collapsed={!tucked && contentCollapsed}
-        fading={!tucked && contentFading}
-        closing={!tucked && contentFading && collapsed}
-        slide={tucked ? shownWidth - fullPanelWidth : 0}
-        {side}
+        slide={shownWidth - fullPanelWidth}
         {topInset}
         rowInset={PANEL_ROW_INSET}
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
@@ -376,7 +349,6 @@
         {downloads}
         {profile}
         footerItems={browser.sidebarFooterItems}
-        {pinnedDisplay}
         tabCleanup={browser.tabCleanup ?? false}
         {favorites}
         liveFolders={browser.liveFolders ?? NO_LIVE_FOLDERS}
@@ -410,13 +382,10 @@
         leadingWidth={shownWidth - Math.max(wcoTbleftInset, menuInset) - PAGE_INSET}
         leadingInset={spanToolbar
           ? Math.max(wcoTbleftInset, menuInset)
-          : Math.max(side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset, menuInset)}
+          : Math.max(Math.max(0, wcoTbleftInset - shownWidth), menuInset)}
         alignLeading={!sidebarVisible && !IS_MAC}
         trailingInset={pageInset + wcoTbrightInset}
-        centerOffset={spanToolbar ? 0 : (side === 'left' ? -shownWidth : shownWidth + agentReservedWidth) / 2}
-        trailingOverhang={(rightPanel
-          ? shownWidth + pageInset - (collapsed && panelSettled ? pageInset : PANEL_ROW_INSET)
-          : 0) + (side === 'right' ? agentReservedWidth : 0)}
+        centerOffset={spanToolbar ? 0 : -shownWidth / 2}
       />
     {:else}
       <div class="titlebar-drag" aria-hidden="true"></div>
@@ -481,11 +450,7 @@
     class="page"
     class:blank
     class:split={splitPanes.length > 1}
-    style:margin={pageFullScreen
-      ? '0'
-      : side === 'left'
-        ? `0 ${pageInset}px ${pageInset}px 0`
-        : `0 0 ${pageInset}px ${pageInset}px`}
+    style:margin={pageFullScreen ? '0' : `0 ${pageInset}px ${pageInset}px 0`}
     style:border-radius={pageFullScreen || splitPanes.length > 1 ? '0' : `${pageRadius}px`}
   >
     {#each splitPanes as pane, index (index)}
@@ -525,7 +490,6 @@
       <DeviceControls {device} bezel={DEVICE_BEZEL} />
     {/if}
   </section>
-  {#if sideVisible && side === 'right'}<div class="agent-titlebar" aria-hidden="true"></div>{/if}
   {#if bookmarksVisible && bookmarksPanel}
     <div class="agent-slot" id="bookmarks-panel">
       <BookmarksPanel view={bookmarksPanel} {tabs} {activeTabId} />
@@ -616,22 +580,10 @@
     z-index: 2;
   }
 
-  .shell.right {
-    grid-template-areas:
-      'bar panel'
-      'page panel';
-  }
-
   .shell.with-agent {
     grid-template-areas:
       'panel bar bar'
       'panel page agent';
-  }
-
-  .shell.right.with-agent {
-    grid-template-areas:
-      'bar panel agentbar'
-      'page panel agent';
   }
 
   .traffic-lights {
@@ -695,12 +647,6 @@
     stroke: none;
   }
 
-  .agent-titlebar {
-    grid-area: agentbar;
-    -webkit-app-region: drag;
-    pointer-events: none;
-  }
-
   .agent-slot {
     grid-area: agent;
     min-width: 0;
@@ -709,13 +655,13 @@
   }
 
   /* Like Dia, the side panel is a full-height card beside the page, with its header on the toolbar row. */
-  :global(:root[data-style='card']) .shell.with-agent:not(.right, .fullscreen) {
+  :global(:root[data-style='card']) .shell.with-agent:not(.fullscreen) {
     grid-template-areas:
       'panel bar agent'
       'panel page agent';
   }
 
-  :global(:root[data-style='card']) .shell.with-agent:not(.right, .fullscreen) .agent-slot {
+  :global(:root[data-style='card']) .shell.with-agent:not(.fullscreen) .agent-slot {
     margin-top: 6px;
   }
 
@@ -740,8 +686,7 @@
     box-shadow: none;
   }
 
-  .shell.fullscreen,
-  .shell.fullscreen.right {
+  .shell.fullscreen {
     grid-template-areas: 'page';
   }
 

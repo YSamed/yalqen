@@ -94,10 +94,6 @@ export interface DeviceFrame {
 
 export type WindowMaterial = 'glass' | 'opaque';
 
-export type PanelSide = 'left' | 'right';
-
-export type PinnedDisplay = 'always' | 'expanded' | 'never';
-
 export const TOOLBAR_BUTTON_IDS = [
   'home',
   'bookmarks',
@@ -191,8 +187,6 @@ export interface BrowserState {
   windowMenu?: boolean;
   addressPlaceholder: string;
   panelCollapsed: boolean;
-  panelSide: PanelSide;
-  pinnedDisplay: PinnedDisplay;
   tabCleanup?: boolean;
   tabModes?: boolean;
   bookmarksPanel?: import('./bookmarks-panel').BookmarksPanelView | null;
@@ -201,7 +195,6 @@ export interface BrowserState {
   sidebarVisible: boolean;
   media: import('./sidebar-widgets').MediaInfo | null;
   toolbarVisible: boolean;
-  toolbarTabs: boolean;
   toolbarButtons: ToolbarItemId[];
   sidebarFooterItems: SidebarFooterItem[];
   toolbarExtensions: ToolbarExtension[];
@@ -435,7 +428,6 @@ export interface DownloadsSummary {
 export interface ChromeLayout {
   panelWidth: number;
   panelSlide: number;
-  panelSide: PanelSide;
   chromeHeight: number;
   pageInset: number;
   pageRadius: number;
@@ -518,7 +510,6 @@ export type UiAction =
   | { type: 'rename-bookmark-folder'; id: string; title: string }
   | { type: 'open-bookmarks-page' }
   | { type: 'toggle-panel' }
-  | { type: 'toggle-sidebar' }
   | { type: 'toggle-agent-panel' }
   | { type: 'set-agent-floating'; floating: boolean }
   | { type: 'move-floating-chat'; dx: number; dy: number }
@@ -826,8 +817,6 @@ export interface CommandBarApi {
   send(action: CommandBarAction): void;
 }
 
-export type WelcomeTabs = 'left' | 'top';
-
 export interface WelcomeImportSource {
   id: number;
   browser: string;
@@ -838,13 +827,12 @@ export interface WelcomeOpen {
   name: string;
   accent: import('./accent').AccentColorId;
   theme: ThemeSource;
-  tabs: WelcomeTabs;
   material: WindowMaterial;
   sources: WelcomeImportSource[];
 }
 
 export type WelcomeAction =
-  | { type: 'appearance'; accent?: import('./accent').AccentColorId; theme?: ThemeSource; tabs?: WelcomeTabs }
+  | { type: 'appearance'; accent?: import('./accent').AccentColorId; theme?: ThemeSource }
   | { type: 'name'; name: string }
   | { type: 'finish' };
 
@@ -942,8 +930,6 @@ export interface SettingsValues {
   startupUrls: string[];
   spaceRules: import('./space-rules').SpaceRule[];
   panelCollapsed: boolean;
-  panelSide: PanelSide;
-  pinnedDisplay: PinnedDisplay;
   pinnedTabsStayHome: boolean;
   manualTabCleanup: boolean;
   tabModes: boolean;
@@ -951,7 +937,6 @@ export interface SettingsValues {
   bookmarksPanel: boolean;
   // Passkeys kept on this Mac and unlocked with Touch ID; only signed releases can, and only after a restart.
   touchIdPasskeys: boolean;
-  sidebarVisible: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;
   toolbarButtons: ToolbarItemId[];

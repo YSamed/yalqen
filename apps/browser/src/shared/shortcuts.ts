@@ -32,7 +32,7 @@ export const SHORTCUTS = [
   { id: 'actualSize', label: 'menu.actualSize', accelerator: 'CmdOrCtrl+0' },
   { id: 'zoomIn', label: 'menu.zoomIn', accelerator: 'CmdOrCtrl+Plus' },
   { id: 'zoomOut', label: 'menu.zoomOut', accelerator: 'CmdOrCtrl+-' },
-  { id: 'cyclePanel', label: 'menu.cyclePanel', accelerator: 'CmdOrCtrl+Shift+P' },
+  { id: 'togglePanel', label: 'menu.togglePanel', accelerator: 'CmdOrCtrl+Shift+P' },
   { id: 'toggleToolbar', label: 'menu.toggleToolbar', accelerator: 'CmdOrCtrl+Shift+B' },
   { id: 'toggleAgentPanel', label: 'agentPanel.toggle', accelerator: 'CmdOrCtrl+Shift+A' },
   { id: 'viewSource', label: 'menu.viewSource', accelerator: 'CmdOrCtrl+Alt+U' },

@@ -62,7 +62,7 @@ import {
 import { WelcomeCard } from './window/welcome-card.js';
 import { importBookmarksWithDialog, importHistoryWithDialog } from './window/import-dialogs.js';
 import { ConfirmDialog } from './window/confirm-dialog.js';
-import { appearancePatch, invitationSources, invitationTabs } from './app/invitation.js';
+import { appearancePatch, invitationSources } from './app/invitation.js';
 import { setPageAccent } from './pages/responses.js';
 import { accentHex } from '../shared/accent.js';
 import { CertificateExceptions, handleCertificateErrors } from './privacy/certificates.js';
@@ -1348,7 +1348,6 @@ function startBrowser(): void {
         name: values.displayName,
         accent: values.accentColor,
         theme: values.theme,
-        tabs: invitationTabs(values),
         material: glassAvailable ? 'glass' : 'opaque',
         sources: sources.map(({ id, browser, profile }) => ({ id, browser, profile })),
       },

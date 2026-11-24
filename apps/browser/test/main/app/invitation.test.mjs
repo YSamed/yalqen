@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import invitation from '../../../dist/main/app/invitation.js';
 import responses from '../../../dist/main/pages/responses.js';
 
-const { appearancePatch, invitationSources, invitationTabs } = invitation;
+const { appearancePatch, invitationSources } = invitation;
 
 test('import sources split the browser from the profile and find history beside the bookmarks', () => {
   const chrome = '/Users/a/Library/Application Support/Google/Chrome/Profile 1/Bookmarks';
@@ -54,13 +54,6 @@ test('the invitation offers at most four browsers', () => {
 test('appearance choices map to settings', () => {
   assert.deepEqual(appearancePatch({ type: 'appearance', accent: 'mint' }), { accentColor: 'mint' });
   assert.deepEqual(appearancePatch({ type: 'appearance', theme: 'dark' }), { theme: 'dark' });
-  assert.deepEqual(appearancePatch({ type: 'appearance', tabs: 'left' }), { sidebarVisible: true, panelSide: 'left' });
-  assert.deepEqual(appearancePatch({ type: 'appearance', tabs: 'top' }), {
-    sidebarVisible: false,
-    toolbarVisible: true,
-  });
-  assert.equal(invitationTabs({ sidebarVisible: true }), 'left');
-  assert.equal(invitationTabs({ sidebarVisible: false }), 'top');
 });
 
 test('internal pages carry the picked accent and ignore anything but a hex color', async () => {

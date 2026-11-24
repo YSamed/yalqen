@@ -3,9 +3,7 @@ import path from 'node:path';
 import type {
   AgentActionPolicy,
   InterfaceLanguage,
-  PanelSide,
   PromptPermission,
-  PinnedDisplay,
   SecureDnsSetting,
   SettingsValues,
   ThemeSource,
@@ -50,15 +48,12 @@ const DEFAULTS: Settings = {
   startupUrls: [],
   spaceRules: [],
   panelCollapsed: true,
-  panelSide: 'left',
-  pinnedDisplay: 'always',
   pinnedTabsStayHome: false,
   manualTabCleanup: false,
   tabModes: false,
   autoDeveloperMode: true,
   bookmarksPanel: false,
   touchIdPasskeys: false,
-  sidebarVisible: true,
   sidebarWidgets: ['media'],
   toolbarVisible: true,
   toolbarButtons: [...DEFAULT_TOOLBAR_BUTTONS],
@@ -106,8 +101,6 @@ const DEFAULTS: Settings = {
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
 const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
-const PINNED_DISPLAYS = new Set<string>(['always', 'expanded', 'never'] satisfies PinnedDisplay[]);
-const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab', 'pages'] satisfies Settings['startupBehavior'][]);
 
@@ -150,15 +143,12 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     startupUrls,
     spaceRules,
     panelCollapsed,
-    panelSide,
-    pinnedDisplay,
     pinnedTabsStayHome,
     manualTabCleanup,
     tabModes,
     autoDeveloperMode,
     bookmarksPanel,
     touchIdPasskeys,
-    sidebarVisible,
     sidebarWidgets,
     toolbarVisible,
     toolbarButtons,
@@ -224,18 +214,12 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     startupUrls: Array.isArray(startupUrls) ? sanitizeStartupUrls(startupUrls) : base.startupUrls,
     spaceRules: Array.isArray(spaceRules) ? sanitizeSpaceRules(spaceRules) : base.spaceRules,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
-    panelSide: typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
-    pinnedDisplay:
-      typeof pinnedDisplay === 'string' && PINNED_DISPLAYS.has(pinnedDisplay)
-        ? (pinnedDisplay as PinnedDisplay)
-        : base.pinnedDisplay,
     pinnedTabsStayHome: typeof pinnedTabsStayHome === 'boolean' ? pinnedTabsStayHome : base.pinnedTabsStayHome,
     manualTabCleanup: typeof manualTabCleanup === 'boolean' ? manualTabCleanup : base.manualTabCleanup,
     tabModes: typeof tabModes === 'boolean' ? tabModes : base.tabModes,
     autoDeveloperMode: typeof autoDeveloperMode === 'boolean' ? autoDeveloperMode : base.autoDeveloperMode,
     bookmarksPanel: typeof bookmarksPanel === 'boolean' ? bookmarksPanel : base.bookmarksPanel,
     touchIdPasskeys: typeof touchIdPasskeys === 'boolean' ? touchIdPasskeys : base.touchIdPasskeys,
-    sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
     sidebarWidgets: sanitizeSidebarWidgets(sidebarWidgets, base.sidebarWidgets),
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     toolbarButtons: sanitizeToolbarButtons(toolbarButtons, base.toolbarButtons),

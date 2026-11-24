@@ -14,9 +14,6 @@ test('unknown or mistyped fields fall back', () => {
       theme: 'blue',
       startupBehavior: 'close-all',
       panelCollapsed: 'yes',
-      panelSide: 'top',
-      pinnedDisplay: 'sometimes',
-      sidebarVisible: 'no',
       sidebarWidgets: 'media',
       toolbarVisible: 0,
       discardAfterMinutes: 45,
@@ -47,15 +44,12 @@ test('unknown or mistyped fields fall back', () => {
       startupUrls: [],
       spaceRules: [],
       panelCollapsed: true,
-      panelSide: 'left',
-      pinnedDisplay: 'always',
       pinnedTabsStayHome: false,
       manualTabCleanup: false,
       tabModes: false,
       autoDeveloperMode: true,
       bookmarksPanel: false,
       touchIdPasskeys: false,
-      sidebarVisible: true,
       sidebarWidgets: ['media'],
       toolbarVisible: true,
       toolbarButtons: ['home', 'bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
@@ -247,9 +241,6 @@ test('updates keep valid fields and persist', () => {
       theme: 'dark',
       startupBehavior: 'new-tab',
       panelCollapsed: true,
-      panelSide: 'right',
-      pinnedDisplay: 'expanded',
-      sidebarVisible: false,
       toolbarVisible: false,
       toolbarButtons: ['downloads', 'settings'],
       discardAfterMinutes: 0,
@@ -270,10 +261,7 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.searchEngine, 'yandex');
     assert.equal(reloaded.startupBehavior, 'new-tab');
     assert.equal(reloaded.panelCollapsed, true);
-    assert.equal(reloaded.panelSide, 'right');
-    assert.equal(reloaded.sidebarVisible, false);
     assert.equal(reloaded.toolbarVisible, false);
-    assert.equal(reloaded.pinnedDisplay, 'expanded');
     assert.deepEqual(reloaded.toolbarButtons, ['downloads', 'settings']);
     assert.equal(reloaded.discardAfterMinutes, 0);
     assert.equal(reloaded.autoArchiveHours, 24);

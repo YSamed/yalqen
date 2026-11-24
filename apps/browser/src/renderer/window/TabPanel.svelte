@@ -2,8 +2,6 @@
   import type {
     DownloadsSummary,
     Favorite,
-    PanelSide,
-    PinnedDisplay,
     ProfileKind,
     SidebarMenuKind,
     SidebarFooterItem,
@@ -38,17 +36,15 @@
     splitTabIds,
     splitGroups = [],
     groups,
-    collapsed,
-    fading,
-    closing,
+    collapsed = false,
+    fading = false,
+    closing = false,
     slide = 0,
-    side,
     topInset,
     rowInset,
     edgeInset,
     fullWidth,
     profile,
-    pinnedDisplay,
     tabCleanup = false,
     favorites,
     liveFolders,
@@ -72,17 +68,15 @@
     splitTabIds: TabId[];
     splitGroups?: TabId[][];
     groups: TabGroup[];
-    collapsed: boolean;
-    fading: boolean;
-    closing: boolean;
+    collapsed?: boolean;
+    fading?: boolean;
+    closing?: boolean;
     slide?: number;
-    side: PanelSide;
     topInset: number;
     rowInset: number;
     edgeInset: number;
     fullWidth: number;
     profile: ProfileKind;
-    pinnedDisplay: PinnedDisplay;
     tabCleanup?: boolean;
     favorites: Favorite[];
     liveFolders: LiveFolderView[];
@@ -269,11 +263,10 @@
   const wide = $derived(card && !collapsed);
   const activeSpace = $derived(spaces.find((space) => space.id === activeSpaceId));
   const inSpaceRow = $derived(!collapsed && spaces.length > 0);
-  const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
   const visibleEntries = $derived(
     listOrder.flatMap((id) => {
       const tab = tabsById.get(id);
-      return tab && !(showPinned && collapsed && tab.pinned) ? [tab] : [];
+      return tab && !(collapsed && tab.pinned) ? [tab] : [];
     }),
   );
   const entriesByGroup = $derived(
@@ -710,13 +703,7 @@
       variant="surface"
       tone="muted"
       class="panel-toggle"
-      icon={side === 'left'
-        ? collapsed
-          ? 'panel-expand'
-          : 'panel-close'
-        : collapsed
-          ? 'panel-expand-right'
-          : 'panel-close-right'}
+      icon={collapsed ? 'panel-expand' : 'panel-close'}
       label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
       title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
       aria-expanded={!collapsed}
@@ -923,7 +910,6 @@
   class:fading
   class:closing
   class:opening={fading && !closing}
-  class:right={side === 'right'}
   aria-label={t('tabPanel.tabs')}
   onwheel={switchSpaceBySwipe}
   style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px; --panel-full-width: ${fullWidth}px`}
@@ -965,7 +951,7 @@
         <p class="space-name">{activeSpaceName}</p>
       {/if}
 
-      {#if showPinned && pinned.length > 0}
+      {#if pinned.length > 0}
         <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
           {#each pinned as tab, index (tab.id)}
             <li
@@ -1029,9 +1015,9 @@
             {#if wide}<span class="tidy-label">{t('tabPanel.tidy')}</span>{/if}
           </IconButton>
         </div>
-      {:else if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
+      {:else if !collapsed && (favorites.length > 0 || pinned.length > 0)}
         <span class="section-divider" aria-hidden="true"></span>
-      {:else if collapsed && showPinned && pinned.length > 0 && listed.length > 0}
+      {:else if collapsed && pinned.length > 0 && listed.length > 0}
         <span class="divider" aria-hidden="true"></span>
       {/if}
 
@@ -1355,10 +1341,6 @@
     overflow-x: clip;
   }
 
-  .panel.right {
-    padding: 0 var(--panel-edge-inset) 8px var(--panel-row-inset);
-  }
-
   .panel:not(.collapsed) .lists {
     padding-top: 4px;
   }
@@ -1436,10 +1418,6 @@
 
   .panel:not(.collapsed) .body {
     width: calc(var(--panel-full-width) - var(--panel-row-inset) - var(--panel-edge-inset));
-  }
-
-  .panel.right:not(.collapsed) .body {
-    align-self: flex-end;
   }
 
   .rows {
@@ -2204,10 +2182,6 @@
     padding-top: 8px;
   }
 
-  .right .spaces {
-    flex-direction: row-reverse;
-  }
-
   .spaces.compact {
     flex-direction: column;
     align-items: center;
@@ -2274,11 +2248,6 @@
     position-anchor: --sidebar-add;
     left: auto;
     right: anchor(right);
-  }
-
-  .right .add-menu {
-    left: anchor(left);
-    right: auto;
   }
 
   .add-menu .select-item {

@@ -307,7 +307,6 @@ export class YalqenWindow {
   private layout: ChromeLayout = {
     panelWidth: 170,
     panelSlide: 0,
-    panelSide: 'left',
     chromeHeight: 44,
     pageInset: 8,
     pageRadius: 16,
@@ -782,18 +781,15 @@ export class YalqenWindow {
       windowMenu: !IS_MAC,
       addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
-      panelSide: this.app.settings.get().panelSide,
-      pinnedDisplay: this.app.settings.get().pinnedDisplay,
       tabModes: this.app.settings.get().tabModes,
       bookmarksPanel: this.bookmarksPanelVisible ? this.bookmarksPanelView() : null,
       modeSwitch: this.tabs.canSwitchMode,
       tabCleanup: !this.webApp && this.app.settings.get().manualTabCleanup,
       favorites: this.webApp ? [] : this.app.favorites.list(),
       liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
-      sidebarVisible: this.webApp ? false : this.app.settings.get().sidebarVisible,
+      sidebarVisible: !this.webApp,
       media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
       toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
-      toolbarTabs: this.webApp ? false : !this.app.settings.get().sidebarVisible,
       toolbarButtons: this.webApp ? ['settings', 'downloads'] : this.app.settings.get().toolbarButtons,
       sidebarFooterItems: this.app.settings.get().sidebarFooterItems,
       toolbarExtensions: this.isPrivate || this.webApp ? [] : this.app.extensions.toolbarExtensions(),
@@ -2125,9 +2121,6 @@ export class YalqenWindow {
         break;
       case 'toggle-panel':
         app.updateSettings({ panelCollapsed: !app.settings.get().panelCollapsed });
-        break;
-      case 'toggle-sidebar':
-        app.updateSettings({ sidebarVisible: !app.settings.get().sidebarVisible });
         break;
       case 'toggle-agent-panel':
         this.toggleAgentPanel();

@@ -37,8 +37,6 @@ async function click(selector, modifiers = []) {
 }
 
 let tabCleanup = true;
-let collapsed = false;
-let panelSide = 'left';
 
 app
   .whenReady()
@@ -58,9 +56,7 @@ app
       pageFullScreen: false,
       windowFullScreen: false,
       addressPlaceholder: 'Search',
-      panelCollapsed: collapsed,
-      panelSide,
-      pinnedDisplay: 'always',
+      panelCollapsed: false,
       tabCleanup,
       favorites: [],
       spaces: [],
@@ -68,7 +64,6 @@ app
       sidebarVisible: true,
       media: null,
       toolbarVisible: true,
-      toolbarTabs: true,
       toolbarButtons: ['settings'],
       toolbarExtensions: [],
       ...windowAppearance,
@@ -143,18 +138,14 @@ app
     assert.equal(manager.tabs.length, 3);
 
     manager.tabs.push(manager.createRecord({ id: 'e', url: 'https://e.example/', title: 'Tab e' }));
-    collapsed = true;
-    // The card layout hides a collapsed left sidebar; on the right it stays as a rail.
-    panelSide = 'right';
     changed();
-    await eventually("document.querySelector('aside.panel')?.classList.contains('collapsed')");
     await eventually(`document.querySelector('${cleanButton}')?.getAttribute('aria-label') === 'Clean 1 tab'`);
 
     tabCleanup = false;
     changed();
     await eventually(`!document.querySelector('${cleanButton}')`);
     console.log(
-      'PASS: the sidebar clean button closes unpinned idle tabs only, shows its shortcut, stays in the collapsed sidebar and follows its setting',
+      'PASS: the sidebar clean button closes unpinned idle tabs only, shows its shortcut and follows its setting',
     );
   })
   .then(() => app.quit())
