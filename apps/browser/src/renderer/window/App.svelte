@@ -366,7 +366,7 @@
       {downloads}
       ready={stateReceived}
       {extensions}
-      agentAvailable={profile !== 'private'}
+      agentAvailable={profile === 'developer'}
       {agentPanelOpen}
       {agentStatus}
       buttons={toolbarButtons}

@@ -62,6 +62,6 @@ test('download rows and footer drops pass only for what the open menu offered', 
   const customizable = { ...withDownloads, footer: { rect: menu.anchor, items: [] } };
   assert.deepEqual(sidebarMenuAction(drop, customizable), drop);
   assert.equal(sidebarMenuAction({ ...drop, item: 'tabs' }, customizable), null);
-  assert.equal(sidebarMenuAction({ ...drop, index: 3 }, customizable), null);
+  assert.equal(sidebarMenuAction({ ...drop, index: 4 }, customizable), null);
   assert.equal(sidebarMenuAction({ ...drop, index: 0.5 }, customizable), null);
 });

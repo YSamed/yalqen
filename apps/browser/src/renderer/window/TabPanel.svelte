@@ -25,7 +25,6 @@
   import type { TabGroup } from '../../shared/tab-groups';
   import type { LiveFolderView } from '../../shared/live-folders';
   import type { SpaceView } from '../../shared/workspaces';
-  import { createSwipeTracker } from '../../shared/swipe';
 
   let {
     tabs,
@@ -132,7 +131,22 @@
   let renameValue = $state('');
   let renamingSpace: string | null = $state(null);
   let addingLiveFolder = $state(false);
-  const swipe = createSwipeTracker();
+  const SPACE_SWIPE_COMMIT = 64;
+  const SPACE_SWIPE_IDLE_MS = 160;
+  const SPACE_SHIFT = 48;
+  const SPACE_SETTLE_MS = 300;
+  let spaceShift = $state(0);
+  let spaceShifting = $state(false);
+  let spaceFollowing = $state(false);
+  let swipeTotal = 0;
+  let swipeCross = 0;
+  let swipeAxis: 'x' | 'y' | null = null;
+  let swipeLastDx = 0;
+  let swipeLocked = false;
+  let swipeIdle: ReturnType<typeof setTimeout> | undefined;
+  let spaceSettle: ReturnType<typeof setTimeout> | undefined;
+  let shownSpaceId: string | undefined;
+  let swipedDirection: 1 | -1 | null = null;
   let addMenu: HTMLDivElement | undefined = $state();
   let moreButton: HTMLButtonElement | undefined = $state();
 
@@ -369,11 +383,62 @@
     if (renameValue.trim() && renameValue !== name) send({ type: 'rename-tab-group', name, next: renameValue });
   }
 
-  function switchSpaceBySwipe(event: WheelEvent): void {
-    const direction = swipe(event.deltaX, event.deltaY, event.timeStamp);
-    const next = direction && spaces[spaces.findIndex((space) => space.id === activeSpaceId) + direction];
-    if (next) send({ type: 'switch-space', id: next.id });
+  function shiftSpace(offset: number, following: boolean): void {
+    if (reducedMotion.matches) return;
+    clearTimeout(spaceSettle);
+    spaceShifting = true;
+    spaceFollowing = following;
+    spaceShift = offset;
+    if (!following && offset === 0) spaceSettle = setTimeout(() => (spaceShifting = false), SPACE_SETTLE_MS);
   }
+
+  function switchSpaceBySwipe(event: WheelEvent): void {
+    if (spaces.length < 2 || event.ctrlKey) return;
+    const dx = Math.abs(event.deltaX);
+    // Momentum only slows down, so a sharp rise in horizontal speed is a new swipe, not the old one's tail.
+    if ((swipeLocked || swipeAxis === 'y') && dx > 4 && dx > swipeLastDx * 2.5) endSpaceSwipe();
+    swipeLastDx = dx;
+    clearTimeout(swipeIdle);
+    swipeIdle = setTimeout(endSpaceSwipe, SPACE_SWIPE_IDLE_MS);
+    if (swipeLocked) return;
+    swipeTotal -= event.deltaX;
+    swipeCross += Math.abs(event.deltaY);
+    if (!swipeAxis) {
+      if (Math.abs(swipeTotal) + swipeCross < 8) return;
+      swipeAxis = Math.abs(swipeTotal) > swipeCross ? 'x' : 'y';
+    }
+    if (swipeAxis === 'y') return;
+    const direction = swipeTotal < 0 ? 1 : -1;
+    if (Math.abs(swipeTotal) >= SPACE_SWIPE_COMMIT) {
+      const index = spaces.findIndex((space) => space.id === activeSpaceId);
+      swipeLocked = true;
+      swipedDirection = direction;
+      send({ type: 'switch-space', id: spaces[(index + direction + spaces.length) % spaces.length].id });
+      return;
+    }
+    shiftSpace(swipeTotal * 0.6, true);
+  }
+
+  function endSpaceSwipe(): void {
+    swipeTotal = 0;
+    swipeCross = 0;
+    swipeAxis = null;
+    swipeLocked = false;
+    if (spaceFollowing) shiftSpace(0, false);
+  }
+
+  $effect(() => {
+    const previous = shownSpaceId;
+    shownSpaceId = activeSpaceId;
+    if (previous === undefined || previous === activeSpaceId) return;
+    const from = spaces.findIndex((space) => space.id === previous);
+    const to = spaces.findIndex((space) => space.id === activeSpaceId);
+    const direction = swipedDirection ?? (to > from ? 1 : -1);
+    swipedDirection = null;
+    if (from < 0 || to < 0) return;
+    shiftSpace(direction * SPACE_SHIFT, true);
+    requestAnimationFrame(() => requestAnimationFrame(() => shiftSpace(0, false)));
+  });
 
   function startSpaceRename(space: SpaceView): void {
     if (collapsed || !space.id) return;
@@ -917,9 +982,16 @@
   <div class="top" style:height="{topInset}px"></div>
 
   <div class="body" style:transform={slide ? `translateX(${slide}px)` : undefined}>
-    <div class="lists" bind:this={lists}>
+    <div
+      class="lists"
+      class:space-shifting={spaceShifting}
+      class:space-settling={spaceShifting && !spaceFollowing}
+      style:--space-shift="{spaceShift}px"
+      style:--space-fade={1 - Math.min(Math.abs(spaceShift) / 120, 0.6)}
+      bind:this={lists}
+    >
       {#if favorites.length > 0}
-        <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
+        <ul class="favorites global" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
           {#each favorites as favorite (favorite.url)}
             <li
               class="favorite"
@@ -944,7 +1016,7 @@
             </li>
           {/each}
         </ul>
-        {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
+        {#if collapsed}<span class="divider global" aria-hidden="true"></span>{/if}
       {/if}
 
       {#if activeSpaceName}
@@ -1169,7 +1241,7 @@
               aria-haspopup="dialog"
               onclick={() => openSidebarMenu('tabs')}
             >
-              <Icon name="down" size={14} />
+              <Icon name="down" size={16} />
               {#if downloads.active > 0 && profile === 'developer'}<span class="download-dot" aria-hidden="true"
                 ></span>{/if}
             </button>
@@ -1362,6 +1434,17 @@
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: none;
+  }
+
+  .lists.space-shifting > :not(.global) {
+    opacity: var(--space-fade);
+    transform: translateX(var(--space-shift));
+  }
+
+  .lists.space-settling > :not(.global) {
+    transition:
+      transform 280ms var(--ease-out),
+      opacity 280ms var(--ease-out);
   }
 
   .lists::-webkit-scrollbar {
@@ -1916,7 +1999,7 @@
     position: relative;
     flex: none;
     justify-content: center;
-    width: 40px;
+    width: 35px;
     padding: 0;
   }
 

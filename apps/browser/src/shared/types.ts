@@ -117,7 +117,7 @@ export const SIDEBAR_FOOTER_ITEMS = [
   'profile',
 ] as const;
 export type SidebarFooterItem = (typeof SIDEBAR_FOOTER_ITEMS)[number];
-export const MAX_SIDEBAR_FOOTER_ITEMS = 3;
+export const MAX_SIDEBAR_FOOTER_ITEMS = 4;
 export const DEFAULT_SIDEBAR_FOOTER_ITEMS: SidebarFooterItem[] = ['spaces', 'downloads', 'screenshot'];
 
 export function isSidebarFooterItem(value: unknown): value is SidebarFooterItem {

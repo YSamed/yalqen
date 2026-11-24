@@ -921,7 +921,7 @@ export class YalqenWindow {
   }
 
   toggleAgentPanel(): void {
-    if (this.isPrivate && !this.isDeveloper) return;
+    if (!this.isDeveloper) return;
     this.agentPanelOpen = !this.agentPanelOpen;
     if (this.agentPanelOpen) {
       this.bookmarksPanelOpen = false;
