@@ -22,6 +22,8 @@ import { preloadPath, rendererPath } from '../app/paths.js';
 import {
   NEW_TAB_URL,
   IpcChannel,
+  placeSidebarFooterItem,
+  sanitizeSidebarFooterItems,
   type AnchorRect,
   type BrowserState,
   type AgentElementRef,
@@ -61,7 +63,13 @@ import {
   overridePatch,
 } from '../devtools/dev-commands.js';
 import { devMenuTemplate } from '../devtools/dev-menu.js';
-import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from '../library/downloads.js';
+import {
+  downloadCommands,
+  downloadsMenuTemplate,
+  downloadStatus,
+  type DownloadActions,
+  type DownloadStore,
+} from '../library/downloads.js';
 import { sanitizeAnchor, type ExtensionPopup } from '../extensions/extension-popup.js';
 import { STORE_HOME } from '../extensions/chrome-web-store.js';
 import { extensionsMenuTemplate, type ExtensionManager } from '../extensions/extensions.js';
@@ -73,7 +81,14 @@ import { canViewSource, formatAddress, type AddressFormat } from '../devtools/pa
 import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
 import { TooltipOverlay } from './tooltip-overlay.js';
 import { HoverPreview, type PreviewChoice } from './hover-preview.js';
-import { previewView, validPreviewRequest, type PreviewContent } from '../../shared/previews.js';
+import { hostOf } from '../../shared/hosts.js';
+import {
+  previewView,
+  validPreviewRequest,
+  type PreviewContent,
+  type TabAction,
+  type TabCard,
+} from '../../shared/previews.js';
 import { readPreview, CALENDAR_OPEN_SCRIPT, type PreviewTab } from '../tabs/previews.js';
 import { LinkPeek, type PeekOwner } from './link-peek.js';
 import { createOverlayView } from './overlay-view.js';
@@ -307,7 +322,7 @@ export class YalqenWindow {
   private readonly navigationHint: NavigationHint;
   private readonly tooltip: TooltipOverlay;
   private readonly preview: HoverPreview;
-  private previewShown: { tab: PreviewTab; content: PreviewContent } | null = null;
+  private previewShown: { tab: PreviewTab; content: PreviewContent | null } | null = null;
   private readonly notice: PageNotice;
   private capturingArea = false;
   private readonly agentControl: AgentControl;
@@ -404,6 +419,15 @@ export class YalqenWindow {
         if (action.type === 'switch-tab') this.tabs.activate(action.id);
         else if (action.type === 'switch-space') this.handleAction(action);
         else if (action.type === 'open-link') this.tabs.open(action.url);
+        else if (action.type === 'download-action') this.runDownloadAction(action.id);
+        else if (action.type === 'place-footer-item')
+          this.app.updateSettings({
+            sidebarFooterItems: placeSidebarFooterItem(
+              this.app.settings.get().sidebarFooterItems,
+              action.item,
+              action.index,
+            ),
+          });
         else if (action.type === 'open-chat')
           void this.agentChat.open(action.id, false).finally(() => this.openAgentPanel());
         else this.runSidebarCommand(action.command);
@@ -771,6 +795,7 @@ export class YalqenWindow {
       toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
       toolbarTabs: this.webApp ? false : !this.app.settings.get().sidebarVisible,
       toolbarButtons: this.webApp ? ['settings', 'downloads'] : this.app.settings.get().toolbarButtons,
+      sidebarFooterItems: this.app.settings.get().sidebarFooterItems,
       toolbarExtensions: this.isPrivate || this.webApp ? [] : this.app.extensions.toolbarExtensions(),
       material: this.material(),
       frameTheme: this.app.settings.get().frameTheme,
@@ -1536,7 +1561,7 @@ export class YalqenWindow {
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
 
-  async openSidebarMenu(kind: SidebarMenuKind, anchor: AnchorRect): Promise<void> {
+  async openSidebarMenu(kind: SidebarMenuKind, anchor: AnchorRect, footer: AnchorRect | null = null): Promise<void> {
     const state = this.state();
     const theme = state.spaces.find((space) => space.id === state.activeSpaceId)?.theme ?? state.frameTheme;
     const persistent = this.profile !== 'private';
@@ -1552,7 +1577,10 @@ export class YalqenWindow {
         kind,
         anchor,
         tint: theme?.colors[0] ?? null,
-        tabs: state.tabs.map(({ id, title, url, faviconUrl }) => ({ id, title, url, faviconUrl })),
+        // Pinned tabs already sit in the tiles above the list.
+        tabs: state.tabs
+          .filter((tab) => !tab.pinned)
+          .map(({ id, title, url, faviconUrl }) => ({ id, title, url, faviconUrl })),
         spaces: state.spaces.map(({ id, name, icon }) => ({ id, name, icon, active: id === state.activeSpaceId })),
         chats,
         commands: [
@@ -1565,9 +1593,18 @@ export class YalqenWindow {
           'profile',
           ...(state.spaces.length > 0 ? (['create-space', 'edit-space'] as const) : []),
           ...(persistent ? (['import-space', 'add-live-folder'] as const) : []),
+          ...(kind === 'downloads' ? (['downloads-all', 'downloads-folder'] as const) : []),
         ],
         downloadsActive: state.downloads.active,
         ...(kind === 'tabs' ? this.sidebarMenuLinks() : { history: [], bookmarks: [] }),
+        footer: footer ? { rect: footer, items: this.app.settings.get().sidebarFooterItems } : null,
+        downloads:
+          kind === 'downloads'
+            ? this.app.downloads
+                .list()
+                .slice(0, SIDEBAR_MENU_LINKS)
+                .map((entry) => ({ id: entry.id, filename: entry.filename, status: downloadStatus(entry) }))
+            : [],
       },
     });
   }
@@ -1588,14 +1625,23 @@ export class YalqenWindow {
   }
 
   private runSidebarCommand(command: SidebarMenuCommand): void {
+    if (command === 'downloads' || command === 'downloads-all' || command === 'downloads-folder') {
+      const actions = this.app.downloadActions(this);
+      if (command === 'downloads-all') actions.showAll();
+      else if (command === 'downloads-folder') actions.openFolder();
+      else void this.openSidebarMenu('downloads', this.sidebarMenuAnchor);
+      return;
+    }
     if (command === 'add-live-folder') {
       if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.addLiveFolder);
       return;
     }
-    const actions: Record<Exclude<SidebarMenuCommand, 'add-live-folder'>, UiAction> = {
+    const actions: Record<
+      Exclude<SidebarMenuCommand, 'add-live-folder' | 'downloads' | 'downloads-all' | 'downloads-folder'>,
+      UiAction
+    > = {
       history: { type: 'open-history' },
       bookmarks: { type: 'toggle-bookmarks-panel' },
-      downloads: { type: 'open-downloads' },
       extensions: { type: 'open-extensions-menu', anchor: this.sidebarMenuAnchor },
       screenshot: { type: 'dev-command', id: 'full-page-screenshot' },
       settings: { type: 'open-settings' },
@@ -1605,6 +1651,12 @@ export class YalqenWindow {
       'import-space': { type: 'import-space' },
     };
     this.handleAction(actions[command]);
+  }
+
+  private runDownloadAction(id: string): void {
+    const entry = this.app.downloads.list().find((candidate) => candidate.id === id);
+    const command = entry && downloadCommands(entry)[0];
+    if (command) (this.app.downloadActions(this)[command[0]] as (id: string) => void)(id);
   }
 
   runDevCommand(id: DevCommandId): void {
@@ -2094,8 +2146,15 @@ export class YalqenWindow {
         this.openAddress();
         break;
       case 'open-sidebar-menu':
-        if (action.kind === 'tabs' || action.kind === 'chats')
-          void this.openSidebarMenu(action.kind, sanitizeAnchor(action.anchor));
+        if (['tabs', 'chats', 'spaces', 'downloads'].includes(action.kind))
+          void this.openSidebarMenu(
+            action.kind,
+            sanitizeAnchor(action.anchor),
+            action.footer ? sanitizeAnchor(action.footer) : null,
+          );
+        break;
+      case 'set-sidebar-footer-items':
+        app.updateSettings({ sidebarFooterItems: sanitizeSidebarFooterItems(action.items, []) });
         break;
       case 'open-profile-menu':
         this.popup(
@@ -2242,26 +2301,66 @@ export class YalqenWindow {
 
   private showPreview(value: unknown): void {
     const request = validPreviewRequest(value);
-    if (!request || this.isPrivate || this.isDeveloper) return;
+    if (!request || this.isPrivate) return;
     const key = `${request.tabId ?? ''} ${request.url}`;
     if (this.preview.isShowing(key)) {
       this.preview.keep();
       return;
     }
     const tab = this.tabs.previewTab(request.tabId, request.url);
-    const read = tab
-      ? readPreview(tab, {
+    if (!tab) return;
+    const read = this.isDeveloper
+      ? null
+      : readPreview(tab, {
           session: (tab.id && this.tabs.tabSession(tab.id)) || this.app.daily,
           readInTab: (contents, code) => this.tabs.readForPreview(contents, code),
-        })
-      : null;
-    if (!tab || !read) return;
+        });
+    const card = tab.id ? this.tabCard(tab.id) : null;
+    if (!read && !card) return;
     const ticket = this.preview.begin();
-    void read.then((content) => {
+    void (read ?? Promise.resolve(null)).then((content) => {
       if (!this.preview.isCurrent(ticket)) return;
       this.previewShown = { tab, content };
-      this.preview.show(ticket, key, previewView(content, Date.now(), getLocale(), t), request.anchor, request.theme);
+      const view = content
+        ? previewView(content, Date.now(), getLocale(), t)
+        : { heading: null, items: [], message: null, footer: null };
+      this.preview.show(ticket, key, card ? { ...view, tab: card } : view, request.anchor, request.theme);
     });
+  }
+
+  private tabCard(id: TabId): TabCard | null {
+    const tab = this.tabs.snapshotFor(id);
+    if (!tab) return null;
+    const bookmarked = this.app.bookmarks.has(tab.url);
+    const inSplit = this.tabs.splitTabIds.includes(id);
+    const actions: TabCard['actions'] = [
+      { id: 'pin', label: t(tab.pinned ? 'window.unpinTab' : 'window.pinTab'), on: tab.pinned, enabled: true },
+      {
+        id: 'bookmark',
+        label: t(bookmarked ? 'toolbar.removeBookmarkTitle' : 'toolbar.addBookmarkTitle'),
+        on: bookmarked,
+        enabled: true,
+      },
+      {
+        id: 'split',
+        label: t(inSplit ? 'window.exitSplitView' : 'window.openInSplitView'),
+        on: inSplit,
+        enabled: inSplit || this.tabs.canSplitWithActive(id),
+      },
+      { id: 'copy', label: t('devCommands.copyAddress'), on: false, enabled: canViewSource(tab.url) },
+    ];
+    return { title: tab.title || tab.url, host: hostOf(tab.url) ?? tab.url, actions };
+  }
+
+  private runTabAction(id: TabId, action: TabAction): void {
+    const tab = this.tabs.snapshotFor(id);
+    if (!tab) return;
+    if (action === 'pin') this.tabs.togglePin(id);
+    else if (action === 'bookmark') this.app.toggleBookmark(tab.url, tab.title);
+    else if (action === 'split') {
+      if (this.tabs.splitTabIds.includes(id)) this.tabs.unsplit(id);
+      else this.tabs.splitWithActive(id);
+    } else this.copyAddress('url', tab);
   }
 
   private openFromPreview(choice: PreviewChoice): void {
@@ -2269,6 +2368,10 @@ export class YalqenWindow {
     this.previewShown = null;
     if (!shown) return;
     const { tab, content } = shown;
+    if (typeof choice === 'string' && choice !== 'tab') {
+      if (tab.id) this.runTabAction(tab.id, choice);
+      return;
+    }
     const open = (url: string) => {
       if (tab.id) {
         this.tabs.activate(tab.id);
@@ -2277,9 +2380,9 @@ export class YalqenWindow {
         this.tabs.open(url, { isPrivate: false });
       }
     };
-    if (content.kind === 'mail' && typeof choice === 'number') {
+    if (content?.kind === 'mail' && typeof choice === 'number') {
       open(content.messages[choice]?.link ?? tab.url);
-    } else if (content.kind === 'calendar' && typeof choice === 'number' && tab.id && tab.contents) {
+    } else if (content?.kind === 'calendar' && typeof choice === 'number' && tab.id && tab.contents) {
       const event = content.events[choice];
       this.tabs.activate(tab.id);
       if (event) void this.tabs.readForPreview(tab.contents, CALENDAR_OPEN_SCRIPT(event.id)).catch(() => {});
@@ -2628,7 +2731,13 @@ export class YalqenWindow {
   }
 
   private placePage(width: number, height: number): number {
-    const { radius, ...frame } = pageFrame(width, height, this.layout, this.isPageFullScreen());
+    const { radius, ...frame } = pageFrame(
+      width,
+      height,
+      this.layout,
+      this.isPageFullScreen(),
+      this.tabs.showsOnlyNewTab,
+    );
     const bounds = { ...frame, y: frame.y + this.menuBarInset };
     this.tabs.setPageLayout(bounds);
     this.pageArea = bounds;

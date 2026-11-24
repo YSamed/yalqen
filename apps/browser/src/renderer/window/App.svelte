@@ -66,6 +66,7 @@
     toolbarVisible: true,
     toolbarTabs: true,
     toolbarButtons: [],
+    sidebarFooterItems: [],
     toolbarExtensions: [],
     material: 'opaque',
     accent: accentHex(DEFAULT_ACCENT),
@@ -374,6 +375,7 @@
         updateReady={browser.updateReady ?? false}
         {downloads}
         {profile}
+        footerItems={browser.sidebarFooterItems}
         {pinnedDisplay}
         tabCleanup={browser.tabCleanup ?? false}
         {favorites}

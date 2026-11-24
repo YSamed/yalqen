@@ -21,8 +21,9 @@ export function createHoverPreviews(send: (action: UiAction) => void) {
   function enter(element: HTMLElement, tabId: string | null, url: string): void {
     window.clearTimeout(timer);
     timer = undefined;
-    if (!previewKind(url)) return;
-    if (element === requested && Date.now() - leftAt < RETURN_MS) request(element, tabId, url);
+    if (!tabId && !previewKind(url)) return;
+    // Moving straight from one card's row to the next shows it at once instead of waiting again.
+    if (requested && Date.now() - leftAt < RETURN_MS) request(element, tabId, url);
     else timer = window.setTimeout(() => request(element, tabId, url), DELAY_MS);
   }
 

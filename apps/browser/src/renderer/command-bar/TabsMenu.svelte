@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { displayHost } from '../../shared/hosts';
   import { t } from '../../shared/i18n';
-  import type { CommandBarAction, SidebarMenu, SidebarMenuCommand } from '../../shared/types';
+  import type { CommandBarAction, SidebarFooterItem, SidebarMenu, SidebarMenuCommand } from '../../shared/types';
   import Icon, { type IconName } from '../ui/Icon.svelte';
   import type { SidebarFlyout } from './SidebarMenu.svelte';
 
@@ -13,15 +14,17 @@
     flyout,
     onaction,
     onflyout,
+    ondragitem,
   }: {
     menu: SidebarMenu;
     query: string;
     flyout: SidebarFlyout | null;
     onaction: (action: CommandBarAction) => void;
     onflyout: (kind: SidebarFlyout | null, row?: HTMLElement) => void;
+    ondragitem: (item: SidebarFooterItem | null) => void;
   } = $props();
   let showAll = $state(false);
-  let view: 'main' | 'spaces' = $state('main');
+  let view: 'main' | 'spaces' = $state(untrack(() => menu.kind) === 'spaces' ? 'spaces' : 'main');
   let brokenIcons: Record<string, true> = $state({});
 
   const needle = $derived(query.trim().toLocaleLowerCase());
@@ -32,12 +35,33 @@
   const activeSpace = $derived(menu.spaces.find((space) => space.active));
   const has = (command: SidebarMenuCommand) => menu.commands.includes(command);
   const run = (command: SidebarMenuCommand) => onaction({ type: 'sidebar-command', command });
+
+  // Rows that can also live in the sidebar footer can be dragged onto it.
+  function footerDrag(item: SidebarFooterItem | undefined) {
+    if (!item || !menu.footer) return {};
+    return {
+      draggable: true,
+      ondragstart: (event: DragEvent) => {
+        const transfer = event.dataTransfer;
+        if (transfer) {
+          transfer.setData('application/x-yalqen-footer-item', item);
+          transfer.effectAllowed = 'copy';
+          const icon = (event.currentTarget as HTMLElement).querySelector<HTMLElement>('.icon');
+          if (icon) transfer.setDragImage(icon, icon.offsetWidth / 2, icon.offsetHeight / 2);
+        }
+        onflyout(null);
+        ondragitem(item);
+      },
+      ondragend: () => ondragitem(null),
+    };
+  }
 </script>
 
 {#snippet flyoutRow(kind: SidebarFlyout, icon: IconName, label: string)}
   <button
     type="button"
     class="item"
+    {...footerDrag(kind)}
     class:open={flyout === kind}
     aria-haspopup="menu"
     aria-expanded={flyout === kind}
@@ -50,8 +74,15 @@
   </button>
 {/snippet}
 
-{#snippet row(icon: IconName, label: string, onclick: () => void, trail = '', more = false)}
-  <button type="button" class="item" {onclick} onmouseenter={() => onflyout(null)}>
+{#snippet row(
+  icon: IconName,
+  label: string,
+  onclick: () => void,
+  trail = '',
+  more = false,
+  footerItem: SidebarFooterItem | undefined = undefined,
+)}
+  <button type="button" class="item" {...footerDrag(footerItem)} {onclick} onmouseenter={() => onflyout(null)}>
     <span class="icon"><Icon name={icon} /></span>
     <span class="label">{label}</span>
     {#if trail || more}
@@ -80,7 +111,7 @@
   {#if has('import-space')}{@render row('folder', t('spaces.import'), () => run('import-space'))}{/if}
   {#if has('add-live-folder')}{@render row('bookmarks', t('liveFolders.add'), () => run('add-live-folder'))}{/if}
 {:else}
-  <h3 class="heading">{t('sidebarMenu.openTabs')}</h3>
+  {#if needle || matches.length > 0}<h3 class="heading">{t('sidebarMenu.openTabs')}</h3>{/if}
   {#each shown as tab (tab.id)}
     <button
       type="button"
@@ -107,7 +138,7 @@
     {#if has('history')}{@render flyoutRow('history', 'history', t('toolbar.history'))}{/if}
     {#if has('bookmarks')}{@render flyoutRow('bookmarks', 'bookmarks', t('toolbar.bookmarks'))}{/if}
     {#if menu.spaces.length > 0}
-      {@render row('sidebar', t('spaces.switcher'), () => (view = 'spaces'), activeSpace?.name ?? '', true)}
+      {@render row('sidebar', t('spaces.switcher'), () => (view = 'spaces'), activeSpace?.name ?? '', true, 'spaces')}
     {/if}
     <div class="divider"></div>
     {@render row(
@@ -115,11 +146,34 @@
       t('toolbar.downloads'),
       () => run('downloads'),
       menu.downloadsActive > 0 ? String(menu.downloadsActive) : '',
+      false,
+      'downloads',
     )}
-    {#if has('extensions')}{@render row('extensions', t('toolbar.extensions'), () => run('extensions'))}{/if}
-    {#if has('screenshot')}{@render row('screenshot', t('toolbar.fullPageScreenshot'), () => run('screenshot'))}{/if}
-    {#if has('settings')}{@render row('settings', t('toolbar.settings'), () => run('settings'))}{/if}
-    {@render row('profile', t('toolbar.profile'), () => run('profile'))}
+    {#if has('extensions')}{@render row(
+        'extensions',
+        t('toolbar.extensions'),
+        () => run('extensions'),
+        '',
+        false,
+        'extensions',
+      )}{/if}
+    {#if has('screenshot')}{@render row(
+        'screenshot',
+        t('toolbar.fullPageScreenshot'),
+        () => run('screenshot'),
+        '',
+        false,
+        'screenshot',
+      )}{/if}
+    {#if has('settings')}{@render row(
+        'settings',
+        t('toolbar.settings'),
+        () => run('settings'),
+        '',
+        false,
+        'settings',
+      )}{/if}
+    {@render row('profile', t('toolbar.profile'), () => run('profile'), '', false, 'profile')}
   {/if}
 {/if}
 

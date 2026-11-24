@@ -264,6 +264,10 @@ export class TabManager {
     return this.active()?.url ?? NEW_TAB_URL;
   }
 
+  get showsOnlyNewTab(): boolean {
+    return this.shown.every((tab) => tab.url === NEW_TAB_URL);
+  }
+
   get liveCount(): number {
     return this.tabs.filter((tab) => tab.view).length;
   }
@@ -1511,11 +1515,12 @@ export class TabManager {
 
   previewTab(id: TabId | null, url: string): PreviewTab | null {
     const kind = previewKind(url);
-    if (!kind) return null;
-    const host = new URL(url).host;
+    if (!id && !kind) return null;
     const tab = id
       ? this.find(id)
-      : this.tabs.find((candidate) => previewKind(candidate.url) === kind && new URL(candidate.url).host === host);
+      : this.tabs.find(
+          (candidate) => previewKind(candidate.url) === kind && new URL(candidate.url).host === new URL(url).host,
+        );
     if (tab?.isPrivate || (id && !tab)) return null;
     return tab ? { id: tab.id, url: tab.url, contents: liveContents(tab) } : { id: null, url, contents: null };
   }

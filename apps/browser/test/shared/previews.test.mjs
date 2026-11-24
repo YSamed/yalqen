@@ -131,6 +131,13 @@ test('previews open beside the sidebar and stay inside the window', () => {
   assert.deepEqual(placePreview({ x: 100, y: 10, width: 1000, height: 30 }, size, area), { x: 100, y: 48 });
 });
 
+test('a tab card centers on its row and still stays inside the window', () => {
+  const area = { width: 1200, height: 800 };
+  const size = { width: 172, height: 90 };
+  assert.deepEqual(placePreview({ x: 10, y: 200, width: 170, height: 36 }, size, area, true), { x: 188, y: 173 });
+  assert.deepEqual(placePreview({ x: 10, y: 10, width: 170, height: 36 }, size, area, true), { x: 188, y: 8 });
+});
+
 const theme = { dark: false, surface: '#fff', text: '#000', accent: '#e8590c', border: 'rgb(0 0 0 / 0.1)' };
 
 test('preview requests are checked before anything is read', () => {
@@ -142,7 +149,11 @@ test('preview requests are checked before anything is read', () => {
   };
   assert.deepEqual(validPreviewRequest(request), request);
   assert.deepEqual(validPreviewRequest({ ...request, tabId: null }), { ...request, tabId: null });
-  assert.equal(validPreviewRequest({ ...request, url: 'https://example.com/' }), null);
+  assert.deepEqual(validPreviewRequest({ ...request, url: 'https://example.com/' }), {
+    ...request,
+    url: 'https://example.com/',
+  });
+  assert.equal(validPreviewRequest({ ...request, tabId: null, url: 'https://example.com/' }), null);
   assert.equal(validPreviewRequest({ ...request, tabId: 7 }), null);
   assert.equal(validPreviewRequest({ ...request, anchor: { x: 1 } }), null);
   assert.equal(validPreviewRequest({ ...request, theme: { ...theme, dark: 'yes' } }), null);

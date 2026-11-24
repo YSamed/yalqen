@@ -1817,6 +1817,7 @@ export const tr: Record<MessageKey, string> = {
   'commandBar.searchOn': '{engine} içinde ara',
   'settings.stripTrackingOnCopy': 'Kopyalanan adreslerden izlemeyi kaldır',
   'settings.stripTrackingOnCopyHint': 'Sayfa adresini kopyalarken utm_*, fbclid, gclid ve benzeri parametreleri sil.',
+  'sidebarMenu.footerTools': 'Kenar çubuğu kısayolları',
   'sidebarMenu.chats': 'Sohbetler',
   'sidebarMenu.more': 'Sekmeler, geçmiş ve diğerleri',
   'sidebarMenu.search': 'Ara',

@@ -6,9 +6,15 @@
   import { tick } from 'svelte';
   import { displayHost } from '../../shared/hosts';
   import { t } from '../../shared/i18n';
-  import type { CommandBarAction, SidebarMenu } from '../../shared/types';
+  import {
+    MAX_SIDEBAR_FOOTER_ITEMS,
+    type CommandBarAction,
+    type SidebarFooterItem,
+    type SidebarMenu,
+  } from '../../shared/types';
   import Icon from '../ui/Icon.svelte';
   import ChatsMenu from './ChatsMenu.svelte';
+  import DownloadsMenu from './DownloadsMenu.svelte';
   import TabsMenu from './TabsMenu.svelte';
 
   const PANEL_WIDTH = 334;
@@ -27,6 +33,24 @@
   let flyout = $state<{ kind: SidebarFlyout; top: number } | null>(null);
   let flyoutHeight = $state(0);
   let brokenIcons: Record<string, true> = $state({});
+  let draggingItem = $state<SidebarFooterItem | null>(null);
+  let dropSlot = $state<number | null>(null);
+
+  const FOOTER_SLOT_WIDTH = 35;
+  const footerSlots = Array.from({ length: MAX_SIDEBAR_FOOTER_ITEMS }, (_, index) => index);
+
+  function slotAt(event: DragEvent): number {
+    const x = event.clientX - (menu.footer?.rect.x ?? 0);
+    return Math.max(0, Math.min(MAX_SIDEBAR_FOOTER_ITEMS - 1, Math.floor(x / FOOTER_SLOT_WIDTH)));
+  }
+
+  function dropOnFooter(event: DragEvent): void {
+    event.preventDefault();
+    const item = draggingItem;
+    draggingItem = null;
+    dropSlot = null;
+    if (item) onaction({ type: 'place-footer-item', item, index: slotAt(event) });
+  }
 
   // The tabs menu leaves room for its flyout up front, so the panel never jumps while a row is hovered.
   const reserved = $derived(menu.kind === 'tabs' ? PANEL_WIDTH + FLYOUT_WIDTH - FLYOUT_OVERLAP : PANEL_WIDTH);
@@ -69,7 +93,13 @@
     class="panel"
     class:tinted={menu.tint !== null}
     role="dialog"
-    aria-label={menu.kind === 'chats' ? t('sidebarMenu.chats') : t('sidebarMenu.more')}
+    aria-label={menu.kind === 'chats'
+      ? t('sidebarMenu.chats')
+      : menu.kind === 'spaces'
+        ? t('spaces.switcher')
+        : menu.kind === 'downloads'
+          ? t('toolbar.downloads')
+          : t('sidebarMenu.more')}
     style:left="{left}px"
     style:bottom="{bottom}px"
     style:max-height="{maxHeight}px"
@@ -90,8 +120,20 @@
     <div class="body" bind:this={body}>
       {#if menu.kind === 'chats'}
         <ChatsMenu chats={menu.chats} {query} {onaction} />
+      {:else if menu.kind === 'downloads'}
+        <DownloadsMenu {menu} {query} {onaction} />
       {:else}
-        <TabsMenu {menu} {query} flyout={flyout?.kind ?? null} {onaction} onflyout={openFlyout} />
+        <TabsMenu
+          {menu}
+          {query}
+          flyout={flyout?.kind ?? null}
+          {onaction}
+          onflyout={openFlyout}
+          ondragitem={(item) => {
+            draggingItem = item;
+            if (item) flyout = null;
+          }}
+        />
       {/if}
     </div>
   </div>
@@ -138,6 +180,28 @@
           >
         </button>
       </div>
+    </div>
+  {/if}
+  {#if draggingItem && menu.footer}
+    <div
+      class="footer-drop"
+      role="region"
+      aria-label={t('sidebarMenu.footerTools')}
+      style:left="{menu.footer.rect.x}px"
+      style:top="{menu.footer.rect.y}px"
+      style:width="{FOOTER_SLOT_WIDTH * MAX_SIDEBAR_FOOTER_ITEMS}px"
+      style:height="{menu.footer.rect.height}px"
+      ondragover={(event) => {
+        event.preventDefault();
+        dropSlot = slotAt(event);
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+      }}
+      ondragleave={() => (dropSlot = null)}
+      ondrop={dropOnFooter}
+    >
+      {#each footerSlots as slot (slot)}
+        <span class="slot" class:active={dropSlot === slot}></span>
+      {/each}
     </div>
   {/if}
 </div>
@@ -301,5 +365,24 @@
     .panel {
       animation: none;
     }
+  }
+
+  .footer-drop {
+    position: fixed;
+    display: flex;
+    border-radius: 10px;
+    outline: 1.5px dashed color-mix(in srgb, var(--text) 35%, transparent);
+    outline-offset: -1.5px;
+    background: var(--menu-hover);
+  }
+
+  .slot {
+    flex: 1;
+    margin: 4px;
+    border-radius: 8px;
+  }
+
+  .slot.active {
+    background: color-mix(in srgb, var(--text) 16%, transparent);
   }
 </style>

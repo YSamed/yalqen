@@ -74,6 +74,25 @@ test('the AI panel reserves space alongside either tab panel placement', () => {
   });
 });
 
+test('a reflowing page keeps its far edge fixed so centered content tracks the sliding panel', () => {
+  const collapsing = { ...layout, panelWidth: 44, panelSlide: 100 };
+  assert.deepEqual(pageFrame(1280, 820, collapsing, false, true), {
+    x: 144,
+    y: 44,
+    width: 1128,
+    height: 768,
+    radius: 16,
+  });
+  assert.deepEqual(pageFrame(1280, 820, { ...collapsing, panelSide: 'right' }, false, true), {
+    x: 8,
+    y: 44,
+    width: 1128,
+    height: 768,
+    radius: 16,
+  });
+  assert.deepEqual(pageFrame(1280, 820, layout, false, true), pageFrame(1280, 820, layout, false));
+});
+
 test('a sliding panel moves the page at its final size so it never reflows mid-animation', () => {
   const collapsing = { ...layout, panelWidth: 44, panelSlide: 100 };
   assert.deepEqual(pageFrame(1280, 820, collapsing, false), { x: 144, y: 44, width: 1228, height: 768, radius: 16 });

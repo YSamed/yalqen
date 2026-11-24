@@ -116,6 +116,39 @@ export const DEFAULT_TOOLBAR_BUTTONS: ToolbarButtonId[] = TOOLBAR_BUTTON_IDS.fil
   (id) => !OPTIONAL_TOOLBAR_BUTTONS.includes(id),
 );
 
+export const SIDEBAR_FOOTER_ITEMS = [
+  'history',
+  'bookmarks',
+  'spaces',
+  'downloads',
+  'extensions',
+  'screenshot',
+  'settings',
+  'profile',
+] as const;
+export type SidebarFooterItem = (typeof SIDEBAR_FOOTER_ITEMS)[number];
+export const MAX_SIDEBAR_FOOTER_ITEMS = 3;
+export const DEFAULT_SIDEBAR_FOOTER_ITEMS: SidebarFooterItem[] = ['spaces', 'downloads', 'screenshot'];
+
+export function isSidebarFooterItem(value: unknown): value is SidebarFooterItem {
+  return (SIDEBAR_FOOTER_ITEMS as readonly unknown[]).includes(value);
+}
+
+export function sanitizeSidebarFooterItems(value: unknown, fallback: SidebarFooterItem[]): SidebarFooterItem[] {
+  if (!Array.isArray(value)) return fallback;
+  return [...new Set(value)].filter(isSidebarFooterItem).slice(0, MAX_SIDEBAR_FOOTER_ITEMS);
+}
+
+export function placeSidebarFooterItem(
+  items: readonly SidebarFooterItem[],
+  item: SidebarFooterItem,
+  index: number,
+): SidebarFooterItem[] {
+  const rest = items.filter((candidate) => candidate !== item);
+  rest.splice(Math.max(0, Math.min(index, rest.length)), 0, item);
+  return rest.slice(0, MAX_SIDEBAR_FOOTER_ITEMS);
+}
+
 export type ToolbarExtensionItem = `extension:${string}`;
 export type ToolbarItemId = ToolbarButtonId | ToolbarExtensionItem;
 const TOOLBAR_EXTENSION = /^extension:([a-p]{32})$/;
@@ -170,6 +203,7 @@ export interface BrowserState {
   toolbarVisible: boolean;
   toolbarTabs: boolean;
   toolbarButtons: ToolbarItemId[];
+  sidebarFooterItems: SidebarFooterItem[];
   toolbarExtensions: ToolbarExtension[];
   material: WindowMaterial;
   frameTheme?: import('./frame-theme').FrameTheme;
@@ -491,7 +525,8 @@ export type UiAction =
   | { type: 'window-control'; control: 'close' | 'exit-full-screen' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
-  | { type: 'open-sidebar-menu'; kind: SidebarMenuKind; anchor: AnchorRect }
+  | { type: 'open-sidebar-menu'; kind: SidebarMenuKind; anchor: AnchorRect; footer?: AnchorRect }
+  | { type: 'set-sidebar-footer-items'; items: SidebarFooterItem[] }
   | { type: 'open-downloads' }
   | { type: 'install-update' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
@@ -644,7 +679,7 @@ export interface CommandBarOpen {
   menu?: SidebarMenu;
 }
 
-export type SidebarMenuKind = 'tabs' | 'chats';
+export type SidebarMenuKind = 'tabs' | 'chats' | 'spaces' | 'downloads';
 
 export const SIDEBAR_MENU_COMMANDS = [
   'history',
@@ -658,6 +693,8 @@ export const SIDEBAR_MENU_COMMANDS = [
   'edit-space',
   'import-space',
   'add-live-folder',
+  'downloads-all',
+  'downloads-folder',
 ] as const;
 export type SidebarMenuCommand = (typeof SIDEBAR_MENU_COMMANDS)[number];
 
@@ -672,6 +709,9 @@ export interface SidebarMenu {
   downloadsActive: number;
   history: SidebarMenuLink[];
   bookmarks: SidebarMenuLink[];
+  downloads: { id: string; filename: string; status: string }[];
+  // Where menu rows can be dropped to become sidebar footer buttons; null when the footer is not customizable.
+  footer: { rect: AnchorRect; items: SidebarFooterItem[] } | null;
 }
 
 export interface SidebarMenuLink {
@@ -770,7 +810,9 @@ export type CommandBarAction =
   | { type: 'sidebar-command'; command: SidebarMenuCommand }
   | { type: 'switch-space'; id: string }
   | { type: 'open-chat'; id: string }
-  | { type: 'open-link'; url: string };
+  | { type: 'open-link'; url: string }
+  | { type: 'download-action'; id: string }
+  | { type: 'place-footer-item'; item: SidebarFooterItem; index: number };
 
 export const CommandBarChannel = {
   open: 'yalqen-command:open',
@@ -913,6 +955,7 @@ export interface SettingsValues {
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
   toolbarVisible: boolean;
   toolbarButtons: ToolbarItemId[];
+  sidebarFooterItems: SidebarFooterItem[];
   discardAfterMinutes: number;
   autoArchiveHours: number;
   adBlocking: boolean;

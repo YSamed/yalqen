@@ -59,6 +59,7 @@ test('unknown or mistyped fields fall back', () => {
       sidebarWidgets: ['media'],
       toolbarVisible: true,
       toolbarButtons: ['home', 'bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
+      sidebarFooterItems: ['spaces', 'downloads', 'screenshot'],
       discardAfterMinutes: 30,
       autoArchiveHours: 0,
       adBlocking: true,

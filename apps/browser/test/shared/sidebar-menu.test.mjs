@@ -49,3 +49,19 @@ test('chat days read as today, yesterday, then a date', () => {
   assert.equal(dayLabel(new Date(2026, 10, 22, 23).getTime(), 'tr', now), 'Dün');
   assert.equal(dayLabel(new Date(2026, 10, 2).getTime(), 'en', now), 'November 2');
 });
+
+test('download rows and footer drops pass only for what the open menu offered', () => {
+  const withDownloads = { ...menu, downloads: [{ id: 'dl-1', filename: 'a.zip', status: 'Done' }], footer: null };
+  assert.deepEqual(sidebarMenuAction({ type: 'download-action', id: 'dl-1' }, withDownloads), {
+    type: 'download-action',
+    id: 'dl-1',
+  });
+  assert.equal(sidebarMenuAction({ type: 'download-action', id: 'dl-2' }, withDownloads), null);
+  const drop = { type: 'place-footer-item', item: 'settings', index: 1 };
+  assert.equal(sidebarMenuAction(drop, withDownloads), null);
+  const customizable = { ...withDownloads, footer: { rect: menu.anchor, items: [] } };
+  assert.deepEqual(sidebarMenuAction(drop, customizable), drop);
+  assert.equal(sidebarMenuAction({ ...drop, item: 'tabs' }, customizable), null);
+  assert.equal(sidebarMenuAction({ ...drop, index: 3 }, customizable), null);
+  assert.equal(sidebarMenuAction({ ...drop, index: 0.5 }, customizable), null);
+});

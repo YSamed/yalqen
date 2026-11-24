@@ -6,16 +6,19 @@
     PinnedDisplay,
     ProfileKind,
     SidebarMenuKind,
+    SidebarFooterItem,
+    AnchorRect,
     TabId,
     TabSnapshot,
   } from '../../shared/types';
   import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
+  import { placeSidebarFooterItem } from '../../shared/types';
   import { cubicOut } from 'svelte/easing';
   import { scale } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { devStates } from './format';
-  import Icon from '../ui/Icon.svelte';
+  import Icon, { type IconName } from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import MediaPlayer from './MediaPlayer.svelte';
   import LiveFolders from './LiveFolders.svelte';
@@ -59,6 +62,7 @@
     agents = { waiting: 0, working: 0 },
     updateReady = false,
     downloads = { active: 0, progress: null, started: 0 },
+    footerItems = [],
   }: {
     tabs: TabSnapshot[];
     listOrder: TabId[];
@@ -92,6 +96,7 @@
     agents?: { waiting: number; working: number };
     updateReady?: boolean;
     downloads?: DownloadsSummary;
+    footerItems?: SidebarFooterItem[];
   } = $props();
 
   type DragGroup = 'pinned' | 'listed';
@@ -139,14 +144,86 @@
 
   $effect(() => window.yalqen.onAddLiveFolder(() => (addingLiveFolder = true)));
 
-  function openSidebarMenu(kind: SidebarMenuKind): void {
-    const rect = moreButton?.getBoundingClientRect();
-    if (!rect) return;
+  function rectOf(element: Element): AnchorRect {
+    const { x, y, width, height } = element.getBoundingClientRect();
+    return { x, y, width, height };
+  }
+
+  function openSidebarMenu(kind: SidebarMenuKind, from: HTMLElement | undefined = moreButton): void {
+    if (!from) return;
     send({
       type: 'open-sidebar-menu',
       kind,
-      anchor: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      anchor: rectOf(from),
+      ...(footerTools ? { footer: rectOf(footerTools) } : {}),
     });
+  }
+
+  const FOOTER_ITEM_TYPE = 'application/x-yalqen-footer-item';
+  const FOOTER_SLOT_WIDTH = 35;
+  let footerTools: HTMLElement | undefined = $state();
+  let draggedFooterItem: SidebarFooterItem | null = null;
+
+  function footerSlot(event: DragEvent): number {
+    return footerTools ? Math.floor((event.clientX - footerTools.getBoundingClientRect().left) / FOOTER_SLOT_WIDTH) : 0;
+  }
+
+  function setFooterItems(items: SidebarFooterItem[]): void {
+    send({ type: 'set-sidebar-footer-items', items });
+  }
+
+  function footerButton(item: SidebarFooterItem): {
+    icon: IconName;
+    label: string;
+    popup?: boolean;
+    run: (button: HTMLElement) => void;
+  } {
+    switch (item) {
+      case 'history':
+        return { icon: 'history', label: t('toolbar.history'), run: () => send({ type: 'open-history' }) };
+      case 'bookmarks':
+        return {
+          icon: 'bookmarks',
+          label: t('toolbar.bookmarks'),
+          run: () => send({ type: 'toggle-bookmarks-panel' }),
+        };
+      case 'spaces':
+        return {
+          icon: 'sidebar',
+          label: t('spaces.switcher'),
+          popup: true,
+          run: (button) => openSidebarMenu('spaces', button),
+        };
+      case 'downloads':
+        return {
+          icon: 'download',
+          label: t('toolbar.downloads'),
+          popup: true,
+          run: (button) => openSidebarMenu('downloads', button),
+        };
+      case 'extensions':
+        return {
+          icon: 'extensions',
+          label: t('toolbar.extensions'),
+          popup: true,
+          run: (button) => send({ type: 'open-extensions-menu', anchor: rectOf(button) }),
+        };
+      case 'screenshot':
+        return {
+          icon: 'screenshot',
+          label: t('toolbar.fullPageScreenshot'),
+          run: () => send({ type: 'dev-command', id: 'full-page-screenshot' }),
+        };
+      case 'settings':
+        return { icon: 'settings', label: t('toolbar.settings'), run: () => send({ type: 'open-settings' }) };
+      case 'profile':
+        return {
+          icon: 'profile',
+          label: t('toolbar.profile'),
+          popup: true,
+          run: () => send({ type: 'open-profile-menu' }),
+        };
+    }
   }
 
   const send = window.yalqen.send;
@@ -190,6 +267,7 @@
     !card && !collapsed && spaces.length > 1 ? spaces.find((space) => space.id === activeSpaceId)?.name : undefined,
   );
   const wide = $derived(card && !collapsed);
+  const activeSpace = $derived(spaces.find((space) => space.id === activeSpaceId));
   const inSpaceRow = $derived(!collapsed && spaces.length > 0);
   const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
   const visibleEntries = $derived(
@@ -811,7 +889,7 @@
             dropIndex === index + 1 &&
             tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
           data-drag-index={index >= 0 ? index : undefined}
-          data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
+          data-hover-preview={!tab.isPrivate ? '' : undefined}
           animate:reorder
           style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
           onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
@@ -900,7 +978,7 @@
               class:drop-before={draggingPinned && dropIndex === index}
               class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
               data-drag-index={index}
-              data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
+              data-hover-preview={!tab.isPrivate ? '' : undefined}
               animate:reorder
               style:transform={dragStyle(tab.id)}
               onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
@@ -1039,13 +1117,62 @@
           />
         {:else}
           {#if wide}
-            {#if profile !== 'private'}
+            {#if profile === 'developer'}
               <button type="button" class="footer-button chats-button" onclick={() => openSidebarMenu('chats')}>
-                <Icon name="sparkle" size={14} />
+                <Icon name="chats" size={16} />
                 <span class="footer-label">{t('sidebarMenu.chats')}</span>
               </button>
             {:else}
-              <span class="footer-fill"></span>
+              <div
+                class="footer-tools"
+                role="toolbar"
+                tabindex="-1"
+                aria-label={t('sidebarMenu.footerTools')}
+                bind:this={footerTools}
+                ondragover={(e) => {
+                  if (!draggedFooterItem) return;
+                  e.preventDefault();
+                  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                }}
+                ondrop={(e) => {
+                  if (!draggedFooterItem) return;
+                  e.preventDefault();
+                  setFooterItems(placeSidebarFooterItem(footerItems, draggedFooterItem, footerSlot(e)));
+                  draggedFooterItem = null;
+                }}
+              >
+                {#each footerItems as item (item)}
+                  {#if item !== 'spaces' || spaces.length > 0}
+                    {@const button = footerButton(item)}
+                    <button
+                      type="button"
+                      class="footer-button tool-button"
+                      aria-label={button.label}
+                      title={button.label}
+                      aria-haspopup={button.popup ? 'dialog' : undefined}
+                      disabled={item === 'screenshot' && !activeTabId}
+                      draggable="true"
+                      ondragstart={(e) => {
+                        draggedFooterItem = item;
+                        e.dataTransfer?.setData(FOOTER_ITEM_TYPE, item);
+                        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      ondragend={(e) => {
+                        // Dropped anywhere outside the footer takes the button off it.
+                        if (draggedFooterItem === item && e.dataTransfer?.dropEffect === 'none')
+                          setFooterItems(footerItems.filter((candidate) => candidate !== item));
+                        draggedFooterItem = null;
+                      }}
+                      onclick={(e) => button.run(e.currentTarget)}
+                    >
+                      {#if item === 'spaces' && activeSpace?.icon}<span class="space-icon">{activeSpace.icon}</span
+                        >{:else}<Icon name={button.icon} size={16} />{/if}
+                      {#if item === 'downloads' && downloads.active > 0}<span class="download-dot" aria-hidden="true"
+                        ></span>{/if}
+                    </button>
+                  {/if}
+                {/each}
+              </div>
             {/if}
             <button
               bind:this={moreButton}
@@ -1057,7 +1184,8 @@
               onclick={() => openSidebarMenu('tabs')}
             >
               <Icon name="down" size={14} />
-              {#if downloads.active > 0}<span class="download-dot" aria-hidden="true"></span>{/if}
+              {#if downloads.active > 0 && profile === 'developer'}<span class="download-dot" aria-hidden="true"
+                ></span>{/if}
             </button>
           {:else}
             <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
@@ -1814,8 +1942,27 @@
     padding: 0;
   }
 
-  .footer-fill {
+  .footer-tools {
+    display: flex;
     flex: 1;
+    min-width: 0;
+  }
+
+  .tool-button {
+    position: relative;
+    justify-content: center;
+    width: 35px;
+    padding: 0;
+  }
+
+  .tool-button:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .space-icon {
+    font-size: 15px;
+    line-height: 1;
   }
 
   .panel.card .add-menu {

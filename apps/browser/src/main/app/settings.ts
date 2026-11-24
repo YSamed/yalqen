@@ -12,7 +12,9 @@ import type {
   ToolbarItemId,
 } from '../../shared/types.js';
 import {
+  DEFAULT_SIDEBAR_FOOTER_ITEMS,
   DEFAULT_TOOLBAR_BUTTONS,
+  sanitizeSidebarFooterItems,
   DEFAULT_ZOOM_FACTORS,
   REQUIRED_TOOLBAR_BUTTON,
   TOOLBAR_BUTTON_IDS,
@@ -60,6 +62,7 @@ const DEFAULTS: Settings = {
   sidebarWidgets: ['media'],
   toolbarVisible: true,
   toolbarButtons: [...DEFAULT_TOOLBAR_BUTTONS],
+  sidebarFooterItems: [...DEFAULT_SIDEBAR_FOOTER_ITEMS],
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   autoArchiveHours: 0,
   adBlocking: true,
@@ -159,6 +162,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     sidebarWidgets,
     toolbarVisible,
     toolbarButtons,
+    sidebarFooterItems,
     discardAfterMinutes,
     autoArchiveHours,
     adBlocking,
@@ -235,6 +239,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     sidebarWidgets: sanitizeSidebarWidgets(sidebarWidgets, base.sidebarWidgets),
     toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
     toolbarButtons: sanitizeToolbarButtons(toolbarButtons, base.toolbarButtons),
+    sidebarFooterItems: sanitizeSidebarFooterItems(sidebarFooterItems, base.sidebarFooterItems),
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     autoArchiveHours: isAutoArchiveHours(autoArchiveHours) ? autoArchiveHours : base.autoArchiveHours,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
