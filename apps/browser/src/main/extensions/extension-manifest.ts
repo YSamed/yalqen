@@ -51,6 +51,10 @@ export function popupPage(manifest: Manifest): string | null {
   return nonEmpty(action(manifest)?.default_popup);
 }
 
+export function sidePanelPage(manifest: Manifest): string | null {
+  return nonEmpty(record(manifest.side_panel)?.default_path);
+}
+
 export function optionsPage(manifest: Manifest): string | null {
   return nonEmpty(record(manifest.options_ui)?.page) ?? nonEmpty(manifest.options_page);
 }

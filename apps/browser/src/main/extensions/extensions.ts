@@ -57,6 +57,8 @@ interface ExtensionAction {
   icon: NativeImage | null;
   popupUrl: string | null;
   optionsUrl: string | null;
+  sidePanel?: string | null;
+  sidePanelOnAction?: boolean;
 }
 
 interface ExtensionsMenuHandlers {
@@ -66,7 +68,11 @@ interface ExtensionsMenuHandlers {
   manage(): void;
   requestAccess?(directory: string): void;
   canRequestAccess?: boolean;
+  toggleSidePanel?(extensionId: string): void;
+  sidePanelOpen?: string | null;
 }
+
+const panelOnAction = (action: ExtensionAction) => Boolean(action.sidePanel && action.sidePanelOnAction);
 
 export function extensionsMenuTemplate(
   actions: readonly ExtensionAction[],
@@ -78,12 +84,26 @@ export function extensionsMenuTemplate(
       {
         label: action.title,
         icon: action.icon ?? undefined,
-        enabled: action.popupUrl !== null || action.optionsUrl !== null,
+        enabled: action.popupUrl !== null || action.optionsUrl !== null || panelOnAction(action),
         click: () => {
           if (action.popupUrl) handlers.openPopup(action.popupUrl);
+          else if (panelOnAction(action)) handlers.toggleSidePanel?.(action.sidePanel!);
           else if (action.optionsUrl) handlers.openOptions(action.optionsUrl);
         },
       },
+      ...(action.sidePanel && handlers.toggleSidePanel
+        ? [
+            {
+              label: t(
+                handlers.sidePanelOpen === action.sidePanel ? 'extensions.hideSidePanel' : 'extensions.showSidePanel',
+                {
+                  name: action.title,
+                },
+              ),
+              click: () => handlers.toggleSidePanel!(action.sidePanel!),
+            },
+          ]
+        : []),
       ...(action.requestAccess && action.path && handlers.requestAccess
         ? [
             {

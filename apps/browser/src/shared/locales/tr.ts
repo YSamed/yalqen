@@ -237,6 +237,8 @@ export const tr: Record<MessageKey, string> = {
     'Sınırlı erişim paketi güvenli biçimde hazırlanamadı (128 MB / 50.000 dosya; sembolik bağlantı kabul edilmez).',
   'extensions.accessDuplicate': 'Aynı kimliğe sahip bir uzantı zaten yüklü.',
   'extensions.allowCurrentSite': '{name} için bu siteye izin ver…',
+  'extensions.showSidePanel': '{name} yan panelini göster',
+  'extensions.hideSidePanel': '{name} yan panelini gizle',
   'extensionsPanel.siteAccess': 'Site erişimi',
   'extensionsPanel.accessAll': 'İstenen tüm siteler',
   'extensionsPanel.accessSites': 'Seçilen siteler',

@@ -371,6 +371,8 @@ function startBrowser(): void {
     focusedFirst().find((window) => !window.isPrivate && !window.isDeveloper && window.webApp === null) ?? null;
   const tabsWindowOf = (contents: Electron.WebContents) => windows.find((window) => window.tabs.hasContents(contents));
   const extensionWindows = () => focusedFirst().filter((window) => !window.isPrivate && !window.window.isDestroyed());
+  const extensionWindowById = (id: number | null) =>
+    id === null ? mainWindow() : extensionWindows().find((window) => window.window.id === id);
   const extensionBridge = new ExtensionBridge(
     daily,
     {
@@ -381,11 +383,21 @@ function startBrowser(): void {
       },
       close: (contents) => tabsWindowOf(contents)?.tabs.closeContents(contents) ?? false,
       isTab: (contents) => tabsWindowOf(contents) !== undefined,
-      windowId: (contents) => tabsWindowOf(contents)?.window.id ?? extensionPopup.windowId(contents) ?? WINDOW_ID_NONE,
+      windowId: (contents) =>
+        (tabsWindowOf(contents) ?? windows.find((window) => window.ownsExtensionSidePanel(contents)))?.window.id ??
+        extensionPopup.windowId(contents) ??
+        WINDOW_ID_NONE,
       isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
       windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
       openAction: (extensionId, contents) =>
         ((contents && tabsWindowOf(contents)) ?? mainWindow())?.openExtensionAction(extensionId),
+      openSidePanel: (extensionId, url, windowId) =>
+        extensionWindowById(windowId)?.openExtensionSidePanel(extensionId, url) ?? null,
+      closeSidePanel: (extensionId, windowId) => {
+        for (const window of windowId === null ? windows : [extensionWindowById(windowId)])
+          window?.closeExtensionSidePanel(extensionId);
+      },
+      sidePanelOpen: (extensionId, windowId) => extensionWindowById(windowId)?.sidePanelExtension === extensionId,
     },
     preloadPath('extension-apis'),
   );

@@ -17,6 +17,7 @@ interface Bridge {
   contextMenus(method: string, args: unknown[]): Promise<void>;
   notifications(method: string, args: unknown[]): Promise<unknown>;
   library(namespace: string, method: string, args: unknown[]): Promise<unknown>;
+  sidePanel(method: string, args: unknown[]): Promise<unknown>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
@@ -35,6 +36,7 @@ const bridge: Bridge = {
   contextMenus: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.contextMenus, method, args),
   notifications: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.notifications, method, args),
   library: (namespace, method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.library, namespace, method, args),
+  sidePanel: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.sidePanel, method, args),
   shortcut: (suggested) => suggestedShortcut(suggested, globalThis.process?.platform ?? ''),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
@@ -313,6 +315,28 @@ function installExtensionApis(api: Bridge): void {
       onDeterminingFilename: undefined,
     },
   );
+  const sidePanelCall =
+    (method: string) =>
+    (...args: unknown[]) =>
+      settle(
+        api.sidePanel(
+          method,
+          args.filter((arg) => typeof arg !== 'function'),
+        ),
+        lastArgument(args),
+      );
+  if (!chromeApi.sidePanel && permissions.includes('sidePanel')) {
+    define(chromeApi, 'sidePanel', {
+      setOptions: sidePanelCall('setOptions'),
+      getOptions: sidePanelCall('getOptions'),
+      setPanelBehavior: sidePanelCall('setPanelBehavior'),
+      getPanelBehavior: sidePanelCall('getPanelBehavior'),
+      open: sidePanelCall('open'),
+      close: sidePanelCall('close'),
+      onOpened: event('sidePanel.onOpened'),
+      onClosed: event('sidePanel.onClosed'),
+    });
+  }
   const downloads = chromeApi.downloads as Record<string, unknown> | undefined;
   if (downloads && permissions.includes('downloads.open') && !downloads.open) {
     // Chrome opens a downloaded file only in response to a user gesture.
@@ -360,8 +384,8 @@ function installExtensionApis(api: Bridge): void {
     });
   }
 
-  const bridged = ['cookies', 'identity', 'history', 'bookmarks', 'downloads', 'downloads.open'].filter((name) =>
-    permissions.includes(name),
+  const bridged = ['cookies', 'identity', 'history', 'bookmarks', 'downloads', 'downloads.open', 'sidePanel'].filter(
+    (name) => permissions.includes(name),
   );
   const native = chromeApi.permissions as
     | {

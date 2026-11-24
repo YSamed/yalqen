@@ -29,6 +29,7 @@ import { callCookies, chromeCookieChange, cookieUrl, extensionGrant, hostPermitt
 import { ExtensionMenus } from './extension-menus.js';
 import { extensionFile } from './extension-manifest.js';
 import { ExtensionLibrary, type LibraryNamespace, type LibraryStores } from './extension-library.js';
+import { SidePanelApi } from './side-panel-api.js';
 
 const ACTION_COMMANDS = new Set(['_execute_action', '_execute_browser_action', '_execute_page_action']);
 
@@ -40,6 +41,9 @@ export interface ExtensionBridgeHost {
   isActive(contents: WebContents): boolean;
   windows(): ExtensionWindowState[];
   openAction(extensionId: string, contents: WebContents | null): void;
+  openSidePanel(extensionId: string, url: string, windowId: number | null): WebContents | null;
+  closeSidePanel(extensionId: string, windowId: number | null): void;
+  sidePanelOpen(extensionId: string, windowId: number): boolean;
 }
 
 interface Receiver {
@@ -56,12 +60,19 @@ export class ExtensionBridge {
   private readonly menus = new ExtensionMenus();
   private readonly notifications = new Map<string, Map<string, Notification>>();
   private library: ExtensionLibrary | null = null;
+  private readonly sidePanels: SidePanelApi;
 
   constructor(
     private readonly session: Session,
     private readonly host: ExtensionBridgeHost,
     preloadFile: string,
   ) {
+    this.sidePanels = new SidePanelApi(
+      session,
+      host,
+      (extensionId, name, args) => this.deliver(extensionId, name, args),
+      (id) => this.tabContents(id),
+    );
     for (const type of ['service-worker', 'frame'] as const) {
       session.registerPreloadScript({ type, filePath: preloadFile, matches: ['chrome-extension://*/*'] });
     }
@@ -90,6 +101,9 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.library, (event, namespace, method, args) =>
       this.callLibrary(this.frameExtension(event), namespace, method, args),
     );
+    ipcMain.handle(ExtensionBridgeChannel.sidePanel, (event, method, args) =>
+      this.sidePanel(this.frameExtension(event), method, args),
+    );
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -106,6 +120,7 @@ export class ExtensionBridge {
       this.menus.call(id, 'removeAll', []);
       for (const notification of this.notifications.get(id)?.values() ?? []) notification.close();
       this.notifications.delete(id);
+      this.sidePanels.forget(id);
     });
     session.cookies.on('changed', (_event, cookie, cause, removed) => {
       const change = chromeCookieChange(cookie, cause, removed);
@@ -164,6 +179,26 @@ export class ExtensionBridge {
   private permitted(extensionId: string, permission: string): void {
     if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
     if (!this.grant(extensionId).permissions.includes(permission)) throw new Error(`Missing ${permission} permission`);
+  }
+
+  sidePanelUrl(extensionId: string, tab: WebContents | null): string | null {
+    return this.grant(extensionId).permissions.includes('sidePanel')
+      ? this.sidePanels.panelUrl(extensionId, tab)
+      : null;
+  }
+
+  opensSidePanelOnAction(extensionId: string): boolean {
+    return this.sidePanels.opensOnAction(extensionId);
+  }
+
+  toggleSidePanel(extensionId: string, windowId: number, tab: WebContents | null): void {
+    if (this.sidePanelUrl(extensionId, tab)) this.sidePanels.toggle(extensionId, windowId, tab);
+  }
+
+  private sidePanel(extensionId: string, method: unknown, args: unknown): unknown {
+    this.permitted(extensionId, 'sidePanel');
+    if (typeof method !== 'string') throw new Error('Unsupported sidePanel method');
+    return this.sidePanels.call(extensionId, method, Array.isArray(args) ? args : []);
   }
 
   private callLibrary(extensionId: string, namespace: unknown, method: unknown, args: unknown): unknown {
@@ -345,6 +380,9 @@ export class ExtensionBridge {
     );
     worker.ipc.handle(ExtensionBridgeChannel.library, (_event, namespace, method, args) =>
       this.callLibrary(extensionId, namespace, method, args),
+    );
+    worker.ipc.handle(ExtensionBridgeChannel.sidePanel, (_event, method, args) =>
+      this.sidePanel(extensionId, method, args),
     );
   }
 

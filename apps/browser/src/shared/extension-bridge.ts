@@ -7,6 +7,7 @@ export const ExtensionBridgeChannel = {
   contextMenus: 'yalqen-extension-bridge:context-menus',
   notifications: 'yalqen-extension-bridge:notifications',
   library: 'yalqen-extension-bridge:library',
+  sidePanel: 'yalqen-extension-bridge:side-panel',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;
@@ -37,7 +38,9 @@ export type ExtensionBridgeEvent =
   | 'bookmarks.onMoved'
   | 'downloads.onCreated'
   | 'downloads.onChanged'
-  | 'downloads.onErased';
+  | 'downloads.onErased'
+  | 'sidePanel.onOpened'
+  | 'sidePanel.onClosed';
 
 export const WINDOW_ID_NONE = -1;
 

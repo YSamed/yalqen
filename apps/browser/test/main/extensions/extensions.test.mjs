@@ -207,6 +207,37 @@ test('the extensions menu opens popups, falls back to options and links to manag
   );
 });
 
+test('extensions with a side panel get a toggle, and the action opens the panel when asked to', () => {
+  const calls = [];
+  const handlers = {
+    openPopup: (url) => calls.push(['popup', url]),
+    openOptions: (url) => calls.push(['options', url]),
+    openStore: () => {},
+    manage: () => {},
+    toggleSidePanel: (id) => calls.push(['panel', id]),
+    sidePanelOpen: 'p',
+  };
+  const items = extensionsMenuTemplate(
+    [
+      { title: 'Panel', icon: null, popupUrl: null, optionsUrl: null, sidePanel: 'p', sidePanelOnAction: true },
+      { title: 'Quiet', icon: null, popupUrl: null, optionsUrl: 'chrome-extension://q/o.html', sidePanel: 'q' },
+    ],
+    handlers,
+  );
+  assert.deepEqual(
+    items.slice(0, 4).map((item) => item.label),
+    ['Panel', 'Panel yan panelini gizle', 'Quiet', 'Quiet yan panelini göster'],
+  );
+  assert.equal(items[0].enabled, true);
+  for (const item of items.slice(0, 4)) item.click();
+  assert.deepEqual(calls, [
+    ['panel', 'p'],
+    ['panel', 'p'],
+    ['options', 'chrome-extension://q/o.html'],
+    ['panel', 'q'],
+  ]);
+});
+
 test('load errors drop the folder prefix Electron adds', () => {
   assert.equal(
     errorMessage(new Error('Loading extension at /a b/ext failed with: Manifest file is missing or unreadable')),

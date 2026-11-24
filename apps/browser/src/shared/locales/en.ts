@@ -231,6 +231,8 @@ export const en = {
     'The restricted extension package could not be prepared safely (128 MB / 50,000 files; no symbolic links).',
   'extensions.accessDuplicate': 'An extension with the same identity is already loaded.',
   'extensions.allowCurrentSite': 'Allow {name} on this site…',
+  'extensions.showSidePanel': 'Show {name} side panel',
+  'extensions.hideSidePanel': 'Hide {name} side panel',
   'extensionsPanel.siteAccess': 'Site access',
   'extensionsPanel.accessAll': 'All requested sites',
   'extensionsPanel.accessSites': 'Selected sites',

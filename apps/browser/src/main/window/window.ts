@@ -73,6 +73,7 @@ import {
 import { sanitizeAnchor, type ExtensionPopup } from '../extensions/extension-popup.js';
 import { STORE_HOME } from '../extensions/chrome-web-store.js';
 import { extensionsMenuTemplate, type ExtensionManager } from '../extensions/extensions.js';
+import { ExtensionSidePanel } from '../extensions/extension-side-panel.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from '../library/history.js';
@@ -310,6 +311,7 @@ export class YalqenWindow {
   private readonly commandHost: CommandBarHost;
   private readonly findHost: FindBarHost;
   private pageArea: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
+  private sidePanel: ExtensionSidePanel | null = null;
   private readonly preconnector: Preconnector;
   private layout: ChromeLayout = {
     panelWidth: 170,
@@ -600,6 +602,17 @@ export class YalqenWindow {
       agentTracing: () => app.settings.get().agentBridge && app.settings.get().agentTracing,
     });
 
+    this.sidePanel = new ExtensionSidePanel({
+      window: this.window,
+      session: app.daily,
+      onOpenUrl: (url) => this.tabs.open(url, { isPrivate: false }),
+      onResize: () => {
+        if (this.window.isDestroyed()) return;
+        const { width, height } = this.window.getContentBounds();
+        this.placePage(width, height);
+      },
+    });
+
     this.peek = new LinkPeek({
       window: this.window,
       page: rendererPath('peek.html'),
@@ -698,6 +711,7 @@ export class YalqenWindow {
       this.responsiveScans.clear();
       const hadPrivate = this.tabs.hasPrivateTabs;
       const hadDeveloper = this.tabs.hasDeveloperTabs;
+      this.sidePanel?.close();
       this.peek.close();
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
@@ -2349,9 +2363,33 @@ export class YalqenWindow {
     }
   }
 
+  get sidePanelExtension(): string | null {
+    return this.sidePanel?.extensionId ?? null;
+  }
+
+  ownsExtensionSidePanel(contents: WebContents): boolean {
+    return this.sidePanel?.owns(contents) ?? false;
+  }
+
+  openExtensionSidePanel(extensionId: string, url: string): WebContents | null {
+    return this.isPrivate || !this.sidePanel ? null : this.sidePanel.open(extensionId, url);
+  }
+
+  closeExtensionSidePanel(extensionId: string): void {
+    if (this.sidePanel?.extensionId === extensionId) this.sidePanel.close();
+  }
+
+  private toggleExtensionSidePanel(extensionId: string): void {
+    this.app.extensionBridge.toggleSidePanel(extensionId, this.window.id, this.tabs.activeContents());
+  }
+
   openExtensionAction(extensionId: string): void {
     const popupUrl = this.app.extensions.actions().find((action) => action.id === extensionId)?.popupUrl;
-    if (!popupUrl || this.isPrivate) return;
+    if (this.isPrivate) return;
+    if (!popupUrl) {
+      if (this.app.extensionBridge.opensSidePanelOnAction(extensionId)) this.toggleExtensionSidePanel(extensionId);
+      return;
+    }
     const { width } = this.window.getContentBounds();
     const anchor = this.sidebarMenuAnchor.width > 0 ? this.sidebarMenuAnchor : { x: width, y: 0, width: 0, height: 0 };
     this.openExtensionPopup(popupUrl, anchor);
@@ -2369,7 +2407,15 @@ export class YalqenWindow {
 
   private openExtensionsMenu(anchor: AnchorRect): void {
     const openTab = (url: string) => this.tabs.open(url, { isPrivate: false });
-    const template = extensionsMenuTemplate(this.app.extensions.actions(), {
+    const tab = this.tabs.activeContents();
+    const actions = this.app.extensions.actions().map((action) => ({
+      ...action,
+      sidePanel: action.id && this.app.extensionBridge.sidePanelUrl(action.id, tab) ? action.id : null,
+      sidePanelOnAction: action.id ? this.app.extensionBridge.opensSidePanelOnAction(action.id) : false,
+    }));
+    const template = extensionsMenuTemplate(actions, {
+      sidePanelOpen: this.sidePanel?.extensionId ?? null,
+      toggleSidePanel: (id) => this.toggleExtensionSidePanel(id),
       canRequestAccess: !this.isPrivate && !this.isDeveloper && /^https?:/.test(this.tabs.activeUrl),
       requestAccess: (directory) => {
         const contents = this.tabs.activeContents();
@@ -2699,15 +2745,15 @@ export class YalqenWindow {
   }
 
   private placePage(width: number, height: number): number {
-    const { radius, ...frame } = pageFrame(
-      width,
-      height,
-      this.layout,
-      this.isPageFullScreen(),
-      this.tabs.showsOnlyNewTab,
-    );
+    const fullScreen = this.isPageFullScreen();
+    const reserved = fullScreen ? 0 : (this.sidePanel?.reserved ?? 0);
+    const layout = reserved
+      ? { ...this.layout, agentPanelWidth: (this.layout.agentPanelWidth ?? 0) + reserved }
+      : this.layout;
+    const { radius, ...frame } = pageFrame(width, height, layout, fullScreen, this.tabs.showsOnlyNewTab);
     const bounds = { ...frame, y: frame.y + this.menuBarInset };
     this.tabs.setPageLayout(bounds);
+    this.sidePanel?.place(reserved ? bounds : null);
     this.pageArea = bounds;
     this.placeFloatingChat();
     this.findBar.relayout(this.window);
