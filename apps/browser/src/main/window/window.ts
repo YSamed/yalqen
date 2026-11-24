@@ -73,6 +73,7 @@ import {
 import { sanitizeAnchor, type ExtensionPopup } from '../extensions/extension-popup.js';
 import { STORE_HOME } from '../extensions/chrome-web-store.js';
 import { extensionsMenuTemplate, runAction, type ExtensionManager } from '../extensions/extensions.js';
+import { withBadgeDot } from '../extensions/action-api.js';
 import { ExtensionSidePanel } from '../extensions/extension-side-panel.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
@@ -2384,9 +2385,11 @@ export class YalqenWindow {
     const panel = this.sidePanel;
     const extensionId = panel?.extensionId;
     if (!panel || !extensionId) return;
-    const url = this.app.extensionBridge.sidePanelUrl(extensionId, this.tabs.activeContents());
+    const tab = this.tabs.activeContents();
+    const url = this.app.extensionBridge.sidePanelUrl(extensionId, tab);
     if (url) panel.open(extensionId, url);
     else panel.hide();
+    this.app.extensionBridge.sidePanelTabSwitched(extensionId, this.window.id, tab, url);
   }
 
   private toggleExtensionSidePanel(extensionId: string): void {
@@ -2396,9 +2399,16 @@ export class YalqenWindow {
   openExtensionAction(extensionId: string): void {
     const action = this.extensionActions().find((candidate) => candidate.id === extensionId);
     if (this.isPrivate || !action) return;
+    runAction(action, this.extensionActionHandlers(this.extensionActionAnchor()));
+  }
+
+  openExtensionActionPopup(url: string): void {
+    if (!this.isPrivate) this.openExtensionPopup(url, this.extensionActionAnchor());
+  }
+
+  private extensionActionAnchor(): AnchorRect {
     const { width } = this.window.getContentBounds();
-    const anchor = this.sidebarMenuAnchor.width > 0 ? this.sidebarMenuAnchor : { x: width, y: 0, width: 0, height: 0 };
-    runAction(action, this.extensionActionHandlers(anchor));
+    return this.sidebarMenuAnchor.width > 0 ? this.sidebarMenuAnchor : { x: width, y: 0, width: 0, height: 0 };
   }
 
   private extensionActions() {
@@ -2408,7 +2418,7 @@ export class YalqenWindow {
       const state = action.id ? bridge.actionState(action.id, tab) : null;
       return {
         ...action,
-        ...(state && { ...state, icon: state.icon ?? action.icon }),
+        ...(state && { ...state, icon: withBadgeDot(state.icon ?? action.icon, state.badge, state.badgeColor) }),
         sidePanel: action.id && bridge.sidePanelUrl(action.id, tab) ? action.id : null,
         sidePanelOnAction: action.id ? bridge.opensSidePanelOnAction(action.id) : false,
       };

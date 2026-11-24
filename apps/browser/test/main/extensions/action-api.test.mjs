@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import actionApi from '../../../dist/main/extensions/action-api.js';
 import extensions from '../../../dist/main/extensions/extensions.js';
 
-const { ActionApi, badgeColor, iconSource } = actionApi;
+const { ActionApi, badgeColor, iconSource, paintBadgeDot } = actionApi;
 const { actionTarget, extensionsMenuTemplate, runAction } = extensions;
 const ID = 'a'.repeat(32);
 const BASE = `chrome-extension://${ID}/`;
@@ -15,7 +15,15 @@ function fakeApi(manifest = { action: { default_popup: 'popup.html', default_tit
   const opened = [];
   const api = new ActionApi(
     session,
-    { openAction: (id, contents) => opened.push([id, contents]) },
+    {
+      openActionPopup: (windowId, popupUrl) => {
+        if (windowId === 99) return 'no-window';
+        const url = popupUrl(tabs.get(7));
+        if (!url) return 'no-popup';
+        opened.push([windowId, url]);
+        return 'opened';
+      },
+    },
     (id) => tabs.get(id) ?? null,
   );
   return { api, tab: tabs.get(7), opened };
@@ -65,14 +73,28 @@ test('setPopup overrides the manifest, an empty popup removes it, and outside pa
   const { api, opened } = fakeApi();
   assert.equal(api.call(ID, 'getPopup', [{}]), `${BASE}popup.html`);
   api.call(ID, 'openPopup', [{}]);
-  assert.deepEqual(opened, [[ID, null]]);
+  assert.deepEqual(opened, [[null, `${BASE}popup.html`]]);
   api.call(ID, 'setPopup', [{ popup: 'other.html' }]);
   assert.equal(api.state(ID, null).popupUrl, `${BASE}other.html`);
   assert.throws(() => api.call(ID, 'setPopup', [{ popup: 'https://example.com/' }]), /Invalid popup/);
   api.call(ID, 'setPopup', [{ popup: '' }]);
   assert.equal(api.call(ID, 'getPopup', [{}]), '');
   assert.equal(api.state(ID, null).popupUrl, null);
-  assert.throws(() => api.call(ID, 'openPopup', [{}]), /No popup/);
+  assert.throws(() => api.call(ID, 'openPopup', [{}]), /does not have a popup on the active tab/);
+});
+
+test('openPopup targets the given window and uses the active tab popup', () => {
+  const { api, opened } = fakeApi();
+  api.call(ID, 'openPopup', [{ windowId: 5 }]);
+  assert.deepEqual(opened, [[5, `${BASE}popup.html`]]);
+  assert.throws(() => api.call(ID, 'openPopup', [{ windowId: 99 }]), /No window with id: 99\./);
+  assert.throws(() => api.call(ID, 'openPopup', [{ windowId: '5' }]), /Invalid windowId/);
+  api.call(ID, 'setPopup', [{ popup: '', tabId: 7 }]);
+  assert.throws(() => api.call(ID, 'openPopup', [{ windowId: 5 }]), /does not have a popup on the active tab/);
+  assert.equal(opened.length, 1);
+  api.call(ID, 'setPopup', [{ popup: 'tab.html', tabId: 7 }]);
+  api.call(ID, 'openPopup', [{}]);
+  assert.deepEqual(opened[1], [null, `${BASE}tab.html`]);
 });
 
 test('colors and titles fall back to defaults, and listeners are forgotten on unload', () => {
@@ -127,4 +149,24 @@ test('the menu shows the badge in the label and disables a disabled action', () 
   assert.equal(badged.enabled, true);
   assert.equal(off.label, 'B');
   assert.equal(off.enabled, false);
+});
+
+test('the badge dot is painted in BGRA order with a light border, in the bottom-right corner', () => {
+  const size = { width: 16, height: 16 };
+  const empty = Buffer.alloc(16 * 16 * 4);
+  const at = (x, y) => (y * 16 + x) * 4;
+  const painted = paintBadgeDot(empty, size, [255, 0, 0, 255]);
+  assert.deepEqual([...painted.subarray(at(12, 12), at(12, 12) + 4)], [0, 0, 255, 255]);
+  assert.deepEqual([...painted.subarray(at(15, 12), at(15, 12) + 4)], [255, 255, 255, 255]);
+  assert.deepEqual([...painted.subarray(at(0, 0), at(0, 0) + 4)], [0, 0, 0, 0]);
+  assert.deepEqual([...empty.subarray(at(12, 12), at(12, 12) + 4)], [0, 0, 0, 0]);
+  const fallback = paintBadgeDot(empty, size, [0, 0, 0, 0]);
+  assert.deepEqual([...fallback.subarray(at(12, 12), at(12, 12) + 4)], [0x68, 0x63, 0x5f, 255]);
+});
+
+test('the action state carries the badge color, defaulting to unset', () => {
+  const { api } = fakeApi();
+  assert.deepEqual(api.state(ID, null).badgeColor, [0, 0, 0, 0]);
+  api.call(ID, 'setBadgeBackgroundColor', [{ color: '#00f' }]);
+  assert.deepEqual(api.state(ID, null).badgeColor, [0, 0, 255, 255]);
 });

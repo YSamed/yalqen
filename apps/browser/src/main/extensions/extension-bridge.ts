@@ -31,6 +31,7 @@ import { extensionFile } from './extension-manifest.js';
 import { ExtensionLibrary, type LibraryNamespace, type LibraryStores } from './extension-library.js';
 import { SidePanelApi } from './side-panel-api.js';
 import { ActionApi, type ActionState } from './action-api.js';
+import { SilentAuthFlows } from './auth-flow.js';
 
 const ACTION_COMMANDS = new Set(['_execute_action', '_execute_browser_action', '_execute_page_action']);
 
@@ -42,6 +43,10 @@ export interface ExtensionBridgeHost {
   isActive(contents: WebContents): boolean;
   windows(): ExtensionWindowState[];
   openAction(extensionId: string, contents: WebContents | null): void;
+  openActionPopup(
+    windowId: number | null,
+    popupUrl: (activeTab: WebContents | null) => string | null,
+  ): 'opened' | 'no-window' | 'no-popup';
   openSidePanel(extensionId: string, url: string, windowId: number | null): WebContents | null;
   closeSidePanel(extensionId: string, windowId: number | null): void;
   sidePanelOpen(extensionId: string, windowId: number): boolean;
@@ -62,8 +67,10 @@ export class ExtensionBridge {
   private readonly menus = new ExtensionMenus();
   private readonly notifications = new Map<string, Map<string, Notification>>();
   private library: ExtensionLibrary | null = null;
+  private readonly historyListeners = new Set<string>();
   private readonly sidePanels: SidePanelApi;
   private readonly actions: ActionApi;
+  private readonly silentAuth: SilentAuthFlows;
 
   constructor(
     private readonly session: Session,
@@ -77,6 +84,7 @@ export class ExtensionBridge {
       (id) => this.tabContents(id),
     );
     this.actions = new ActionApi(session, host, (id) => this.tabContents(id));
+    this.silentAuth = new SilentAuthFlows(session);
     for (const type of ['service-worker', 'frame'] as const) {
       session.registerPreloadScript({ type, filePath: preloadFile, matches: ['chrome-extension://*/*'] });
     }
@@ -111,6 +119,9 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.action, (event, method, args) =>
       this.action(this.frameExtension(event), method, args),
     );
+    ipcMain.handle(ExtensionBridgeChannel.webAuthFlow, (event, details) =>
+      this.webAuthFlow(this.frameExtension(event), details),
+    );
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -129,6 +140,8 @@ export class ExtensionBridge {
       this.notifications.delete(id);
       this.sidePanels.forget(id);
       this.actions.forget(id);
+      this.historyListeners.delete(id);
+      this.silentAuth.cancel(id);
     });
     session.cookies.on('changed', (_event, cookie, cause, removed) => {
       const change = chromeCookieChange(cookie, cause, removed);
@@ -148,16 +161,10 @@ export class ExtensionBridge {
       wants: (permission) =>
         this.session.extensions.getAllExtensions().some(({ id }) => this.grant(id).permissions.includes(permission)),
       emit: (permission, name, args) => {
-        if (permission === 'history') {
-          // shortcut: history events skip sleeping workers (waking one per visit is costly), wake them if an extension needs it.
-          for (const receiver of this.receivers()) {
-            const extensionId = receiver.extensionId();
-            if (extensionId && this.grant(extensionId).permissions.includes(permission)) receiver.send(name, args);
-          }
-          return;
-        }
         for (const { id } of this.session.extensions.getAllExtensions()) {
-          if (this.grant(id).permissions.includes(permission)) this.deliver(id, name, args);
+          if (!this.grant(id).permissions.includes(permission)) continue;
+          if (permission !== 'history' || this.historyListeners.has(id)) this.deliver(id, name, args);
+          else for (const receiver of this.receivers()) if (receiver.extensionId() === id) receiver.send(name, args);
         }
       },
     });
@@ -210,6 +217,10 @@ export class ExtensionBridge {
     if (this.sidePanelUrl(extensionId, tab)) this.sidePanels.toggle(extensionId, windowId, tab);
   }
 
+  sidePanelTabSwitched(extensionId: string, windowId: number, tab: WebContents | null, url: string | null): void {
+    this.sidePanels.tabSwitched(extensionId, windowId, tab, url);
+  }
+
   actionState(extensionId: string, tab: WebContents | null): ActionState | null {
     return this.actions.state(extensionId, tab);
   }
@@ -225,6 +236,16 @@ export class ExtensionBridge {
     return this.actions.call(extensionId, method, Array.isArray(args) ? args : []);
   }
 
+  private async webAuthFlow(extensionId: string, details: unknown, worker?: ServiceWorkerMain): Promise<string> {
+    this.permitted(extensionId, 'identity');
+    const task = worker && !worker.isDestroyed() ? worker.startTask() : null;
+    try {
+      return await this.silentAuth.launch(extensionId, details);
+    } finally {
+      task?.end();
+    }
+  }
+
   private sidePanel(extensionId: string, method: unknown, args: unknown): unknown {
     this.permitted(extensionId, 'sidePanel');
     if (typeof method !== 'string') throw new Error('Unsupported sidePanel method');
@@ -236,6 +257,11 @@ export class ExtensionBridge {
       throw new Error('Unknown extension API');
     this.permitted(extensionId, namespace);
     if (!this.library || typeof method !== 'string') throw new Error(`Unsupported ${namespace} method`);
+    // shortcut: a sleeping worker wakes for history events only once it has run since launch and registered a listener, persist them like Chrome's lazy listeners if that bites.
+    if (namespace === 'history' && method === 'listen') {
+      this.historyListeners.add(extensionId);
+      return undefined;
+    }
     return this.library.call(
       namespace as LibraryNamespace,
       method,
@@ -415,6 +441,9 @@ export class ExtensionBridge {
       this.sidePanel(extensionId, method, args),
     );
     worker.ipc.handle(ExtensionBridgeChannel.action, (_event, method, args) => this.action(extensionId, method, args));
+    worker.ipc.handle(ExtensionBridgeChannel.webAuthFlow, (_event, details) =>
+      this.webAuthFlow(extensionId, details, worker),
+    );
   }
 
   private frameExtension(event: IpcMainInvokeEvent): string {

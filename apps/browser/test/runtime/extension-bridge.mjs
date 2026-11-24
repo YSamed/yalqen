@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { app, BaseWindow, BrowserWindow, session } from 'electron';
+import { app, BaseWindow, BrowserWindow, session, webContents } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import extensionBridge from '../../dist/main/extensions/extension-bridge.js';
 import tabs from '../../dist/main/tabs/tabs.js';
@@ -13,14 +13,22 @@ app.setPath('userData', path.join(profile, 'profile'));
 const windows = [];
 let tabManager;
 const deadline = setTimeout(() => app.exit(1), 30000);
+let consentShown = false;
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/auth') {
-    res.writeHead(302, { Location: `${url.searchParams.get('redirect')}/cb?code=abc` });
+  const redirect = url.searchParams.get('redirect');
+  if (url.pathname === '/auth' || (url.pathname === '/consent' && consentShown)) {
+    res.writeHead(302, { Location: `${redirect}/cb?code=abc` });
     res.end();
     return;
   }
   res.setHeader('Content-Type', 'text/html');
+  if (url.pathname === '/consent') consentShown = true;
+  if (url.pathname === '/late') {
+    const target = JSON.stringify(`${redirect}/cb?code=late`);
+    res.end(`<script>addEventListener('load', () => setTimeout(() => (location.href = ${target}), 50));</script>`);
+    return;
+  }
   res.end('<title>Sign in</title>');
 });
 process.on('uncaughtException', (error) => {
@@ -40,13 +48,20 @@ const WORKER = `chrome.runtime.onMessage.addListener((message, _sender, reply) =
     chrome.windows.getCurrent().then((window) => reply(window.id), (error) => reply({ error: error.message }));
     return true;
   }
-  if (message.type !== 'auth') return;
   const redirect = chrome.identity.getRedirectURL().replace(/\\/$/, '');
   const url = message.url + '?redirect=' + encodeURIComponent(redirect);
+  if (message.type === 'silent') {
+    chrome.identity.launchWebAuthFlow({ url, ...message.options }).then(
+      (result) => reply({ url: result }),
+      (error) => reply({ error: error.message }),
+    );
+    return true;
+  }
+  if (message.type !== 'auth') return;
   chrome.identity.launchWebAuthFlow({ url }).then(
-    () => reply({ error: 'non-interactive flow was not refused' }),
-    () => chrome.identity.launchWebAuthFlow({ url, interactive: true }).then(
-      (result) => reply({ url: result, redirect }),
+    () => reply({ error: 'non-interactive flow did not need the user' }),
+    (silent) => chrome.identity.launchWebAuthFlow({ url, interactive: true }).then(
+      (result) => reply({ url: result, redirect, silent: silent.message }),
       (error) => reply({ error: error.message }),
     ),
   );
@@ -56,6 +71,8 @@ const WORKER = `chrome.runtime.onMessage.addListener((message, _sender, reply) =
 const PAGE = `globalThis.removed = [];
 chrome.tabs.onRemoved.addListener((id) => removed.push(id));
 globalThis.auth = (url) => chrome.runtime.sendMessage({ type: 'auth', url });
+globalThis.silent = (url, options) => chrome.runtime.sendMessage({ type: 'silent', url, options });
+globalThis.pageSilent = (url) => chrome.identity.launchWebAuthFlow({ url }).then((result) => result, (error) => error.message);
 globalThis.openFile = () => chrome.tabs.create({ url: 'file:///etc/hosts' }).then(() => 'opened', () => 'rejected');
 globalThis.changes = [];
 chrome.cookies.onChanged.addListener((change) => changes.push(change.cookie.name + ':' + change.cause));
@@ -145,6 +162,7 @@ app
           { id: page.id, focused: false },
         ],
         openAction() {},
+        openActionPopup: () => 'no-window',
       },
       path.resolve(import.meta.dirname, '../../dist/preload/extension-apis.js'),
     );
@@ -154,8 +172,43 @@ app
     tabManager.open(`http://127.0.0.1:${server.address().port}/other`, { activate: false });
     const startingTabs = tabManager.tabs.length;
 
-    const result = await page.webContents.executeJavaScript(`auth('http://127.0.0.1:${server.address().port}/auth')`);
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const silent = async (pathname, options = {}) => {
+      const contentsBefore = webContents.getAllWebContents().length;
+      const outcome = await page.webContents.executeJavaScript(
+        `silent(${JSON.stringify(origin + pathname)}, ${JSON.stringify(options)})`,
+      );
+      assert.equal(tabManager.tabs.length, startingTabs);
+      await eventually(() => webContents.getAllWebContents().length === contentsBefore);
+      return outcome;
+    };
+    assert.deepEqual(await silent('/auth'), { url: `https://${extension.id}.chromiumapp.org/cb?code=abc` });
+    assert.deepEqual(await silent('/'), { error: 'User interaction required.' });
+    const redirect = encodeURIComponent(`https://${extension.id}.chromiumapp.org`);
+    assert.equal(
+      await page.webContents.executeJavaScript(`pageSilent('${origin}/auth?redirect=${redirect}')`),
+      `https://${extension.id}.chromiumapp.org/cb?code=abc`,
+    );
+    const foreign = encodeURIComponent(`https://${'b'.repeat(32)}.chromiumapp.org`);
+    assert.equal(
+      await page.webContents.executeJavaScript(`pageSilent('${origin}/auth?redirect=${foreign}')`),
+      'User interaction required.',
+    );
+    assert.equal(
+      await page.webContents.executeJavaScript(`pageSilent('file:///etc/hosts')`),
+      'Authorization url must be http or https',
+    );
+    assert.deepEqual(await silent('/late'), { error: 'User interaction required.' });
+    assert.deepEqual(await silent('/late', { abortOnLoadForNonInteractive: false }), {
+      url: `https://${extension.id}.chromiumapp.org/cb?code=late`,
+    });
+    assert.deepEqual(await silent('/', { abortOnLoadForNonInteractive: false, timeoutMsForNonInteractive: 300 }), {
+      error: 'User interaction required.',
+    });
+
+    const result = await page.webContents.executeJavaScript(`auth('${origin}/consent')`);
     assert.equal(result.error, undefined, result.error);
+    assert.equal(result.silent, 'User interaction required.');
     assert.equal(result.redirect, `https://${extension.id}.chromiumapp.org`);
     assert.equal(result.url, `https://${extension.id}.chromiumapp.org/cb?code=abc`);
     await eventually(() => tabManager.tabs.length === startingTabs);

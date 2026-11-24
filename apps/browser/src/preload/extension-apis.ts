@@ -19,6 +19,7 @@ interface Bridge {
   library(namespace: string, method: string, args: unknown[]): Promise<unknown>;
   sidePanel(method: string, args: unknown[]): Promise<unknown>;
   action(method: string, args: unknown[]): Promise<unknown>;
+  silentWebAuthFlow(details: unknown): Promise<string>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
@@ -39,6 +40,10 @@ const bridge: Bridge = {
   library: (namespace, method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.library, namespace, method, args),
   sidePanel: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.sidePanel, method, args),
   action: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.action, method, args),
+  silentWebAuthFlow: (details) =>
+    ipcRenderer.invoke(ExtensionBridgeChannel.webAuthFlow, details).catch((error: Error) => {
+      throw new Error(error.message.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, ''));
+    }),
   shortcut: (suggested) => suggestedShortcut(suggested, globalThis.process?.platform ?? ''),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
@@ -134,14 +139,13 @@ function installExtensionApis(api: Bridge): void {
 
   if (!chromeApi.identity && permissions.includes('identity')) {
     const redirectUrl = (path = '') => `https://${runtime.id}.chromiumapp.org/${String(path).replace(/^\//, '')}`;
-    // shortcut: interactive: false is always refused, so silent token refresh falls back to the interactive flow.
     const webAuthFlow = (details: unknown): Promise<string> => {
-      const { url, interactive } = (typeof details === 'object' && details !== null ? details : {}) as {
-        url?: unknown;
-        interactive?: unknown;
-      };
+      const { url, interactive, abortOnLoadForNonInteractive, timeoutMsForNonInteractive } = (
+        typeof details === 'object' && details !== null ? details : {}
+      ) as Record<string, unknown>;
       if (typeof url !== 'string') return Promise.reject(new Error('Authorization url is required'));
-      if (interactive !== true) return Promise.reject(new Error('User interaction required.'));
+      if (interactive !== true)
+        return api.silentWebAuthFlow({ url, abortOnLoadForNonInteractive, timeoutMsForNonInteractive });
       return api.createTab({ url, active: true }).then(
         (tab) =>
           new Promise((resolve, reject) => {
@@ -263,7 +267,19 @@ function installExtensionApis(api: Bridge): void {
           ),
       ]),
     );
-    for (const [name, bridged] of Object.entries(events)) members[name] = event(bridged);
+    for (const [name, bridged] of Object.entries(events)) {
+      const registered = event(bridged);
+      members[name] =
+        namespace === 'history'
+          ? {
+              ...registered,
+              addListener: (listener: Listener) => {
+                registered.addListener(listener);
+                api.library('history', 'listen', []).catch(() => {});
+              },
+            }
+          : registered;
+    }
     define(chromeApi, namespace, members);
   };
   library('history', ['search', 'getVisits', 'addUrl', 'deleteUrl', 'deleteRange', 'deleteAll'], {

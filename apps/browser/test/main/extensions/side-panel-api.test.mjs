@@ -32,7 +32,7 @@ function fakePanels() {
   const extension = { url: BASE, manifest: { side_panel: { default_path: 'panel.html' } } };
   const session = { extensions: { getExtension: (id) => (id === 'ext' ? extension : null) } };
   const tabs = new Map([5, 15].map((id) => [id, { id }]));
-  const state = { active: 5, open: true, refreshed: [] };
+  const state = { active: 5, open: true, refreshed: [], events: [] };
   const host = {
     windowId: () => 1,
     isActive: (tab) => tab.id === state.active,
@@ -44,7 +44,7 @@ function fakePanels() {
   const api = new sidePanelApi.SidePanelApi(
     session,
     host,
-    () => {},
+    (extensionId, name, args) => state.events.push([extensionId, name, ...args]),
     (id) => tabs.get(id) ?? null,
   );
   return { api, tabs, state };
@@ -74,4 +74,21 @@ test('closing a tab drops only its own side panel options', () => {
   api.dropTab(5);
   assert.equal(api.panelUrl('ext', tabs.get(5)), `${BASE}panel.html`);
   assert.equal(api.panelUrl('ext', tabs.get(15)), `${BASE}other.html`);
+});
+
+test('tab switches send onClosed and onOpened once per change', () => {
+  const { api, tabs, state } = fakePanels();
+  const switched = (tab, path) => api.tabSwitched('ext', 1, tabs.get(tab), path && `${BASE}${path}`);
+  switched(5, 'panel.html');
+  switched(5, 'panel.html');
+  switched(15, 'other.html');
+  switched(5, null);
+  switched(15, null);
+  switched(5, 'panel.html');
+  assert.deepEqual(state.events, [
+    ['ext', 'sidePanel.onOpened', { windowId: 1, path: 'panel.html', tabId: 5 }],
+    ['ext', 'sidePanel.onOpened', { windowId: 1, path: 'other.html', tabId: 15 }],
+    ['ext', 'sidePanel.onClosed', { windowId: 1, path: 'other.html', tabId: 5 }],
+    ['ext', 'sidePanel.onOpened', { windowId: 1, path: 'panel.html', tabId: 5 }],
+  ]);
 });

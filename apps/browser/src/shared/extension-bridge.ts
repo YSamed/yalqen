@@ -9,6 +9,7 @@ export const ExtensionBridgeChannel = {
   library: 'yalqen-extension-bridge:library',
   sidePanel: 'yalqen-extension-bridge:side-panel',
   action: 'yalqen-extension-bridge:action',
+  webAuthFlow: 'yalqen-extension-bridge:web-auth-flow',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;

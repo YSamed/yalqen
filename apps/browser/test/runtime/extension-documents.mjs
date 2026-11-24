@@ -90,6 +90,7 @@ chrome.runtime.sendMessage({ type: 'parsed', text: doc.body.textContent });`,
         isActive: () => false,
         windows: () => [{ id: panelWindowId, focused: true }],
         openAction() {},
+        openActionPopup: () => 'no-window',
         openSidePanel: (_id, url, windowId) => {
           if (windowId !== panelWindowId) return null;
           panel = new BrowserWindow({ show: false, webPreferences: { session: browsing } });

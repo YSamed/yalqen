@@ -56,6 +56,7 @@ webext.downloads.onChanged.addListener((delta) => {
   seen.push('download:' + delta.state.current);
   chrome.storage.local.set({ ['download:' + delta.id]: delta.state.current });
 });
+webext.history.onVisited.addListener((item) => chrome.storage.local.set({ ['visit:' + item.url]: item.title }));
 webext.action.onClicked.addListener((tab) => seen.push('clicked:' + (tab && tab.id)));
 chrome.action.setBadgeBackgroundColor({ color: '#00f' });
 chrome.runtime.onMessage.addListener((_message, _sender, reply) => {
@@ -96,6 +97,7 @@ app
     const browsing = session.fromPartition('persist:extension-worker-apis');
     let tab;
     const actions = [];
+    const popups = [];
     const bridge = new extensionBridge.ExtensionBridge(
       browsing,
       {
@@ -106,6 +108,13 @@ app
         isActive: () => true,
         windows: () => [{ id: tab.id, focused: true }],
         openAction: (id, contents) => actions.push(`${id}:${contents?.id}`),
+        openActionPopup: (windowId, popupUrl) => {
+          if (windowId !== null && windowId !== tab.id) return 'no-window';
+          const url = popupUrl(tab.webContents);
+          if (!url) return 'no-popup';
+          popups.push([windowId, url]);
+          return 'opened';
+        },
       },
       path.resolve(import.meta.dirname, '../../dist/preload/extension-apis.js'),
     );
@@ -238,6 +247,11 @@ app
     );
     await eventually(() => page.webContents.executeJavaScript(`completed.has(${sleepingId})`));
     await eventually(async () => (await ask()).stored[`download:${sleepingId}`] === 'complete');
+    await page.webContents.debugger.sendCommand('ServiceWorker.stopAllWorkers');
+    await eventually(() => !running());
+    const sleepingVisit = `http://127.0.0.1:${port}/asleep-visit`;
+    history.visit(sleepingVisit, 'Asleep');
+    await eventually(async () => (await ask()).stored[`visit:${sleepingVisit}`] === 'Asleep');
     page.webContents.debugger.detach();
     assert.equal(
       await page.webContents.executeJavaScript(
@@ -250,8 +264,22 @@ app
       await page.webContents.executeJavaScript(`chrome.action.openPopup().then(() => 'opened', () => 'rejected')`),
       'opened',
     );
-    assert.ok(actions.includes(`${extension.id}:undefined`));
+    const popupUrl = `chrome-extension://${extension.id}/page.html`;
+    assert.deepEqual(popups.pop(), [null, popupUrl]);
+    const openPopup = (arg) =>
+      page.webContents.executeJavaScript(
+        `chrome.action.openPopup(${arg}).then(() => 'opened', (error) => String(error.message).split('Error: ').pop())`,
+      );
+    assert.equal(await openPopup(`{ windowId: ${tab.id} }`), 'opened');
+    assert.deepEqual(popups.pop(), [tab.id, popupUrl]);
+    assert.equal(await openPopup('{ windowId: 987654 }'), 'No window with id: 987654.');
+    assert.equal(popups.length, 0);
     const tabId = tab.webContents.id;
+    await page.webContents.executeJavaScript(`chrome.action.setPopup({ popup: '', tabId: ${tabId} })`);
+    assert.equal(await openPopup(''), 'Extension does not have a popup on the active tab.');
+    assert.equal(popups.length, 0);
+    await page.webContents.executeJavaScript(`chrome.action.setPopup({ popup: null, tabId: ${tabId} })`);
+    assert.equal(await openPopup(''), 'opened');
     await page.webContents.executeJavaScript(`(async () => {
       await chrome.action.setPopup({ popup: '' });
       await chrome.action.setBadgeText({ text: '5' });

@@ -391,6 +391,14 @@ function startBrowser(): void {
       windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
       openAction: (extensionId, contents) =>
         ((contents && tabsWindowOf(contents)) ?? mainWindow())?.openExtensionAction(extensionId),
+      openActionPopup: (windowId, popupUrl) => {
+        const window = extensionWindowById(windowId);
+        if (!window) return 'no-window';
+        const url = popupUrl(window.tabs.activeContents());
+        if (!url) return 'no-popup';
+        window.openExtensionActionPopup(url);
+        return 'opened';
+      },
       openSidePanel: (extensionId, url, windowId) =>
         extensionWindowById(windowId)?.openExtensionSidePanel(extensionId, url) ?? null,
       closeSidePanel: (extensionId, windowId) => {

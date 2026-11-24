@@ -27,11 +27,14 @@ export function ownPage(baseUrl: string, path: unknown): string | null {
   return url?.startsWith(baseUrl) ? url : null;
 }
 
+const panelPath = (url: string): string => new URL(url).pathname.slice(1);
+
 // Side panel options live here; the panel views live in each window and are opened through the host.
 export class SidePanelApi {
   private readonly options = new Map<string, PanelOptions>();
   private readonly openOnAction = new Set<string>();
   private readonly panels = new Set<WebContents>();
+  private readonly shownPaths = new Map<string, string>();
 
   constructor(
     private readonly session: Session,
@@ -67,6 +70,21 @@ export class SidePanelApi {
   toggle(extensionId: string, windowId: number, tab: WebContents | null): void {
     if (this.host.sidePanelOpen(extensionId, windowId)) this.host.closeSidePanel(extensionId, windowId);
     else this.open(extensionId, windowId, tab);
+  }
+
+  tabSwitched(extensionId: string, windowId: number, tab: WebContents | null, url: string | null): void {
+    const key = `${extensionId}:${windowId}`;
+    const before = this.shownPaths.get(key);
+    const path = url ? panelPath(url) : undefined;
+    if (path === before) return;
+    const tabInfo = tab ? { tabId: tab.id } : {};
+    if (path === undefined) {
+      this.shownPaths.delete(key);
+      this.deliver(extensionId, 'sidePanel.onClosed', [{ windowId, path: before, ...tabInfo }]);
+    } else {
+      this.shownPaths.set(key, path);
+      this.deliver(extensionId, 'sidePanel.onOpened', [{ windowId, path, ...tabInfo }]);
+    }
   }
 
   call(extensionId: string, method: string, args: unknown[]): unknown {
@@ -125,11 +143,13 @@ export class SidePanelApi {
     if (!url) throw new Error('No active side panel for this window or tab.');
     const contents = this.host.openSidePanel(extensionId, url, windowId);
     if (!contents) throw new Error(`No window with id: ${windowId}.`);
-    const path = new URL(url).pathname.slice(1);
+    const path = panelPath(url);
+    this.shownPaths.set(`${extensionId}:${windowId}`, path);
     if (!this.panels.has(contents)) {
       this.panels.add(contents);
       contents.once('destroyed', () => {
         this.panels.delete(contents);
+        this.shownPaths.delete(`${extensionId}:${windowId}`);
         this.deliver(extensionId, 'sidePanel.onClosed', [{ windowId, path }]);
       });
     }

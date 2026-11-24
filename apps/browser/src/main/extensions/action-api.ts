@@ -10,7 +10,10 @@ import {
 import { ownPage } from './side-panel-api.js';
 
 export interface ActionHost {
-  openAction(extensionId: string, contents: WebContents | null): void;
+  openActionPopup(
+    windowId: number | null,
+    popupUrl: (activeTab: WebContents | null) => string | null,
+  ): 'opened' | 'no-window' | 'no-popup';
 }
 
 type Color = number[];
@@ -29,6 +32,7 @@ export interface ActionState {
   title: string;
   icon: NativeImage | null;
   badge: string;
+  badgeColor: Color;
   popupUrl: string | null;
   enabled: boolean;
   listens: boolean;
@@ -38,6 +42,8 @@ const ICON_SIZE = 16;
 const MAX_TEXT = 1024;
 const MAX_ICON_URL = 1024 * 1024;
 const DEFAULT_BADGE_BACKGROUND: Color = [0, 0, 0, 0];
+const CHROME_BADGE_COLOR: Color = [0x5f, 0x63, 0x68, 255];
+const DOT_RADIUS = 3;
 const DEFAULT_BADGE_TEXT: Color = [255, 255, 255, 255];
 const IMAGE_DATA_URL = /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/;
 
@@ -57,6 +63,37 @@ export function badgeColor(value: unknown): Color {
   if (!hex) throw new Error('Invalid badge color.');
   const full = hex.length === 3 ? [...hex].map((digit) => digit + digit).join('') : hex;
   return [0, 2, 4].map((at) => parseInt(full.slice(at, at + 2), 16)).concat(255);
+}
+
+// Bitmaps from NativeImage.toBitmap() are BGRA; color is [r, g, b, a].
+export function paintBadgeDot(bitmap: Buffer, size: { width: number; height: number }, color: Color): Buffer {
+  const out = Buffer.from(bitmap);
+  const [r, g, b] = color[3] === 0 ? CHROME_BADGE_COLOR : color;
+  const cx = size.width - DOT_RADIUS - 1;
+  const cy = size.height - DOT_RADIUS - 1;
+  for (let y = 0; y < size.height; y++)
+    for (let x = 0; x < size.width; x++) {
+      const distance = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (distance > DOT_RADIUS + 1) continue;
+      const at = (y * size.width + x) * 4;
+      const [pr, pg, pb] = distance <= DOT_RADIUS ? [r, g, b] : [255, 255, 255];
+      out[at] = pb;
+      out[at + 1] = pg;
+      out[at + 2] = pr;
+      out[at + 3] = 255;
+    }
+  return out;
+}
+
+export function withBadgeDot(
+  icon: NativeImage | null,
+  badge: string | undefined,
+  color: Color | undefined,
+): NativeImage | null {
+  if (!badge) return icon;
+  const size = icon && !icon.isEmpty() ? icon.getSize() : { width: ICON_SIZE, height: ICON_SIZE };
+  const bitmap = icon && !icon.isEmpty() ? icon.toBitmap() : Buffer.alloc(size.width * size.height * 4);
+  return nativeImage.createFromBitmap(paintBadgeDot(bitmap, size, color ?? DEFAULT_BADGE_BACKGROUND), size);
 }
 
 export function iconSource(value: Details): string | null {
@@ -94,6 +131,7 @@ export class ActionApi {
       title: value('title') ?? actionTitle(extension.manifest as Manifest, extension.name),
       icon: value('icon') ?? null,
       badge: value('badgeText') ?? '',
+      badgeColor: value('badgeBackgroundColor') ?? DEFAULT_BADGE_BACKGROUND,
       popupUrl: this.popupUrl(extension, value('popup')) || null,
       enabled: value('enabled') ?? true,
       listens: this.listening.has(extensionId),
@@ -150,16 +188,24 @@ export class ActionApi {
         return set('enabled', method === 'enable');
       case 'isEnabled':
         return value('enabled') ?? true;
-      // shortcut: the popup opens in the focused window, whatever windowId says.
       case 'openPopup':
-        if (!this.state(extensionId, null)?.popupUrl) throw new Error('No popup to open.');
-        this.host.openAction(extensionId, null);
-        return undefined;
+        return this.openPopup(extensionId, options.windowId);
       case 'listen':
         this.listening.add(extensionId);
         return undefined;
     }
     throw new Error(`Unsupported action method: ${method}`);
+  }
+
+  private openPopup(extensionId: string, windowId: unknown): undefined {
+    if (windowId !== undefined && windowId !== null && typeof windowId !== 'number')
+      throw new Error('Invalid windowId.');
+    const target = typeof windowId === 'number' ? windowId : null;
+    const result = this.host.openActionPopup(target, (tab) => this.state(extensionId, tab)?.popupUrl ?? null);
+    if (result === 'no-window')
+      throw new Error(target === null ? 'No window to open the popup in.' : `No window with id: ${target}.`);
+    if (result === 'no-popup') throw new Error('Extension does not have a popup on the active tab.');
+    return undefined;
   }
 
   private resolver(extensionId: string, tabId: number | null) {
