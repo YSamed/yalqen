@@ -6,6 +6,7 @@ export const ExtensionBridgeChannel = {
   windows: 'yalqen-extension-bridge:windows',
   contextMenus: 'yalqen-extension-bridge:context-menus',
   notifications: 'yalqen-extension-bridge:notifications',
+  library: 'yalqen-extension-bridge:library',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;
@@ -27,7 +28,16 @@ export type ExtensionBridgeEvent =
   | 'contextMenus.onClicked'
   | 'notifications.onClicked'
   | 'notifications.onButtonClicked'
-  | 'notifications.onClosed';
+  | 'notifications.onClosed'
+  | 'history.onVisited'
+  | 'history.onVisitRemoved'
+  | 'bookmarks.onCreated'
+  | 'bookmarks.onRemoved'
+  | 'bookmarks.onChanged'
+  | 'bookmarks.onMoved'
+  | 'downloads.onCreated'
+  | 'downloads.onChanged'
+  | 'downloads.onErased';
 
 export const WINDOW_ID_NONE = -1;
 

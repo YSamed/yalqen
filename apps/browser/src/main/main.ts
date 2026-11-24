@@ -512,6 +512,7 @@ function startBrowser(): void {
     checkFile: (file) => threatLists.checkFile(file),
   });
   const downloadsChanged = () => downloadManager.changed();
+  extensionBridge.attachLibrary({ history, bookmarks, downloads, downloadManager, bookmarksChanged });
 
   const agentTokens = new AgentTokenStore(userData, safeStorageCipher);
   const focusedFirst = () => (current ? [current, ...windows.filter((window) => window !== current)] : windows);

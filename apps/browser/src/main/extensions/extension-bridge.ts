@@ -28,6 +28,7 @@ import {
 import { callCookies, chromeCookieChange, cookieUrl, extensionGrant, hostPermitted } from './extension-cookies.js';
 import { ExtensionMenus } from './extension-menus.js';
 import { extensionFile } from './extension-manifest.js';
+import { ExtensionLibrary, type LibraryNamespace, type LibraryStores } from './extension-library.js';
 
 const ACTION_COMMANDS = new Set(['_execute_action', '_execute_browser_action', '_execute_page_action']);
 
@@ -54,6 +55,7 @@ export class ExtensionBridge {
   private readonly watched = new Set<WebContents>();
   private readonly menus = new ExtensionMenus();
   private readonly notifications = new Map<string, Map<string, Notification>>();
+  private library: ExtensionLibrary | null = null;
 
   constructor(
     private readonly session: Session,
@@ -85,6 +87,9 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.notifications, (event, method, args) =>
       this.notify(this.frameExtension(event), method, args),
     );
+    ipcMain.handle(ExtensionBridgeChannel.library, (event, namespace, method, args) =>
+      this.callLibrary(this.frameExtension(event), namespace, method, args),
+    );
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -112,6 +117,19 @@ export class ExtensionBridge {
         if (grant?.permissions.includes('cookies') && hostPermitted(grant.hosts, url))
           receiver.send('cookies.onChanged', [change]);
       }
+    });
+  }
+
+  attachLibrary(stores: LibraryStores): void {
+    this.library = new ExtensionLibrary(stores, {
+      wants: (permission) =>
+        this.session.extensions.getAllExtensions().some(({ id }) => this.grant(id).permissions.includes(permission)),
+      emit: (permission, name, args) => {
+        for (const receiver of this.receivers()) {
+          const extensionId = receiver.extensionId();
+          if (extensionId && this.grant(extensionId).permissions.includes(permission)) receiver.send(name, args);
+        }
+      },
     });
   }
 
@@ -146,6 +164,19 @@ export class ExtensionBridge {
   private permitted(extensionId: string, permission: string): void {
     if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
     if (!this.grant(extensionId).permissions.includes(permission)) throw new Error(`Missing ${permission} permission`);
+  }
+
+  private callLibrary(extensionId: string, namespace: unknown, method: unknown, args: unknown): unknown {
+    if (namespace !== 'history' && namespace !== 'bookmarks' && namespace !== 'downloads')
+      throw new Error('Unknown extension API');
+    this.permitted(extensionId, namespace);
+    if (!this.library || typeof method !== 'string') throw new Error(`Unsupported ${namespace} method`);
+    return this.library.call(
+      namespace as LibraryNamespace,
+      method,
+      Array.isArray(args) ? args : [],
+      this.grant(extensionId).permissions,
+    );
   }
 
   private contextMenus(extensionId: string, method: unknown, args: unknown): void {
@@ -311,6 +342,9 @@ export class ExtensionBridge {
     );
     worker.ipc.handle(ExtensionBridgeChannel.notifications, (_event, method, args) =>
       this.notify(extensionId, method, args),
+    );
+    worker.ipc.handle(ExtensionBridgeChannel.library, (_event, namespace, method, args) =>
+      this.callLibrary(extensionId, namespace, method, args),
     );
   }
 

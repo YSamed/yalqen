@@ -6,12 +6,21 @@ import path from 'node:path';
 import { app, BrowserWindow, session } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import extensionBridge from '../../dist/main/extensions/extension-bridge.js';
+import historyModule from '../../dist/main/library/history.js';
+import bookmarksModule from '../../dist/main/library/bookmarks.js';
+import downloadsModule from '../../dist/main/library/downloads.js';
+import downloadManagerModule from '../../dist/main/library/download-manager.js';
 
 const profile = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-worker-apis-')));
 app.setPath('userData', path.join(profile, 'profile'));
 const windows = [];
 const deadline = setTimeout(() => app.exit(1), 30000);
 const server = http.createServer((req, res) => {
+  if (req.url === '/file') {
+    res.setHeader('Content-Disposition', 'attachment; filename="server.txt"');
+    res.end('downloaded');
+    return;
+  }
   res.setHeader('Content-Type', 'text/html');
   res.end(req.url === '/frame' ? '<iframe src="/child"></iframe>' : '<title>Page</title>');
 });
@@ -41,6 +50,8 @@ chrome.webNavigation.onCompleted.addListener((details) => seen.push('completed:'
 chrome.webNavigation.onCompleted.addListener((details) => {
   if (details.frameId > 0) seen.push('subframe:' + details.parentFrameId + ':' + details.url);
 });
+webext.bookmarks.onCreated.addListener((id, node) => seen.push('bookmark:' + node.title));
+webext.downloads.onChanged.addListener((delta) => delta.state && seen.push('download:' + delta.state.current));
 chrome.runtime.onMessage.addListener((_message, _sender, reply) => {
   webext.commands.getAll().then((commands) => reply({ seen, commands }));
   return true;
@@ -58,7 +69,7 @@ app
         manifest_version: 3,
         name: 'Worker APIs test',
         version: '1.0',
-        permissions: ['webNavigation', 'contextMenus', 'notifications'],
+        permissions: ['webNavigation', 'contextMenus', 'notifications', 'history', 'bookmarks', 'downloads'],
         action: { default_popup: 'page.html' },
         background: { service_worker: 'worker.js' },
         commands: {
@@ -86,6 +97,29 @@ app
       },
       path.resolve(import.meta.dirname, '../../dist/preload/extension-apis.js'),
     );
+    const library = path.join(profile, 'library');
+    const downloadDirectory = path.join(profile, 'downloads');
+    fs.mkdirSync(library);
+    fs.mkdirSync(downloadDirectory);
+    const downloads = new downloadsModule.DownloadStore(library);
+    const downloadManager = new downloadManagerModule.DownloadManager({
+      store: downloads,
+      daily: browsing,
+      privateBrowsing: session.fromPartition('worker-apis-private'),
+      developer: session.fromPartition('worker-apis-developer'),
+      directory: () => downloadDirectory,
+      askBeforeDownload: () => false,
+      parentOf: () => undefined,
+      onStateChange() {},
+    });
+    const history = new historyModule.HistoryStore(library);
+    bridge.attachLibrary({
+      history,
+      bookmarks: new bookmarksModule.BookmarkStore(library),
+      downloads,
+      downloadManager,
+      bookmarksChanged() {},
+    });
     tab = new BrowserWindow({ show: false, webPreferences: { session: browsing } });
     const page = new BrowserWindow({ show: false, webPreferences: { session: browsing } });
     windows.push(tab, page);
@@ -144,8 +178,49 @@ app
     assert.equal(item.label, 'Fill');
     item.click();
     await eventually(async () => (await ask()).seen.includes('menu:fill'));
+    const port = server.address().port;
+    const node = await page.webContents.executeJavaScript(
+      `chrome.bookmarks.create({ title: 'Saved', url: 'http://127.0.0.1:${port}/saved' })`,
+    );
+    assert.equal(node.parentId, '1');
+    const [root] = await page.webContents.executeJavaScript('chrome.bookmarks.getTree()');
+    assert.ok(root.children[0].children.some((child) => child.id === node.id));
+    await eventually(async () => (await ask()).seen.includes('bookmark:Saved'));
+
+    history.visit(`http://127.0.0.1:${port}/visited`, 'Visited');
+    const found = await page.webContents.executeJavaScript(`chrome.history.search({ text: 'visited' })`);
+    assert.deepEqual(
+      found.map((item) => item.title),
+      ['Visited'],
+    );
+    assert.equal(
+      await page.webContents.executeJavaScript(`chrome.permissions.contains({ permissions: ['downloads'] })`),
+      true,
+    );
+
+    const downloadId = await page.webContents.executeJavaScript(
+      `chrome.downloads.download({ url: 'http://127.0.0.1:${port}/file', filename: 'named.txt' })`,
+    );
+    assert.equal(typeof downloadId, 'number');
+    await eventually(async () => (await ask()).seen.includes('download:complete'));
+    assert.equal(fs.readFileSync(path.join(downloadDirectory, 'named.txt'), 'utf8'), 'downloaded');
+    const [downloaded] = await page.webContents.executeJavaScript(`chrome.downloads.search({ id: ${downloadId} })`);
+    assert.equal(downloaded.state, 'complete');
+    assert.equal(downloaded.exists, true);
+    const dataId = await page.webContents.executeJavaScript(
+      `chrome.downloads.download({ url: 'data:text/plain,hi', filename: 'data.txt' })`,
+    );
+    assert.equal(typeof dataId, 'number');
+    await eventually(() => fs.existsSync(path.join(downloadDirectory, 'data.txt')));
+    assert.equal(
+      await page.webContents.executeJavaScript(
+        `chrome.downloads.download({ url: 'file:///etc/hosts' }).then(() => 'ok', () => 'rejected')`,
+      ),
+      'rejected',
+    );
+
     console.log(
-      'PASS: extension worker gets commands, _execute_action, webNavigation subframes, contextMenus and notifications shims',
+      'PASS: extension worker gets history, bookmarks, downloads, commands, _execute_action, webNavigation subframes, contextMenus and notifications shims',
     );
   })
   .catch((error) => {

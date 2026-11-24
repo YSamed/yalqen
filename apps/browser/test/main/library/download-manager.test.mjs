@@ -182,3 +182,18 @@ test('verification failures never mark a file completed', async (t) => {
   await tick();
   assert.equal([...f.entries.values()][0].state, 'interrupted');
 });
+
+test('extension downloads resolve with their entry and keep the download prompt', async (t) => {
+  const f = fixture(t, { askBefore: false });
+  const started = f.manager.download('https://example.com/report.pdf', 'notes/named.pdf');
+  assert.equal(f.session.retried, 'https://example.com/report.pdf');
+  const item = f.start();
+  assert.equal(item.savePath, path.join(downloads, 'named.pdf'));
+  assert.equal(f.entries.get(await started).savePath, item.savePath);
+
+  const asked = fixture(t, { responses: [2] });
+  const refused = asked.manager.download('https://example.com/report.pdf', null);
+  asked.start();
+  assert.equal(await refused, null);
+  assert.equal(asked.prompts.length, 1);
+});

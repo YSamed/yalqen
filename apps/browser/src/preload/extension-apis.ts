@@ -16,6 +16,7 @@ interface Bridge {
   windows(): Promise<ExtensionWindows>;
   contextMenus(method: string, args: unknown[]): Promise<void>;
   notifications(method: string, args: unknown[]): Promise<unknown>;
+  library(namespace: string, method: string, args: unknown[]): Promise<unknown>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
@@ -33,6 +34,7 @@ const bridge: Bridge = {
   windows: () => ipcRenderer.invoke(ExtensionBridgeChannel.windows),
   contextMenus: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.contextMenus, method, args),
   notifications: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.notifications, method, args),
+  library: (namespace, method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.library, namespace, method, args),
   shortcut: (suggested) => suggestedShortcut(suggested, globalThis.process?.platform ?? ''),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
@@ -241,6 +243,89 @@ function installExtensionApis(api: Bridge): void {
     });
   }
 
+  const library = (namespace: string, methods: string[], events: Record<string, ExtensionBridgeEvent | undefined>) => {
+    if (chromeApi[namespace] || !permissions.includes(namespace)) return;
+    const members: Record<string, unknown> = Object.fromEntries(
+      methods.map((method) => [
+        method,
+        (...args: unknown[]) =>
+          settle(
+            api.library(
+              namespace,
+              method,
+              args.filter((arg) => typeof arg !== 'function'),
+            ),
+            lastArgument(args),
+          ),
+      ]),
+    );
+    for (const [name, bridged] of Object.entries(events)) members[name] = event(bridged);
+    define(chromeApi, namespace, members);
+  };
+  library('history', ['search', 'getVisits', 'addUrl', 'deleteUrl', 'deleteRange', 'deleteAll'], {
+    onVisited: 'history.onVisited',
+    onVisitRemoved: 'history.onVisitRemoved',
+  });
+  library(
+    'bookmarks',
+    [
+      'get',
+      'getChildren',
+      'getRecent',
+      'getTree',
+      'getSubTree',
+      'search',
+      'create',
+      'move',
+      'update',
+      'remove',
+      'removeTree',
+    ],
+    {
+      onCreated: 'bookmarks.onCreated',
+      onRemoved: 'bookmarks.onRemoved',
+      onChanged: 'bookmarks.onChanged',
+      onMoved: 'bookmarks.onMoved',
+      onChildrenReordered: undefined,
+      onImportBegan: undefined,
+      onImportEnded: undefined,
+    },
+  );
+  library(
+    'downloads',
+    [
+      'download',
+      'search',
+      'pause',
+      'resume',
+      'cancel',
+      'show',
+      'showDefaultFolder',
+      'erase',
+      'getFileIcon',
+      'setShelfEnabled',
+      'setUiOptions',
+    ],
+    {
+      onCreated: 'downloads.onCreated',
+      onChanged: 'downloads.onChanged',
+      onErased: 'downloads.onErased',
+      onDeterminingFilename: undefined,
+    },
+  );
+  const downloads = chromeApi.downloads as Record<string, unknown> | undefined;
+  if (downloads && permissions.includes('downloads.open') && !downloads.open) {
+    // Chrome opens a downloaded file only in response to a user gesture.
+    define(downloads, 'open', (id: unknown, callback: Callback) =>
+      settle(
+        (globalThis as { navigator?: { userActivation?: { isActive: boolean } } }).navigator?.userActivation?.isActive
+          ? api.library('downloads', 'open', [id])
+          : Promise.reject(new Error('downloads.open requires a user gesture')),
+        callback,
+      ),
+    );
+  }
+
   if (!chromeApi.windows) {
     const WINDOW_ID_NONE = -1;
     const WINDOW_ID_CURRENT = -2;
@@ -275,7 +360,9 @@ function installExtensionApis(api: Bridge): void {
     });
   }
 
-  const bridged = ['cookies', 'identity'].filter((name) => permissions.includes(name));
+  const bridged = ['cookies', 'identity', 'history', 'bookmarks', 'downloads', 'downloads.open'].filter((name) =>
+    permissions.includes(name),
+  );
   const native = chromeApi.permissions as
     | {
         contains(query: unknown): Promise<boolean>;

@@ -35,10 +35,13 @@ interface DownloadManagerOptions {
 }
 
 export class DownloadManager {
+  onChange: (() => void) | null = null;
   readonly changes = new ChangeFeed();
   private readonly items = new Map<string, DownloadItem>();
   private readonly reservedPaths = new Set<string>();
   private readonly approvedUrls = new Map<string, string>();
+  private readonly waiters = new Map<string, (id: string | null) => void>();
+  private readonly suggestedNames = new Map<string, string>();
   private prompts: Promise<unknown> = Promise.resolve();
   private stateTimer: NodeJS.Timeout | null = null;
   private pageTimer: NodeJS.Timeout | null = null;
@@ -60,6 +63,7 @@ export class DownloadManager {
     this.stateTimer ??= setTimeout(() => {
       this.stateTimer = null;
       this.options.onStateChange();
+      this.onChange?.();
     }, STATE_PUSH_MS);
     this.pageTimer ??= setTimeout(() => {
       this.pageTimer = null;
@@ -113,6 +117,16 @@ export class DownloadManager {
         });
       },
     };
+  }
+
+  // Extension downloads still follow the ask-before-download setting; a filename only names the file.
+  download(url: string, filename: string | null, headers?: Record<string, string>): Promise<string | null> {
+    return new Promise((resolve) => {
+      this.waiters.get(url)?.(null);
+      this.waiters.set(url, resolve);
+      if (filename) this.suggestedNames.set(url, path.basename(filename));
+      this.options.daily.downloadURL(url, headers ? { headers } : undefined);
+    });
   }
 
   runCommand(command: string, params: URLSearchParams, contents?: WebContents): void {
@@ -189,15 +203,22 @@ export class DownloadManager {
       const retryUrl = chain.find((url) => this.approvedUrls.has(url));
       const retryPath = retryUrl ? this.approvedUrls.get(retryUrl) : undefined;
       if (retryUrl) this.approvedUrls.delete(retryUrl);
+      const waited = isPrivate ? undefined : chain.find((url) => this.waiters.has(url));
+      const waiter = waited ? this.waiters.get(waited) : undefined;
+      if (waited) this.waiters.delete(waited);
+      const named = isPrivate ? undefined : chain.find((url) => this.suggestedNames.has(url));
+      const suggested = named ? this.suggestedNames.get(named) : undefined;
+      if (named) this.suggestedNames.delete(named);
       const savePath = uniquePath(
         retryPath ? path.dirname(retryPath) : this.options.directory(),
-        retryPath ? path.basename(retryPath) : item.getFilename(),
+        retryPath ? path.basename(retryPath) : (suggested ?? item.getFilename()),
         (file) => this.reservedPaths.has(file) || fs.existsSync(file),
       );
       item.setSavePath(savePath);
       this.reservedPaths.add(savePath);
       if (retryPath || !this.options.askBeforeDownload()) {
-        this.track(item, savePath, isPrivate);
+        const id = this.track(item, savePath, isPrivate);
+        waiter?.(id);
         return;
       }
       item.pause();
@@ -206,10 +227,12 @@ export class DownloadManager {
         if (chosen && item.getState() === 'progressing') {
           item.setSavePath(chosen);
           this.reservedPaths.add(chosen);
-          this.track(item, chosen, isPrivate);
+          const id = this.track(item, chosen, isPrivate);
+          waiter?.(id);
           item.resume();
           return;
         }
+        waiter?.(null);
         if (chosen) this.reservedPaths.delete(chosen);
         if (item.getState() === 'progressing') item.cancel();
       });
@@ -276,7 +299,7 @@ export class DownloadManager {
     return null;
   }
 
-  private track(item: DownloadItem, savePath: string, isPrivate: boolean): void {
+  private track(item: DownloadItem, savePath: string, isPrivate: boolean): string {
     const { store } = this.options;
     const id = randomUUID();
     this.items.set(id, item);
@@ -319,5 +342,6 @@ export class DownloadManager {
       this.changed();
     });
     this.changed();
+    return id;
   }
 }

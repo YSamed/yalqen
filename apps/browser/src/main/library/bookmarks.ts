@@ -60,6 +60,7 @@ function cleanTitle(title: string, fallback: string): string {
 }
 
 export class BookmarkStore {
+  onChange: (() => void) | null = null;
   readonly file: string;
   private readonly json: JsonFile;
   private folderList: BookmarkFolder[] = [];
@@ -355,6 +356,7 @@ export class BookmarkStore {
     this.urls = null;
     this.suggestionList = null;
     this.json.schedule((): SavedBookmarks => ({ version: 2, folders: this.folderList, bookmarks: this.bookmarkList }));
+    this.onChange?.();
   }
 }
 
