@@ -14,6 +14,7 @@
   import { prefersReducedMotion } from 'svelte/motion';
   import SidebarFooter from './SidebarFooter.svelte';
   import { SpaceSwipe } from './space-swipe.svelte';
+  import { TabDrag, type SplitSide } from './tab-drag.svelte';
   import { flip } from 'svelte/animate';
   import { devStates } from './format';
   import Icon from '../ui/Icon.svelte';
@@ -79,41 +80,7 @@
     footerItems?: SidebarFooterItem[];
   } = $props();
 
-  type DragGroup = 'pinned' | 'listed';
-  type SplitSide = 'left' | 'right';
-  interface Press {
-    id: TabId;
-    group: DragGroup;
-    list: HTMLElement;
-    item: HTMLElement;
-    x: number;
-    y: number;
-    scrollTop: number;
-    home: DOMRect;
-    dragging: boolean;
-    cancelled: boolean;
-  }
-
-  const DRAG_THRESHOLD = 4;
-  const SCROLL_EDGE = 28;
-  const SCROLL_STEP = 8;
-
-  let press: Press | null = null;
-  let pointer = { x: 0, y: 0 };
-  let splitSide: SplitSide | null = null;
-  let scrollFrame = 0;
-  let lists: HTMLElement | undefined = $state();
-  let dragId: TabId | null = $state(null);
-  let dragGroup: DragGroup | null = $state(null);
-  let dragOffset = $state({ x: 0, y: 0 });
-  let dropIndex: number | null = $state(null);
-  let settleOrder: string | null = $state(null);
-  let returningId: TabId | null = $state(null);
-  let settleTimer = 0;
-  let returnTimer = 0;
   let brokenIcons: Record<string, true> = $state({});
-  let folderPress: { name: string; x: number; y: number; dragging: boolean } | null = null;
-  let dropFolder: string | null = $state(null);
   let renaming: string | null = $state(null);
   let renameValue = $state('');
   let addingLiveFolder = $state(false);
@@ -192,14 +159,6 @@
     return chain;
   }
 
-  function folderAt(): string | null {
-    for (const element of document.elementsFromPoint(pointer.x, pointer.y)) {
-      const name = (element as HTMLElement).dataset?.folder;
-      if (name) return name;
-    }
-    return null;
-  }
-
   function canDropFolder(name: string, target: string): boolean {
     const folder = groupsByName.get(name),
       destination = groupsByName.get(target);
@@ -210,34 +169,6 @@
       !groupAncestors(destination).some((ancestor) => ancestor.name === name) &&
       name !== target
     );
-  }
-
-  function onFolderPointerDown(event: PointerEvent, name: string): void {
-    if (event.button !== 0 || !event.isPrimary || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    folderPress = { name, x: event.clientX, y: event.clientY, dragging: false };
-  }
-
-  function moveFolderDrag(event: PointerEvent): void {
-    if (!folderPress || !event.isPrimary) return;
-    pointer = { x: event.clientX, y: event.clientY };
-    if (!folderPress.dragging && Math.hypot(pointer.x - folderPress.x, pointer.y - folderPress.y) < DRAG_THRESHOLD)
-      return;
-    folderPress.dragging = true;
-    const target = folderAt();
-    dropFolder = target && canDropFolder(folderPress.name, target) ? target : null;
-  }
-
-  function finishFolderDrag(): void {
-    if (folderPress?.dragging) {
-      suppressNextClick();
-      if (dropFolder) send({ type: 'move-tab-group', name: folderPress.name, parent: dropFolder });
-    }
-    cancelFolderDrag();
-  }
-
-  function cancelFolderDrag(): void {
-    folderPress = null;
-    dropFolder = null;
   }
 
   function startRename(name: string): void {
@@ -263,8 +194,20 @@
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
     return flip(node, { from, to }, { duration: prefersReducedMotion.current ? 0 : 200, easing: cubicOut });
   }
-  const draggingPinned = $derived(dragGroup === 'pinned');
-  const draggingListed = $derived(dragGroup === 'listed');
+  const drag = new TabDrag({
+    tabs: () => tabs,
+    pinned: () => pinned,
+    listed: () => listed,
+    orderKey: () => orderKey,
+    activeTabId: () => activeTabId,
+    groupOf: (id) => tabsById.get(id)?.group,
+    canNestFolder: canDropFolder,
+    pageRect: () => pageRect?.(),
+    onSplitDrop: (side) => onSplitDrop?.(side),
+    send,
+  });
+  const draggingPinned = $derived(drag.group === 'pinned');
+  const draggingListed = $derived(drag.group === 'listed');
 
   const unreadHosts = $derived(
     new Set(tabs.flatMap((tab) => (tab.unread && !tab.isPrivate ? (hostOf(tab.url) ?? []) : []))),
@@ -291,229 +234,10 @@
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
 
-  function onPointerDown(event: PointerEvent & { currentTarget: HTMLElement }, id: TabId, group: DragGroup): void {
-    if (event.button !== 0 || !event.isPrimary || !lists || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    if (settleOrder !== null) resetDragState();
-    press = {
-      id,
-      group,
-      list: event.currentTarget.parentElement!,
-      item: event.currentTarget,
-      x: event.clientX,
-      y: event.clientY,
-      scrollTop: lists.scrollTop,
-      home: event.currentTarget.getBoundingClientRect(),
-      dragging: false,
-      cancelled: false,
-    };
-  }
-
-  function onPointerMove(event: PointerEvent): void {
-    if (folderPress) {
-      moveFolderDrag(event);
-      return;
-    }
-    if (!press || press.cancelled || !event.isPrimary) return;
-    pointer = { x: event.clientX, y: event.clientY };
-    if (!press.dragging) {
-      if (Math.hypot(pointer.x - press.x, pointer.y - press.y) < DRAG_THRESHOLD) return;
-      press.dragging = true;
-      dragId = press.id;
-      dragGroup = press.group;
-    }
-    track();
-    setSplitSide(splitSideAt(), press.id);
-    const folder = press.group === 'listed' && !splitSide ? folderAt() : null;
-    dropFolder = folder && folder !== tabsById.get(press.id)?.group ? folder : null;
-    if (splitSide || dropFolder) dropIndex = null;
-    if (scrollSpeed() !== 0 && !scrollFrame) scrollFrame = requestAnimationFrame(autoScroll);
-  }
-
-  function splitSideAt(): SplitSide | null {
-    const page = pageRect?.();
-    if (!press || press.id === activeTabId || !page) return null;
-    if (pointer.x < page.left || pointer.x > page.right || pointer.y < page.top || pointer.y > page.bottom) return null;
-    return pointer.x < page.left + page.width / 2 ? 'left' : 'right';
-  }
-
-  function setSplitSide(next: SplitSide | null, id: TabId | null = null): void {
-    if (next === splitSide) return;
-    splitSide = next;
-    send({ type: 'preview-split', id: next ? id : null, side: next ?? 'right' });
-    onSplitDrop?.(next);
-  }
-
-  function onPointerUp(event: PointerEvent): void {
-    if (folderPress) {
-      finishFolderDrag();
-      return;
-    }
-    if (!press || !event.isPrimary) return;
-    if (press.dragging) {
-      suppressNextClick();
-      if (!press.cancelled && splitSide) {
-        send({ type: 'split-tab', id: press.id, side: splitSide });
-        splitSide = null;
-        onSplitDrop?.(null);
-        endDrag();
-        return;
-      }
-      if (!press.cancelled && dropFolder) {
-        send({ type: 'move-tab-to-group', id: press.id, name: dropFolder });
-        endDrag();
-        return;
-      }
-      if (!press.cancelled && commitMove(press.id, press.group === 'pinned' ? pinned : listed)) {
-        settle();
-        return;
-      }
-      returnHome(press.id);
-    }
-    endDrag();
-  }
-
   function onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && folderPress) {
-      cancelFolderDrag();
-      return;
-    }
-    if (event.key === 'Escape' && selectedTabIds.length > 0 && !press?.dragging) {
-      send({ type: 'clear-tab-selection' });
-      return;
-    }
-    if (event.key !== 'Escape' || !press?.dragging) return;
-    press.cancelled = true;
-    resetDragState();
+    if (event.key !== 'Escape' || drag.escape()) return;
+    if (selectedTabIds.length > 0) send({ type: 'clear-tab-selection' });
   }
-
-  function track(): void {
-    if (!press || !lists) return;
-    const horizontal = press.group === 'pinned';
-    const bounds = lists.getBoundingClientRect();
-    const scrolled = lists.scrollTop - press.scrollTop;
-    const content = lists.lastElementChild?.getBoundingClientRect();
-    const homeTop = press.home.top - bounds.top + press.scrollTop;
-    const contentHeight = (content?.bottom ?? bounds.bottom) - bounds.top + lists.scrollTop;
-    const minY = -homeTop;
-    const maxY = contentHeight - press.home.height - homeTop;
-    const minX = bounds.left - press.home.left;
-    const maxX = bounds.right - press.home.right;
-    dragOffset = {
-      x: horizontal ? Math.min(Math.max(pointer.x - press.x, minX), maxX) : 0,
-      y: Math.min(Math.max(pointer.y - press.y + scrolled, minY), maxY),
-    };
-    dropIndex = slotAt(press, horizontal);
-  }
-
-  function slotAt(current: Press, horizontal: boolean): number | null {
-    let nearest: { index: number; rect: DOMRect } | null = null;
-    let nearestDistance = Infinity;
-    for (const item of current.list.querySelectorAll<HTMLElement>(':scope > [data-drag-index]')) {
-      const rect = item.getBoundingClientRect();
-      if (item === current.item) {
-        rect.x -= dragOffset.x;
-        rect.y -= dragOffset.y;
-      }
-      const dx = Math.max(rect.left - pointer.x, 0, pointer.x - rect.right);
-      const dy = Math.max(rect.top - pointer.y, 0, pointer.y - rect.bottom);
-      const distance = Math.hypot(dx, dy);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = { index: Number(item.dataset.dragIndex), rect };
-      }
-    }
-    if (!nearest) return null;
-    const { index, rect } = nearest;
-    const before = horizontal ? pointer.x < rect.left + rect.width / 2 : pointer.y < rect.top + rect.height / 2;
-    const slot = before ? index : index + 1;
-    const from = (current.group === 'pinned' ? pinned : listed).findIndex((tab) => tab.id === current.id);
-    return slot === from || slot === from + 1 ? null : slot;
-  }
-
-  function scrollSpeed(): number {
-    if (!lists) return 0;
-    const { top, bottom } = lists.getBoundingClientRect();
-    if (pointer.y < top + SCROLL_EDGE && lists.scrollTop > 0) return -SCROLL_STEP;
-    if (pointer.y > bottom - SCROLL_EDGE && lists.scrollTop + lists.clientHeight < lists.scrollHeight)
-      return SCROLL_STEP;
-    return 0;
-  }
-
-  function autoScroll(): void {
-    const speed = press?.dragging && !press.cancelled ? scrollSpeed() : 0;
-    if (speed === 0 || !lists) {
-      scrollFrame = 0;
-      return;
-    }
-    lists.scrollTop += speed;
-    track();
-    scrollFrame = requestAnimationFrame(autoScroll);
-  }
-
-  function commitMove(id: TabId, group: TabSnapshot[]): boolean {
-    if (dropIndex === null || !group.some((tab) => tab.id === id)) return false;
-    const from = tabs.findIndex((tab) => tab.id === id);
-    const before = group[dropIndex];
-    const target = before ? tabs.indexOf(before) : tabs.indexOf(group[group.length - 1]) + 1;
-    const toIndex = target > from ? target - 1 : target;
-    if (toIndex === from) return false;
-    send({ type: 'move-tab', id, toIndex });
-    return true;
-  }
-
-  function settle(): void {
-    press = null;
-    dropIndex = null;
-    cancelAnimationFrame(scrollFrame);
-    scrollFrame = 0;
-    settleOrder = orderKey;
-    clearTimeout(settleTimer);
-    settleTimer = window.setTimeout(resetDragState, 400);
-  }
-
-  function returnHome(id: TabId): void {
-    returningId = id;
-    clearTimeout(returnTimer);
-    returnTimer = window.setTimeout(() => (returningId = null), 220);
-  }
-
-  function suppressNextClick(): void {
-    const swallow = (event: MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
-    window.addEventListener('click', swallow, { capture: true, once: true });
-    setTimeout(() => window.removeEventListener('click', swallow, { capture: true }));
-  }
-
-  function resetDragState(): void {
-    setSplitSide(null);
-    dragId = null;
-    dragGroup = null;
-    dropFolder = null;
-    dropIndex = null;
-    dragOffset = { x: 0, y: 0 };
-    settleOrder = null;
-    clearTimeout(settleTimer);
-    cancelAnimationFrame(scrollFrame);
-    scrollFrame = 0;
-  }
-
-  function endDrag(): void {
-    cancelFolderDrag();
-    press = null;
-    resetDragState();
-  }
-
-  function dragStyle(id: TabId): string | undefined {
-    return id === dragId && (settleOrder === null || settleOrder === orderKey)
-      ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
-      : undefined;
-  }
-
-  $effect(() => {
-    if (settleOrder !== null && settleOrder !== orderKey) resetDragState();
-  });
 </script>
 
 {#snippet favicon(tab: Pick<TabSnapshot, 'faviconUrl'>, size: number, unread = false)}
@@ -634,14 +358,14 @@
     {:else}
       <button
         class="group-heading"
-        class:drop-target={dropFolder === group.name}
+        class:drop-target={drag.dropFolder === group.name}
         data-folder={group.name}
         title={group.name}
         aria-label={`${group.name} (${group.count})`}
         aria-expanded={!group.collapsed}
         onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
         ondblclick={() => startRename(group.name)}
-        onpointerdown={(e) => onFolderPointerDown(e, group.name)}
+        onpointerdown={(e) => drag.pressFolder(e, group.name)}
         oncontextmenu={(e) => {
           e.preventDefault();
           send({ type: 'open-folder-menu', name: group.name });
@@ -671,20 +395,20 @@
           class:active={tab.id === activeTabId || !!merged?.some((member) => member.id === activeTabId)}
           class:selected={selected.has(tab.id)}
           class:discarded={!tab.live}
-          class:lifted={index >= 0 && tab.id === dragId}
-          class:returning={index >= 0 && tab.id === returningId}
-          class:drop-before={index >= 0 && draggingListed && dropIndex === index}
+          class:lifted={index >= 0 && tab.id === drag.dragId}
+          class:returning={index >= 0 && tab.id === drag.returningId}
+          class:drop-before={index >= 0 && draggingListed && drag.dropIndex === index}
           class:drop-after={index >= 0 &&
             draggingListed &&
-            dropIndex === index + 1 &&
+            drag.dropIndex === index + 1 &&
             tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
           data-drag-index={index >= 0 ? index : undefined}
           data-hover-preview={!tab.isPrivate ? '' : undefined}
           animate:reorder
-          style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
+          style:transform={index >= 0 ? drag.style(tab.id) : undefined}
           onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
           onpointerleave={previews.leave}
-          onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
+          onpointerdown={(e) => index >= 0 && drag.pressTab(e, tab.id, 'listed')}
           oncontextmenu={(e) => {
             e.preventDefault();
             send({ type: 'open-tab-menu', id: tab.id });
@@ -701,16 +425,16 @@
   onpointerdowncapture={previews.dismiss}
   onwheelcapture={previews.dismiss}
   onkeydowncapture={previews.dismiss}
-  onpointermove={onPointerMove}
-  onpointerup={onPointerUp}
-  onpointercancel={endDrag}
+  onpointermove={(e) => drag.move(e)}
+  onpointerup={(e) => drag.release(e)}
+  onpointercancel={() => drag.end()}
   onkeydown={onKeyDown}
-  onblur={endDrag}
+  onblur={() => drag.end()}
 />
 
 <aside
   class="panel card"
-  class:dragging={dragId !== null}
+  class:dragging={drag.dragId !== null}
   aria-label={t('tabPanel.tabs')}
   onwheel={(event) => spaceSwipe.wheel(event, spaces, activeSpaceId)}
   style:--panel-full-width="{fullWidth}px"
@@ -724,7 +448,7 @@
       class:space-settling={spaceSwipe.shifting && !spaceSwipe.following}
       style:--space-shift="{spaceSwipe.shift}px"
       style:--space-fade={1 - Math.min(Math.abs(spaceSwipe.shift) / 120, 0.6)}
-      bind:this={lists}
+      bind:this={drag.lists}
     >
       {#if favorites.length > 0}
         <ul class="favorites global" aria-label={t('tabPanel.favorites')}>
@@ -762,17 +486,17 @@
               class:active={tab.id === activeTabId}
               class:selected={selected.has(tab.id)}
               class:discarded={!tab.live}
-              class:lifted={tab.id === dragId}
-              class:returning={tab.id === returningId}
-              class:drop-before={draggingPinned && dropIndex === index}
-              class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
+              class:lifted={tab.id === drag.dragId}
+              class:returning={tab.id === drag.returningId}
+              class:drop-before={draggingPinned && drag.dropIndex === index}
+              class:drop-after={draggingPinned && drag.dropIndex === index + 1 && index === pinned.length - 1}
               data-drag-index={index}
               data-hover-preview={!tab.isPrivate ? '' : undefined}
               animate:reorder
-              style:transform={dragStyle(tab.id)}
+              style:transform={drag.style(tab.id)}
               onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
               onpointerleave={previews.leave}
-              onpointerdown={(e) => onPointerDown(e, tab.id, 'pinned')}
+              onpointerdown={(e) => drag.pressTab(e, tab.id, 'pinned')}
               oncontextmenu={(e) => {
                 e.preventDefault();
                 send({ type: 'open-tab-menu', id: tab.id });

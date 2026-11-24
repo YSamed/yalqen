@@ -54,10 +54,13 @@ finish(
     const target = await lowerHalf(row('d'));
     await ui.drag(c, [...nudge(c), target], { release: false });
     await ui.key('Escape');
-    ui.mouse('mouseUp', target, false);
+    const after = await lowerHalf(row('a'));
+    ui.mouse('mouseMove', after);
+    await ui.settle();
+    ui.mouse('mouseUp', after, false);
     await ui.settle();
     assert.deepEqual(taken('move-tab', 'move-tab-to-group', 'activate-tab'), []);
-    console.log('PASS: Escape cancels a tab drag');
+    console.log('PASS: Escape cancels a tab drag, even if the pointer keeps moving');
 
     const later = await ui.center(folder('Later'));
     await ui.drag(later, [...nudge(later), await ui.center(folder('Work'))]);
