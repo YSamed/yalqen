@@ -1,14 +1,14 @@
 <script lang="ts">
-  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId, TranslationStatus } from '../../shared/types';
+  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId } from '../../shared/types';
   import type { AgentSessionState } from '../../shared/agent';
   import { anchorRect } from './anchor';
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
-  import { devStates, isNewTab, siteLabel } from './format';
+  import { isNewTab, siteLabel } from './format';
   import Capsule from './Capsule.svelte';
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
-  import Button from '../ui/Button.svelte';
+  import PageActions from './PageActions.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import { modeOf, TAB_MODES, type TabMode } from '../../shared/tab-modes';
   import type { MessageKey } from '../../shared/i18n';
@@ -94,12 +94,6 @@
   let trailing: HTMLElement | undefined = $state();
   let groupOffset = 0;
   const send = window.yalqen.send;
-  const translateTitle: Record<TranslationStatus, string> = {
-    idle: t('toolbar.translatePage'),
-    translating: t('toolbar.translatingPage'),
-    translated: t('toolbar.showOriginalPage'),
-    failed: t('toolbar.translationFailed'),
-  };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
   const split = $derived(span && panes.length > 1);
@@ -113,18 +107,6 @@
   const surface = $derived(span && activeTab && !isNewTab(activeTab.url) ? (activeTab.pageColor ?? null) : null);
   const surfaceTone = $derived(surface === null ? null : toneScheme(surface));
   const chatPill = $derived(span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
-  const bookmarkable = $derived(
-    activeTab !== null && (activeTab.url.startsWith('http') || activeTab.url.startsWith('file:')),
-  );
-  const states = $derived(activeTab ? devStates(activeTab) : []);
-  const zoomChanged = $derived(Math.round(zoom * 100) !== Math.round(defaultZoom * 100));
-  const hasActions = $derived(
-    bookmarkable ||
-      zoomChanged ||
-      states.length > 0 ||
-      activeTab?.translation.available === true ||
-      (activeTab?.blockedPopups ?? 0) > 0,
-  );
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
     send({ type: 'open-extensions-menu', anchor: anchorRect(event.currentTarget) });
@@ -417,85 +399,7 @@
                   onclick={() => send({ type: 'toggle-mute', id: tab.id })}
                 />
               {/if}
-              {#if activeTab && hasActions}
-                <span class="page-actions" role="group" aria-label={t('toolbar.pageActions')}>
-                  {#if bookmarkable}
-                    <IconButton
-                      icon="star"
-                      tone={activeTab.bookmarked ? 'accent' : 'muted'}
-                      class="star"
-                      label={activeTab.bookmarked ? t('toolbar.removeBookmark') : t('toolbar.addBookmark')}
-                      title={activeTab.bookmarked ? t('toolbar.removeBookmarkTitle') : t('toolbar.addBookmarkTitle')}
-                      aria-pressed={activeTab.bookmarked}
-                      onclick={() => send({ type: 'toggle-bookmark' })}
-                    />
-                  {/if}
-                  {#if activeTab.translation.available}
-                    {#if activeTab.translation.status === 'idle' || activeTab.translation.status === 'failed'}
-                      <IconButton
-                        icon="translate"
-                        tone={activeTab.translation.status === 'failed' ? 'warn' : 'muted'}
-                        label={translateTitle[activeTab.translation.status]}
-                        onclick={() => send({ type: 'toggle-translation' })}
-                      />
-                    {:else}
-                      <Button
-                        size="sm"
-                        variant="tonal"
-                        icon="translate"
-                        disabled={activeTab.translation.status === 'translating'}
-                        aria-pressed={activeTab.translation.status === 'translated'}
-                        title={translateTitle[activeTab.translation.status]}
-                        onclick={() => send({ type: 'toggle-translation' })}
-                      >
-                        {activeTab.translation.status === 'translating'
-                          ? t('toolbar.translating')
-                          : t('toolbar.translated')}
-                      </Button>
-                    {/if}
-                  {/if}
-                  {#if activeTab.blockedPopups > 0}
-                    <IconButton
-                      icon="popup-blocked"
-                      variant="tonal"
-                      tone="warn"
-                      label={t('toolbar.popupsBlocked', { count: activeTab.blockedPopups })}
-                      title={t('toolbar.popupBlocked')}
-                      onclick={() => send({ type: 'open-blocked-popups' })}
-                    />
-                  {/if}
-                  {#if states.length > 0}
-                    {#key activeTab.agentReadAt}
-                      <Button
-                        size="sm"
-                        variant="tonal"
-                        icon="gauge"
-                        class={[
-                          'dev-state',
-                          activeTab.agentObserved && 'agent',
-                          activeTab.agentReadAt !== null && Date.now() - activeTab.agentReadAt < 1500 && 'agent-read',
-                        ]}
-                        aria-label={t('toolbar.developerStatus', { states: states.join(', ') })}
-                        title={states.join(' · ')}
-                        onclick={() => send({ type: 'open-dev-menu' })}
-                      >
-                        {states.length}
-                      </Button>
-                    {/key}
-                  {/if}
-                  {#if zoomChanged}
-                    <Button
-                      size="sm"
-                      variant="tonal"
-                      class="zoom"
-                      title={t('toolbar.resetZoomTitle')}
-                      onclick={() => send({ type: 'reset-zoom' })}
-                    >
-                      {t('toolbar.zoomPercent', { percent: Math.round(zoom * 100) })}
-                    </Button>
-                  {/if}
-                </span>
-              {/if}
+              <PageActions {tab} {zoom} {defaultZoom} />
               <IconButton
                 size="sm"
                 icon="close"
@@ -881,12 +785,12 @@
     display: none;
   }
 
-  .toolbar.card .page-actions {
+  .toolbar.card :global(.page-actions) {
     opacity: 0;
     transition: opacity var(--transition);
   }
 
-  .toolbar.card .chip.active:is(:hover, :focus-within) .page-actions {
+  .toolbar.card .chip.active:is(:hover, :focus-within) :global(.page-actions) {
     opacity: 1;
   }
 
@@ -1004,13 +908,6 @@
     border-radius: 999px;
     background: var(--surface);
     box-shadow: var(--shadow);
-  }
-
-  .page-actions {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 2px;
   }
 
   .chip :global(.close:focus-visible) {

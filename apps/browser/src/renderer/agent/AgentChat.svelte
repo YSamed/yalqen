@@ -21,6 +21,7 @@
   import Select from '../ui/Select.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
   import AgentRewind from './AgentRewind.svelte';
+  import PermissionRequest from './PermissionRequest.svelte';
   import AgentToolCard from './AgentToolCard.svelte';
   import ComposerSuggestions from './ComposerSuggestions.svelte';
   import { composerSuggestions } from './composer-suggestions';
@@ -99,7 +100,6 @@
   let signingIn = $state(false);
   let signInFailed = $state(false);
   let loading = $state(true);
-  let answers: Record<string, Record<string, string>> = $state({});
   let scroller: HTMLDivElement;
   let textarea: HTMLTextAreaElement | undefined = $state();
   let follow = $state(true);
@@ -230,7 +230,6 @@
 
   function receive(next: AgentChatSnapshot): void {
     if (destroyed || (next.revision <= snapshot.revision && next.state.provider === snapshot.state.provider)) return;
-    if (next.state.id !== snapshot.state.id) answers = {};
     snapshot = reuseChatSnapshot(snapshot, next);
     loading = false;
   }
@@ -390,23 +389,18 @@
     }
   }
 
-  async function respond(request: AgentChatPermission, allow: boolean, always = false): Promise<void> {
+  async function respond(
+    request: AgentChatPermission,
+    allow: boolean,
+    always: boolean,
+    selected: Record<string, string> | undefined,
+  ): Promise<void> {
     if (!snapshot.state.id) return;
     try {
-      const selected = answers[request.id] ? { ...answers[request.id] } : undefined;
       await window.yalqen.respondAgentChat(snapshot.state.id, request.id, allow, selected, always);
     } catch {
       failed = true;
     }
-  }
-
-  function selectAnswer(requestId: string, question: string, value: string, multiple: boolean): void {
-    const current = answers[requestId]?.[question] ?? '';
-    const selected = current.split(', ').filter(Boolean);
-    const next = multiple
-      ? (selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]).join(', ')
-      : value;
-    answers = { ...answers, [requestId]: { ...answers[requestId], [question]: next } };
   }
 
   async function pickSuggestion(index: number): Promise<void> {
@@ -602,74 +596,7 @@
       </div>
     {/if}
     {#each snapshot.permissions as request (request.id)}
-      <div class="approval">
-        <div class="approval-heading">
-          <Icon name={request.questions.length ? 'info' : 'lock'} size={14} /><strong>
-            {t(
-              request.questions.length
-                ? 'agentChat.question'
-                : request.plan !== null
-                  ? 'agentChat.planReady'
-                  : 'agentChat.approval',
-            )}
-          </strong>
-        </div>
-        {#if request.questions.length}
-          {#each request.questions as question (question.question)}
-            <fieldset>
-              <legend>{question.question}</legend>
-              {#each question.options as option (option.label)}
-                <label class="answer-option">
-                  <input
-                    type={question.multiSelect ? 'checkbox' : 'radio'}
-                    name={`${request.id}-${question.question}`}
-                    checked={(answers[request.id]?.[question.question] ?? '').split(', ').includes(option.label)}
-                    onchange={() => selectAnswer(request.id, question.question, option.label, question.multiSelect)}
-                  />
-                  <span>
-                    <strong>{option.label}</strong>{#if option.description}<small>{option.description}</small>{/if}
-                  </span>
-                </label>
-              {/each}
-              <input
-                class="free-answer"
-                aria-label={question.question}
-                placeholder={t('agentChat.otherAnswer')}
-                value={answers[request.id]?.[question.question] ?? ''}
-                oninput={(event) =>
-                  (answers = {
-                    ...answers,
-                    [request.id]: { ...answers[request.id], [question.question]: event.currentTarget.value },
-                  })}
-              />
-            </fieldset>
-          {/each}
-        {:else if request.plan !== null}
-          <div class="plan"><AgentMarkdown text={request.plan} /></div>
-        {:else}
-          <p>{request.title}</p>
-          <pre>{request.input}</pre>
-        {/if}
-        <div class="approval-actions">
-          <Button onclick={() => respond(request, false)}>{t('agentChat.deny')}</Button>
-          {#if request.canAlwaysAllow}<Button onclick={() => respond(request, true, true)}>
-              {t('agentChat.alwaysAllow')}
-            </Button>{/if}
-          <Button
-            variant="primary"
-            disabled={request.questions.some((question) => !answers[request.id]?.[question.question]?.trim())}
-            onclick={() => respond(request, true)}
-          >
-            {t(
-              request.questions.length
-                ? 'agentChat.answer'
-                : request.plan !== null
-                  ? 'agentChat.approvePlan'
-                  : 'agentChat.allow',
-            )}
-          </Button>
-        </div>
-      </div>
+      <PermissionRequest {request} onrespond={(allow, always, answers) => respond(request, allow, always, answers)} />
     {/each}
     {#if busy && snapshot.state.status !== 'approval'}
       <div class="working" role="status">
@@ -1124,100 +1051,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  pre {
-    max-height: 180px;
-    margin: 0;
-    padding: 10px 12px;
-    overflow: auto;
-    border-top: 1px solid var(--page-divider);
-    background: var(--surface-strong);
-    color: var(--text-muted);
-    font: var(--ai-mono) / 1.6 var(--ai-mono-font);
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    user-select: text;
-  }
-  .approval {
-    margin: 16px 0 4px;
-    padding: 14px;
-    border-radius: var(--ai-radius);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-  }
-  .approval-heading {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--accent);
-    font-size: var(--ai-small);
-  }
-  .approval-heading strong {
-    font-weight: 600;
-  }
-  .approval > p {
-    margin: 10px 0 8px;
-    font-size: var(--ai-text);
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-  }
-  .approval pre {
-    max-height: 150px;
-    border: 1px solid var(--page-divider);
-    border-radius: 8px;
-  }
-  .approval-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
-    margin-top: 12px;
-  }
-  fieldset {
-    min-width: 0;
-    margin: 12px 0;
-    padding: 0;
-    border: 0;
-  }
-  legend {
-    margin-bottom: 6px;
-    font-size: var(--ai-text);
-    line-height: 1.5;
-  }
-  .answer-option {
-    display: flex;
-    gap: 8px;
-    padding: 6px 0;
-    font-size: var(--ai-small);
-    line-height: 1.45;
-  }
-  .answer-option input {
-    flex: none;
-    margin: 2px 0 0;
-    accent-color: var(--accent);
-  }
-  .answer-option strong {
-    font-weight: 500;
-  }
-  .answer-option small {
-    display: block;
-    margin-top: 2px;
-    color: var(--text-muted);
-    font-size: var(--ai-meta);
-    line-height: 1.45;
-  }
-  .free-answer {
-    box-sizing: border-box;
-    width: 100%;
-    height: var(--control-md);
-    margin-top: 6px;
-    padding: 0 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-control);
-    background: var(--surface-strong);
-    color: var(--text);
-    font: inherit;
-    font-size: var(--ai-small);
-  }
   .working {
     display: flex;
     align-items: center;
@@ -1461,11 +1294,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .plan {
-    max-height: 320px;
-    overflow-y: auto;
-    margin: 6px 0 8px;
-  }
   .chips {
     display: flex;
     flex-wrap: wrap;
@@ -1485,8 +1313,7 @@
   .attachment > :global(svg) {
     flex: none;
   }
-  button:focus-visible,
-  .free-answer:focus-visible {
+  button:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
