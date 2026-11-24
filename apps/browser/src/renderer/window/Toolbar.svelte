@@ -48,6 +48,9 @@
   }
 
   let {
+    panelCollapsed = false,
+    leadingWidth = 0,
+    span = false,
     tabs,
     developer,
     activeTabId,
@@ -69,6 +72,9 @@
     modeSwitch = false,
     bookmarksPanelOpen = false,
   }: {
+    panelCollapsed?: boolean;
+    leadingWidth?: number;
+    span?: boolean;
     tabs: TabSnapshot[];
     developer: boolean;
     activeTabId: TabId | null;
@@ -107,6 +113,7 @@
   let dropKey = $state(0);
   let seenStarts: number | null = null;
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
+  const chatPill = $derived(span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
   const bookmarkable = $derived(
     activeTab !== null && (activeTab.url.startsWith('http') || activeTab.url.startsWith('file:')),
   );
@@ -159,6 +166,11 @@
     if (!active || !controls) return;
 
     const align = () => {
+      if (span) {
+        groupOffset = 0;
+        tabGroup.style.transform = '';
+        return;
+      }
       const headerBounds = header.getBoundingClientRect();
       const groupBounds = tabGroup.getBoundingClientRect();
       const contentRight =
@@ -189,6 +201,7 @@
   $effect(() => {
     void centerOffset;
     void leadingInset;
+    void span;
     void alignLeading;
     untrack(() => alignGroup?.());
   });
@@ -292,52 +305,73 @@
   {/if}
 {/snippet}
 
+{#snippet panelToggle()}
+  <IconButton
+    size="lg"
+    variant="surface"
+    class="panel-toggle"
+    icon="sidebar-left"
+    label={panelCollapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
+    title={panelCollapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
+    aria-expanded={!panelCollapsed}
+    onclick={() => send({ type: 'toggle-panel' })}
+  />
+{/snippet}
+
+{#snippet navigation()}
+  <IconButton
+    size="lg"
+    variant="surface"
+    icon="nav-back"
+    label={t('toolbar.back')}
+    disabled={!activeTab?.canGoBack}
+    onclick={() => send({ type: 'go-back' })}
+  />
+  <IconButton
+    size="lg"
+    variant="surface"
+    icon="nav-forward"
+    label={t('toolbar.forward')}
+    disabled={!activeTab?.canGoForward}
+    onclick={() => send({ type: 'go-forward' })}
+  />
+  {#if activeTab?.loading}
+    <IconButton
+      size="lg"
+      variant="surface"
+      icon="close"
+      label={t('toolbar.stop')}
+      title={t('toolbar.stopTitle')}
+      onclick={() => send({ type: 'stop' })}
+    />
+  {:else}
+    <IconButton
+      size="lg"
+      variant="surface"
+      icon="nav-reload"
+      label={t('toolbar.reload')}
+      title={t('toolbar.reloadTitle')}
+      onclick={() => send({ type: 'reload' })}
+    />
+  {/if}
+{/snippet}
+
 <header
-  class="toolbar"
+  class="toolbar card"
+  class:span
+  class:blank-page={activeTab !== null && isNewTab(activeTab.url)}
+  class:busy={downloads.active > 0 || agentStatus === 'running' || agentStatus === 'error'}
   bind:this={toolbar}
   style:padding-left="{leadingInset}px"
   style:padding-right="{trailingInset}px"
+  style:--bar-card-left="{leadingInset + leadingWidth + 8}px"
+  style:--bar-group-offset="{Math.max(0, 9 + Math.min(0, leadingWidth))}px"
 >
-  <div class="side leading" aria-hidden="true"></div>
+  <div class="side leading" style:flex={span ? `0 0 ${Math.max(0, leadingWidth)}px` : undefined}></div>
 
   <div class="tab-group" bind:this={group}>
-    {#if activeTab?.canGoBack}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="back"
-        label={t('toolbar.back')}
-        onclick={() => send({ type: 'go-back' })}
-      />
-    {/if}
-    {#if activeTab?.canGoForward}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="forward"
-        label={t('toolbar.forward')}
-        onclick={() => send({ type: 'go-forward' })}
-      />
-    {/if}
-    {#if activeTab?.loading}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="close"
-        label={t('toolbar.stop')}
-        title={t('toolbar.stopTitle')}
-        onclick={() => send({ type: 'stop' })}
-      />
-    {:else}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="reload"
-        label={t('toolbar.reload')}
-        title={t('toolbar.reloadTitle')}
-        onclick={() => send({ type: 'reload' })}
-      />
-    {/if}
+    {#if span}{@render panelToggle()}{/if}
+    {@render navigation()}
     <ol class="strip" bind:this={strip} aria-label={t('toolbar.openTabs')}>
       {#each tabs as tab (tab.id)}
         {@const active = tab.id === activeTabId}
@@ -403,11 +437,10 @@
                 aria-current="page"
                 onclick={() => send({ type: 'open-address' })}
               >
-                {@render favicon(tab)}
                 {#if isNewTab(tab.url)}
                   <span class="label hint">{t('commandBar.placeholder')}</span>
                 {:else}
-                  <span class="label">{siteLabel(tab)}</span>
+                  <span class="label crumb">{siteLabel(tab)}</span>
                 {/if}
               </button>
               {#if tab.audible || tab.muted}
@@ -545,14 +578,16 @@
         </li>
       {/each}
     </ol>
-    <div class="new-tab-slot">
-      <NewTabButton />
-    </div>
+    {#if !span}
+      <div class="new-tab-slot">
+        <NewTabButton />
+      </div>
+    {/if}
   </div>
 
   <div class="side trailing" bind:this={trailing} style:margin-right="{-trailingOverhang}px">
     <Capsule>
-      {#if agentAvailable}
+      {#if agentAvailable && !chatPill}
         <IconButton
           icon="sparkle"
           label={t('agentPanel.toggle')}
@@ -577,6 +612,31 @@
       {/each}
     </Capsule>
   </div>
+
+  {#if chatPill}
+    <div class="chat-slot">
+      <button
+        type="button"
+        class="chat-pill"
+        class:open={agentPanelOpen}
+        title={t('agentPanel.toggleTitle')}
+        aria-expanded={agentPanelOpen}
+        aria-controls="agent-panel"
+        disabled={!ready}
+        onclick={() => send({ type: 'toggle-agent-panel' })}
+      >
+        <Icon name="sparkle" size={14} />
+        <span>{t('newTab.chat')}</span>
+        {#if agentStatus === 'running' || agentStatus === 'starting' || agentStatus === 'error'}
+          <span
+            class="agent-dot"
+            class:error={agentStatus === 'error'}
+            aria-label={t(agentStatus === 'error' ? 'agentPanel.failed' : 'agentPanel.running')}
+          ></span>
+        {/if}
+      </button>
+    </div>
+  {/if}
 </header>
 
 <style>
@@ -600,6 +660,187 @@
     gap: 8px;
     min-width: 0;
     -webkit-app-region: drag;
+  }
+
+  .toolbar.card {
+    gap: 4px;
+  }
+
+  .toolbar.card.span {
+    position: relative;
+    z-index: 1;
+    grid-column: 1 / span 2;
+  }
+
+  /* Extends under the page view's top corners. */
+  .toolbar.card.span::before {
+    position: absolute;
+    right: 7px;
+    left: var(--bar-card-left);
+    content: '';
+    pointer-events: none;
+    top: 6px;
+    bottom: -4px;
+    border-radius: 10px 10px 0 0;
+    background: var(--page);
+  }
+
+  .chat-slot {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    padding: 6px 4px 0 0;
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 11px 0 9px;
+    border: 0;
+    border-radius: 8px;
+    background: rgb(from var(--text) r g b / 0.06);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .chat-pill :global(svg) {
+    color: var(--frame-primary, var(--accent));
+  }
+
+  .chat-pill:hover,
+  .chat-pill.open {
+    background: rgb(from var(--text) r g b / 0.1);
+  }
+
+  .chat-pill .agent-dot {
+    top: 5px;
+    right: 5px;
+    bottom: auto;
+  }
+
+  .toolbar.card.span .tab-group {
+    position: relative;
+    flex: 1 1 auto;
+    gap: 3px;
+    padding: 6px 0 0 var(--bar-group-offset);
+  }
+
+  .toolbar.card.span :global(.icon-btn.lg:not(.panel-toggle)) {
+    color: rgb(from var(--text) r g b / 0.5);
+  }
+
+  .toolbar.card.span :global(.icon-btn.panel-toggle) {
+    color: rgb(from var(--text) r g b / 0.82);
+  }
+
+  /* Dia leaves the toolbar empty on a new tab; the page's own search box takes the address. */
+  .toolbar.card.span.blank-page .chip.active {
+    display: none;
+  }
+
+  /* Dia draws these with SF Symbols at 13pt regular, a thinner line than the app's 1.4. */
+  .toolbar.card.span :global(.icon-btn.lg svg) {
+    stroke-width: 1.15;
+  }
+
+  .toolbar.card.span :global(.icon-btn.lg) {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .toolbar.card.span .trailing {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 6px 6px 0 0;
+  }
+
+  .toolbar.card.span .chip.active {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .crumb {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .crumb-title {
+    color: var(--text-muted);
+  }
+
+  .toolbar.card .leading {
+    min-width: 0;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-left: 8px;
+  }
+
+  .toolbar.card.span .leading {
+    padding-top: 6px;
+    padding-left: 0;
+    overflow: hidden;
+  }
+
+  .toolbar.card :global(.icon-btn.surface),
+  .toolbar.card :global(.capsule),
+  .toolbar.card .pill {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .toolbar.card :global(.capsule) {
+    padding: 0;
+  }
+
+  .toolbar.card :global(.icon-btn:disabled) {
+    opacity: 0.6;
+  }
+
+  .toolbar.card .chip.active :global(.site),
+  .toolbar.card .chip.active :global(.close) {
+    display: none;
+  }
+
+  .toolbar.card .page-actions {
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .toolbar.card .chip.active:is(:hover, :focus-within) .page-actions {
+    opacity: 1;
+  }
+
+  .toolbar.card .trailing {
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .toolbar.card:is(:hover, :focus-within, .busy) .trailing {
+    opacity: 1;
+  }
+
+  .toolbar.card .chip.active {
+    width: clamp(240px, 40vw, 520px);
+  }
+
+  .toolbar.card .address {
+    gap: 6px;
+    padding-left: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .toolbar.card .address::after {
+    display: none;
   }
 
   .side {
@@ -1094,6 +1335,10 @@
     border-radius: 1px;
     background: var(--accent);
     animation: pulse 1.2s ease-in-out infinite alternate;
+  }
+
+  .toolbar.card .chip.active .loading {
+    display: none;
   }
 
   .chip.active .loading {

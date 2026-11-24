@@ -124,10 +124,16 @@ app
     assert.equal(await dots('aside'), 1);
     assert.match(await run("document.querySelector('aside .unread-dot').closest('.row').textContent"), /Inbox \(3\)/);
     assert.match(
-      await run("document.querySelector('aside .unread-dot').closest('button').getAttribute('aria-label')"),
+      await run(
+        "document.querySelector('aside .unread-dot').closest('.row').querySelector('.select').getAttribute('aria-label')",
+      ),
       /unread messages/,
     );
+    // The wide card sidebar shows the dot after the title instead of on the icon.
+    assert.equal(await run("document.querySelector('aside .unread-dot').classList.contains('trailing')"), true);
 
+    push({ panelCollapsed: true, panelSide: 'right' });
+    await eventually("document.querySelector('aside')?.classList.contains('collapsed')");
     const dot = await run(`(() => {
       const dot = document.querySelector('aside .unread-dot').getBoundingClientRect();
       const icon = document.querySelector('aside .unread-dot').parentElement.getBoundingClientRect();
@@ -142,7 +148,6 @@ app
     assert.equal(dot.accent, '#e8590c');
     assert.equal(dot.color, 'rgb(232, 89, 12)');
 
-    push({ panelCollapsed: true });
     await eventually("document.querySelector('aside')?.classList.contains('collapsed')");
     await eventually("document.querySelectorAll('aside .unread-dot').length === 1");
 

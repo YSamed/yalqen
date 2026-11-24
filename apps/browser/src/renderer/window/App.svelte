@@ -29,20 +29,15 @@
 
   const COLLAPSED_WIDTH = 44;
   const CONTROL_SIZE = 34;
-  const CHROME_HEIGHT = 44;
   const MAC_TLIGHTS_WIDTH = 88;
   const BOOKMARKS_PANEL_WIDTH = 300;
   const PAGE_INSET = 8;
   const PRIVATE_ACCENT = '#d4d4d8';
   const PANEL_ROW_INSET = PAGE_INSET + 3;
-  const PINNED_COLUMNS = 4;
-  const PINNED_GAP = 6;
-  const PANEL_WIDTH =
-    (COLLAPSED_WIDTH - CONTROL_SIZE) / 2 +
-    PINNED_COLUMNS * CONTROL_SIZE +
-    (PINNED_COLUMNS - 1) * PINNED_GAP +
-    PANEL_ROW_INSET;
-  const PAGE_RADIUS = 16;
+  const PANEL_WIDTH = 190;
+  const PAGE_RADIUS = 4;
+  const CARD_PAGE_INSET = 7;
+  const CHROME_HEIGHT = 47;
   const DEVICE_BEZEL = 10;
   const PANEL_ANIMATION_MS = 240;
   const CONTENT_SWAP_PROGRESS = 0.5;
@@ -165,7 +160,7 @@
     browser.panelCollapsed ||
       (agentPanelOpen &&
         !agentCollapsed &&
-        windowWidth < PANEL_WIDTH + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + PAGE_INSET * 2),
+        windowWidth < PANEL_WIDTH + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + CARD_PAGE_INSET * 2),
   );
   const material = $derived(browser.material);
   const pageFullScreen = $derived(browser.pageFullScreen);
@@ -175,17 +170,19 @@
   const sideVisible = $derived(agentVisible || bookmarksVisible);
   const windowFullScreen = $derived(browser.windowFullScreen);
   const windowMenu = $derived(browser.windowMenu ?? false);
-  const panelWidth = $derived(sidebarVisible ? (collapsed ? COLLAPSED_WIDTH : PANEL_WIDTH) : PAGE_INSET);
+  // A collapsed left sidebar tucks away entirely; the traffic lights then sit inside the page card's toolbar.
+  const collapsedWidth = $derived(browser.panelSide === 'left' ? CARD_PAGE_INSET : COLLAPSED_WIDTH);
+  const panelWidth = $derived(sidebarVisible ? (collapsed ? collapsedWidth : PANEL_WIDTH) : CARD_PAGE_INSET);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
   const side = $derived(browser.panelSide);
-  const collapsedAgentWidth = $derived(side === 'left' ? COLLAPSED_WIDTH - PAGE_INSET : COLLAPSED_WIDTH);
+  const collapsedAgentWidth = $derived(side === 'left' ? COLLAPSED_WIDTH - CARD_PAGE_INSET : COLLAPSED_WIDTH);
   const agentReservedWidth = $derived(
     agentVisible
       ? agentCollapsed
         ? collapsedAgentWidth
-        : agentWidth + PAGE_INSET
+        : agentWidth + CARD_PAGE_INSET
       : bookmarksVisible
-        ? BOOKMARKS_PANEL_WIDTH + PAGE_INSET
+        ? BOOKMARKS_PANEL_WIDTH + CARD_PAGE_INSET
         : 0,
   );
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -317,15 +314,17 @@
     contentFading = true;
     panelAnimation = requestAnimationFrame(step);
   });
-  const topInset = $derived(toolbarVisible ? CHROME_HEIGHT : PAGE_INSET);
+  const spanToolbar = $derived(side === 'left' && sidebarVisible);
+  const topInset = $derived(toolbarVisible ? CHROME_HEIGHT : CARD_PAGE_INSET);
   const menuInset = $derived(
     windowMenu && toolbarVisible && !pageFullScreen && !(side === 'left' && sidebarVisible)
-      ? PAGE_INSET + CONTROL_SIZE + 8
+      ? CARD_PAGE_INSET + CONTROL_SIZE + 8
       : 0,
   );
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => {
     document.documentElement.dataset.material = material;
+    document.documentElement.dataset.style = 'card';
     document.documentElement.dataset.mode = mode;
     document.documentElement.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : browser.accent);
     document.documentElement.style.setProperty('--glass-tint', String(browser.glassTint / 100));
@@ -344,7 +343,7 @@
       panelSlide,
       panelSide: side,
       chromeHeight: topInset,
-      pageInset: PAGE_INSET,
+      pageInset: CARD_PAGE_INSET,
       pageRadius: PAGE_RADIUS,
       agentPanelWidth: pageAgentWidth,
       newTabCenterOffset:
@@ -391,7 +390,7 @@
   style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
 >
   {#if !pageFullScreen}
-    {#if sidebarVisible}
+    {#if sidebarVisible && !(collapsed && collapsedWidth < COLLAPSED_WIDTH)}
       <TabPanel
         {tabs}
         {listOrder}
@@ -410,6 +409,7 @@
         rowInset={PANEL_ROW_INSET}
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={PANEL_WIDTH}
+        toggleInToolbar={spanToolbar && toolbarVisible}
         {profile}
         {pinnedDisplay}
         tabCleanup={browser.tabCleanup ?? false}
@@ -422,6 +422,9 @@
     {/if}
     {#if toolbarVisible}
       <Toolbar
+        panelCollapsed={collapsed}
+        span={spanToolbar}
+        leadingWidth={shownWidth - Math.max(wcoTbleftInset, menuInset) - PAGE_INSET}
         {developer}
         modeSwitch={browser.modeSwitch ?? false}
         bookmarksPanelOpen={bookmarksVisible}
@@ -437,12 +440,14 @@
         {agentStatus}
         buttons={toolbarButtons}
         {toolbarExtensions}
-        leadingInset={Math.max(side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset, menuInset)}
+        leadingInset={spanToolbar
+          ? Math.max(wcoTbleftInset, menuInset)
+          : Math.max(side === 'left' ? Math.max(0, wcoTbleftInset - shownWidth) : wcoTbleftInset, menuInset)}
         alignLeading={!sidebarVisible && !IS_MAC}
-        trailingInset={PAGE_INSET + wcoTbrightInset}
-        centerOffset={(side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
+        trailingInset={CARD_PAGE_INSET + wcoTbrightInset}
+        centerOffset={spanToolbar ? 0 : (side === 'left' ? -shownWidth : shownWidth + shownAgentWidth) / 2}
         trailingOverhang={(rightPanel
-          ? shownWidth + PAGE_INSET - (collapsed && panelSettled ? PAGE_INSET : PANEL_ROW_INSET)
+          ? shownWidth + CARD_PAGE_INSET - (collapsed && panelSettled ? CARD_PAGE_INSET : PANEL_ROW_INSET)
           : 0) + (side === 'right' ? shownAgentWidth : 0)}
       />
     {:else}
@@ -460,8 +465,8 @@
     style:margin={pageFullScreen
       ? '0'
       : side === 'left'
-        ? `0 ${PAGE_INSET}px ${PAGE_INSET}px 0`
-        : `0 0 ${PAGE_INSET}px ${PAGE_INSET}px`}
+        ? `0 ${CARD_PAGE_INSET}px ${CARD_PAGE_INSET}px 0`
+        : `0 0 ${CARD_PAGE_INSET}px ${CARD_PAGE_INSET}px`}
     style:border-radius={pageFullScreen ? '0' : `${PAGE_RADIUS}px`}
   >
     <div class="viewport" aria-hidden="true">
@@ -550,6 +555,14 @@
     transition: background-color var(--transition);
   }
 
+  :global(:root[data-style='card']:not([data-mode='private'])) .shell {
+    background-image: linear-gradient(to bottom, var(--card-sidebar-top), var(--card-sidebar-bottom));
+  }
+
+  :global(:root[data-style='card'][data-material='glass']:not([data-mode='private'])) .shell {
+    background-color: transparent;
+  }
+
   .menu-button {
     position: absolute;
     top: 0;
@@ -596,6 +609,17 @@
 
   .agent-slot.animating {
     overflow: clip;
+  }
+
+  /* The side panel is a full-height card beside the page, with its header on the toolbar row. */
+  :global(:root[data-style='card']) .shell.with-agent:not(.right, .fullscreen) {
+    grid-template-areas:
+      'panel bar agent'
+      'panel page agent';
+  }
+
+  :global(:root[data-style='card']) .shell.with-agent:not(.right, .fullscreen) .agent-slot {
+    margin-top: 6px;
   }
 
   .agent-slot[hidden] {
@@ -647,6 +671,14 @@
 
   .page.blank {
     background: transparent;
+    box-shadow: none;
+  }
+
+  :global(:root[data-style='card']) .page.blank {
+    background: var(--page);
+  }
+
+  :global(:root[data-style='card']:not([data-mode='developer'])) .page {
     box-shadow: none;
   }
 

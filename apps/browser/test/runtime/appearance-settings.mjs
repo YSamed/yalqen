@@ -122,7 +122,7 @@ app
     window.webContents.on('console-message', ({ level, message }) => {
       if (level === 'error') rendererErrors.push(message);
     });
-    await window.loadURL('yalqen://settings/appearance');
+    await window.loadURL('yalqen://settings/tabs');
     await eventually(`!!${choice('Right, narrow')}`);
 
     await run(`${choice('Right, narrow')}.click()`);
@@ -144,11 +144,15 @@ app
     assert.equal(preferences.get().sidebarVisible, true);
     assert.equal(preferences.get().panelCollapsed, false);
 
+    await window.loadURL('yalqen://settings/');
+    await eventually(`!!${choice('Dark')}`);
     await run(`${choice('Dark')}.click()`);
     await eventually(`${choice('Dark')}.getAttribute('aria-checked')==='true'`);
     assert.equal(preferences.get().theme, 'dark');
 
     const missing = `extension:${uninstalled}`;
+    await window.loadURL('yalqen://settings/tabs');
+    await eventually(`!!${labelled('Remove History button')}`);
     await run(`${labelled('Remove History button')}.click()`);
     await eventually(`!!${labelled('Add History button')}`);
     assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'settings', missing]);
@@ -216,7 +220,11 @@ app
       `Array.from(document.querySelectorAll('#pane dialog button')).find(item=>item.textContent.trim()==='Close').click()`,
     );
     await eventually(`!document.querySelector('#pane dialog').open`);
-    assert.equal(await run(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`), true);
+    assert.equal(await run(`!!document.querySelector('#pane #secure-dns')`), false);
+    await window.loadURL('yalqen://settings/advanced');
+    await eventually(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`);
+    await window.loadURL('yalqen://settings/tabs');
+    await eventually(`!!${choice('Left, wide')}`);
 
     assert.deepEqual(rendererErrors, []);
 

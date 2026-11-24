@@ -10,7 +10,9 @@
     values,
     update,
     threatLists,
+    section,
   }: {
+    section: 'protection' | 'advanced';
     values: SettingsValues;
     update: (patch: Partial<SettingsValues>) => Promise<void>;
     threatLists?: ThreatListsView;
@@ -63,140 +65,142 @@
   }
 </script>
 
-<h2>{t('settings.protection')}</h2>
-<SettingRow title={t('threats.protection')} hint={t('threats.protectionHint')}>
-  <Switch
-    label={t('threats.protection')}
-    checked={values.threatProtection}
-    onchange={(checked) => update({ threatProtection: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.adBlocker')} hint={t('settings.adBlockerHint')}>
-  <Switch
-    label={t('settings.adBlocker')}
-    checked={values.adBlocking}
-    onchange={(checked) => update({ adBlocking: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.httpsOnly')} hint={t('settings.httpsOnlyHint')}>
-  <Switch
-    label={t('settings.httpsOnly')}
-    checked={values.httpsOnly}
-    onchange={(checked) => update({ httpsOnly: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.stripTrackingOnCopy')} hint={t('settings.stripTrackingOnCopyHint')}>
-  <Switch
-    label={t('settings.stripTrackingOnCopy')}
-    checked={values.stripTrackingOnCopy}
-    onchange={(checked) => update({ stripTrackingOnCopy: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.touchIdPasskeys')} hint={t('settings.touchIdPasskeysHint')}>
-  <Switch
-    label={t('settings.touchIdPasskeys')}
-    checked={values.touchIdPasskeys}
-    onchange={(checked) => update({ touchIdPasskeys: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.blockThirdPartyCookies')} hint={t('settings.blockThirdPartyCookiesHint')}>
-  <Switch
-    label={t('settings.blockThirdPartyCookies')}
-    checked={values.blockThirdPartyCookies}
-    onchange={(checked) => update({ blockThirdPartyCookies: checked })}
-  />
-</SettingRow>
-
-<SettingRow title={t('settings.usageCounting')} hint={t('settings.usageCountingHint')}>
-  <Switch
-    label={t('settings.usageCounting')}
-    checked={values.usageCounting}
-    onchange={(checked) => update({ usageCounting: checked })}
-  />
-</SettingRow>
-
-<h2>{t('settings.browsingData')}</h2>
-<SettingRow title={t('settings.clearBrowsingData')} hint={t('settings.clearBrowsingDataRowHint')}>
-  <Button variant="tonal" onclick={openClear}>{t('settings.clearDataEllipsis')}</Button>
-</SettingRow>
-<SettingRow title={t('settings.clearOnExit')} hint={t('settings.clearOnExitHint')}>
-  <Switch
-    label={t('settings.clearOnExit')}
-    checked={values.clearOnExit}
-    onchange={(checked) => update({ clearOnExit: checked })}
-  />
-</SettingRow>
-
-<dialog
-  class="clear-dialog"
-  aria-labelledby="clear-title"
-  bind:this={clearDialog}
-  onclose={() => (cleared = false)}
-  onclick={(event) => {
-    if (event.target === clearDialog) clearDialog?.close();
-  }}
->
-  <h3 id="clear-title">{t('settings.clearBrowsingData')}</h3>
-  <p class="hint">{t('settings.clearBrowsingDataHint')}</p>
-  <div class="clear">
-    <Select
-      aria-label={t('settings.timeRange')}
-      options={rangeOptions}
-      bind:value={clearRange}
-      onchange={() => (cleared = false)}
+{#if section === 'protection'}
+  <h2>{t('settings.protection')}</h2>
+  <SettingRow title={t('threats.protection')} hint={t('threats.protectionHint')}>
+    <Switch
+      label={t('threats.protection')}
+      checked={values.threatProtection}
+      onchange={(checked) => update({ threatProtection: checked })}
     />
-    {#each clearOptions as option (option.key)}
-      <label class="check">
-        <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
-        {option.label}
-      </label>
-    {/each}
-  </div>
-  <div class="clear-actions">
-    {#if cleared}<span class="hint" role="status">{t('settings.cleared')}</span>{/if}
-    <Button variant="ghost" onclick={() => clearDialog?.close()}>{t('settings.close')}</Button>
-    <Button variant="danger" disabled={!clearSelected || clearing} onclick={clearData}>
-      {clearing ? t('settings.clearing') : t('settings.clearData')}
-    </Button>
-  </div>
-</dialog>
-
-<h2>{t('settings.advanced')}</h2>
-<SettingRow title={t('settings.secureDns')} hint={t('settings.secureDnsHint')} labelFor="secure-dns">
-  <Select
-    id="secure-dns"
-    options={dnsOptions}
-    value={values.secureDns}
-    onchange={(value) => update({ secureDns: value })}
-  />
-</SettingRow>
-{#if threatLists}
-  <SettingRow
-    title={t('threats.lists')}
-    detail={t('threats.counts', { domains: threatLists.domains, hashes: threatLists.hashes })}
-  >
-    <Button
-      variant="tonal"
-      disabled={!values.threatProtection || threatLists.updating}
-      onclick={() => api.updateThreatLists()}
-      >{threatLists.updating ? t('threats.updating') : t('threats.update')}</Button
-    >
   </SettingRow>
-  <p class="hint sources" aria-live="polite">
-    {t('threats.updated', {
-      date: lastUpdated ? new Date(lastUpdated).toLocaleString() : t('threats.notLoaded'),
-    })}
-    {#if threatLists.failed}<br /><span class="error">{t('threats.updateFailed')}</span>{/if}
-    <br />{t('threats.coverage')}
-    <a href="https://cert.pl/lista-ostrzezen/" target="_blank" rel="noreferrer">CERT Polska</a> ·
-    <a href="https://github.com/Neo23x0/signature-base" target="_blank" rel="noreferrer"
-      >Signature-Base · Florian Roth / Nextron Systems</a
+  <SettingRow title={t('settings.adBlocker')} hint={t('settings.adBlockerHint')}>
+    <Switch
+      label={t('settings.adBlocker')}
+      checked={values.adBlocking}
+      onchange={(checked) => update({ adBlocking: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.httpsOnly')} hint={t('settings.httpsOnlyHint')}>
+    <Switch
+      label={t('settings.httpsOnly')}
+      checked={values.httpsOnly}
+      onchange={(checked) => update({ httpsOnly: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.stripTrackingOnCopy')} hint={t('settings.stripTrackingOnCopyHint')}>
+    <Switch
+      label={t('settings.stripTrackingOnCopy')}
+      checked={values.stripTrackingOnCopy}
+      onchange={(checked) => update({ stripTrackingOnCopy: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.touchIdPasskeys')} hint={t('settings.touchIdPasskeysHint')}>
+    <Switch
+      label={t('settings.touchIdPasskeys')}
+      checked={values.touchIdPasskeys}
+      onchange={(checked) => update({ touchIdPasskeys: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.blockThirdPartyCookies')} hint={t('settings.blockThirdPartyCookiesHint')}>
+    <Switch
+      label={t('settings.blockThirdPartyCookies')}
+      checked={values.blockThirdPartyCookies}
+      onchange={(checked) => update({ blockThirdPartyCookies: checked })}
+    />
+  </SettingRow>
+
+  <SettingRow title={t('settings.usageCounting')} hint={t('settings.usageCountingHint')}>
+    <Switch
+      label={t('settings.usageCounting')}
+      checked={values.usageCounting}
+      onchange={(checked) => update({ usageCounting: checked })}
+    />
+  </SettingRow>
+
+  <h2>{t('settings.browsingData')}</h2>
+  <SettingRow title={t('settings.clearBrowsingData')} hint={t('settings.clearBrowsingDataRowHint')}>
+    <Button variant="tonal" onclick={openClear}>{t('settings.clearDataEllipsis')}</Button>
+  </SettingRow>
+  <SettingRow title={t('settings.clearOnExit')} hint={t('settings.clearOnExitHint')}>
+    <Switch
+      label={t('settings.clearOnExit')}
+      checked={values.clearOnExit}
+      onchange={(checked) => update({ clearOnExit: checked })}
+    />
+  </SettingRow>
+
+  <dialog
+    class="clear-dialog"
+    aria-labelledby="clear-title"
+    bind:this={clearDialog}
+    onclose={() => (cleared = false)}
+    onclick={(event) => {
+      if (event.target === clearDialog) clearDialog?.close();
+    }}
+  >
+    <h3 id="clear-title">{t('settings.clearBrowsingData')}</h3>
+    <p class="hint">{t('settings.clearBrowsingDataHint')}</p>
+    <div class="clear">
+      <Select
+        aria-label={t('settings.timeRange')}
+        options={rangeOptions}
+        bind:value={clearRange}
+        onchange={() => (cleared = false)}
+      />
+      {#each clearOptions as option (option.key)}
+        <label class="check">
+          <input type="checkbox" bind:checked={clearKinds[option.key]} onchange={() => (cleared = false)} />
+          {option.label}
+        </label>
+      {/each}
+    </div>
+    <div class="clear-actions">
+      {#if cleared}<span class="hint" role="status">{t('settings.cleared')}</span>{/if}
+      <Button variant="ghost" onclick={() => clearDialog?.close()}>{t('settings.close')}</Button>
+      <Button variant="danger" disabled={!clearSelected || clearing} onclick={clearData}>
+        {clearing ? t('settings.clearing') : t('settings.clearData')}
+      </Button>
+    </div>
+  </dialog>
+{:else}
+  <h2>{t('settings.network')}</h2>
+  <SettingRow title={t('settings.secureDns')} hint={t('settings.secureDnsHint')} labelFor="secure-dns">
+    <Select
+      id="secure-dns"
+      options={dnsOptions}
+      value={values.secureDns}
+      onchange={(value) => update({ secureDns: value })}
+    />
+  </SettingRow>
+  {#if threatLists}
+    <SettingRow
+      title={t('threats.lists')}
+      detail={t('threats.counts', { domains: threatLists.domains, hashes: threatLists.hashes })}
     >
-    ·
-    <a href="https://raw.githubusercontent.com/Neo23x0/signature-base/master/LICENSE" target="_blank" rel="noreferrer"
-      >DRL 1.1</a
-    >
-  </p>
+      <Button
+        variant="tonal"
+        disabled={!values.threatProtection || threatLists.updating}
+        onclick={() => api.updateThreatLists()}
+        >{threatLists.updating ? t('threats.updating') : t('threats.update')}</Button
+      >
+    </SettingRow>
+    <p class="hint sources" aria-live="polite">
+      {t('threats.updated', {
+        date: lastUpdated ? new Date(lastUpdated).toLocaleString() : t('threats.notLoaded'),
+      })}
+      {#if threatLists.failed}<br /><span class="error">{t('threats.updateFailed')}</span>{/if}
+      <br />{t('threats.coverage')}
+      <a href="https://cert.pl/lista-ostrzezen/" target="_blank" rel="noreferrer">CERT Polska</a> ·
+      <a href="https://github.com/Neo23x0/signature-base" target="_blank" rel="noreferrer"
+        >Signature-Base · Florian Roth / Nextron Systems</a
+      >
+      ·
+      <a href="https://raw.githubusercontent.com/Neo23x0/signature-base/master/LICENSE" target="_blank" rel="noreferrer"
+        >DRL 1.1</a
+      >
+    </p>
+  {/if}
 {/if}
 
 <style>

@@ -50,7 +50,7 @@ app
       windowFullScreen: false,
       addressPlaceholder: 'Search',
       panelCollapsed: collapsed,
-      panelSide: 'left',
+      panelSide: collapsed ? 'right' : 'left',
       pinnedDisplay,
       favorites: [],
       spaces: [],

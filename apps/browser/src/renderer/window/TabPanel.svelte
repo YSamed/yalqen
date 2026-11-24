@@ -43,6 +43,7 @@
     media,
     pageRect,
     onSplitDrop,
+    toggleInToolbar = false,
   }: {
     tabs: TabSnapshot[];
     listOrder: TabId[];
@@ -69,6 +70,7 @@
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
+    toggleInToolbar?: boolean;
   } = $props();
 
   type DragGroup = 'pinned' | 'listed';
@@ -134,9 +136,7 @@
   );
   const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
-  const activeSpaceName = $derived(
-    spaces.length > 1 ? spaces.find((space) => space.id === activeSpaceId)?.name : undefined,
-  );
+  const wide = $derived(!collapsed);
   const inSpaceRow = $derived(!collapsed && spaces.length > 0);
   const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
   const entries = $derived(
@@ -172,7 +172,7 @@
   }
 
   function indent(depth: number): string | undefined {
-    return collapsed || depth === 0 ? undefined : `${depth * 12}px`;
+    return collapsed || wide || depth === 0 ? undefined : `${depth * 12}px`;
   }
 
   function folderAt(): string | null {
@@ -565,23 +565,25 @@
 {/snippet}
 
 {#snippet panelToggle()}
-  <IconButton
-    size="lg"
-    variant="surface"
-    tone="muted"
-    class="panel-toggle"
-    icon={side === 'left'
-      ? collapsed
-        ? 'panel-expand'
-        : 'panel-close'
-      : collapsed
-        ? 'panel-expand-right'
-        : 'panel-close-right'}
-    label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
-    title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
-    aria-expanded={!collapsed}
-    onclick={() => send({ type: 'toggle-panel' })}
-  />
+  {#if !toggleInToolbar}
+    <IconButton
+      size="lg"
+      variant="surface"
+      tone="muted"
+      class="panel-toggle"
+      icon={side === 'left'
+        ? collapsed
+          ? 'panel-expand'
+          : 'panel-close'
+        : collapsed
+          ? 'panel-expand-right'
+          : 'panel-close-right'}
+      label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
+      title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
+      aria-expanded={!collapsed}
+      onclick={() => send({ type: 'toggle-panel' })}
+    />
+  {/if}
 {/snippet}
 
 {#snippet compactTab(tab: TabSnapshot)}
@@ -611,10 +613,11 @@
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
-    {@render favicon(tab, 16, tab.unread)}
+    {@render favicon(tab, 16, tab.unread && !wide)}
   </IconButton>
   <div class="pill">
     {@render selectButton(tab, tabLabel)}
+    {#if wide && tab.unread}<span class="unread-dot trailing" aria-hidden="true"></span>{/if}
     <span class="actions">
       <IconButton
         size="sm"
@@ -666,8 +669,96 @@
   onblur={endDrag}
 />
 
+{#snippet sectionBody(section: (typeof sections)[number])}
+  {#if section.group}
+    {@const group = section.group}
+    {#if renaming === group.name}
+      <input
+        class="group-rename"
+        style:margin-inline-start={indent(section.depth)}
+        aria-label={t('tabPanel.renameFolder')}
+        maxlength="80"
+        bind:value={renameValue}
+        use:focusSelect
+        onblur={commitRename}
+        onkeydown={(e) => {
+          if (e.key === 'Enter') commitRename();
+          else if (e.key === 'Escape') renaming = null;
+          e.stopPropagation();
+        }}
+      />
+    {:else}
+      <button
+        class="group-heading"
+        class:drop-target={dropFolder === group.name}
+        style:margin-inline-start={indent(section.depth)}
+        data-folder={group.name}
+        title={group.name}
+        aria-label={`${group.name} (${group.count})`}
+        aria-expanded={!group.collapsed}
+        onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
+        ondblclick={() => startRename(group.name)}
+        onpointerdown={(e) => onFolderPointerDown(e, group.name)}
+        oncontextmenu={(e) => {
+          e.preventDefault();
+          send({ type: 'open-folder-menu', name: group.name });
+        }}
+        onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
+      >
+        {#if wide}
+          <Icon name="folder" size={15} />
+          <span class="folder-name">{group.name}</span>
+          <Icon name={group.collapsed ? 'down' : 'up'} size={12} />
+          {#if group.collapsed}
+            <span class="folder-peek" aria-hidden="true">
+              {#each section.entries.slice(0, 3) as tab (tab.id)}{@render favicon(tab, 14)}{/each}
+            </span>
+            <small>{group.count}</small>
+          {/if}
+        {:else}
+          <span>{collapsed ? group.name.slice(0, 1) : group.name}</span><small>{group.count}</small>
+        {/if}
+      </button>
+    {/if}
+  {/if}
+  {#if !section.group?.collapsed}
+    <ol class="rows" style:margin-inline-start={indent(section.depth)}>
+      {#each section.entries as tab (tab.id)}
+        {@const index = listedIndex.get(tab.id) ?? -1}
+        <li
+          class="row"
+          class:private={tab.isPrivate}
+          class:active={tab.id === activeTabId}
+          class:selected={selected.has(tab.id)}
+          class:discarded={!tab.live}
+          class:lifted={index >= 0 && tab.id === dragId}
+          class:returning={index >= 0 && tab.id === returningId}
+          class:drop-before={index >= 0 && draggingListed && dropIndex === index}
+          class:drop-after={index >= 0 &&
+            draggingListed &&
+            dropIndex === index + 1 &&
+            tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
+          data-drag-index={index >= 0 ? index : undefined}
+          data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
+          animate:reorder
+          style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
+          onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
+          onpointerleave={previews.leave}
+          onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
+          oncontextmenu={(e) => {
+            e.preventDefault();
+            send({ type: 'open-tab-menu', id: tab.id });
+          }}
+        >
+          {@render tabRow(tab)}
+        </li>
+      {/each}
+    </ol>
+  {/if}
+{/snippet}
+
 <aside
-  class="panel"
+  class="panel card"
   class:collapsed
   class:dragging={dragId !== null}
   class:fading
@@ -703,16 +794,12 @@
                 label={favorite.title}
                 onclick={() => send({ type: 'open-favorite', url: favorite.url })}
               >
-                {@render favicon(favorite, 16, favoriteUnread(favorite.url))}
+                {@render favicon(favorite, wide ? 18 : 16, favoriteUnread(favorite.url))}
               </IconButton>
             </li>
           {/each}
         </ul>
         {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
-      {/if}
-
-      {#if !collapsed && activeSpaceName}
-        <p class="space-name">{activeSpaceName}</p>
       {/if}
 
       {#if showPinned && pinned.length > 0}
@@ -752,7 +839,7 @@
                   onclick={(e) => selectTab(e, tab.id)}
                   onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
                 >
-                  {@render favicon(tab, 16, tab.unread)}
+                  {@render favicon(tab, wide ? 18 : 16, tab.unread)}
                   {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
                 </IconButton>
               {/if}
@@ -775,7 +862,9 @@
             onclick={() => {
               if (idleCount > 0) send({ type: 'clean-tabs' });
             }}
-          />
+          >
+            {#if wide}<span class="tidy-label">{t('tabPanel.tidy')}</span>{/if}
+          </IconButton>
         </div>
       {:else if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
         <span class="section-divider" aria-hidden="true"></span>
@@ -784,80 +873,24 @@
       {/if}
 
       {#each sections as section (section.key)}
-        {#if section.group}
-          {@const group = section.group}
-          {#if renaming === group.name}
-            <input
-              class="group-rename"
-              style:margin-inline-start={indent(section.depth)}
-              aria-label={t('tabPanel.renameFolder')}
-              maxlength="80"
-              bind:value={renameValue}
-              use:focusSelect
-              onblur={commitRename}
-              onkeydown={(e) => {
-                if (e.key === 'Enter') commitRename();
-                else if (e.key === 'Escape') renaming = null;
-                e.stopPropagation();
-              }}
-            />
-          {:else}
-            <button
-              class="group-heading"
-              class:drop-target={dropFolder === group.name}
-              style:margin-inline-start={indent(section.depth)}
-              data-folder={group.name}
-              title={group.name}
-              aria-label={`${group.name} (${group.count})`}
-              aria-expanded={!group.collapsed}
-              onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
-              ondblclick={() => startRename(group.name)}
-              onpointerdown={(e) => onFolderPointerDown(e, group.name)}
-              oncontextmenu={(e) => {
-                e.preventDefault();
-                send({ type: 'open-folder-menu', name: group.name });
-              }}
-              onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
-            >
-              <span>{collapsed ? group.name.slice(0, 1) : group.name}</span><small>{group.count}</small>
-            </button>
-          {/if}
-        {/if}
-        {#if !section.group?.collapsed}
-          <ol class="rows" style:margin-inline-start={indent(section.depth)}>
-            {#each section.entries as tab (tab.id)}
-              {@const index = listedIndex.get(tab.id) ?? -1}
-              <li
-                class="row"
-                class:private={tab.isPrivate}
-                class:active={tab.id === activeTabId}
-                class:selected={selected.has(tab.id)}
-                class:discarded={!tab.live}
-                class:lifted={index >= 0 && tab.id === dragId}
-                class:returning={index >= 0 && tab.id === returningId}
-                class:drop-before={index >= 0 && draggingListed && dropIndex === index}
-                class:drop-after={index >= 0 &&
-                  draggingListed &&
-                  dropIndex === index + 1 &&
-                  tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
-                data-drag-index={index >= 0 ? index : undefined}
-                data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
-                animate:reorder
-                style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
-                onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
-                onpointerleave={previews.leave}
-                onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  send({ type: 'open-tab-menu', id: tab.id });
-                }}
-              >
-                {@render tabRow(tab)}
-              </li>
-            {/each}
-          </ol>
+        {#if wide && section.group}
+          <div
+            class="folder"
+            class:open={!section.group.collapsed}
+            style:margin-inline-start={section.depth ? `${section.depth * 12}px` : undefined}
+          >
+            {@render sectionBody(section)}
+          </div>
+        {:else}
+          {@render sectionBody(section)}
         {/if}
       {/each}
+
+      {#if wide}
+        <div class="new-tab-row">
+          <NewTabButton compact={false} />
+        </div>
+      {/if}
 
       {#if collapsed}
         <div class="new-tab-position" in:popIn>
@@ -1173,16 +1206,6 @@
     list-style: none;
   }
 
-  .space-name {
-    margin: 0 0 6px;
-    padding: 0 10px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .section-divider {
     flex: none;
     height: 1px;
@@ -1320,7 +1343,7 @@
     align-items: center;
     min-width: 0;
     height: var(--chrome-control-size);
-    border-radius: 999px;
+    border-radius: var(--pill-radius, 999px);
     color: var(--text-muted);
     transition:
       background var(--transition),
@@ -1341,7 +1364,7 @@
     align-items: center;
     min-width: 0;
     height: 100%;
-    border-radius: 999px;
+    border-radius: var(--pill-radius, 999px);
     transition:
       background var(--transition),
       box-shadow var(--transition);
@@ -1372,6 +1395,181 @@
     box-shadow: var(--shadow), var(--rim);
   }
 
+  .card .favorites:not(.rows) {
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 6px;
+  }
+
+  .card .favorites:not(.rows) :global(.tile) {
+    width: 100%;
+    height: 41px;
+    border-radius: 10px;
+    background: var(--card-tile);
+    box-shadow: none;
+  }
+
+  .card .favorites:not(.rows) :global(.tile:hover) {
+    background: var(--surface-hover);
+  }
+
+  .card .favorite.active :global(.tile) {
+    background: var(--card-active);
+    box-shadow: var(--card-shadow);
+  }
+
+  .card:not(.collapsed) .rows {
+    gap: 5px;
+  }
+
+  .card:not(.collapsed) .row {
+    gap: 0;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .card:not(.collapsed) .row :global(.tab-icon),
+  .card:not(.collapsed) .row .pill {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .panel.card:not(.dragging, .collapsed) .row:not(.active):hover .pill {
+    background: transparent;
+  }
+
+  .panel.card:not(.collapsed) {
+    padding-inline: 6px;
+  }
+
+  .panel.card:not(.collapsed) .body {
+    width: calc(var(--panel-full-width) - 12px);
+  }
+
+  .card:not(.collapsed) .select {
+    padding-left: 0;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .card:not(.collapsed) .row,
+  .card:not(.collapsed) .row.discarded .title {
+    color: var(--text);
+    opacity: 1;
+  }
+
+  .card:not(.collapsed) .row .favicon,
+  .card:not(.collapsed) .row.discarded .favicon img,
+  .card:not(.collapsed) .row.discarded .favicon > :global(svg),
+  .card:not(.collapsed) .row.discarded :global(.tab-icon),
+  .card:not(.collapsed) .favorite.discarded .favicon {
+    opacity: 1;
+    filter: none;
+  }
+
+  .card:not(.dragging, .collapsed) .row:not(.active):hover {
+    background: var(--surface-hover);
+  }
+
+  .card:not(.collapsed) .row.active {
+    background: var(--card-active);
+    box-shadow: var(--card-shadow);
+  }
+
+  .card:not(.collapsed) .row.selected {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .folder {
+    flex: none;
+    margin: 4px 0;
+    padding: 2px 4px 4px;
+    border-radius: 12px;
+    background: var(--card-tile);
+  }
+
+  .folder:not(.open) {
+    padding-bottom: 2px;
+  }
+
+  .folder .group-heading {
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 8px 6px;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .folder .folder-name {
+    flex: 0 1 auto;
+  }
+
+  .folder-peek {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+  }
+
+  .folder .group-heading small {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .unread-dot.trailing {
+    position: static;
+    flex: none;
+    width: 6px;
+    height: 6px;
+    margin: 0 10px;
+    background: var(--text-muted);
+    box-shadow: none;
+  }
+
+  .tab-cleanup :global(.tab-cleanup-button:has(.tidy-label)) {
+    width: auto;
+    gap: 4px;
+    padding: 0 6px;
+  }
+
+  .tidy-label {
+    font-size: 13px;
+  }
+
+  .card .section-divider {
+    display: none;
+  }
+
+  .card .spaces :global(.icon-btn.surface),
+  .card .footer :global(.icon-btn.surface) {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .new-tab-row {
+    flex: none;
+    margin-top: 4px;
+  }
+
+  .new-tab-row :global(.btn.new-tab-wide) {
+    height: 36px;
+    gap: 9px;
+    padding-left: 9px;
+    border-radius: var(--pill-radius, 999px);
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .new-tab-row :global(.btn.new-tab-wide:hover) {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
   .row:not(.active) .favicon {
     opacity: 0.7;
   }
@@ -1385,7 +1583,7 @@
     height: 100%;
     padding: 0 6px 0 10px;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--pill-radius, 999px);
     background: transparent;
     color: inherit;
     font-size: var(--font-size);

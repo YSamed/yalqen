@@ -18,8 +18,15 @@
   import SettingRow from './SettingRow.svelte';
   import ToolbarEditor from './ToolbarEditor.svelte';
 
-  let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
-    $props();
+  let {
+    values,
+    update,
+    section,
+  }: {
+    values: SettingsValues;
+    update: (patch: Partial<SettingsValues>) => Promise<void>;
+    section: 'look' | 'tabs';
+  } = $props();
 
   const api = window.yalqenSettings;
 
@@ -150,160 +157,163 @@
   </svg>
 {/snippet}
 
-<h2>{t('settings.theme')}</h2>
-<ChoiceCards
-  label={t('settings.theme')}
-  options={themeOptions}
-  value={values.theme}
-  onchange={(value) => update({ theme: value })}
-  preview={themePreview}
-/>
-<SettingRow title={t('settings.accent')} hint={t('settings.accentHint')}>
-  <AccentPicker
-    label={t('settings.accent')}
-    value={values.accentColor}
-    onchange={(value) => update({ accentColor: value })}
+{#if section === 'look'}
+  <h2>{t('settings.theme')}</h2>
+  <ChoiceCards
+    label={t('settings.theme')}
+    options={themeOptions}
+    value={values.theme}
+    onchange={(value) => update({ theme: value })}
+    preview={themePreview}
   />
-</SettingRow>
-
-<SettingRow title={t('settings.windowColor')} hint={t('settings.windowColorHint')}>
-  <AccentPicker
-    label={t('settings.windowColor')}
-    value={values.windowColor === 'accent' ? values.accentColor : values.windowColor}
-    colors={windowColors}
-    onchange={(value) => update({ windowColor: value })}
-  />
-</SettingRow>
-
-<SettingRow title={t('settings.newTabBackground')} hint={t('settings.newTabBackgroundHint')}>
-  <Button variant="tonal" disabled={choosingBackground} onclick={chooseBackground}>
-    {t('settings.chooseNewTabBackground')}
-  </Button>
-  {#if values.newTabBackground}
-    <Button variant="ghost" onclick={() => api.removeNewTabBackground()}>{t('settings.removeNewTabBackground')}</Button>
-  {/if}
-</SettingRow>
-
-<h2>{t('settings.tabPanel')}</h2>
-<ChoiceCards
-  label={t('settings.tabPanel')}
-  options={layoutOptions}
-  value={layout}
-  onchange={setLayout}
-  preview={layoutPreview}
-/>
-
-<h2>{t('settings.toolbar')}</h2>
-<SettingRow title={t('settings.showToolbar')} hint={t('settings.showToolbarHint')}>
-  <Switch
-    label={t('settings.showToolbar')}
-    checked={values.toolbarVisible}
-    onchange={(checked) => update({ toolbarVisible: checked })}
-  />
-</SettingRow>
-<ToolbarEditor
-  shown={values.toolbarButtons}
-  extensions={toolbarExtensions}
-  onchange={(buttons) => update({ toolbarButtons: buttons })}
-/>
-
-<h2>{t('settings.advanced')}</h2>
-<SettingRow title={t('settings.pinnedTabs')}>
-  <SegmentedControl
-    label={t('settings.pinnedTabs')}
-    options={pinnedOptions}
-    value={values.pinnedDisplay}
-    onchange={(value) => update({ pinnedDisplay: value })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.pinnedTabsStayHome')} hint={t('settings.pinnedTabsStayHomeHint')}>
-  <Switch
-    label={t('settings.pinnedTabsStayHome')}
-    checked={values.pinnedTabsStayHome}
-    onchange={(checked) => update({ pinnedTabsStayHome: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.recentTabCycling')} hint={t('settings.recentTabCyclingHint')}>
-  <Switch
-    label={t('settings.recentTabCycling')}
-    checked={values.recentTabCycling}
-    onchange={(checked) => update({ recentTabCycling: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
-  <Switch
-    label={t('settings.tabCleanup')}
-    checked={values.manualTabCleanup}
-    onchange={(checked) => update({ manualTabCleanup: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.tabModes')} hint={t('settings.tabModesHint')}>
-  <Switch
-    label={t('settings.tabModes')}
-    checked={values.tabModes}
-    onchange={(checked) => update({ tabModes: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.autoDeveloperMode')} hint={t('settings.autoDeveloperModeHint')}>
-  <Switch
-    label={t('settings.autoDeveloperMode')}
-    checked={values.autoDeveloperMode}
-    disabled={!values.tabModes}
-    onchange={(checked) => update({ autoDeveloperMode: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.bookmarksPanel')} hint={t('settings.bookmarksPanelHint')}>
-  <Switch
-    label={t('settings.bookmarksPanel')}
-    checked={values.bookmarksPanel}
-    onchange={(checked) => update({ bookmarksPanel: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
-  <Switch
-    label={t('settings.mediaPlayer')}
-    checked={values.sidebarWidgets.includes('media')}
-    onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.transparency')} hint={t('settings.transparencyHint')}>
-  <Switch
-    label={t('settings.transparency')}
-    checked={values.transparency}
-    onchange={(checked) => update({ transparency: checked })}
-  />
-  {#if transparencyChanged}
-    <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
-  {/if}
-</SettingRow>
-{#if startupTransparency}
-  <SettingRow title={t('settings.glassTint')} hint={t('settings.glassTintHint')} labelFor="glass-tint">
-    <input
-      id="glass-tint"
-      class="tint"
-      type="range"
-      min="0"
-      max="100"
-      value={values.glassTint}
-      oninput={(event) => update({ glassTint: event.currentTarget.valueAsNumber })}
+  <SettingRow title={t('settings.accent')} hint={t('settings.accentHint')}>
+    <AccentPicker
+      label={t('settings.accent')}
+      value={values.accentColor}
+      onchange={(value) => update({ accentColor: value })}
     />
   </SettingRow>
+
+  <SettingRow title={t('settings.windowColor')} hint={t('settings.windowColorHint')}>
+    <AccentPicker
+      label={t('settings.windowColor')}
+      value={values.windowColor === 'accent' ? values.accentColor : values.windowColor}
+      colors={windowColors}
+      onchange={(value) => update({ windowColor: value })}
+    />
+  </SettingRow>
+
+  <SettingRow title={t('settings.newTabBackground')} hint={t('settings.newTabBackgroundHint')}>
+    <Button variant="tonal" disabled={choosingBackground} onclick={chooseBackground}>
+      {t('settings.chooseNewTabBackground')}
+    </Button>
+    {#if values.newTabBackground}
+      <Button variant="ghost" onclick={() => api.removeNewTabBackground()}
+        >{t('settings.removeNewTabBackground')}</Button
+      >
+    {/if}
+  </SettingRow>
+
+  <SettingRow title={t('settings.transparency')} hint={t('settings.transparencyHint')}>
+    <Switch
+      label={t('settings.transparency')}
+      checked={values.transparency}
+      onchange={(checked) => update({ transparency: checked })}
+    />
+    {#if transparencyChanged}
+      <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
+    {/if}
+  </SettingRow>
+  {#if startupTransparency}
+    <SettingRow title={t('settings.glassTint')} hint={t('settings.glassTintHint')} labelFor="glass-tint">
+      <input
+        id="glass-tint"
+        class="tint"
+        type="range"
+        min="0"
+        max="100"
+        value={values.glassTint}
+        oninput={(event) => update({ glassTint: event.currentTarget.valueAsNumber })}
+      />
+    </SettingRow>
+  {/if}
+  <SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
+    <Switch
+      label={t('settings.darkSites')}
+      checked={values.darkSites}
+      onchange={(checked) => update({ darkSites: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
+    <Select
+      id="default-zoom"
+      options={zoomOptions}
+      value={values.defaultZoom}
+      onchange={(value) => update({ defaultZoom: value })}
+    />
+  </SettingRow>
+{:else}
+  <h2>{t('settings.tabPanel')}</h2>
+  <ChoiceCards
+    label={t('settings.tabPanel')}
+    options={layoutOptions}
+    value={layout}
+    onchange={setLayout}
+    preview={layoutPreview}
+  />
+  <SettingRow title={t('settings.pinnedTabs')}>
+    <SegmentedControl
+      label={t('settings.pinnedTabs')}
+      options={pinnedOptions}
+      value={values.pinnedDisplay}
+      onchange={(value) => update({ pinnedDisplay: value })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.pinnedTabsStayHome')} hint={t('settings.pinnedTabsStayHomeHint')}>
+    <Switch
+      label={t('settings.pinnedTabsStayHome')}
+      checked={values.pinnedTabsStayHome}
+      onchange={(checked) => update({ pinnedTabsStayHome: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.recentTabCycling')} hint={t('settings.recentTabCyclingHint')}>
+    <Switch
+      label={t('settings.recentTabCycling')}
+      checked={values.recentTabCycling}
+      onchange={(checked) => update({ recentTabCycling: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
+    <Switch
+      label={t('settings.tabCleanup')}
+      checked={values.manualTabCleanup}
+      onchange={(checked) => update({ manualTabCleanup: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.tabModes')} hint={t('settings.tabModesHint')}>
+    <Switch
+      label={t('settings.tabModes')}
+      checked={values.tabModes}
+      onchange={(checked) => update({ tabModes: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.autoDeveloperMode')} hint={t('settings.autoDeveloperModeHint')}>
+    <Switch
+      label={t('settings.autoDeveloperMode')}
+      checked={values.autoDeveloperMode}
+      disabled={!values.tabModes}
+      onchange={(checked) => update({ autoDeveloperMode: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.bookmarksPanel')} hint={t('settings.bookmarksPanelHint')}>
+    <Switch
+      label={t('settings.bookmarksPanel')}
+      checked={values.bookmarksPanel}
+      onchange={(checked) => update({ bookmarksPanel: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
+    <Switch
+      label={t('settings.mediaPlayer')}
+      checked={values.sidebarWidgets.includes('media')}
+      onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
+    />
+  </SettingRow>
+
+  <h2>{t('settings.toolbar')}</h2>
+  <SettingRow title={t('settings.showToolbar')} hint={t('settings.showToolbarHint')}>
+    <Switch
+      label={t('settings.showToolbar')}
+      checked={values.toolbarVisible}
+      onchange={(checked) => update({ toolbarVisible: checked })}
+    />
+  </SettingRow>
+  <ToolbarEditor
+    shown={values.toolbarButtons}
+    extensions={toolbarExtensions}
+    onchange={(buttons) => update({ toolbarButtons: buttons })}
+  />
 {/if}
-<SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
-  <Switch
-    label={t('settings.darkSites')}
-    checked={values.darkSites}
-    onchange={(checked) => update({ darkSites: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
-  <Select
-    id="default-zoom"
-    options={zoomOptions}
-    value={values.defaultZoom}
-    onchange={(value) => update({ defaultZoom: value })}
-  />
-</SettingRow>
 
 <style>
   .tint {

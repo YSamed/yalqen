@@ -155,6 +155,7 @@ import { YalqenWindow, glassAtLaunch, type AppContext, type WindowOptions } from
 import { createPageView } from './tabs/tabs.js';
 import { createOverlayView } from './window/overlay-view.js';
 import { openMiniWindow } from './window/mini-window.js';
+import { SettingsWindow } from './window/settings-window.js';
 import { ZoomStore } from './tabs/zoom.js';
 
 if (process.platform === 'linux' && app.commandLine.hasSwitch('no-sandbox')) {
@@ -301,13 +302,27 @@ function startBrowser(): void {
     },
     changed: workspacesChanged,
   });
+  const settingsWindow = new SettingsWindow({
+    preload: preloadPath('page-preload'),
+    session: daily,
+    icon: appIcon,
+    glass: () => glassAtLaunch(settings),
+    openTab: (url) => {
+      const window = mainWindow() ?? openWindow({});
+      window.tabs.open(url, { isPrivate: false });
+      window.focus();
+    },
+  });
   const siteStorage = new SiteStorageManager(daily, storageOrigins, () => history.list().map((entry) => entry.url));
   observeStorageOrigins(daily, storageOrigins, (contents) =>
     windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
   );
   installSiteStorageHandlers({
     manager: siteStorage,
-    parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
+    parentOf: (contents) =>
+      settingsWindow.owns(contents)
+        ? (settingsWindow.browserWindow ?? undefined)
+        : windows.find((window) => window.tabs.hasContents(contents))?.window,
   });
   let current: YalqenWindow | null = null;
   let quitting = false;
@@ -387,6 +402,8 @@ function startBrowser(): void {
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;
+  const settingsParent = (contents: Electron.WebContents) =>
+    settingsWindow.owns(contents) ? (settingsWindow.browserWindow ?? undefined) : undefined;
   const extensionAccess = new ExtensionAccessController({
     extensions,
     pages: () =>
@@ -447,7 +464,7 @@ function startBrowser(): void {
     store: passwords,
     savesPasswords: (contents) =>
       isRegularSession(sessions, contents.session) && windows.some((window) => window.tabs.hasContents(contents)),
-    parentOf: (contents) => windowOf(contents)?.window,
+    parentOf: (contents) => settingsParent(contents) ?? windowOf(contents)?.window,
     isSettingsFrame,
     onChange: () => broadcastPasswords(passwords.view()),
   });
@@ -812,7 +829,9 @@ function startBrowser(): void {
       if (window.isDeveloper && !windows.some((other) => other.isDeveloper || other.tabs.hasDeveloperTabs))
         forgetSessionData(developer);
       if (current === window) current = windows.at(-1) ?? null;
+      if (!windows.length) settingsWindow.close();
     },
+    openSettings: (pane) => settingsWindow.open(pane),
   };
 
   const openWindow = (options: WindowOptions): YalqenWindow => {
@@ -859,7 +878,6 @@ function startBrowser(): void {
       showAnnouncement: () => !isPrivate && settings.get().dismissedAnnouncement !== app.getVersion(),
       showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
-      opaque: () => !glassAtLaunch(settings),
       background: () => backgroundFile(userData, settings.get().newTabBackground),
       suggestions: (query) =>
         suggest(query, {
@@ -1087,10 +1105,12 @@ function startBrowser(): void {
   registerExtensionsIpc({
     extensions,
     access: extensionAccess,
-    parentWindow: (contents) => windowOf(contents)?.window,
+    parentWindow: (contents) => settingsParent(contents) ?? windowOf(contents)?.window,
     confirm: (window, request, returnFocus) => confirmDialog.confirm(window, request, returnFocus),
     openTab: (contents, url) => {
-      windowOf(contents)?.tabs.open(url, { isPrivate: false });
+      const window = settingsWindow.owns(contents) ? (mainWindow() ?? openWindow({})) : windowOf(contents);
+      window?.tabs.open(url, { isPrivate: false });
+      if (settingsWindow.owns(contents)) window?.focus();
     },
   });
   const clearData = async (request: ClearDataRequest) => {
@@ -1120,20 +1140,20 @@ function startBrowser(): void {
     );
   };
   const showImportMenu = (kind: 'bookmarks' | 'history', contents: WebContents) => {
-    const window = windowOf(contents);
+    const window = settingsParent(contents) ?? windowOf(contents)?.window;
     if (!window) return;
     const firefox = firefoxProfiles();
     const menu =
       kind === 'bookmarks'
         ? bookmarkImportMenu(
             [...chromiumProfiles('Bookmarks'), ...arcSidebarSources(), ...firefox],
-            (file) => void importBookmarksWithDialog(window.window, context.importBookmarks, file),
+            (file) => void importBookmarksWithDialog(window, context.importBookmarks, file),
           )
         : historyImportMenu(
             [...chromiumProfiles('History'), ...firefox],
-            (file) => void importHistoryWithDialog(window.window, context.importHistory, file),
+            (file) => void importHistoryWithDialog(window, context.importHistory, file),
           );
-    Menu.buildFromTemplate(menu.submenu).popup({ window: window.window });
+    Menu.buildFromTemplate(menu.submenu).popup({ window });
   };
   registerSettingsIpc({
     view: settingsView,

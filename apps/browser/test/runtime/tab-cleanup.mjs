@@ -38,6 +38,7 @@ async function click(selector, modifiers = []) {
 
 let tabCleanup = true;
 let collapsed = false;
+let panelSide = 'left';
 
 app
   .whenReady()
@@ -58,7 +59,7 @@ app
       windowFullScreen: false,
       addressPlaceholder: 'Search',
       panelCollapsed: collapsed,
-      panelSide: 'left',
+      panelSide,
       pinnedDisplay: 'always',
       tabCleanup,
       favorites: [],
@@ -143,6 +144,8 @@ app
 
     manager.tabs.push(manager.createRecord({ id: 'e', url: 'https://e.example/', title: 'Tab e' }));
     collapsed = true;
+    // The card layout hides a collapsed left sidebar; on the right it stays as a rail.
+    panelSide = 'right';
     changed();
     await eventually("document.querySelector('aside.panel')?.classList.contains('collapsed')");
     await eventually(`document.querySelector('${cleanButton}')?.getAttribute('aria-label') === 'Clean 1 tab'`);

@@ -30,7 +30,6 @@ export interface NewTabSources {
   showAnnouncement: () => boolean;
   showFeedback: () => boolean;
   showRepoPrompt: () => boolean;
-  opaque: () => boolean;
   background?: () => NewTabBackground | null;
   suggestions: (query: string) => AddressSuggestion[];
 }
@@ -148,11 +147,8 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
             : '',
         ],
       ];
-      const attributes = [sources.opaque() && 'data-opaque', sources.background?.() && 'data-background'].filter(
-        Boolean,
-      );
-      const template = attributes.length
-        ? assets.template.replace('<html ', `<html ${attributes.join(' ')} `)
+      const template = sources.background?.()
+        ? assets.template.replace('<html ', '<html data-background ')
         : assets.template;
       const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), template);
       return htmlResponse(body, NEW_TAB_CSP, false);

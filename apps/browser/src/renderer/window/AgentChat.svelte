@@ -1480,4 +1480,84 @@
       animation: none;
     }
   }
+  :global([data-style='card']) .welcome {
+    align-items: center;
+    text-align: center;
+  }
+
+  :global([data-style='card']) .welcome-mark {
+    margin: 0 0 14px;
+  }
+
+  :global([data-style='card']) h2 {
+    font-size: 15px;
+    letter-spacing: -0.1px;
+  }
+
+  :global([data-style='card']) .intro {
+    margin: 6px auto 18px;
+  }
+
+  :global([data-style='card']) .hint {
+    margin-inline: auto;
+  }
+
+  :global([data-style='card']) .composer-box {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0 6px;
+    padding: 8px 8px 8px 14px;
+    border-color: rgb(from var(--text) r g b / 0.12);
+    background: rgb(from var(--text) r g b / 0.04);
+  }
+
+  :global([data-style='card']) .composer-box > * {
+    grid-column: 1 / -1;
+  }
+
+  :global([data-style='card']) .composer-box > textarea {
+    grid-column: 1;
+    align-self: center;
+    min-height: 22px;
+    padding: 3px 0;
+  }
+
+  :global([data-style='card']) .composer-box > .composer-controls {
+    grid-column: 2;
+    margin: 0;
+  }
+
+  :global([data-style='card']) .composer-controls :global(.settings-trigger .summary) {
+    display: none;
+  }
+
+  :global([data-style='card']) .composer-controls :global(.settings-trigger) {
+    width: 28px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  :global([data-style='card']) .composer-controls :global(.send-button),
+  :global([data-style='card']) .composer-controls :global(.send-button.accent:disabled) {
+    border-radius: 50%;
+    background-color: var(--frame-primary, var(--accent));
+    color: #fff;
+  }
+
+  :global([data-style='card']) .composer-controls :global(.send-button:disabled) {
+    opacity: 0.55;
+  }
+
+  :global([data-style='card']) .composer-box .chips {
+    margin-bottom: 6px;
+  }
+
+  :global([data-style='card']) .composer-box .attachment {
+    gap: 10px;
+    padding: 6px 4px 6px 8px;
+    border-radius: 10px;
+    background: rgb(from var(--text) r g b / 0.06);
+    color: var(--text);
+  }
 </style>

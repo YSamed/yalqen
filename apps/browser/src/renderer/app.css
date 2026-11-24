@@ -163,6 +163,54 @@ button:not(:disabled) {
   }
 }
 
+:root[data-style='card'] {
+  --pill-radius: 8px;
+  --card-sidebar-top: rgb(220 220 248 / 0.92);
+  --card-sidebar-bottom: rgb(248 230 236 / 0.92);
+  --card-frame-alpha: 0.92;
+  --card-tile: rgb(60 60 140 / 0.06);
+  --card-active: rgb(255 255 255 / 0.9);
+  --card-shadow: 0 1px 2px rgb(40 40 90 / 0.08), 0 2px 8px rgb(40 40 90 / 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-style='card'] {
+    --card-sidebar-top: rgb(31 34 46 / 0.94);
+    --card-sidebar-bottom: rgb(58 52 96 / 0.94);
+    --card-frame-alpha: 0.94;
+    --card-tile: rgb(255 255 255 / 0.07);
+    --card-active: rgb(255 255 255 / 0.13);
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+  }
+}
+
+:root[data-style='card'][data-material='glass'] {
+  --card-sidebar-top: rgb(220 220 248 / calc(var(--glass-tint, 0.25) * 0.88));
+  --card-sidebar-bottom: rgb(248 230 236 / calc(var(--glass-tint, 0.25) * 0.88));
+  /* A tinted frame needs more body than the plain glass to read as colored glass. */
+  --card-frame-alpha: min(0.9, calc(var(--glass-tint, 0.25) * 1.6));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-style='card'][data-material='glass'] {
+    --card-sidebar-top: rgb(31 34 46 / min(0.96, calc(var(--glass-tint, 0.25) * 1.28)));
+    --card-sidebar-bottom: rgb(58 52 96 / min(0.96, calc(var(--glass-tint, 0.25) * 1.28)));
+    --card-frame-alpha: min(0.9, calc(var(--glass-tint, 0.25) * 1.6));
+  }
+}
+
+:root[data-style='card'][data-window-color] {
+  --card-sidebar-top: rgb(from light-dark(var(--tint-bg-light), var(--tint-bg-dark)) r g b / 0.92);
+  --card-sidebar-bottom: var(--card-sidebar-top);
+}
+
+:root[data-style='card'][data-window-color][data-material='glass'] {
+  --card-sidebar-top: rgb(
+    from light-dark(var(--tint-glass-light), var(--tint-glass-dark)) r g b /
+      min(0.96, calc(var(--glass-tint, 0.25) * 1.1))
+  );
+}
+
 :root[data-mode='developer'] body::after {
   position: fixed;
   z-index: 2147483000;

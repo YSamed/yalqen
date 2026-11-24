@@ -13,7 +13,6 @@ import {
   ARCHIVE_URL,
   NEW_TAB_URL,
   PageChannel,
-  SETTINGS_URL,
   type BrowserState,
   type CommandPage,
   type DeviceId,
@@ -128,6 +127,7 @@ interface TabManagerOptions {
   pageTheme: string;
   closed: SavedTab[];
   onClosedChanged?: () => void;
+  openSettings: (pane?: string) => void;
   privateWindow: boolean;
   session: Session;
   privateSession: Session;
@@ -1326,7 +1326,7 @@ export class TabManager {
   }
 
   openSettings(pane?: string): void {
-    this.openSingle(pane ? `${SETTINGS_URL}${pane}` : SETTINGS_URL);
+    this.options.openSettings(pane);
   }
 
   certificateChain(): CertificateDetails[] | null {

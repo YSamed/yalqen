@@ -186,7 +186,7 @@ app
     await click('.player button.track');
     assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
 
-    push({ panelCollapsed: true, media: { ...song, updatedAt: Date.now() } });
+    push({ panelCollapsed: true, panelSide: 'right', media: { ...song, updatedAt: Date.now() } });
     await eventually("!!document.querySelector('.player .play') && !document.querySelector('.player .pill')");
     assert.equal(
       await window.webContents.executeJavaScript("document.querySelector('.player .play').title"),

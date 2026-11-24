@@ -134,7 +134,7 @@ app
       'Close tab (⌘W)',
     ]);
 
-    const toggle = '.footer button[aria-expanded]';
+    const toggle = 'header .panel-toggle';
     const title = await run(`document.querySelector('${toggle}').title`);
     assert.equal(title, 'Collapse sidebar (⇧⌘P)');
     await hover(toggle);

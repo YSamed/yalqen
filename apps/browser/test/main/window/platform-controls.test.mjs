@@ -21,7 +21,7 @@ test('native window button APIs are only called on macOS', () => {
     }
     Object.defineProperty(process, 'platform', { value: 'darwin' });
     windowModule.YalqenWindow.prototype.showWindowControls.call(host);
-    assert.deepEqual(calls, [true, { x: 16, y: 15 }]);
+    assert.deepEqual(calls, [true, { x: 18, y: 20 }]);
   } finally {
     Object.defineProperty(process, 'platform', platform);
   }

@@ -489,6 +489,42 @@
   header[hidden] {
     display: none;
   }
+  :global([data-style='card']) .agent-panel:not(.collapsed) {
+    border-radius: 10px;
+    background: var(--page);
+    box-shadow: none;
+  }
+  :global([data-style='card']) header {
+    height: 41px;
+    padding: 0 6px;
+    -webkit-app-region: drag;
+  }
+  :global([data-style='card']) .actions {
+    display: contents;
+  }
+  :global([data-style='card']) header :global(.new-chat) {
+    order: -1;
+  }
+  :global([data-style='card']) .identity {
+    order: 0;
+    justify-content: center;
+  }
+  :global([data-style='card']) .header-mark {
+    display: none;
+  }
+  :global([data-style='card']) .identity strong {
+    height: 26px;
+    padding: 0 12px;
+    border-radius: 13px;
+    background: rgb(255 255 255 / 0.92);
+    color: color-mix(in srgb, var(--frame-primary, var(--accent)) 70%, #000);
+    font-size: 12.5px;
+    line-height: 26px;
+    letter-spacing: 0;
+  }
+  :global([data-style='card']) .actions > :global(:not(.new-chat)) {
+    order: 1;
+  }
   .resize-handle {
     position: absolute;
     z-index: 2;

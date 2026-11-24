@@ -17,7 +17,6 @@ const sources = (extra) => ({
   showAnnouncement: () => false,
   showFeedback: () => false,
   showRepoPrompt: () => false,
-  opaque: () => false,
   suggestions: () => [],
   ...extra,
 });

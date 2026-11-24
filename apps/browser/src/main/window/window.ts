@@ -138,7 +138,8 @@ import { accentHex } from '../../shared/accent.js';
 import { windowColorHex } from '../../shared/window-color.js';
 import { IS_MAC, openAsText } from '../platform.js';
 
-const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
+// The card toolbar is 41px tall inside a card inset 6px from the top; center the lights on it.
+const WINDOW_CONTROLS_INSET = { x: 18, y: 20 };
 const TITLEBAR_SYMBOL_COLORS = { light: '#1a1b1e', dark: '#f4f4f7' };
 const TITLEBAR_OVERLAY_HEIGHT = 44;
 const CASCADE_OFFSET = 24;
@@ -172,6 +173,7 @@ export function glassAtLaunch(settings: SettingsStore): boolean {
 
 export interface AppContext {
   icon: string;
+  openSettings(pane?: string): void;
   daily: Session;
   privateBrowsing: Session;
   developer: Session;
@@ -407,6 +409,7 @@ export class YalqenWindow {
       pageTheme: app.pageTheme,
       closed: app.closedTabs,
       onClosedChanged: () => app.onClosedTabsChange(),
+      openSettings: (pane) => app.openSettings(pane),
       privateWindow: this.isPrivate,
       webAppScope: this.webApp?.scope,
       onAppExternal: (url) => {
