@@ -24,3 +24,16 @@ test('a dragged card keeps its offset but never leaves the page', () => {
   assert.deepEqual(floatingChatBounds(page, { right: 300, top: 100 }), { x: 660, y: 147, width: 440, height: 760 });
   assert.deepEqual(floatingChatBounds(page, { right: -50, top: 5000 }), { x: 960, y: 187, width: 440, height: 760 });
 });
+
+test('dragging immediately follows the pointer after resizing clamps the card', () => {
+  const chat = new floatingChat.FloatingChat({ contentView: { addChildView() {} } });
+  let bounds;
+  chat.view = { setBounds: (next) => (bounds = next), getBounds: () => bounds };
+  chat.show({ x: 0, y: 0, width: 1500, height: 1000 });
+  chat.moveBy(-800, 100);
+  chat.show({ x: 0, y: 0, width: 650, height: 700 });
+  const before = bounds;
+  chat.moveBy(10, -5);
+  assert.equal(bounds.x, before.x + 10);
+  assert.equal(bounds.y, before.y - 5);
+});

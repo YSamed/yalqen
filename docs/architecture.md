@@ -30,6 +30,7 @@ The main process pushes a complete `BrowserState` to each window interface as a 
 | `library/`     | History, bookmarks, downloads, browser import and data clearing                                            |
 | `privacy/`     | Ad blocking, HTTPS-only, certificate exceptions, third-party cookies, permissions and passwords            |
 | `extensions/`  | Unpacked and Chrome Web Store extensions, their popup, IPC and ZIP extraction                              |
+| `agent-bridge/` | Agent connections, projects, conversations, terminal sessions, floating chat and page inspection tools |
 | `devtools/`    | Developer commands, device emulation, page overrides through the DevTools protocol and request rules       |
 | `storage/`     | Debounced, atomic JSON files used by every store                                                           |
 | `bench/`       | Instrumentation enabled only by the benchmark harness                                                      |
@@ -42,12 +43,13 @@ Modules depend on interfaces they are handed rather than on `main.ts`, for examp
 | -------------- | ----------------------------------------------------------------------------- |
 | `ui/`          | Primitives shared by every page: buttons, fields, selects, switches and icons |
 | `window/`      | The window interface: `App`, `TabPanel`, `Toolbar` and device controls        |
+| `agent/` | Chat, terminal, project controls and the floating panel |
 | `settings/`    | The settings shell, one component per pane and `SettingRow`                   |
 | `command-bar/` | Address bar overlay                                                           |
 | `find-bar/`    | Find-in-page overlay                                                          |
 | `public/`      | Templates and scripts for the internal pages served by the main process       |
 
-`index.html`, `settings.html`, `command.html` and `find.html` are the Vite entry points.
+Vite builds eight renderer entry points: `index.html`, `settings.html`, `command.html`, `chat.html`, `find.html`, `welcome.html`, `confirm.html` and `peek.html`. Docked and floating chat views share each conversation’s in-memory draft through the main process.
 
 ## Tests and benchmarks
 

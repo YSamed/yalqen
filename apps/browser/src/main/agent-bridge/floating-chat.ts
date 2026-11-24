@@ -54,7 +54,11 @@ export class FloatingChat {
 
   moveBy(dx: number, dy: number): void {
     if (!this.shown || !this.view) return;
-    const bounds = floatingChatBounds(this.page, { right: this.offset.right - dx, top: this.offset.top + dy });
+    const current = this.view.getBounds();
+    const bounds = floatingChatBounds(this.page, {
+      right: this.page.x + this.page.width - current.x - current.width - dx,
+      top: current.y - this.page.y + dy,
+    });
     this.offset = { right: this.page.x + this.page.width - bounds.x - bounds.width, top: bounds.y - this.page.y };
     this.view.setBounds(bounds);
   }

@@ -178,3 +178,22 @@ test('a chat can start in a tab before that tab is shown', async (t) => {
   assert.notEqual(project.chat, shown);
   assert.notEqual(project.chat.state().status, 'idle');
 });
+
+test('panel views share drafts only within a conversation and release them with the last tab', (t) => {
+  const { project } = fixture(t);
+  project.focusTab('first');
+  const id = project.conversationId;
+  const attachments = [{ id: 'first', url: 'https://example.org' }];
+  const images = [{ mediaType: 'image/png', data: 'abc', thumbnail: 'preview' }];
+  project.updateDraft(id, { text: 'original', attachments, images });
+  project.shareConversation('second');
+  project.focusTab('second');
+  project.updateDraft(project.conversationId, { text: 'edited' });
+  assert.deepEqual(project.draftFor(id), { text: 'edited', attachments, images });
+  project.focusTab('other');
+  assert.deepEqual(project.draftFor(project.conversationId), { text: '', attachments: [], images: [] });
+  project.retainTabs(new Set(['second', 'other']));
+  assert.equal(project.draftFor(id).text, 'edited');
+  project.retainTabs(new Set(['other']));
+  assert.equal(project.draftFor(id), null);
+});

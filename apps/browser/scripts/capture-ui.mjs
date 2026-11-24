@@ -127,6 +127,7 @@ async function capture() {
     defaultBrowser: false,
     engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
     customTemplateValid: true,
+    spaces: [{ id: '', name: 'Default', icon: null }],
     version: '0.0.0',
     update: { state: 'idle' },
   };
@@ -156,6 +157,7 @@ async function capture() {
       'OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Bearer%20<token>',
     ].join('\n'),
     observedTabs: 2,
+    connectionsRevision: 0,
   };
   const preloads = {
     settings: `
@@ -180,6 +182,9 @@ contextBridge.exposeInMainWorld('yalqenSettings', {
   requestRules: async () => [], saveRequestRules: async (rules) => rules, extensions: async () => [{ path: "/Extensions/example", id: "example", name: "Example extension", version: "1.0", description: "", enabled: true, error: null, icon: null, hasOptions: false, fromStore: true, updating: false, updateError: null }], checkExtensionUpdates: async () => null, installExtension: async () => null,
   installExtensionFromStore: async () => null, openExtensionStore: async () => {}, removeExtension: async () => {},
   setExtensionEnabled: async () => {}, openExtensionOptions: async () => {}, onExtensionsChange: none,
+  profiles: async () => ({ currentId: 'default', profiles: [{ id: 'default', name: 'Default', active: true, default: true, running: true }] }),
+  agentConnections: async () => ({ claude: 'missing', codex: 'missing' }),
+  autofill: async () => ({ available: true, records: [] }), onAutofillChange: none,
   passwords: async () => ({ available: true, passwords: [], neverSave: [] }), revealPassword: async () => null,
   copyPassword: async () => false, removePassword: async () => {}, allowSaving: async () => {}, onPasswordsChange: none,
   agentBridge: async () => agent, copyAgentSetup: async () => true, regenerateAgentToken: async () => agent,
@@ -284,7 +289,6 @@ contextBridge.exposeInMainWorld('yalqen', {
     showAnnouncement: () => false,
     showFeedback: () => false,
     showRepoPrompt: () => false,
-    opaque: () => false,
     suggestions: () => [],
   };
 
@@ -319,13 +323,11 @@ contextBridge.exposeInMainWorld('yalqen', {
       { name: 'bookmarks', url: 'yalqen://bookmarks/' },
       { name: 'downloads', url: 'yalqen://downloads/' },
       { name: 'error', file: errorPage },
-      ...['general', 'appearance', 'privacy', 'sites', 'passwords', 'performance', 'extensions', 'developer'].map(
-        (pane) => ({
-          name: `settings-${pane}`,
-          url: pane === 'general' ? 'yalqen://settings/' : `yalqen://settings/${pane}`,
-          preload: 'settings.cjs',
-        }),
-      ),
+      ...['general', 'tabs', 'privacy', 'profiles', 'passwords', 'extensions', 'shortcuts', 'advanced'].map((pane) => ({
+        name: `settings-${pane}`,
+        url: pane === 'general' ? 'yalqen://settings/' : `yalqen://settings/${pane}`,
+        preload: 'settings.cjs',
+      })),
     ];
 
     for (const scheme of ['light', 'dark']) {

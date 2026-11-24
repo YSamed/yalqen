@@ -976,6 +976,13 @@ function startBrowser(): void {
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
   const agentSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     event.senderFrame === event.sender.mainFrame ? senderWindow(event) : undefined;
+  ipcMain.handle(
+    IpcChannel.agentDraft,
+    (event, projectId: string, id: string) => agentSenderWindow(event)?.projectById(projectId)?.draftFor(id) ?? null,
+  );
+  ipcMain.on(IpcChannel.agentDraftUpdate, (event, projectId: string, id: string, patch) => {
+    agentSenderWindow(event)?.projectById(projectId)?.updateDraft(id, patch);
+  });
   ipcMain.handle(IpcChannel.agentSnapshot, (event) => agentSenderWindow(event)?.agentSession.snapshot() ?? null);
   ipcMain.handle(IpcChannel.agentSelectDirectory, (event) => agentSenderWindow(event)?.selectAgentDirectory() ?? null);
   ipcMain.handle(

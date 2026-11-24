@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
-  import { SvelteMap } from 'svelte/reactivity';
+  import { onMount } from 'svelte';
   import type { TabSnapshot } from '../../shared/types';
   import type {
     AgentBackgroundChat,
@@ -11,7 +10,6 @@
     ProjectRunState,
   } from '../../shared/agent';
   import { AGENT_LABELS, DEFAULT_AGENT_PANEL_WIDTH, SIGN_IN_PROVIDERS } from '../../shared/agent-panel';
-  import type { AgentChatComposer } from '../../shared/agent-panel';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
@@ -60,28 +58,7 @@
 
   let requesting = $state(false);
   let historyOpen = $state(false);
-  const composers = new SvelteMap<string, AgentChatComposer>();
-
-  function composerFor(id: string): AgentChatComposer {
-    return untrack(() => {
-      let composer = composers.get(id);
-      if (!composer) {
-        const created = $state<AgentChatComposer>({ text: '', attachments: [], images: [] });
-        composer = created;
-        composers.set(id, composer);
-      }
-      return composer;
-    });
-  }
-
-  $effect(() => {
-    const current = conversationId;
-    untrack(() => {
-      for (const [id, composer] of composers)
-        if (id !== current && !composer.text.trim() && !composer.attachments.length && !composer.images.length)
-          composers.delete(id);
-    });
-  });
+  const draft = $derived(window.yalqen.getAgentDraft(projectId, conversationId));
   const chatBusy = $derived(['starting', 'thinking', 'approval'].includes(chat.status));
   const PROVIDER_LABELS = AGENT_LABELS;
   const providerOptions = $derived(providers.map((value) => ({ value, label: PROVIDER_LABELS[value] })));
@@ -340,19 +317,25 @@
     <div class="panel-view"><AgentHistory onclose={() => (historyOpen = false)} /></div>
   {/if}
   {#key conversationId}
-    <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat' || historyOpen}>
-      <AgentChat
-        composer={composerFor(conversationId)}
-        open={open && view === 'chat' && !historyOpen}
-        directory={session.directory}
-        {activeTab}
-        {tabs}
-        {developer}
-        {elements}
-        {floating}
-        onchoose={() => void chooseProject()}
-      />
-    </div>
+    {#await draft then initialDraft}
+      {#if initialDraft}
+        <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat' || historyOpen}>
+          <AgentChat
+            {initialDraft}
+            {projectId}
+            {conversationId}
+            open={open && view === 'chat' && !historyOpen}
+            directory={session.directory}
+            {activeTab}
+            {tabs}
+            {developer}
+            {elements}
+            {floating}
+            onchoose={() => void chooseProject()}
+          />
+        </div>
+      {/if}
+    {/await}
   {/key}
   {#key projectId}
     {#if terminal}

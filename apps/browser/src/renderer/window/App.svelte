@@ -131,13 +131,13 @@
   );
   const pageInset = CARD_PAGE_INSET;
   const fullPanelWidth = PANEL_WIDTH;
-  const collapsed = $derived(
-    browser.panelCollapsed ||
-      (agentPanelOpen && windowWidth < fullPanelWidth + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + pageInset * 2),
-  );
   const pageFullScreen = $derived(browser.pageFullScreen);
   const floatingAgent = $derived(browser.agentFloating ?? false);
   const agentVisible = $derived(agentPanelOpen && !pageFullScreen && !floatingAgent);
+  const collapsed = $derived(
+    browser.panelCollapsed ||
+      (agentVisible && windowWidth < fullPanelWidth + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + pageInset * 2),
+  );
   const bookmarksPanel = $derived(browser.bookmarksPanel ?? null);
   const bookmarksVisible = $derived(bookmarksPanel !== null && !pageFullScreen && !agentVisible);
   const sideVisible = $derived(agentVisible || bookmarksVisible);
@@ -192,7 +192,7 @@
   let wcoTbrightInset = $derived(wcoTbUsable ? Math.max(0, windowWidth - wcoTbRect.x - wcoTbRect.width) : 0);
 
   $effect(() => {
-    if (!agentPanelOpen || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;
+    if (!agentVisible || AgentPanelComponent || agentPanelLoading || agentPanelLoadFailed) return;
     agentPanelLoading = true;
     void import('../agent/AgentPanel.svelte')
       .then((module) => {

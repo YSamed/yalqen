@@ -920,7 +920,8 @@ export class YalqenWindow {
     if (this.window.isDestroyed()) return;
     const floating = this.agentPanelOpen && this.app.settings.get().agentFloating && !this.isPageFullScreen();
     if (floating) this.floatingChat.show(this.pageArea);
-    else this.floatingChat.hide();
+    else if (this.app.settings.get().agentFloating) this.floatingChat.hide();
+    else this.floatingChat.destroy();
   }
 
   toggleAgentPanel(): void {
@@ -1034,8 +1035,12 @@ export class YalqenWindow {
     return this.projectRunner.start();
   }
 
+  projectById(id: string): AgentProject | undefined {
+    return this.agentProjects.find((project) => project.id === id);
+  }
+
   get agentProject(): AgentProject {
-    return this.agentProjects.find((project) => project.id === this.activeProjectId) ?? this.agentProjects[0];
+    return this.projectById(this.activeProjectId) ?? this.agentProjects[0];
   }
 
   get agentSession(): AgentSession {

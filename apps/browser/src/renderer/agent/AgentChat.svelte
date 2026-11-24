@@ -1,6 +1,6 @@
 <script lang="ts">
   import { displayHost } from '../../shared/hosts';
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { t } from '../../shared/i18n';
   import { EMPTY_AGENT_CHAT, MAX_CHAT_TABS, SIGN_IN_PROVIDERS } from '../../shared/agent-panel';
   import type { AgentChatComposer } from '../../shared/agent-panel';
@@ -37,7 +37,9 @@
   import type { VisualComparisonReview } from '../../shared/visual-comparison';
 
   let {
-    composer,
+    initialDraft,
+    conversationId,
+    projectId,
     open,
     directory,
     activeTab,
@@ -47,7 +49,9 @@
     floating = false,
     onchoose,
   }: {
-    composer: AgentChatComposer;
+    initialDraft: AgentChatComposer;
+    conversationId: string;
+    projectId: string;
     open: boolean;
     directory: string | null;
     activeTab: TabSnapshot | null;
@@ -57,6 +61,13 @@
     floating?: boolean;
     onchoose(): void;
   } = $props();
+  let composer = $state.raw(untrack(() => initialDraft));
+  const owner = untrack(() => ({ projectId, conversationId }));
+  function updateDraft(patch: Partial<AgentChatComposer>): void {
+    composer = { ...composer, ...patch };
+    window.yalqen.updateAgentDraft(owner.projectId, owner.conversationId, $state.snapshot(patch));
+  }
+
   let snapshot: AgentChatSnapshot = $state.raw({
     state: { ...EMPTY_AGENT_CHAT },
     revision: -1,
@@ -290,10 +301,10 @@
       )
         throw new Error('Unavailable');
       if (composer.text === text) {
-        composer.text = '';
-        if (composer.attachments === attached) composer.attachments = [];
+        updateDraft({ text: '' });
+        if (composer.attachments === attached) updateDraft({ attachments: [] });
       }
-      if (composer.images === sent) composer.images = [];
+      if (composer.images === sent) updateDraft({ images: [] });
       attachmentChanged = false;
       failed = false;
       follow = true;
@@ -311,7 +322,7 @@
     try {
       const signedIn = await window.yalqen.signInAgent();
       signInFailed = !signedIn;
-      if (signedIn && !composer.text.trim()) composer.text = lastPrompt();
+      if (signedIn && !composer.text.trim()) updateDraft({ text: lastPrompt() });
     } catch {
       signInFailed = true;
     } finally {
@@ -385,10 +396,9 @@
         bitmap.close();
         const data = await base64Of(file);
         if (composer.images.length >= MAX_IMAGES) continue;
-        composer.images = [
-          ...composer.images,
-          { mediaType: file.type as AgentChatImage['mediaType'], data, thumbnail },
-        ];
+        updateDraft({
+          images: [...composer.images, { mediaType: file.type as AgentChatImage['mediaType'], data, thumbnail }],
+        });
       } catch {
         imageRejected = true;
       }
@@ -465,7 +475,7 @@
       if (tab) addTab(tab);
     }
     const next = complete(composer.text, trigger, item.insert ?? '');
-    composer.text = next.text;
+    updateDraft({ text: next.text });
     caret = next.caret;
     await tick();
     textarea?.focus();
@@ -502,20 +512,20 @@
   }
 
   function suggest(prompt: string): void {
-    composer.text = prompt;
+    updateDraft({ text: prompt });
     if (attachable?.agentObserved) addTab(attachable);
     textarea?.focus();
   }
 
   function addTab(tab: TabSnapshot): void {
     if (composer.attachments.length >= MAX_CHAT_TABS || composer.attachments.some((item) => item.id === tab.id)) return;
-    composer.attachments = [...composer.attachments, tab];
+    updateDraft({ attachments: [...composer.attachments, tab] });
     attachmentChanged = false;
   }
 
   function toggleTab(tab: TabSnapshot): void {
     if (composer.attachments.some((item) => item.id === tab.id))
-      composer.attachments = composer.attachments.filter((item) => item.id !== tab.id);
+      updateDraft({ attachments: composer.attachments.filter((item) => item.id !== tab.id) });
     else addTab(tab);
   }
 
@@ -524,7 +534,7 @@
       attachableTabs.some((tab) => tab.id === attached.id && tab.url === attached.url),
     );
     if (valid.length !== composer.attachments.length) {
-      composer.attachments = valid;
+      updateDraft({ attachments: valid });
       attachmentChanged = true;
     }
   });
@@ -839,7 +849,7 @@
                 size="sm"
                 icon="close"
                 label={t('agentChat.removeImage')}
-                onclick={() => (composer.images = composer.images.filter((entry) => entry !== image))}
+                onclick={() => updateDraft({ images: composer.images.filter((entry) => entry !== image) })}
               />
             </div>
           {/each}
@@ -868,7 +878,8 @@
                 size="sm"
                 icon="close"
                 label={t('agentChat.removeTab')}
-                onclick={() => (composer.attachments = composer.attachments.filter((tab) => tab.id !== attachment.id))}
+                onclick={() =>
+                  updateDraft({ attachments: composer.attachments.filter((tab) => tab.id !== attachment.id) })}
               />
             </div>
           {/each}
@@ -888,7 +899,7 @@
       {/if}
       <textarea
         bind:this={textarea}
-        bind:value={composer.text}
+        bind:value={() => composer.text, (text) => updateDraft({ text })}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={suggestions.length > 0}

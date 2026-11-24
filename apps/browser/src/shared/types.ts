@@ -341,6 +341,8 @@ export const IpcChannel = {
   state: 'yalqen:state',
   setLayout: 'yalqen:set-layout',
   action: 'yalqen:action',
+  agentDraft: 'yalqen:agent-draft',
+  agentDraftUpdate: 'yalqen:agent-draft-update',
   agentSnapshot: 'yalqen:agent-snapshot',
   agentSelectDirectory: 'yalqen:agent-select-directory',
   agentStart: 'yalqen:agent-start',
@@ -396,6 +398,8 @@ export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   onState(listener: (serializedState: string) => void): () => void;
   setLayout(layout: ChromeLayout): void;
   send(action: UiAction): void;
+  getAgentDraft(projectId: string, id: string): Promise<import('./agent-panel').AgentChatComposer | null>;
+  updateAgentDraft(projectId: string, id: string, patch: Partial<import('./agent-panel').AgentChatComposer>): void;
   getAgentTerminal(): Promise<AgentTerminalSnapshot | null>;
   selectAgentDirectory(): Promise<AgentSessionState | null>;
   startAgentSession(size: AgentTerminalSize): Promise<AgentSessionState | null>;

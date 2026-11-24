@@ -9,6 +9,7 @@ import type {
   AgentProviderId,
   AgentTerminalOutput,
 } from '../../shared/agent.js';
+import type { AgentChatComposer } from '../../shared/agent-panel.js';
 import { acpClient } from './acp-client.js';
 import { AgentChat } from './agent-chat.js';
 import { ACP_AGENTS } from './agent-providers.js';
@@ -29,6 +30,7 @@ interface AgentProjectOptions {
 interface Conversation {
   id: string;
   provider: AgentProviderId;
+  draft?: AgentChatComposer;
   readonly chats: Map<AgentProviderId, AgentChat>;
   readonly background: AgentChat[];
 }
@@ -89,6 +91,25 @@ export class AgentProject {
 
   get conversationId(): string {
     return this.conversation.id;
+  }
+
+  draftFor(id: string): AgentChatComposer | null {
+    for (const conversation of this.conversations.values()) {
+      if (conversation.id === id) return conversation.draft ?? { text: '', attachments: [], images: [] };
+    }
+    return null;
+  }
+
+  updateDraft(id: string, patch: Partial<AgentChatComposer>): void {
+    for (const conversation of this.conversations.values()) {
+      if (conversation.id !== id) continue;
+      const draft = conversation.draft ?? { text: '', attachments: [], images: [] };
+      if (typeof patch?.text === 'string') draft.text = patch.text;
+      if (Array.isArray(patch?.attachments)) draft.attachments = patch.attachments;
+      if (Array.isArray(patch?.images)) draft.images = patch.images;
+      conversation.draft = draft.text || draft.attachments.length || draft.images.length ? draft : undefined;
+      return;
+    }
   }
 
   get providerId(): AgentProviderId {
@@ -199,6 +220,7 @@ export class AgentProject {
     conversation.background.push(chat);
     conversation.chats.delete(conversation.provider);
     conversation.id = randomUUID();
+    delete conversation.draft;
     return true;
   }
 
@@ -214,6 +236,7 @@ export class AgentProject {
     conversation.chats.set(provider, chat);
     conversation.provider = provider;
     conversation.id = randomUUID();
+    delete conversation.draft;
     return true;
   }
 
