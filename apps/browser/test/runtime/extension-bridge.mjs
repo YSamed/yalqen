@@ -42,14 +42,14 @@ const WORKER = `chrome.runtime.onMessage.addListener((message, _sender, reply) =
   }
   if (message.type !== 'auth') return;
   const redirect = chrome.identity.getRedirectURL().replace(/\\/$/, '');
-  chrome.tabs.create({ url: message.url + '?redirect=' + encodeURIComponent(redirect) }).then((tab) => {
-    const updated = (id, change) => {
-      if (id !== tab.id || !change.url || !change.url.startsWith(redirect)) return;
-      chrome.tabs.onUpdated.removeListener(updated);
-      chrome.tabs.remove(tab.id).then(() => reply({ url: change.url, redirect, tabId: tab.id }));
-    };
-    chrome.tabs.onUpdated.addListener(updated);
-  }, (error) => reply({ error: error.message }));
+  const url = message.url + '?redirect=' + encodeURIComponent(redirect);
+  chrome.identity.launchWebAuthFlow({ url }).then(
+    () => reply({ error: 'non-interactive flow was not refused' }),
+    () => chrome.identity.launchWebAuthFlow({ url, interactive: true }).then(
+      (result) => reply({ url: result, redirect }),
+      (error) => reply({ error: error.message }),
+    ),
+  );
   return true;
 });`;
 
@@ -98,7 +98,7 @@ app
         manifest_version: 3,
         name: 'Tabs bridge test',
         version: '1.0',
-        permissions: ['tabs', 'identity', 'cookies'],
+        permissions: ['identity', 'cookies'],
         host_permissions: ['http://127.0.0.1/*'],
         background: { service_worker: 'worker.js' },
       }),
@@ -144,6 +144,7 @@ app
           { id: window.id, focused: true },
           { id: page.id, focused: false },
         ],
+        openAction() {},
       },
       path.resolve(import.meta.dirname, '../../dist/preload/extension-apis.js'),
     );
@@ -158,7 +159,7 @@ app
     assert.equal(result.redirect, `https://${extension.id}.chromiumapp.org`);
     assert.equal(result.url, `https://${extension.id}.chromiumapp.org/cb?code=abc`);
     await eventually(() => tabManager.tabs.length === startingTabs);
-    await eventually(() => page.webContents.executeJavaScript(`removed.includes(${result.tabId})`));
+    await eventually(() => page.webContents.executeJavaScript('removed.length === 1'));
     assert.equal(tabManager.activeId, opener);
 
     assert.deepEqual(await page.webContents.executeJavaScript('permissionChecks()'), {
@@ -215,7 +216,7 @@ app
       tabManager.tabs.some((tab) => tab.view?.webContents.getURL() === `chrome-extension://${extension.id}/page.html`),
     );
     console.log(
-      'PASS: extension tabs.create/remove/onUpdated/onRemoved, host-scoped cookies, permissions, windows and identity redirect bridge',
+      'PASS: extension tabs.create/remove/onRemoved, host-scoped cookies, permissions, windows and identity.launchWebAuthFlow bridge',
     );
   })
   .catch((error) => {

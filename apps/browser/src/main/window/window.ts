@@ -356,6 +356,9 @@ export class YalqenWindow {
     this.uiContents.on('will-navigate', (event) => event.preventDefault());
     this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     watchInterfaceBridge(this.uiContents);
+    this.uiContents.on('before-input-event', (event, input) => {
+      if (!this.isPrivate && app.extensionBridge.shortcut(input, this.tabs.activeContents())) event.preventDefault();
+    });
     void loadRenderer(this.uiContents, rendererPath('index.html'), { lang: getLocale() });
 
     const from = options.from?.window.getBounds();
@@ -2346,6 +2349,24 @@ export class YalqenWindow {
     }
   }
 
+  openExtensionAction(extensionId: string): void {
+    const popupUrl = this.app.extensions.actions().find((action) => action.id === extensionId)?.popupUrl;
+    if (!popupUrl || this.isPrivate) return;
+    const { width } = this.window.getContentBounds();
+    const anchor = this.sidebarMenuAnchor.width > 0 ? this.sidebarMenuAnchor : { x: width, y: 0, width: 0, height: 0 };
+    this.openExtensionPopup(popupUrl, anchor);
+  }
+
+  private openExtensionPopup(url: string, anchor: AnchorRect): void {
+    this.app.extensionPopup.open({
+      window: this.window,
+      session: this.app.daily,
+      url,
+      anchor,
+      onOpenUrl: (target) => this.tabs.open(target, { isPrivate: false }),
+    });
+  }
+
   private openExtensionsMenu(anchor: AnchorRect): void {
     const openTab = (url: string) => this.tabs.open(url, { isPrivate: false });
     const template = extensionsMenuTemplate(this.app.extensions.actions(), {
@@ -2370,14 +2391,7 @@ export class YalqenWindow {
               void dialog.showMessageBox(this.window, { type: 'info', message: error });
           });
       },
-      openPopup: (url) =>
-        this.app.extensionPopup.open({
-          window: this.window,
-          session: this.app.daily,
-          url,
-          anchor,
-          onOpenUrl: openTab,
-        }),
+      openPopup: (url) => this.openExtensionPopup(url, anchor),
       openOptions: openTab,
       openStore: () => openTab(STORE_HOME),
       manage: () => this.tabs.openSettings('extensions'),

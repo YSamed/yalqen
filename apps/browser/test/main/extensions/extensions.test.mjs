@@ -24,6 +24,7 @@ const {
   parseMessages,
   popupPage,
   resolveInside,
+  extensionFile,
   sanitizeSavedExtensions,
   withManifestKey,
 } = manifests;
@@ -114,6 +115,17 @@ test('extension files and pages cannot leave the extension', () => {
   assert.equal(extensionPage('chrome-extension://abc/', '/ui/popup.html'), 'chrome-extension://abc/ui/popup.html');
   assert.equal(extensionPage('chrome-extension://abc/', '../../x.html'), 'chrome-extension://abc/x.html');
   assert.equal(extensionPage('chrome-extension://abc/', null), null);
+});
+
+test('notification icons resolve only to files inside their own extension', () => {
+  const root = path.resolve('/ext/a');
+  const id = 'a'.repeat(32);
+  assert.equal(extensionFile(root, id, 'icons/i.png'), path.join(root, 'icons', 'i.png'));
+  assert.equal(extensionFile(root, id, `chrome-extension://${id}/icon%20big.png`), path.join(root, 'icon big.png'));
+  assert.equal(extensionFile(root, id, `chrome-extension://${'b'.repeat(32)}/i.png`), null);
+  assert.equal(extensionFile(root, id, 'https://example.com/i.png'), null);
+  assert.equal(extensionFile(root, id, '%2F..%2F..%2Fsecret.png'), null);
+  assert.equal(extensionFile(root, id, '%E0%A4%A'), null);
 });
 
 test('manifest messages are localized case-insensitively', () => {

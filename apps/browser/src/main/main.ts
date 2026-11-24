@@ -384,6 +384,8 @@ function startBrowser(): void {
       windowId: (contents) => tabsWindowOf(contents)?.window.id ?? extensionPopup.windowId(contents) ?? WINDOW_ID_NONE,
       isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
       windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
+      openAction: (extensionId, contents) =>
+        ((contents && tabsWindowOf(contents)) ?? mainWindow())?.openExtensionAction(extensionId),
     },
     preloadPath('extension-apis'),
   );

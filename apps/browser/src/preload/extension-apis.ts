@@ -108,8 +108,10 @@ function installExtensionApis(api: Bridge): void {
   );
   define(tabs, 'remove', (ids: unknown, callback: Callback) => settle(api.removeTabs(ids), callback));
   define(tabs, 'getCurrent', (callback: Callback) => settle(api.currentTab(), callback));
-  define(tabs, 'onUpdated', event('tabs.onUpdated'));
-  define(tabs, 'onRemoved', event('tabs.onRemoved'));
+  const tabUpdated = event('tabs.onUpdated');
+  const tabRemoved = event('tabs.onRemoved');
+  define(tabs, 'onUpdated', tabUpdated);
+  define(tabs, 'onRemoved', tabRemoved);
 
   if (!chromeApi.cookies && permissions.includes('cookies')) {
     const call = (method: string) => (details: unknown, callback: Callback) =>
@@ -125,8 +127,48 @@ function installExtensionApis(api: Bridge): void {
   }
 
   if (!chromeApi.identity && permissions.includes('identity')) {
+    const redirectUrl = (path = '') => `https://${runtime.id}.chromiumapp.org/${String(path).replace(/^\//, '')}`;
+    // shortcut: interactive: false is always refused, so silent token refresh falls back to the interactive flow.
+    const webAuthFlow = (details: unknown): Promise<string> => {
+      const { url, interactive } = (typeof details === 'object' && details !== null ? details : {}) as {
+        url?: unknown;
+        interactive?: unknown;
+      };
+      if (typeof url !== 'string') return Promise.reject(new Error('Authorization url is required'));
+      if (interactive !== true) return Promise.reject(new Error('User interaction required.'));
+      return api.createTab({ url, active: true }).then(
+        (tab) =>
+          new Promise((resolve, reject) => {
+            const { id } = tab as { id: number };
+            const stop = () => {
+              tabUpdated.removeListener(updated);
+              tabRemoved.removeListener(removed);
+            };
+            const updated: Listener = (tabId, change) => {
+              const next = (change as { url?: unknown } | undefined)?.url;
+              if (tabId !== id || typeof next !== 'string' || !next.startsWith(redirectUrl())) return;
+              stop();
+              resolve(next);
+              api.removeTabs(id).catch(() => {});
+            };
+            const removed: Listener = (tabId) => {
+              if (tabId !== id) return;
+              stop();
+              reject(new Error('The user did not approve access.'));
+            };
+            tabUpdated.addListener(updated);
+            tabRemoved.addListener(removed);
+          }),
+      );
+    };
     define(chromeApi, 'identity', {
-      getRedirectURL: (path = '') => `https://${runtime.id}.chromiumapp.org/${String(path).replace(/^\//, '')}`,
+      getRedirectURL: redirectUrl,
+      launchWebAuthFlow: (details: unknown, callback: Callback) => settle(webAuthFlow(details), callback),
+      getAuthToken: (...args: unknown[]) =>
+        settle(
+          Promise.reject(new Error('getAuthToken needs a Chrome Google account; use launchWebAuthFlow')),
+          lastArgument(args),
+        ),
     });
   }
 

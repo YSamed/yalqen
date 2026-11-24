@@ -11,9 +11,9 @@ const profile = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-ex
 app.setPath('userData', path.join(profile, 'profile'));
 const windows = [];
 const deadline = setTimeout(() => app.exit(1), 30000);
-const server = http.createServer((_req, res) => {
+const server = http.createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html');
-  res.end('<title>Page</title>');
+  res.end(req.url === '/frame' ? '<iframe src="/child"></iframe>' : '<title>Page</title>');
 });
 process.on('uncaughtException', (error) => {
   console.error(error);
@@ -30,7 +30,7 @@ async function eventually(predicate) {
 // Read at worker startup, like uBlock Origin Lite and Bitwarden do.
 const WORKER = `const seen = [];
 const webext = self.browser || self.chrome;
-webext.commands.onCommand.addListener((name, tab) => seen.push('command:' + name + ':' + tab.id));
+webext.commands.onCommand.addListener((name, tab) => seen.push('command:' + name + ':' + (tab && tab.id)));
 chrome.commands.onCommand.addListener(() => {});
 webext.contextMenus.removeAll(() => webext.contextMenus.create({ id: 'fill', title: 'Fill', contexts: ['all'] }));
 webext.contextMenus.onClicked.addListener((info) => seen.push('menu:' + info.menuItemId));
@@ -38,6 +38,9 @@ webext.notifications.onClicked.addListener(() => {});
 webext.notifications.onButtonClicked.addListener(() => {});
 webext.webNavigation.onCommitted.addListener((details) => seen.push('committed:' + details.frameId + ':' + details.url));
 chrome.webNavigation.onCompleted.addListener((details) => seen.push('completed:' + details.tabId));
+chrome.webNavigation.onCompleted.addListener((details) => {
+  if (details.frameId > 0) seen.push('subframe:' + details.parentFrameId + ':' + details.url);
+});
 chrome.runtime.onMessage.addListener((_message, _sender, reply) => {
   webext.commands.getAll().then((commands) => reply({ seen, commands }));
   return true;
@@ -56,9 +59,11 @@ app
         name: 'Worker APIs test',
         version: '1.0',
         permissions: ['webNavigation', 'contextMenus', 'notifications'],
+        action: { default_popup: 'page.html' },
         background: { service_worker: 'worker.js' },
         commands: {
           'toggle-blocking': { description: 'Toggle blocking', suggested_key: { default: 'Alt+Shift+Y' } },
+          _execute_action: { suggested_key: { default: 'Alt+Shift+U' } },
         },
       }),
     );
@@ -67,6 +72,7 @@ app
 
     const browsing = session.fromPartition('persist:extension-worker-apis');
     let tab;
+    const actions = [];
     const bridge = new extensionBridge.ExtensionBridge(
       browsing,
       {
@@ -76,6 +82,7 @@ app
         windowId: () => tab.id,
         isActive: () => true,
         windows: () => [{ id: tab.id, focused: true }],
+        openAction: (id, contents) => actions.push(`${id}:${contents?.id}`),
       },
       path.resolve(import.meta.dirname, '../../dist/preload/extension-apis.js'),
     );
@@ -87,7 +94,10 @@ app
     const ask = () => page.webContents.executeJavaScript('chrome.runtime.sendMessage({})');
 
     const { commands } = await ask();
-    assert.deepEqual(commands, [{ name: 'toggle-blocking', description: 'Toggle blocking', shortcut: 'Alt+Shift+Y' }]);
+    assert.deepEqual(commands, [
+      { name: '_execute_action', description: '', shortcut: 'Alt+Shift+U' },
+      { name: 'toggle-blocking', description: 'Toggle blocking', shortcut: 'Alt+Shift+Y' },
+    ]);
     assert.ok(
       Object.values(browsing.serviceWorkers.getAllRunning()).some(({ scope }) => scope.includes(extension.id)),
       'extension worker is not running',
@@ -107,6 +117,19 @@ app
 
     tab.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Y', modifiers: ['alt', 'shift'] });
     await eventually(async () => (await ask()).seen.includes(`command:toggle-blocking:${tab.webContents.id}`));
+    tab.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'U', modifiers: ['alt', 'shift'] });
+    await eventually(() => actions.includes(`${extension.id}:${tab.webContents.id}`));
+
+    const uiKey = { type: 'keyDown', code: 'KeyY', alt: true, shift: true, control: false, meta: false };
+    assert.equal(bridge.shortcut({ ...uiKey, isAutoRepeat: true }, null), false);
+    assert.equal(bridge.shortcut(uiKey, null), true);
+    const foreign = new BrowserWindow({ show: false, webPreferences: { partition: 'private-worker-apis' } });
+    windows.push(foreign);
+    assert.equal(bridge.shortcut(uiKey, foreign.webContents), false);
+    await eventually(async () => (await ask()).seen.includes('command:toggle-blocking:undefined'));
+
+    await tab.loadURL(`${url}frame`);
+    await eventually(async () => (await ask()).seen.includes(`subframe:0:${url}child`));
 
     const params = {
       linkURL: '',
@@ -121,7 +144,9 @@ app
     assert.equal(item.label, 'Fill');
     item.click();
     await eventually(async () => (await ask()).seen.includes('menu:fill'));
-    console.log('PASS: extension worker gets commands, webNavigation, contextMenus and notifications shims');
+    console.log(
+      'PASS: extension worker gets commands, _execute_action, webNavigation subframes, contextMenus and notifications shims',
+    );
   })
   .catch((error) => {
     console.error(error);

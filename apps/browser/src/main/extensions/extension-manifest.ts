@@ -79,6 +79,16 @@ export function resolveInside(root: string, relative: string): string | null {
   return resolved.startsWith(root + path.sep) ? resolved : null;
 }
 
+export function extensionFile(root: string, extensionId: string, raw: string): string | null {
+  try {
+    const url = new URL(raw, `chrome-extension://${extensionId}/`);
+    if (url.protocol !== 'chrome-extension:' || url.host !== extensionId) return null;
+    return resolveInside(root, decodeURIComponent(url.pathname));
+  } catch {
+    return null;
+  }
+}
+
 export function extensionPage(baseUrl: string, page: string | null): string | null {
   if (!page) return null;
   try {
