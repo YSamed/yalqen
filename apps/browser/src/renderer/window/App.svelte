@@ -60,10 +60,8 @@
     activeSpaceId: '',
     sidebarVisible: true,
     media: null,
-    toolbarVisible: true,
     toolbarButtons: [],
     sidebarFooterItems: [],
-    toolbarExtensions: [],
     material: 'opaque',
     accent: accentHex(DEFAULT_ACCENT),
     windowColor: null,
@@ -108,9 +106,7 @@
   const spaces = $derived(browser.spaces);
   const activeSpaceId = $derived(browser.activeSpaceId);
   const sidebarVisible = $derived(browser.sidebarVisible);
-  const toolbarVisible = $derived(browser.toolbarVisible);
   const toolbarButtons = $derived(browser.toolbarButtons);
-  const toolbarExtensions = $derived(browser.toolbarExtensions ?? []);
   const zoom = $derived(browser.zoom);
   const defaultZoom = $derived(browser.defaultZoom);
   const downloads = $derived(browser.downloads);
@@ -254,7 +250,7 @@
   const spanToolbar = $derived(sidebarVisible);
   const pageLeft = $derived(panelWidth + panelSlide);
   const splitPanes = $derived.by(() => {
-    if (!spanToolbar || !toolbarVisible || pageFullScreen || !activeTabId) return [];
+    if (!spanToolbar || pageFullScreen || !activeTabId) return [];
     const groupIndex = browser.splitGroups?.findIndex((group) => group.includes(activeTabId)) ?? -1;
     const ids: (string | null)[] = [...(browser.splitGroups?.[groupIndex] ?? [activeTabId])];
     const weights = splitDrop ? undefined : (browser.splitWeights?.[groupIndex] ?? undefined);
@@ -272,11 +268,9 @@
       return { tab: tabs.find((tab) => tab.id === id) ?? null, x, width };
     });
   });
-  const topInset = $derived(toolbarVisible ? CHROME_HEIGHT : pageInset);
+  const topInset = CHROME_HEIGHT;
   const pageRadius = PAGE_RADIUS;
-  const menuInset = $derived(
-    windowMenu && toolbarVisible && !pageFullScreen && !sidebarVisible ? pageInset + CONTROL_SIZE + 8 : 0,
-  );
+  const menuInset = $derived(windowMenu && !pageFullScreen && !sidebarVisible ? pageInset + CONTROL_SIZE + 8 : 0);
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
   $effect(() => applyRootTheme(browser, mode, prefersDark));
 
@@ -343,7 +337,7 @@
         edgeInset={(COLLAPSED_WIDTH - CONTROL_SIZE) / 2}
         fullWidth={fullPanelWidth}
         card
-        toggleInToolbar={spanToolbar && toolbarVisible}
+        toggleInToolbar={spanToolbar}
         {agents}
         updateReady={browser.updateReady ?? false}
         {downloads}
@@ -357,41 +351,36 @@
         {media}
       />
     {/if}
-    {#if toolbarVisible}
-      <Toolbar
-        card
-        sidebarMenu={sidebarVisible && !collapsed}
-        panelCollapsed={collapsed}
-        panes={splitPanes}
-        {developer}
-        modeSwitch={browser.modeSwitch ?? false}
-        bookmarksPanelOpen={bookmarksVisible}
-        tabs={toolbarTabs}
-        {activeTabId}
-        {zoom}
-        {defaultZoom}
-        {downloads}
-        ready={stateReceived}
-        {extensions}
-        agentAvailable={profile !== 'private'}
-        {agentPanelOpen}
-        {agentStatus}
-        buttons={toolbarButtons}
-        {toolbarExtensions}
-        span={spanToolbar}
-        leadingWidth={shownWidth - Math.max(wcoTbleftInset, menuInset) - PAGE_INSET}
-        leadingInset={spanToolbar
-          ? Math.max(wcoTbleftInset, menuInset)
-          : Math.max(Math.max(0, wcoTbleftInset - shownWidth), menuInset)}
-        alignLeading={!sidebarVisible && !IS_MAC}
-        trailingInset={pageInset + wcoTbrightInset}
-        centerOffset={spanToolbar ? 0 : -shownWidth / 2}
-      />
-    {:else}
-      <div class="titlebar-drag" aria-hidden="true"></div>
-    {/if}
+    <Toolbar
+      card
+      sidebarMenu={sidebarVisible && !collapsed}
+      panelCollapsed={collapsed}
+      panes={splitPanes}
+      {developer}
+      modeSwitch={browser.modeSwitch ?? false}
+      bookmarksPanelOpen={bookmarksVisible}
+      tabs={toolbarTabs}
+      {activeTabId}
+      {zoom}
+      {defaultZoom}
+      {downloads}
+      ready={stateReceived}
+      {extensions}
+      agentAvailable={profile !== 'private'}
+      {agentPanelOpen}
+      {agentStatus}
+      buttons={toolbarButtons}
+      span={spanToolbar}
+      leadingWidth={shownWidth - Math.max(wcoTbleftInset, menuInset) - PAGE_INSET}
+      leadingInset={spanToolbar
+        ? Math.max(wcoTbleftInset, menuInset)
+        : Math.max(Math.max(0, wcoTbleftInset - shownWidth), menuInset)}
+      alignLeading={!sidebarVisible && !IS_MAC}
+      trailingInset={pageInset + wcoTbrightInset}
+      centerOffset={spanToolbar ? 0 : -shownWidth / 2}
+    />
   {/if}
-  {#if IS_MAC && windowFullScreen && !pageFullScreen && toolbarVisible}
+  {#if IS_MAC && windowFullScreen && !pageFullScreen}
     <!-- Full screen hides the native window buttons; Dia keeps them, so draw them where macOS puts them. -->
     <div class="traffic-lights card">
       <button
@@ -415,7 +404,7 @@
       </button>
     </div>
   {/if}
-  {#if windowMenu && toolbarVisible && !pageFullScreen}
+  {#if windowMenu && !pageFullScreen}
     <div class="menu-button" style:height="{topInset}px"><MenuButton /></div>
   {/if}
   {#if browser.devToolsDivider}<DevToolsDivider rect={browser.devToolsDivider} />{/if}
@@ -451,7 +440,11 @@
     class:blank
     class:split={splitPanes.length > 1}
     style:margin={pageFullScreen ? '0' : `0 ${pageInset}px ${pageInset}px 0`}
-    style:border-radius={pageFullScreen || splitPanes.length > 1 ? '0' : `${pageRadius}px`}
+    style:border-radius={pageFullScreen || splitPanes.length > 1
+      ? '0'
+      : blank
+        ? `0 0 ${pageRadius}px ${pageRadius}px`
+        : `${pageRadius}px`}
   >
     {#each splitPanes as pane, index (index)}
       <div
@@ -694,11 +687,6 @@
     box-shadow: none;
   }
 
-  .titlebar-drag {
-    grid-area: bar;
-    -webkit-app-region: drag;
-  }
-
   .page {
     position: relative;
     display: flex;
@@ -768,7 +756,7 @@
   }
 
   :global(:root[data-style='card']) .page.blank {
-    background: var(--page);
+    background: var(--page-veil);
   }
 
   :global(:root[data-style='card']:not([data-mode='developer'])) .page {

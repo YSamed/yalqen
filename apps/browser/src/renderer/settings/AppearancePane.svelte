@@ -1,11 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import {
-    DEFAULT_ZOOM_FACTORS,
-    type ExtensionInfo,
-    type SettingsValues,
-    type ToolbarExtension,
-  } from '../../shared/types';
+  import { DEFAULT_ZOOM_FACTORS, type SettingsValues } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent';
   import type { FrameTheme } from '../../shared/frame-theme';
@@ -16,7 +10,6 @@
   import Switch from '../ui/Switch.svelte';
   import ChoiceCards from './ChoiceCards.svelte';
   import SettingRow from './SettingRow.svelte';
-  import ToolbarEditor from './ToolbarEditor.svelte';
 
   let {
     values,
@@ -32,20 +25,6 @@
 
   const api = window.yalqenSettings;
 
-  let installed = $state<ExtensionInfo[]>([]);
-  const toolbarExtensions = $derived<ToolbarExtension[]>(
-    installed.flatMap((extension) =>
-      extension.enabled && extension.id ? [{ id: extension.id, title: extension.name, icon: extension.icon }] : [],
-    ),
-  );
-  onMount(() => {
-    api
-      .extensions()
-      .then((next) => (installed = next))
-      .catch(() => {});
-    return api.onExtensionsChange((next) => (installed = next));
-  });
-
   type Theme = SettingsValues['theme'];
   const themeOptions = [
     { value: 'system', label: t('settings.themeSystem') },
@@ -57,16 +36,6 @@
     value: factor,
     label: t('settings.zoomPercent', { percent: Math.round(factor * 100) }),
   }));
-  let choosingBackground = $state(false);
-
-  async function chooseBackground(): Promise<void> {
-    choosingBackground = true;
-    try {
-      await api.chooseNewTabBackground();
-    } finally {
-      choosingBackground = false;
-    }
-  }
 
   // The space menu opens this pane with #space=<id> to theme just that space.
   let frameScope = $state(new URLSearchParams(location.hash.slice(1)).get('space') ?? DEFAULT_SPACE_ID);
@@ -129,17 +98,6 @@
     {#if scopedSpace?.theme}
       <Button variant="ghost" onclick={() => api.setSpaceTheme(scopedSpace.id, null)}
         >{t('settings.frameScopeReset')}</Button
-      >
-    {/if}
-  </SettingRow>
-
-  <SettingRow title={t('settings.newTabBackground')} hint={t('settings.newTabBackgroundHint')}>
-    <Button variant="tonal" disabled={choosingBackground} onclick={chooseBackground}>
-      {t('settings.chooseNewTabBackground')}
-    </Button>
-    {#if values.newTabBackground}
-      <Button variant="ghost" onclick={() => api.removeNewTabBackground()}
-        >{t('settings.removeNewTabBackground')}</Button
       >
     {/if}
   </SettingRow>
@@ -211,20 +169,6 @@
       onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
     />
   </SettingRow>
-
-  <h2>{t('settings.toolbar')}</h2>
-  <SettingRow title={t('settings.showToolbar')} hint={t('settings.showToolbarHint')}>
-    <Switch
-      label={t('settings.showToolbar')}
-      checked={values.toolbarVisible}
-      onchange={(checked) => update({ toolbarVisible: checked })}
-    />
-  </SettingRow>
-  <ToolbarEditor
-    shown={values.toolbarButtons}
-    extensions={toolbarExtensions}
-    onchange={(buttons) => update({ toolbarButtons: buttons })}
-  />
 {/if}
 
 <style>

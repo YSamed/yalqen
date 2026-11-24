@@ -53,7 +53,6 @@ app
       activeSpaceId: '',
       sidebarVisible: true,
       media: null,
-      toolbarVisible: true,
       toolbarButtons: ['settings'],
       ...windowAppearance,
       defaultZoom: 1,

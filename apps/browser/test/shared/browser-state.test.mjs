@@ -52,7 +52,6 @@ const fixture = () => ({
   activeSpaceId: '',
   sidebarVisible: true,
   media: null,
-  toolbarVisible: true,
   toolbarButtons: ['settings', 'downloads'],
   material: 'opaque',
   accent: '#0a84ff',

@@ -16,7 +16,6 @@ import { sanitizeIconDomains } from '../library/site-icons.js';
 import { makeDefaultBrowser, refreshDefaultBrowser } from './default-browser.js';
 import { processUsage } from './process-metrics.js';
 import { handleSettingsCall } from './settings-page.js';
-import { BACKGROUND_EXTENSIONS } from '../pages/new-tab-background.js';
 import type { Updater } from './updater.js';
 
 export interface SettingsIpcHost {
@@ -32,7 +31,6 @@ export interface SettingsIpcHost {
   updateThreatLists(): Promise<void>;
   profiles: import('./profile-controller.js').ProfileController;
   siteIcons?(domains: string[]): Record<string, string>;
-  setNewTabBackground(source: string | null): void;
   setSpaceTheme(id: string, theme: unknown): void;
 }
 
@@ -84,21 +82,8 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
     if (!canceled && filePaths[0]) host.update({ downloadDirectory: filePaths[0] });
     return host.view();
   });
-  handleSettingsCall(SettingsChannel.chooseNewTabBackground, async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
-      title: t('settings.chooseNewTabBackground'),
-      properties: ['openFile'],
-      filters: [{ name: t('settings.newTabBackgroundImages'), extensions: [...BACKGROUND_EXTENSIONS] }],
-    });
-    if (!canceled && filePaths[0]) host.setNewTabBackground(filePaths[0]);
-    return host.view();
-  });
   handleSettingsCall(SettingsChannel.setSpaceTheme, (_event, id, theme) => {
     if (typeof id === 'string') host.setSpaceTheme(id, theme);
-    return host.view();
-  });
-  handleSettingsCall(SettingsChannel.removeNewTabBackground, () => {
-    host.setNewTabBackground(null);
     return host.view();
   });
   handleSettingsCall(

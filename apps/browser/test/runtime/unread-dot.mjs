@@ -64,7 +64,6 @@ let state = {
   activeSpaceId: '',
   sidebarVisible: true,
   media: null,
-  toolbarVisible: true,
   toolbarButtons: ['settings'],
   ...windowAppearance,
   accent: '#e8590c',

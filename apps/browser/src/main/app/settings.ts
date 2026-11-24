@@ -7,17 +7,8 @@ import type {
   SecureDnsSetting,
   SettingsValues,
   ThemeSource,
-  ToolbarItemId,
 } from '../../shared/types.js';
-import {
-  DEFAULT_SIDEBAR_FOOTER_ITEMS,
-  DEFAULT_TOOLBAR_BUTTONS,
-  sanitizeSidebarFooterItems,
-  DEFAULT_ZOOM_FACTORS,
-  REQUIRED_TOOLBAR_BUTTON,
-  TOOLBAR_BUTTON_IDS,
-  toolbarExtensionId,
-} from '../../shared/types.js';
+import { DEFAULT_SIDEBAR_FOOTER_ITEMS, sanitizeSidebarFooterItems, DEFAULT_ZOOM_FACTORS } from '../../shared/types.js';
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSpaceRules } from '../../shared/space-rules.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
@@ -30,7 +21,6 @@ import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/me
 import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from '../address-bar/search.js';
 import { sanitizeProtectionExceptions } from '../privacy/site-protections.js';
-import { isBackgroundFileName } from '../pages/new-tab-background.js';
 import { sanitizeShortcuts } from '../../shared/shortcuts.js';
 
 export interface Settings extends SettingsValues {
@@ -55,8 +45,6 @@ const DEFAULTS: Settings = {
   bookmarksPanel: false,
   touchIdPasskeys: false,
   sidebarWidgets: ['media'],
-  toolbarVisible: true,
-  toolbarButtons: [...DEFAULT_TOOLBAR_BUTTONS],
   sidebarFooterItems: [...DEFAULT_SIDEBAR_FOOTER_ITEMS],
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   autoArchiveHours: 0,
@@ -85,7 +73,6 @@ const DEFAULTS: Settings = {
   displayName: '',
   accentColor: DEFAULT_ACCENT,
   windowColor: DEFAULT_WINDOW_COLOR,
-  newTabBackground: '',
   dismissedAnnouncement: '',
   dismissedFeedback: '',
   dismissedUpdate: '',
@@ -111,16 +98,7 @@ function sanitizeBlockedPermissions(value: unknown, fallback: PromptPermission[]
   return PROMPT_PERMISSIONS.filter((kind) => value.includes(kind));
 }
 
-const TOOLBAR_BUTTONS = new Set<string>(TOOLBAR_BUTTON_IDS);
 const AGENT_ACTIONS = new Set<string>(['off', 'ask', 'allow'] satisfies AgentActionPolicy[]);
-
-function sanitizeToolbarButtons(value: unknown, fallback: ToolbarItemId[]): ToolbarItemId[] {
-  if (!Array.isArray(value)) return fallback;
-  const buttons = [...new Set(value)].filter(
-    (id): id is ToolbarItemId => typeof id === 'string' && (TOOLBAR_BUTTONS.has(id) || toolbarExtensionId(id) !== null),
-  );
-  return buttons.includes(REQUIRED_TOOLBAR_BUTTON) ? buttons : [...buttons, REQUIRED_TOOLBAR_BUTTON];
-}
 
 const MAX_DISPLAY_NAME = 40;
 
@@ -150,8 +128,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     bookmarksPanel,
     touchIdPasskeys,
     sidebarWidgets,
-    toolbarVisible,
-    toolbarButtons,
     sidebarFooterItems,
     discardAfterMinutes,
     autoArchiveHours,
@@ -181,7 +157,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     displayName,
     accentColor,
     windowColor,
-    newTabBackground,
     dismissedAnnouncement,
     dismissedFeedback,
     dismissedUpdate,
@@ -221,8 +196,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     bookmarksPanel: typeof bookmarksPanel === 'boolean' ? bookmarksPanel : base.bookmarksPanel,
     touchIdPasskeys: typeof touchIdPasskeys === 'boolean' ? touchIdPasskeys : base.touchIdPasskeys,
     sidebarWidgets: sanitizeSidebarWidgets(sidebarWidgets, base.sidebarWidgets),
-    toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
-    toolbarButtons: sanitizeToolbarButtons(toolbarButtons, base.toolbarButtons),
     sidebarFooterItems: sanitizeSidebarFooterItems(sidebarFooterItems, base.sidebarFooterItems),
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     autoArchiveHours: isAutoArchiveHours(autoArchiveHours) ? autoArchiveHours : base.autoArchiveHours,
@@ -269,8 +242,6 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
     windowColor: isWindowColor(windowColor) ? windowColor : base.windowColor,
-    newTabBackground:
-      newTabBackground === '' || isBackgroundFileName(newTabBackground) ? newTabBackground : base.newTabBackground,
     dismissedAnnouncement:
       typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,
     dismissedFeedback: typeof dismissedFeedback === 'string' ? dismissedFeedback.slice(0, 64) : base.dismissedFeedback,

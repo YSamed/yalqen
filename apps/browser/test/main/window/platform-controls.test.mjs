@@ -6,9 +6,7 @@ test('native window button APIs are only called on macOS', () => {
   const platform = Object.getOwnPropertyDescriptor(process, 'platform');
   const calls = [];
   let native = false;
-  let toolbarVisible = true;
   const host = {
-    app: { settings: { get: () => ({ toolbarVisible }) } },
     window: {
       isFullScreen: () => native,
       setWindowButtonVisibility: (visible) => calls.push(visible),
@@ -28,10 +26,6 @@ test('native window button APIs are only called on macOS', () => {
     native = true;
     windowModule.YalqenWindow.prototype.showWindowControls.call(host);
     assert.deepEqual(calls, [false]);
-    calls.length = 0;
-    toolbarVisible = false;
-    windowModule.YalqenWindow.prototype.showWindowControls.call(host);
-    assert.deepEqual(calls, [true]);
   } finally {
     Object.defineProperty(process, 'platform', platform);
   }

@@ -103,14 +103,8 @@ export const TOOLBAR_BUTTON_IDS = [
   'settings',
   'screenshot',
   'downloads',
-  'devtools',
 ] as const;
 export type ToolbarButtonId = (typeof TOOLBAR_BUTTON_IDS)[number];
-export const REQUIRED_TOOLBAR_BUTTON: ToolbarButtonId = 'settings';
-export const OPTIONAL_TOOLBAR_BUTTONS: readonly ToolbarButtonId[] = ['devtools'];
-export const DEFAULT_TOOLBAR_BUTTONS: ToolbarButtonId[] = TOOLBAR_BUTTON_IDS.filter(
-  (id) => !OPTIONAL_TOOLBAR_BUTTONS.includes(id),
-);
 
 export const SIDEBAR_FOOTER_ITEMS = [
   'history',
@@ -145,24 +139,6 @@ export function placeSidebarFooterItem(
   return rest.slice(0, MAX_SIDEBAR_FOOTER_ITEMS);
 }
 
-export type ToolbarExtensionItem = `extension:${string}`;
-export type ToolbarItemId = ToolbarButtonId | ToolbarExtensionItem;
-const TOOLBAR_EXTENSION = /^extension:([a-p]{32})$/;
-
-export function toolbarExtensionId(item: string): string | null {
-  return TOOLBAR_EXTENSION.exec(item)?.[1] ?? null;
-}
-
-export function toolbarExtensionItem(id: string): ToolbarExtensionItem {
-  return `extension:${id}`;
-}
-
-export interface ToolbarExtension {
-  id: string;
-  title: string;
-  icon: string | null;
-}
-
 export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
 
 export const DISCARD_AFTER_MINUTES = [0, 15, 30, 60, 120] as const;
@@ -194,10 +170,8 @@ export interface BrowserState {
   favorites: Favorite[];
   sidebarVisible: boolean;
   media: import('./sidebar-widgets').MediaInfo | null;
-  toolbarVisible: boolean;
-  toolbarButtons: ToolbarItemId[];
+  toolbarButtons: ToolbarButtonId[];
   sidebarFooterItems: SidebarFooterItem[];
-  toolbarExtensions: ToolbarExtension[];
   material: WindowMaterial;
   frameTheme?: import('./frame-theme').FrameTheme;
   accent: string;
@@ -492,7 +466,6 @@ export type UiAction =
   | { type: 'toggle-devtools' }
   | { type: 'resize-devtools'; x: number }
   | { type: 'resize-split'; index: number; x: number }
-  | { type: 'open-extension-action'; id: string; anchor: AnchorRect }
   | { type: 'open-dev-menu' }
   | { type: 'dev-command'; id: DevCommandId }
   | { type: 'resize-device'; width: number; height: number }
@@ -938,8 +911,6 @@ export interface SettingsValues {
   // Passkeys kept on this Mac and unlocked with Touch ID; only signed releases can, and only after a restart.
   touchIdPasskeys: boolean;
   sidebarWidgets: import('./sidebar-widgets').SidebarWidgetId[];
-  toolbarVisible: boolean;
-  toolbarButtons: ToolbarItemId[];
   sidebarFooterItems: SidebarFooterItem[];
   discardAfterMinutes: number;
   autoArchiveHours: number;
@@ -968,7 +939,6 @@ export interface SettingsValues {
   displayName: string;
   accentColor: import('./accent').AccentColorId;
   windowColor: import('./window-color').WindowColor;
-  newTabBackground: string;
   dismissedAnnouncement: string;
   dismissedFeedback: string;
   dismissedUpdate: string;
@@ -1051,8 +1021,6 @@ export const SettingsChannel = {
   checkForUpdates: 'yalqen-settings:check-for-updates',
   installUpdate: 'yalqen-settings:install-update',
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
-  chooseNewTabBackground: 'yalqen-settings:choose-new-tab-background',
-  removeNewTabBackground: 'yalqen-settings:remove-new-tab-background',
   setSpaceTheme: 'yalqen-settings:set-space-theme',
   updateThreatLists: 'yalqen-settings:update-threat-lists',
   profiles: 'yalqen-settings:profiles',
@@ -1252,8 +1220,6 @@ export interface SettingsApi {
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;
   chooseDownloadDirectory(): Promise<SettingsView>;
-  chooseNewTabBackground(): Promise<SettingsView>;
-  removeNewTabBackground(): Promise<SettingsView>;
   setSpaceTheme(id: string, theme: import('./frame-theme').FrameTheme | null): Promise<SettingsView>;
   showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;
   updateThreatLists(): Promise<SettingsView>;

@@ -1,6 +1,5 @@
 import { t } from '../../shared/i18n.js';
 import { NEW_TAB_URL, type AddressSuggestion } from '../../shared/types.js';
-import { readBackground, type NewTabBackground } from './new-tab-background.js';
 import { FORGET_ICON, escapeHtml, fillSlot } from './html.js';
 import { htmlResponse, notFound, scriptResponse } from './responses.js';
 
@@ -29,7 +28,6 @@ export interface NewTabSources {
   showRepoPrompt: () => boolean;
   engine?: () => string;
   accent?: () => string;
-  background?: () => NewTabBackground | null;
   suggestions: (query: string) => AddressSuggestion[];
 }
 
@@ -101,14 +99,6 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
       return new Response(assets.mark, {
         headers: { 'content-type': 'image/png', 'cache-control': 'max-age=86400' },
       });
-    case '/background': {
-      const background = sources.background?.();
-      const data = background && readBackground(background);
-      if (!background || !data) return notFound();
-      return new Response(data, {
-        headers: { 'content-type': background.type, 'cache-control': 'no-cache' },
-      });
-    }
     case '/suggestions':
       return Response.json(sources.suggestions(url.searchParams.get('q') ?? ''), {
         headers: { 'cache-control': 'no-store' },
@@ -133,12 +123,8 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
         ],
       ];
       const accent = sources.accent?.();
-      const attributes = [
-        sources.background?.() && 'data-background',
-        accent && `style="--accent: ${escapeHtml(accent)}"`,
-      ].filter(Boolean);
-      const template = attributes.length
-        ? assets.template.replace('<html ', `<html ${attributes.join(' ')} `)
+      const template = accent
+        ? assets.template.replace('<html ', `<html style="--accent: ${escapeHtml(accent)}" `)
         : assets.template;
       const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), template);
       return htmlResponse(body, NEW_TAB_CSP, false);

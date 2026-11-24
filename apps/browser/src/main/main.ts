@@ -135,7 +135,6 @@ import {
   isSettingsFrame,
 } from './app/settings-page.js';
 import { registerSettingsIpc } from './app/settings-ipc.js';
-import { backgroundFile, removeBackground, saveBackground } from './pages/new-tab-background.js';
 import {
   applyCookieBlocking,
   applyPageLanguage,
@@ -880,7 +879,6 @@ function startBrowser(): void {
       showAnnouncement: () => !isPrivate && settings.get().dismissedAnnouncement !== app.getVersion(),
       showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
-      background: () => backgroundFile(userData, settings.get().newTabBackground),
       engine: () => searchEngine().label,
       accent: () => accentHex(settings.get().accentColor),
       suggestions: (query) =>
@@ -1184,16 +1182,6 @@ function startBrowser(): void {
     requestRules,
     permissions,
     siteIcons: (domains) => siteIcons(history.list(), domains),
-    setNewTabBackground: (source) => {
-      const previous = settings.get().newTabBackground;
-      if (source === null) {
-        removeBackground(userData, previous);
-        updateSettings({ newTabBackground: '' });
-        return;
-      }
-      const saved = saveBackground(userData, source, previous);
-      if (saved) updateSettings({ newTabBackground: saved });
-    },
     onRequestRulesSaved: () => eachWindow((window) => window.tabs.refreshRequestRules()),
     setSpaceTheme: (id, theme) => {
       if (workspaces.setTheme(id, theme)) workspacesChanged();

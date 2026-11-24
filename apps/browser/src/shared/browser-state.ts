@@ -61,9 +61,6 @@ export function reuseBrowserState(previous: BrowserState, next: BrowserState): B
     ...(next.tabGroups && { tabGroups: reuseItems(previous.tabGroups ?? [], next.tabGroups) }),
     ...(next.liveFolders && { liveFolders: reuseLiveFolders(previous.liveFolders ?? [], next.liveFolders) }),
     toolbarButtons: reuseArray(previous.toolbarButtons, next.toolbarButtons),
-    ...(next.toolbarExtensions && {
-      toolbarExtensions: reuseItems(previous.toolbarExtensions ?? [], next.toolbarExtensions),
-    }),
     media: reuseFields(previous.media, next.media),
     device: reuseFields(previous.device, next.device),
     downloads: reuseFields(previous.downloads, next.downloads)!,

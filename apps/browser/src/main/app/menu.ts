@@ -36,7 +36,6 @@ interface MenuActions {
   togglePanel(): void;
   toggleFullScreen(): void;
   toggleAgentPanel(): void;
-  toggleToolbar(): void;
   toggleDevTools(): void;
   toggleDeviceView(): void;
   rotateDevice(): void;
@@ -240,7 +239,6 @@ export function buildMenu(actions: MenuActions, shortcuts: ShortcutOverrides): M
         { label: t('menu.zoomOut'), accelerator: key('zoomOut'), click: () => actions.zoom(-1) },
         { label: t('menu.togglePanel'), accelerator: key('togglePanel'), click: actions.togglePanel },
         { label: t('menu.toggleFullScreen'), accelerator: 'Ctrl+Command+F', click: actions.toggleFullScreen },
-        { label: t('menu.toggleToolbar'), accelerator: key('toggleToolbar'), click: actions.toggleToolbar },
         { label: t('agentPanel.toggle'), accelerator: key('toggleAgentPanel'), click: actions.toggleAgentPanel },
         { type: 'separator' },
         { label: t('menu.viewSource'), accelerator: key('viewSource'), click: actions.viewSource },

@@ -4,11 +4,9 @@
     DownloadsSummary,
     TabId,
     TabSnapshot,
-    ToolbarExtension,
-    ToolbarItemId,
+    ToolbarButtonId,
     TranslationStatus,
   } from '../../shared/types';
-  import { toolbarExtensionId } from '../../shared/types';
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
   import { devStates, isNewTab, siteLabel } from './format';
@@ -63,7 +61,6 @@
     ready,
     extensions,
     buttons,
-    toolbarExtensions = [],
     leadingInset,
     trailingInset,
     centerOffset,
@@ -88,8 +85,7 @@
     downloads: DownloadsSummary;
     ready: boolean;
     extensions: boolean;
-    buttons: ToolbarItemId[];
-    toolbarExtensions?: ToolbarExtension[];
+    buttons: ToolbarButtonId[];
     leadingInset: number;
     trailingInset: number;
     centerOffset: number;
@@ -141,15 +137,6 @@
       activeTab?.translation.available === true ||
       (activeTab?.blockedPopups ?? 0) > 0,
   );
-
-  function anchorOf(element: HTMLElement) {
-    const { x, y, width, height } = element.getBoundingClientRect();
-    return { x, y, width, height };
-  }
-
-  function openExtensionAction(id: string, event: MouseEvent & { currentTarget: HTMLElement }): void {
-    send({ type: 'open-extension-action', id, anchor: anchorOf(event.currentTarget) });
-  }
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
     const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
@@ -241,24 +228,8 @@
   </span>
 {/snippet}
 
-{#snippet button(id: ToolbarItemId)}
-  {@const extensionId = toolbarExtensionId(id)}
-  {@const pinned = extensionId ? toolbarExtensions.find((extension) => extension.id === extensionId) : undefined}
-  {#if extensionId}
-    {#if pinned}
-      <IconButton class="extension" label={pinned.title} onclick={(event) => openExtensionAction(pinned.id, event)}>
-        {#if pinned.icon}<img src={pinned.icon} alt="" width="16" height="16" />{:else}<Icon name="extensions" />{/if}
-      </IconButton>
-    {/if}
-  {:else if id === 'devtools'}
-    <IconButton
-      icon="code"
-      label={t('toolbar.devtools')}
-      title={t('toolbar.devtoolsTitle')}
-      disabled={!ready || !activeTab}
-      onclick={() => send({ type: 'toggle-devtools' })}
-    />
-  {:else if id === 'home'}
+{#snippet button(id: ToolbarButtonId)}
+  {#if id === 'home'}
     <IconButton icon="home" label={t('toolbar.home')} onclick={() => send({ type: 'go-home' })} />
   {:else if id === 'bookmarks'}
     <IconButton
@@ -793,6 +764,11 @@
     border-radius: 10px 10px 0 0;
     background: var(--card-surface, var(--page));
     transition: background-color 180ms ease-out;
+  }
+
+  .toolbar.card.span.blank-page::before {
+    bottom: 0;
+    background: var(--page-veil);
   }
 
   /* The toolbar takes the page's own top color, so its text and icons follow that color's lightness. */

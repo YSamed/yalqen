@@ -211,6 +211,16 @@ button:not(:disabled) {
   );
 }
 
+:root[data-style='card'] {
+  --page-veil: rgb(from var(--page) r g b / 0.74);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-style='card'] {
+    --page-veil: rgb(from var(--page) r g b / 0.82);
+  }
+}
+
 :root[data-style='card'][data-frame]:not([data-mode='private']) {
   --page: color-mix(in srgb, var(--frame-primary) 4%, #ffffff);
 }

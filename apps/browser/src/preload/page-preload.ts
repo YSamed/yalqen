@@ -179,8 +179,6 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     checkForUpdates: () => ipcRenderer.invoke(settingsChannel.checkForUpdates) as Promise<void>,
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
     chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
-    chooseNewTabBackground: () => ipcRenderer.invoke(settingsChannel.chooseNewTabBackground) as Promise<SettingsView>,
-    removeNewTabBackground: () => ipcRenderer.invoke(settingsChannel.removeNewTabBackground) as Promise<SettingsView>,
     setSpaceTheme: (id, theme) => ipcRenderer.invoke(settingsChannel.setSpaceTheme, id, theme) as Promise<SettingsView>,
     showImportMenu: (kind: 'bookmarks' | 'history') =>
       ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,

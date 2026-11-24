@@ -57,7 +57,6 @@ let state = {
   activeSpaceId: '',
   sidebarVisible: true,
   media: null,
-  toolbarVisible: true,
   toolbarButtons: ['settings'],
   ...windowAppearance,
   device: null,

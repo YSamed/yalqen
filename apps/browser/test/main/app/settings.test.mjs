@@ -15,7 +15,6 @@ test('unknown or mistyped fields fall back', () => {
       startupBehavior: 'close-all',
       panelCollapsed: 'yes',
       sidebarWidgets: 'media',
-      toolbarVisible: 0,
       discardAfterMinutes: 45,
       autoArchiveHours: 5,
       adBlocking: 'no',
@@ -51,8 +50,6 @@ test('unknown or mistyped fields fall back', () => {
       bookmarksPanel: false,
       touchIdPasskeys: false,
       sidebarWidgets: ['media'],
-      toolbarVisible: true,
-      toolbarButtons: ['home', 'bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
       sidebarFooterItems: ['spaces', 'downloads', 'screenshot'],
       discardAfterMinutes: 30,
       autoArchiveHours: 0,
@@ -81,7 +78,6 @@ test('unknown or mistyped fields fall back', () => {
       displayName: '',
       accentColor: 'orange',
       windowColor: 'none',
-      newTabBackground: '',
       dismissedAnnouncement: '',
       dismissedFeedback: '',
       dismissedUpdate: '',
@@ -97,33 +93,6 @@ test('unknown or mistyped fields fall back', () => {
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');
   assert.equal(sanitizeSettings({ customSearchTemplate: '  ' }).customSearchTemplate, null);
-});
-
-test('toolbar buttons are deduplicated, filtered and always keep settings', () => {
-  assert.deepEqual(
-    sanitizeSettings({ toolbarButtons: ['history', 'bogus', 'technologies', 'history', 'downloads'] }).toolbarButtons,
-    ['history', 'downloads', 'settings'],
-  );
-  assert.deepEqual(sanitizeSettings({ toolbarButtons: [] }).toolbarButtons, ['settings']);
-  assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 8);
-});
-
-test('developer tools starts hidden but stays once added', () => {
-  assert.equal(sanitizeSettings(null).toolbarButtons.includes('devtools'), false);
-  assert.deepEqual(sanitizeSettings({ toolbarButtons: ['devtools', 'settings'] }).toolbarButtons, [
-    'devtools',
-    'settings',
-  ]);
-});
-
-test('pinned extensions are kept by id next to the built-in buttons', () => {
-  const id = 'abcdefghijklmnopabcdefghijklmnop';
-  assert.deepEqual(
-    sanitizeSettings({
-      toolbarButtons: [`extension:${id}`, 'extension:not-an-id', 'extension:', `extension:${id}`, 'settings', 42],
-    }).toolbarButtons,
-    [`extension:${id}`, 'settings'],
-  );
 });
 
 test('keeping pinned tabs on their site is off by default and kept once turned on', () => {
@@ -241,8 +210,6 @@ test('updates keep valid fields and persist', () => {
       theme: 'dark',
       startupBehavior: 'new-tab',
       panelCollapsed: true,
-      toolbarVisible: false,
-      toolbarButtons: ['downloads', 'settings'],
       discardAfterMinutes: 0,
       autoArchiveHours: 24,
       adBlocking: false,
@@ -261,8 +228,6 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.searchEngine, 'yandex');
     assert.equal(reloaded.startupBehavior, 'new-tab');
     assert.equal(reloaded.panelCollapsed, true);
-    assert.equal(reloaded.toolbarVisible, false);
-    assert.deepEqual(reloaded.toolbarButtons, ['downloads', 'settings']);
     assert.equal(reloaded.discardAfterMinutes, 0);
     assert.equal(reloaded.autoArchiveHours, 24);
     assert.equal(reloaded.adBlocking, false);

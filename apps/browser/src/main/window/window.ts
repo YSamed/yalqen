@@ -22,6 +22,7 @@ import { preloadPath, rendererPath } from '../app/paths.js';
 import {
   NEW_TAB_URL,
   IpcChannel,
+  TOOLBAR_BUTTON_IDS,
   placeSidebarFooterItem,
   sanitizeSidebarFooterItems,
   type AnchorRect,
@@ -789,10 +790,8 @@ export class YalqenWindow {
       liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
       sidebarVisible: !this.webApp,
       media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
-      toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
-      toolbarButtons: this.webApp ? ['settings', 'downloads'] : this.app.settings.get().toolbarButtons,
+      toolbarButtons: this.webApp ? ['settings', 'downloads'] : [...TOOLBAR_BUTTON_IDS],
       sidebarFooterItems: this.app.settings.get().sidebarFooterItems,
-      toolbarExtensions: this.isPrivate || this.webApp ? [] : this.app.extensions.toolbarExtensions(),
       material: this.material(),
       frameTheme: this.app.settings.get().frameTheme,
       accent: accentHex(this.app.settings.get().accentColor),
@@ -2228,9 +2227,6 @@ export class YalqenWindow {
       case 'open-extensions-menu':
         this.openExtensionsMenu(sanitizeAnchor(action.anchor));
         break;
-      case 'open-extension-action':
-        if (typeof action.id === 'string') this.openExtensionAction(action.id, sanitizeAnchor(action.anchor));
-        break;
       case 'open-extension-store':
         tabs.open(STORE_HOME, { isPrivate: false });
         break;
@@ -2274,22 +2270,6 @@ export class YalqenWindow {
       clearSiteData: () => this.runDevCommand('clear-site-data'),
     });
     if (template && !this.window.isDestroyed()) this.popup(template);
-  }
-
-  private openExtensionAction(id: string, anchor: AnchorRect): void {
-    if (this.isPrivate) return;
-    const action = this.app.extensions.actions().find((candidate) => candidate.id === id);
-    if (action?.popupUrl) {
-      this.app.extensionPopup.open({
-        window: this.window,
-        session: this.app.daily,
-        url: action.popupUrl,
-        anchor,
-        onOpenUrl: (url) => this.tabs.open(url, { isPrivate: false }),
-      });
-    } else if (action?.optionsUrl) {
-      this.tabs.open(action.optionsUrl, { isPrivate: false });
-    }
   }
 
   private showPreview(value: unknown): void {
@@ -2699,10 +2679,9 @@ export class YalqenWindow {
 
   private showWindowControls(): void {
     if (process.platform !== 'darwin') return;
-    const { toolbarVisible } = this.app.settings.get();
     const fullScreen = this.window.isFullScreen();
     // In full screen the renderer draws the buttons beside the toolbar, so native ones would double up.
-    this.window.setWindowButtonVisibility(fullScreen ? !toolbarVisible : toolbarVisible);
+    this.window.setWindowButtonVisibility(!fullScreen);
     if (fullScreen) return;
     this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
   }
