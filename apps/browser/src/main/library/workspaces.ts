@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { readingUrl } from '../../shared/reading-list.js';
 import { parseGroupParents, pruneGroupParents, tabGroupName } from '../../shared/tab-groups.js';
 import { MAX_SPACES, workspaceIcon, type SpaceView, type WorkspaceSummary } from '../../shared/workspaces.js';
+import { spaceFrameTheme, type FrameTheme } from '../../shared/frame-theme.js';
 import type { SavedWindow, SavedTab } from '../tabs/persistence.js';
 
 interface Workspace {
@@ -14,6 +15,7 @@ interface Workspace {
   window: SavedWindow;
   isolated?: boolean;
   profile?: string;
+  theme?: FrameTheme;
 }
 interface ProfileFile {
   default: string | null;
@@ -33,13 +35,16 @@ export interface SpaceFile {
   icon: string | null;
   isolated: boolean;
   window: SavedWindow;
+  theme?: FrameTheme;
 }
 export function spacePartition(id: string, isolated: boolean): string | null {
   return isolated && UUID.test(id) ? `persist:space-${id}` : null;
 }
-export function spaceFileText({ name, icon, isolated, window }: SpaceFile): string | null {
+export function spaceFileText({ name, icon, isolated, window, theme }: SpaceFile): string | null {
   const snapshot = workspaceSnapshot(window, true);
-  return snapshot && JSON.stringify({ format: SPACE_FILE_FORMAT, version: 1, name, icon, isolated, window: snapshot });
+  return (
+    snapshot && JSON.stringify({ format: SPACE_FILE_FORMAT, version: 1, name, icon, isolated, theme, window: snapshot })
+  );
 }
 export function parseSpaceFile(text: string): SpaceFile | null {
   if (Buffer.byteLength(text) > MAX_SPACE_FILE_BYTES) return null;
@@ -54,7 +59,9 @@ export function parseSpaceFile(text: string): SpaceFile | null {
   if (file.format !== SPACE_FILE_FORMAT || file.version !== 1) return null;
   const name = tabGroupName(file.name);
   const window = workspaceSnapshot(file.window as SavedWindow, true);
-  return name && window ? { name, icon: workspaceIcon(file.icon), isolated: file.isolated === true, window } : null;
+  if (!name || !window) return null;
+  const theme = spaceFrameTheme(file.theme);
+  return { name, icon: workspaceIcon(file.icon), isolated: file.isolated === true, window, ...(theme && { theme }) };
 }
 export function workspaceSnapshot(value: SavedWindow, allowEmpty = false): SavedWindow | null {
   if (!value || typeof value !== 'object' || !Array.isArray(value.tabs) || value.tabs.length > 500) return null;
@@ -130,6 +137,7 @@ export class WorkspaceStore {
             savedAt: entry.savedAt,
             ...(typeof entry.isolated === 'boolean' && { isolated: entry.isolated }),
             ...(isProfileId(entry.profile) && { profile: entry.profile }),
+            ...(spaceFrameTheme(entry.theme) && { theme: spaceFrameTheme(entry.theme) }),
           });
       }
     } catch {}
@@ -144,7 +152,9 @@ export class WorkspaceStore {
     }));
   }
   spaces(): SpaceView[] {
-    return this.entries.toSorted((a, b) => a.savedAt - b.savedAt).map(({ id, name, icon }) => ({ id, name, icon }));
+    return this.entries
+      .toSorted((a, b) => a.savedAt - b.savedAt)
+      .map(({ id, name, icon, theme }) => ({ id, name, icon, ...(theme && { theme }) }));
   }
   save(name: unknown, window: SavedWindow): boolean {
     const snapshot = workspaceSnapshot(window);
@@ -217,15 +227,30 @@ export class WorkspaceStore {
   exportText(id: string, window: SavedWindow | null): string | null {
     const entry = this.entries.find((item) => item.id === id);
     if (!entry) return null;
-    const { name, icon } = entry;
-    return spaceFileText({ name, icon, isolated: profileOf(entry) !== null, window: window ?? entry.window });
+    const { name, icon, theme } = entry;
+    return spaceFileText({ name, icon, isolated: profileOf(entry) !== null, window: window ?? entry.window, theme });
   }
   importText(text: string): string | null {
     const file = parseSpaceFile(text);
     if (!file) return null;
     let name = file.name;
     for (let n = 2; this.entries.some((item) => item.name === name); n++) name = `${file.name.slice(0, 70)} ${n}`;
-    return this.add(name, file.window, { icon: file.icon, ...(file.isolated && { isolated: true }) });
+    return this.add(name, file.window, {
+      icon: file.icon,
+      ...(file.isolated && { isolated: true }),
+      ...(file.theme && { theme: file.theme }),
+    });
+  }
+  setTheme(id: string, value: unknown): boolean {
+    if (!this.entries.some((item) => item.id === id)) return false;
+    const theme = spaceFrameTheme(value);
+    return this.replace(
+      this.entries.map((item) => {
+        if (item.id !== id) return item;
+        const { theme: _previous, ...rest } = item;
+        return theme ? { ...rest, theme } : rest;
+      }),
+    );
   }
   setIcon(id: string, icon: unknown): boolean {
     const valid = workspaceIcon(icon);
@@ -278,7 +303,7 @@ export class WorkspaceStore {
   private add(
     name: unknown,
     window: SavedWindow,
-    extra: Pick<Workspace, 'icon' | 'isolated'> = { icon: null },
+    extra: Pick<Workspace, 'icon' | 'isolated' | 'theme'> = { icon: null },
   ): string | null {
     const valid = tabGroupName(name);
     if (!valid || this.entries.length >= MAX_SPACES || this.entries.some((item) => item.name === valid)) return null;

@@ -6,6 +6,7 @@
   import { displayHost } from '../../shared/hosts';
   import Icon from '../ui/Icon.svelte';
   import SearchField from '../ui/SearchField.svelte';
+  import SidebarMenu from './SidebarMenu.svelte';
 
   const KIND_ICON = { tab: 'sidebar', bookmark: 'star', history: 'history', command: 'gauge' } as const;
 
@@ -16,12 +17,14 @@
   let selected = $state(-1);
   let engines: CommandBarOpen['engines'] = $state([]);
   let engine: CommandBarOpen['engines'][number] | null = $state(null);
+  let menu: CommandBarOpen['menu'] | null = $state.raw(null);
 
   function finish(action: CommandBarAction): void {
     value = '';
     suggestions = [];
     selected = -1;
     engine = null;
+    menu = null;
     window.yalqenCommand.send(action);
   }
 
@@ -86,6 +89,7 @@
       document.documentElement.toggleAttribute('data-opaque', open.material === 'opaque');
       document.documentElement.style.setProperty('--accent', open.accent);
       placeholder = open.placeholder;
+      menu = open.mode === 'sidebar-menu' ? (open.menu ?? null) : null;
       value = open.value ?? '';
       engines = open.engines;
       engine = null;
@@ -112,57 +116,61 @@
 
 <svelte:window onkeydown={onKeydown} onmousedown={onBackdropMouseDown} />
 
-<div class="backdrop">
-  <div class="box">
-    <form class="bar" role="search" onsubmit={submit}>
-      <SearchField
-        size="lg"
-        bind:ref={input}
-        bind:value
-        oninput={onInput}
-        placeholder={engine ? t('commandBar.searchOn', { engine: engine.label }) : placeholder}
-        aria-label={t('commandBar.placeholder')}
-        role="combobox"
-        aria-expanded={suggestions.length > 0}
-        aria-controls="suggestions"
-        aria-activedescendant={selected >= 0 ? `suggestion-${selected}` : undefined}
-      >
-        {#snippet trailing()}
-          {#if engine}<span class="engine">{engine.label}</span>{/if}
-        {/snippet}
-      </SearchField>
-    </form>
-    {#if suggestions.length > 0}
-      <ul class="suggestions" id="suggestions" role="listbox" aria-label={t('commandBar.suggestions')}>
-        {#each suggestions as suggestion, index (suggestion.url)}
-          <li
-            id="suggestion-{index}"
-            role="option"
-            tabindex="-1"
-            aria-selected={index === selected}
-            class:selected={index === selected}
-            onmousedown={(event) => event.preventDefault()}
-            onclick={() => pick(suggestion)}
-            onkeydown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                pick(suggestion);
-              }
-            }}
-            onmousemove={() => (selected = index)}
-          >
-            <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={14} /></span>
-            <span class="title">{suggestion.title || displayHost(suggestion.url)}</span>
-            <span class="url">{detail(suggestion)}</span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+{#if menu}
+  <SidebarMenu {menu} onaction={finish} />
+{:else}
+  <div class="backdrop">
+    <div class="box">
+      <form class="bar" role="search" onsubmit={submit}>
+        <SearchField
+          size="lg"
+          bind:ref={input}
+          bind:value
+          oninput={onInput}
+          placeholder={engine ? t('commandBar.searchOn', { engine: engine.label }) : placeholder}
+          aria-label={t('commandBar.placeholder')}
+          role="combobox"
+          aria-expanded={suggestions.length > 0}
+          aria-controls="suggestions"
+          aria-activedescendant={selected >= 0 ? `suggestion-${selected}` : undefined}
+        >
+          {#snippet trailing()}
+            {#if engine}<span class="engine">{engine.label}</span>{/if}
+          {/snippet}
+        </SearchField>
+      </form>
+      {#if suggestions.length > 0}
+        <ul class="suggestions" id="suggestions" role="listbox" aria-label={t('commandBar.suggestions')}>
+          {#each suggestions as suggestion, index (suggestion.url)}
+            <li
+              id="suggestion-{index}"
+              role="option"
+              tabindex="-1"
+              aria-selected={index === selected}
+              class:selected={index === selected}
+              onmousedown={(event) => event.preventDefault()}
+              onclick={() => pick(suggestion)}
+              onkeydown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  pick(suggestion);
+                }
+              }}
+              onmousemove={() => (selected = index)}
+            >
+              <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={14} /></span>
+              <span class="title">{suggestion.title || displayHost(suggestion.url)}</span>
+              <span class="url">{detail(suggestion)}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
-  :global(body) {
+  :global(html body) {
     background: transparent;
   }
 

@@ -4,6 +4,7 @@ import placement from '../../../dist/main/tabs/page-placement.js';
 import tabs from '../../../dist/main/tabs/tabs.js';
 import menus from '../../../dist/main/window/window-menus.js';
 import i18n from '../../../dist/shared/i18n.js';
+import layout from '../../../dist/shared/split-layout.js';
 
 const { slotRect, SPLIT_GAP } = placement;
 
@@ -33,6 +34,16 @@ test('panes share the page width with a gap and cover it edge to edge', () => {
   assert.equal(panes[2].x + panes[2].width, 1011);
   for (let i = 1; i < panes.length; i++) assert.equal(panes[i].x - (panes[i - 1].x + panes[i - 1].width), SPLIT_GAP);
   assert.ok(panes.every((pane) => pane.y === 20 && pane.height === 500));
+});
+
+test('dragging a divider resizes its two neighbours and stops at the minimum width', () => {
+  const bounds = { x: 0, y: 0, width: 1006, height: 500 };
+  const weights = layout.resizeWeights(bounds, undefined, 2, 0, 303);
+  const [left, right] = [0, 1].map((index) => slotRect(bounds, { index, count: 2, weights }));
+  assert.equal(left.width, 300);
+  assert.equal(right.x + right.width, 1006);
+  const squeezed = layout.resizeWeights(bounds, weights, 2, 0, 5);
+  assert.equal(slotRect(bounds, { index: 0, count: 2, weights: squeezed }).width, layout.MIN_PANE_WIDTH);
 });
 
 test('splitting follows list order, caps the pane count and keeps the focused tab', () => {

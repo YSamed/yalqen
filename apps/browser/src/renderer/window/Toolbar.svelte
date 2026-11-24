@@ -48,7 +48,10 @@
   }
 
   let {
+    card = false,
+    sidebarMenu = false,
     panelCollapsed = false,
+    panes = [],
     leadingWidth = 0,
     span = false,
     tabs,
@@ -72,7 +75,10 @@
     modeSwitch = false,
     bookmarksPanelOpen = false,
   }: {
+    card?: boolean;
+    sidebarMenu?: boolean;
     panelCollapsed?: boolean;
+    panes?: { tab: TabSnapshot | null; x: number; width: number }[];
     leadingWidth?: number;
     span?: boolean;
     tabs: TabSnapshot[];
@@ -112,8 +118,19 @@
   };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
+  const split = $derived(card && span && panes.length > 1);
+  let trailingWidth = $state(0);
+  const PANE_CLOSE_WIDTH = 36;
+
+  function paneAction(id: TabId, action: Parameters<typeof send>[0]): void {
+    if (id !== activeTabId) send({ type: 'activate-tab', id });
+    send(action);
+  }
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
-  const chatPill = $derived(span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
+  const surface = $derived(
+    card && span && activeTab && !isNewTab(activeTab.url) ? (activeTab.pageColor ?? null) : null,
+  );
+  const chatPill = $derived(card && span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
   const bookmarkable = $derived(
     activeTab !== null && (activeTab.url.startsWith('http') || activeTab.url.startsWith('file:')),
   );
@@ -166,7 +183,7 @@
     if (!active || !controls) return;
 
     const align = () => {
-      if (span) {
+      if (card && span) {
         groupOffset = 0;
         tabGroup.style.transform = '';
         return;
@@ -201,10 +218,16 @@
   $effect(() => {
     void centerOffset;
     void leadingInset;
+    void card;
     void span;
     void alignLeading;
     untrack(() => alignGroup?.());
   });
+
+  function toneScheme(hex: string): 'light' | 'dark' {
+    const [red, green, blue] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+    return 0.299 * red! + 0.587 * green! + 0.114 * blue! > 150 ? 'light' : 'dark';
+  }
 </script>
 
 {#snippet favicon(tab: TabSnapshot)}
@@ -319,22 +342,26 @@
 {/snippet}
 
 {#snippet navigation()}
-  <IconButton
-    size="lg"
-    variant="surface"
-    icon="nav-back"
-    label={t('toolbar.back')}
-    disabled={!activeTab?.canGoBack}
-    onclick={() => send({ type: 'go-back' })}
-  />
-  <IconButton
-    size="lg"
-    variant="surface"
-    icon="nav-forward"
-    label={t('toolbar.forward')}
-    disabled={!activeTab?.canGoForward}
-    onclick={() => send({ type: 'go-forward' })}
-  />
+  {#if activeTab?.canGoBack || card}
+    <IconButton
+      size="lg"
+      variant="surface"
+      icon={card ? 'nav-back' : 'back'}
+      label={t('toolbar.back')}
+      disabled={!activeTab?.canGoBack}
+      onclick={() => send({ type: 'go-back' })}
+    />
+  {/if}
+  {#if activeTab?.canGoForward || card}
+    <IconButton
+      size="lg"
+      variant="surface"
+      icon={card ? 'nav-forward' : 'forward'}
+      label={t('toolbar.forward')}
+      disabled={!activeTab?.canGoForward}
+      onclick={() => send({ type: 'go-forward' })}
+    />
+  {/if}
   {#if activeTab?.loading}
     <IconButton
       size="lg"
@@ -348,7 +375,7 @@
     <IconButton
       size="lg"
       variant="surface"
-      icon="nav-reload"
+      icon={card ? 'nav-reload' : 'reload'}
       label={t('toolbar.reload')}
       title={t('toolbar.reloadTitle')}
       onclick={() => send({ type: 'reload' })}
@@ -357,9 +384,14 @@
 {/snippet}
 
 <header
-  class="toolbar card"
+  class="toolbar"
+  class:card
   class:span
+  class:split
   class:blank-page={activeTab !== null && isNewTab(activeTab.url)}
+  class:surface-light={surface !== null && toneScheme(surface) === 'light'}
+  class:surface-dark={surface !== null && toneScheme(surface) === 'dark'}
+  style:--card-surface={surface}
   class:busy={downloads.active > 0 || agentStatus === 'running' || agentStatus === 'error'}
   bind:this={toolbar}
   style:padding-left="{leadingInset}px"
@@ -367,10 +399,10 @@
   style:--bar-card-left="{leadingInset + leadingWidth + 8}px"
   style:--bar-group-offset="{Math.max(0, 9 + Math.min(0, leadingWidth))}px"
 >
-  <div class="side leading" style:flex={span ? `0 0 ${Math.max(0, leadingWidth)}px` : undefined}></div>
+  <div class="side leading" style:flex={card && span ? `0 0 ${Math.max(0, leadingWidth)}px` : undefined}></div>
 
   <div class="tab-group" bind:this={group}>
-    {#if span}{@render panelToggle()}{/if}
+    {#if card && span}{@render panelToggle()}{/if}
     {@render navigation()}
     <ol class="strip" bind:this={strip} aria-label={t('toolbar.openTabs')}>
       {#each tabs as tab (tab.id)}
@@ -437,10 +469,13 @@
                 aria-current="page"
                 onclick={() => send({ type: 'open-address' })}
               >
+                {#if !card}{@render favicon(tab)}{/if}
                 {#if isNewTab(tab.url)}
                   <span class="label hint">{t('commandBar.placeholder')}</span>
-                {:else}
+                {:else if card}
                   <span class="label crumb">{siteLabel(tab)}</span>
+                {:else}
+                  <span class="label">{siteLabel(tab)}</span>
                 {/if}
               </button>
               {#if tab.audible || tab.muted}
@@ -578,14 +613,87 @@
         </li>
       {/each}
     </ol>
-    {#if !span}
+    {#if !card || !sidebarMenu}
       <div class="new-tab-slot">
         <NewTabButton />
       </div>
     {/if}
   </div>
 
-  <div class="side trailing" bind:this={trailing} style:margin-right="{-trailingOverhang}px">
+  {#if split}
+    {#each panes as pane, index (index)}
+      {@const tab = pane.tab}
+      <div
+        class="pane-bar"
+        class:active={tab?.id === activeTabId}
+        style:left="{pane.x}px"
+        style:width="{pane.width}px"
+        style:--reserve={index === panes.length - 1 ? `${trailingWidth}px` : undefined}
+        style:padding-left={index === 0 && leadingInset + 4 > pane.x + 6 ? `${leadingInset + 4 - pane.x}px` : undefined}
+      >
+        {#if index === 0}{@render panelToggle()}{/if}
+        {#if tab}
+          <IconButton
+            size="lg"
+            variant="surface"
+            icon="nav-back"
+            label={t('toolbar.back')}
+            disabled={!tab.canGoBack}
+            onclick={() => paneAction(tab.id, { type: 'go-back' })}
+          />
+          <IconButton
+            size="lg"
+            variant="surface"
+            icon="nav-forward"
+            label={t('toolbar.forward')}
+            disabled={!tab.canGoForward}
+            onclick={() => paneAction(tab.id, { type: 'go-forward' })}
+          />
+          <IconButton
+            size="lg"
+            variant="surface"
+            icon={tab.loading ? 'close' : 'nav-reload'}
+            label={tab.loading ? t('toolbar.stop') : t('toolbar.reload')}
+            onclick={() => paneAction(tab.id, { type: tab.loading ? 'stop' : 'reload' })}
+          />
+          <button
+            class="pane-address"
+            title={t('toolbar.addressTitle')}
+            onclick={() => paneAction(tab.id, { type: 'open-address' })}
+          >
+            {#if isNewTab(tab.url)}
+              <span class="label hint">{t('commandBar.placeholder')}</span>
+            {:else}
+              <span class="label"
+                ><span class="crumb">{siteLabel(tab)}</span>{#if tab.title && tab.title !== siteLabel(tab)}<span
+                    class="crumb-title"
+                  >
+                    / {tab.title}</span
+                  >{/if}</span
+              >
+            {/if}
+          </button>
+          <IconButton
+            size="lg"
+            variant="surface"
+            tone="muted"
+            class="pane-close"
+            icon="close"
+            label={t('toolbar.close')}
+            title={t('toolbar.closeTitle')}
+            onclick={() => send({ type: 'close-tab', id: tab.id })}
+          />
+        {/if}
+      </div>
+    {/each}
+  {/if}
+
+  <div
+    class="side trailing"
+    bind:this={trailing}
+    bind:clientWidth={trailingWidth}
+    style:margin-right="{(split ? PANE_CLOSE_WIDTH : 0) - trailingOverhang}px"
+  >
     <Capsule>
       {#if agentAvailable && !chatPill}
         <IconButton
@@ -607,9 +715,12 @@
           {/if}
         </IconButton>
       {/if}
-      {#each buttons as id (id)}
-        {@render button(id)}
-      {/each}
+      <!-- Like Dia, the card style keeps the toolbar to navigation; these actions live in the sidebar menu when it shows. -->
+      {#if !card || !sidebarMenu}
+        {#each buttons as id (id)}
+          {@render button(id)}
+        {/each}
+      {/if}
     </Capsule>
   </div>
 
@@ -682,7 +793,21 @@
     top: 6px;
     bottom: -4px;
     border-radius: 10px 10px 0 0;
-    background: var(--page);
+    background: var(--card-surface, var(--page));
+    transition: background-color 180ms ease-out;
+  }
+
+  /* The toolbar takes the page's own top color, so its text and icons follow that color's lightness. */
+  .toolbar.surface-light {
+    --text: #1a1b1e;
+    --text-muted: rgb(26 27 30 / 0.62);
+    --surface-hover: rgb(16 18 24 / 0.06);
+  }
+
+  .toolbar.surface-dark {
+    --text: #f3f3f4;
+    --text-muted: rgb(243 243 244 / 0.62);
+    --surface-hover: rgb(255 255 255 / 0.08);
   }
 
   .chat-slot {
@@ -723,6 +848,51 @@
     top: 5px;
     right: 5px;
     bottom: auto;
+  }
+
+  .toolbar.split::before,
+  .toolbar.split .tab-group {
+    visibility: hidden;
+  }
+
+  .pane-bar {
+    position: absolute;
+    top: 6px;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 6px;
+    border-radius: 10px 10px 0 0;
+    background: var(--page);
+  }
+
+  /* Leaves room for the nav buttons, the close button and, in the last pane, the hover-revealed trailing controls. */
+  .pane-address {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    min-width: 0;
+    max-width: calc(100% - 195px - var(--reserve, 0px));
+    height: 30px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: default;
+    -webkit-app-region: no-drag;
+  }
+
+  .pane-bar :global(.pane-close) {
+    margin-left: auto;
+  }
+
+  .pane-address:hover {
+    background: var(--surface-hover);
   }
 
   .toolbar.card.span .tab-group {

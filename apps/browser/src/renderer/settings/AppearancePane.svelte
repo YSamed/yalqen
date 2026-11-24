@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     DEFAULT_ZOOM_FACTORS,
     type ExtensionInfo,
@@ -7,8 +7,9 @@
     type ToolbarExtension,
   } from '../../shared/types';
   import { t } from '../../shared/i18n';
-  import { ACCENT_COLORS } from '../../shared/accent';
-  import type { WindowColor } from '../../shared/window-color';
+  import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent';
+  import type { FrameTheme } from '../../shared/frame-theme';
+  import { DEFAULT_SPACE_ID, type SpaceView } from '../../shared/workspaces';
   import AccentPicker from '../ui/AccentPicker.svelte';
   import Button from '../ui/Button.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
@@ -20,10 +21,12 @@
 
   let {
     values,
+    spaces = [],
     update,
     section,
   }: {
     values: SettingsValues;
+    spaces?: SpaceView[];
     update: (patch: Partial<SettingsValues>) => Promise<void>;
     section: 'look' | 'tabs';
   } = $props();
@@ -43,8 +46,6 @@
       .catch(() => {});
     return api.onExtensionsChange((next) => (installed = next));
   });
-  const startupTransparency = untrack(() => values.transparency);
-  const transparencyChanged = $derived(values.transparency !== startupTransparency);
 
   type Theme = SettingsValues['theme'];
   const themeOptions = [
@@ -52,11 +53,6 @@
     { value: 'light', label: t('settings.themeLight') },
     { value: 'dark', label: t('settings.themeDark') },
   ] as const;
-
-  const windowColors: { id: WindowColor; hex: string; label: string; ring?: boolean }[] = [
-    { id: 'none', hex: 'transparent', label: t('windowColor.none'), ring: true },
-    ...ACCENT_COLORS.map(({ id, hex }) => ({ id, hex, label: t(`accent.${id}`) })),
-  ];
 
   type Layout = 'left-wide' | 'left-narrow' | 'right-wide' | 'right-narrow' | 'hidden';
   const layoutOptions = [
@@ -92,6 +88,29 @@
     } finally {
       choosingBackground = false;
     }
+  }
+
+  // The space menu opens this pane with #space=<id> to theme just that space.
+  let frameScope = $state(new URLSearchParams(location.hash.slice(1)).get('space') ?? DEFAULT_SPACE_ID);
+  $effect(() => {
+    const follow = () => {
+      const space = new URLSearchParams(location.hash.slice(1)).get('space');
+      if (space !== null) frameScope = space;
+    };
+    window.addEventListener('hashchange', follow);
+    return () => window.removeEventListener('hashchange', follow);
+  });
+  const scopedSpace = $derived(spaces.find((space) => space.id !== DEFAULT_SPACE_ID && space.id === frameScope));
+  const frame = $derived(scopedSpace?.theme ?? values.frameTheme);
+  const themeColor = $derived<AccentColorId>(
+    ACCENT_COLORS.find(({ hex }) => hex === frame.colors[0])?.id ?? values.accentColor,
+  );
+
+  // One color themes the card frame; for the shared theme it also becomes the accent.
+  function setThemeColor(id: AccentColorId): void {
+    const theme: FrameTheme = { ...frame, colors: [accentHex(id)], texture: 'none' };
+    if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
+    else void update({ frameTheme: theme, accentColor: id });
   }
 
   const pinnedOptions = [
@@ -166,21 +185,13 @@
     onchange={(value) => update({ theme: value })}
     preview={themePreview}
   />
-  <SettingRow title={t('settings.accent')} hint={t('settings.accentHint')}>
-    <AccentPicker
-      label={t('settings.accent')}
-      value={values.accentColor}
-      onchange={(value) => update({ accentColor: value })}
-    />
-  </SettingRow>
-
-  <SettingRow title={t('settings.windowColor')} hint={t('settings.windowColorHint')}>
-    <AccentPicker
-      label={t('settings.windowColor')}
-      value={values.windowColor === 'accent' ? values.accentColor : values.windowColor}
-      colors={windowColors}
-      onchange={(value) => update({ windowColor: value })}
-    />
+  <SettingRow title={scopedSpace ? t('settings.themeColorFor', { space: scopedSpace.name }) : t('settings.themeColor')}>
+    <AccentPicker label={t('settings.themeColor')} value={themeColor} onchange={setThemeColor} />
+    {#if scopedSpace?.theme}
+      <Button variant="ghost" onclick={() => api.setSpaceTheme(scopedSpace.id, null)}
+        >{t('settings.frameScopeReset')}</Button
+      >
+    {/if}
   </SettingRow>
 
   <SettingRow title={t('settings.newTabBackground')} hint={t('settings.newTabBackgroundHint')}>
@@ -194,29 +205,6 @@
     {/if}
   </SettingRow>
 
-  <SettingRow title={t('settings.transparency')} hint={t('settings.transparencyHint')}>
-    <Switch
-      label={t('settings.transparency')}
-      checked={values.transparency}
-      onchange={(checked) => update({ transparency: checked })}
-    />
-    {#if transparencyChanged}
-      <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
-    {/if}
-  </SettingRow>
-  {#if startupTransparency}
-    <SettingRow title={t('settings.glassTint')} hint={t('settings.glassTintHint')} labelFor="glass-tint">
-      <input
-        id="glass-tint"
-        class="tint"
-        type="range"
-        min="0"
-        max="100"
-        value={values.glassTint}
-        oninput={(event) => update({ glassTint: event.currentTarget.valueAsNumber })}
-      />
-    </SettingRow>
-  {/if}
   <SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
     <Switch
       label={t('settings.darkSites')}
@@ -316,12 +304,6 @@
 {/if}
 
 <style>
-  .tint {
-    flex: none;
-    width: 180px;
-    accent-color: var(--accent);
-  }
-
   svg {
     --mock-light: #ffffff;
     --mock-light-side: #f1f1f3;

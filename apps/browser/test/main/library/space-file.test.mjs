@@ -188,3 +188,24 @@ test('hand-edited profile ids that are not ids are ignored', () => {
     assert.deepEqual(reloaded.storedPartitions(), [`persist:space-${ID}`]);
   });
 });
+
+test('a space keeps its own frame theme across restarts, export and import', () => {
+  withStore((store, _forgotten, dir) => {
+    const id = store.create('Design');
+    const theme = {
+      colors: ['#ff66aa', '#6644ff'],
+      intensity: 70,
+      texture: 'dots',
+      textureStrength: 30,
+    };
+    assert.equal(store.setTheme(id, { ...theme, colors: [...theme.colors, 'nope'] }), true);
+    assert.equal(store.setTheme('missing', theme), false);
+    assert.deepEqual(new WorkspaceStore(dir).spaces()[0].theme, theme);
+
+    const imported = store.importText(store.exportText(id, null));
+    assert.deepEqual(store.spaces().find((space) => space.id === imported).theme, theme);
+
+    assert.equal(store.setTheme(id, null), true);
+    assert.equal('theme' in store.spaces().find((space) => space.id === id), false);
+  });
+});

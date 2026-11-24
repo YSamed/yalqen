@@ -8,6 +8,7 @@ import {
   type SearchEngineId,
   type TabId,
 } from '../../shared/types.js';
+import { sidebarMenuAction, type SidebarMenuAction } from '../../shared/sidebar-menu.js';
 import { SEARCH_ENGINES } from './search.js';
 import { isDevCommandId } from '../devtools/dev-commands.js';
 import { getLocale } from '../../shared/i18n.js';
@@ -28,6 +29,7 @@ export interface CommandBarHost {
   onInput: (input: string) => void;
   onSwitchTab: (id: TabId) => void;
   onRunCommand: (id: DevCommandId) => void;
+  onSidebarMenu: (action: SidebarMenuAction) => void;
 }
 
 export class CommandBar {
@@ -134,8 +136,13 @@ export class CommandBar {
       if (typeof action.input === 'string') host.onInput(action.input);
       return;
     }
+    const menu = this.mode === 'sidebar-menu' ? this.lastOpen?.menu : undefined;
     this.close();
-    if (action.type === 'switch-tab' && typeof action.id === 'string') {
+    if (menu) {
+      const menuAction = sidebarMenuAction(action, menu);
+      if (menuAction) host.onSidebarMenu(menuAction);
+      else host.onDismiss();
+    } else if (action.type === 'switch-tab' && typeof action.id === 'string') {
       host.onSwitchTab(action.id);
     } else if (action.type === 'run-command' && isDevCommandId(action.id)) {
       host.onRunCommand(action.id);

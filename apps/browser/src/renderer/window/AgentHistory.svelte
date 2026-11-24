@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { t, getLocale } from '../../shared/i18n';
   import type { AgentChatSession } from '../../shared/types';
+  import { timeAgo } from '../../shared/relative-time';
   import Button from '../ui/Button.svelte';
   import Icon from '../ui/Icon.svelte';
   import IconButton from '../ui/IconButton.svelte';
@@ -13,19 +14,7 @@
   let deleteFailed = $state(false);
   let opening = $state(false);
   let confirming: string | null = $state(null);
-  const relative = new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' });
-  const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-    ['day', 86_400_000],
-    ['hour', 3_600_000],
-    ['minute', 60_000],
-  ];
-
-  function ago(time: number): string {
-    const elapsed = time - Date.now();
-    for (const [unit, size] of UNITS)
-      if (Math.abs(elapsed) >= size || unit === 'minute') return relative.format(Math.round(elapsed / size), unit);
-    return '';
-  }
+  const ago = (time: number) => timeAgo(time, getLocale());
 
   async function open(session: AgentChatSession, fork: boolean): Promise<void> {
     opening = true;

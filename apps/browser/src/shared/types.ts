@@ -31,6 +31,7 @@ export interface TabSnapshot {
   title: string;
   url: string;
   faviconUrl: string | null;
+  pageColor?: string | null;
   live: boolean;
   frozen: boolean;
   loading: boolean;
@@ -135,7 +136,6 @@ export interface ToolbarExtension {
 
 export const DEFAULT_ZOOM_FACTORS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
 
-export const DEFAULT_GLASS_TINT = 25;
 export const DISCARD_AFTER_MINUTES = [0, 15, 30, 60, 120] as const;
 export const AUTO_ARCHIVE_HOURS = [0, 12, 24, 168, 720] as const;
 
@@ -146,6 +146,8 @@ export interface BrowserState {
   activeTabId: TabId | null;
   selectedTabIds: TabId[];
   splitTabIds: TabId[];
+  splitGroups?: TabId[][];
+  splitWeights?: (number[] | null)[];
   devToolsDivider?: { x: number; y: number; width: number; height: number; value: number } | null;
   tabGroups?: import('./tab-groups').TabGroup[];
   liveFolders?: import('./live-folders').LiveFolderView[];
@@ -170,7 +172,7 @@ export interface BrowserState {
   toolbarButtons: ToolbarItemId[];
   toolbarExtensions: ToolbarExtension[];
   material: WindowMaterial;
-  glassTint: number;
+  frameTheme?: import('./frame-theme').FrameTheme;
   accent: string;
   windowColor: string | null;
   device: DeviceFrame | null;
@@ -181,6 +183,7 @@ export interface BrowserState {
   profile: ProfileKind;
   profileName?: string;
   agentPanelOpen: boolean;
+  agentFloating?: boolean;
   agentSession: AgentSessionState;
   agentChat: AgentChatState;
   agentProviders: AgentProviderId[];
@@ -191,6 +194,7 @@ export interface BrowserState {
   agentProjectId: string;
   agentConversationId: string;
   agentBackgroundChats: AgentBackgroundChat[];
+  updateReady?: boolean;
 }
 
 export interface AgentProjectSummary {
@@ -401,7 +405,6 @@ export interface ChromeLayout {
   chromeHeight: number;
   pageInset: number;
   pageRadius: number;
-  newTabCenterOffset: number;
   agentPanelWidth?: number;
 }
 
@@ -462,6 +465,7 @@ export type UiAction =
   | { type: 'open-devtools' }
   | { type: 'toggle-devtools' }
   | { type: 'resize-devtools'; x: number }
+  | { type: 'resize-split'; index: number; x: number }
   | { type: 'open-extension-action'; id: string; anchor: AnchorRect }
   | { type: 'open-dev-menu' }
   | { type: 'dev-command'; id: DevCommandId }
@@ -482,9 +486,14 @@ export type UiAction =
   | { type: 'toggle-panel' }
   | { type: 'toggle-sidebar' }
   | { type: 'toggle-agent-panel' }
+  | { type: 'set-agent-floating'; floating: boolean }
+  | { type: 'move-floating-chat'; dx: number; dy: number }
+  | { type: 'window-control'; control: 'close' | 'exit-full-screen' }
   | { type: 'open-address' }
   | { type: 'open-profile-menu' }
+  | { type: 'open-sidebar-menu'; kind: SidebarMenuKind; anchor: AnchorRect }
   | { type: 'open-downloads' }
+  | { type: 'install-update' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-extension-store' }
   | { type: 'open-history' }
@@ -495,7 +504,7 @@ export type UiAction =
 export const PageChannel = {
   tabTransition: 'yalqen:tab-transition',
   swipe: 'yalqen:page-swipe',
-  newTabCenter: 'yalqen:newtab-center',
+  pointerDown: 'yalqen:page-pointer-down',
   credentialSubmitted: 'yalqen:credential-submitted',
   credentialAccepted: 'yalqen:credential-accepted',
   generatePassword: 'yalqen:generate-password',
@@ -511,11 +520,6 @@ export const PageChannel = {
 export interface SubmittedCredential {
   username: string;
   password: string;
-}
-
-export interface NewTabCenter {
-  offset: number;
-  width: number | null;
 }
 
 export const IpcChannel = {
@@ -550,6 +554,7 @@ export const IpcChannel = {
   agentChatShowBackground: 'yalqen:agent-chat-show-background',
   agentChatDismissBackground: 'yalqen:agent-chat-dismiss-background',
   pagePress: 'yalqen:page-press',
+  addLiveFolder: 'yalqen:add-live-folder',
   agentChatOpenBackground: 'yalqen:agent-chat-open-background',
   agentChatContinueBackground: 'yalqen:agent-chat-continue-background',
   agentChatPermission: 'yalqen:agent-chat-permission',
@@ -626,15 +631,53 @@ export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   cancelQueuedAgentChat(sessionId: string, messageId: string): Promise<void>;
   onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
   onPagePress(listener: () => void): () => void;
+  onAddLiveFolder(listener: () => void): () => void;
 }
 
 export interface CommandBarOpen {
   placeholder: string;
-  mode: 'navigate' | 'new-tab';
+  mode: 'navigate' | 'new-tab' | 'sidebar-menu';
   value?: string;
   engines: { id: SearchEngineId; label: string }[];
   material: WindowMaterial;
   accent: string;
+  menu?: SidebarMenu;
+}
+
+export type SidebarMenuKind = 'tabs' | 'chats';
+
+export const SIDEBAR_MENU_COMMANDS = [
+  'history',
+  'bookmarks',
+  'downloads',
+  'extensions',
+  'screenshot',
+  'settings',
+  'profile',
+  'create-space',
+  'edit-space',
+  'import-space',
+  'add-live-folder',
+] as const;
+export type SidebarMenuCommand = (typeof SIDEBAR_MENU_COMMANDS)[number];
+
+export interface SidebarMenu {
+  kind: SidebarMenuKind;
+  anchor: AnchorRect;
+  tint: string | null;
+  tabs: { id: TabId; title: string; url: string; faviconUrl: string | null }[];
+  spaces: { id: string; name: string; icon: string | null; active: boolean }[];
+  chats: AgentChatSession[];
+  commands: SidebarMenuCommand[];
+  downloadsActive: number;
+  history: SidebarMenuLink[];
+  bookmarks: SidebarMenuLink[];
+}
+
+export interface SidebarMenuLink {
+  url: string;
+  title: string;
+  faviconUrl: string | null;
 }
 
 export const NETWORK_PRESETS = ['offline', 'slow-3g', 'fast-3g', 'fast-4g'] as const;
@@ -723,7 +766,11 @@ export type CommandBarAction =
   | { type: 'switch-tab'; id: TabId }
   | { type: 'run-command'; id: DevCommandId }
   | { type: 'dismiss' }
-  | { type: 'input'; input: string };
+  | { type: 'input'; input: string }
+  | { type: 'sidebar-command'; command: SidebarMenuCommand }
+  | { type: 'switch-space'; id: string }
+  | { type: 'open-chat'; id: string }
+  | { type: 'open-link'; url: string };
 
 export const CommandBarChannel = {
   open: 'yalqen-command:open',
@@ -847,9 +894,8 @@ export interface SettingsValues {
   searchEngine: SearchEngineId;
   customSearchTemplate: string | null;
   theme: ThemeSource;
-  transparency: boolean;
   darkSites: boolean;
-  glassTint: number;
+  frameTheme: import('./frame-theme').FrameTheme;
   startupBehavior: 'restore' | 'new-tab' | 'pages';
   startupUrls: string[];
   spaceRules: import('./space-rules').SpaceRule[];
@@ -903,6 +949,7 @@ export interface SettingsValues {
   agentActions: AgentActionPolicy;
   agentTracing: boolean;
   agentTerminal: boolean;
+  agentFloating: boolean;
   recentTabCycling: boolean;
   shortcuts: import('./shortcuts').ShortcutOverrides;
 }
@@ -978,6 +1025,7 @@ export const SettingsChannel = {
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
   chooseNewTabBackground: 'yalqen-settings:choose-new-tab-background',
   removeNewTabBackground: 'yalqen-settings:remove-new-tab-background',
+  setSpaceTheme: 'yalqen-settings:set-space-theme',
   updateThreatLists: 'yalqen-settings:update-threat-lists',
   profiles: 'yalqen-settings:profiles',
   profileAction: 'yalqen-settings:profile-action',
@@ -1178,6 +1226,7 @@ export interface SettingsApi {
   chooseDownloadDirectory(): Promise<SettingsView>;
   chooseNewTabBackground(): Promise<SettingsView>;
   removeNewTabBackground(): Promise<SettingsView>;
+  setSpaceTheme(id: string, theme: import('./frame-theme').FrameTheme | null): Promise<SettingsView>;
   showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;
   updateThreatLists(): Promise<SettingsView>;
   profiles(): Promise<ProfilesView>;

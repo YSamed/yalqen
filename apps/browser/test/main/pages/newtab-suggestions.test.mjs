@@ -6,7 +6,6 @@ import { test } from 'node:test';
 import changeFeed from '../../../dist/main/library/change-feed.js';
 import downloadsPage from '../../../dist/main/pages/downloads-page.js';
 import internalPages from '../../../dist/main/pages/internal-pages.js';
-import newTabPage from '../../../dist/main/pages/new-tab-page.js';
 import suggestionModule from '../../../dist/main/address-bar/suggestions.js';
 import i18n from '../../../dist/shared/i18n.js';
 
@@ -34,7 +33,6 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
     settings,
   });
   serveInternalPages(session, pages, {
-    pinned: () => [],
     visits: () => [],
     downloads: { list: () => [], changes: new changeFeed.ChangeFeed() },
     bookmarks: () => ({ folders: [], bookmarks: [] }),
@@ -193,9 +191,8 @@ test('page titles with replacement patterns are inserted literally', async () =>
       folders: [],
       bookmarks: [{ id: 'b', url: 'https://example.com/', title, folderId: null, createdAt: 1 }],
     }),
-    pinned: () => [{ url: 'https://example.com/', title, faviconUrl: null }],
   });
-  for (const url of ['yalqen://history/', 'yalqen://bookmarks/', 'yalqen://newtab/']) {
+  for (const url of ['yalqen://history/', 'yalqen://bookmarks/']) {
     const html = await (await handle(new Request(url))).text();
     assert.ok(html.includes('Fiyat $&#38; indirim $` $&#39; $$'), url);
     assert.doesNotMatch(html, /__YALQEN_\w+_SLOT__/, url);
@@ -214,17 +211,6 @@ test('the bookmarks page loads its folder picker script from its own origin', as
   assert.equal((await handle(new Request('yalqen://bookmarks/missing'))).status, 404);
   const history = await handle(new Request('yalqen://history/'));
   assert.doesNotMatch(history.headers.get('content-security-policy'), /script-src/);
-});
-
-test('pinned sites render as escaped tiles with a letter fallback', () => {
-  const html = newTabPage.renderPinned([
-    { url: 'https://github.com/', title: 'GitHub', faviconUrl: 'https://github.com/favicon.ico' },
-    { url: 'https://example.com/?q="x"', title: '<b>Örnek</b>', faviconUrl: null },
-  ]);
-  assert.match(html, /<img src="https:\/\/github\.com\/favicon\.ico"/);
-  assert.match(html, /<span class="letter">E<\/span>/);
-  assert.doesNotMatch(html, /<b>/);
-  assert.equal(newTabPage.renderPinned([]), '');
 });
 
 test('the settings page and only its own assets are served under yalqen://settings', async () => {

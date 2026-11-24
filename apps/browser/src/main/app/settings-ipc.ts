@@ -33,6 +33,7 @@ export interface SettingsIpcHost {
   profiles: import('./profile-controller.js').ProfileController;
   siteIcons?(domains: string[]): Record<string, string>;
   setNewTabBackground(source: string | null): void;
+  setSpaceTheme(id: string, theme: unknown): void;
 }
 
 function sitePermissionsView(store: PermissionStore): SitePermissionsView {
@@ -90,6 +91,10 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
       filters: [{ name: t('settings.newTabBackgroundImages'), extensions: [...BACKGROUND_EXTENSIONS] }],
     });
     if (!canceled && filePaths[0]) host.setNewTabBackground(filePaths[0]);
+    return host.view();
+  });
+  handleSettingsCall(SettingsChannel.setSpaceTheme, (_event, id, theme) => {
+    if (typeof id === 'string') host.setSpaceTheme(id, theme);
     return host.view();
   });
   handleSettingsCall(SettingsChannel.removeNewTabBackground, () => {

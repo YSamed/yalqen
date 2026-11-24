@@ -1,20 +1,18 @@
-import { displayHost } from '../../shared/hosts.js';
-import { getLocale, t } from '../../shared/i18n.js';
+import { t } from '../../shared/i18n.js';
 import { NEW_TAB_URL, type AddressSuggestion } from '../../shared/types.js';
-import type { RecentPage } from '../tabs/tab.js';
 import { readBackground, type NewTabBackground } from './new-tab-background.js';
 import { FORGET_ICON, escapeHtml, fillSlot } from './html.js';
 import { htmlResponse, notFound, scriptResponse } from './responses.js';
 
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
-const PINNED_MARKER = '__YALQEN_PINNED_SLOT__';
 const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
 const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
 const ANNOUNCEMENT_MARKER = '__YALQEN_ANNOUNCEMENT_SLOT__';
 const UPDATE_MARKER = '__YALQEN_UPDATE_SLOT__';
 const FEEDBACK_MARKER = '__YALQEN_FEEDBACK_SLOT__';
 const REPO_PROMPT_MARKER = '__YALQEN_REPO_PROMPT_SLOT__';
+const ENGINE_MARKER = '__YALQEN_ENGINE_SLOT__';
 const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
 
 export interface NewTabAssets {
@@ -24,28 +22,15 @@ export interface NewTabAssets {
 }
 
 export interface NewTabSources {
-  pinned: () => RecentPage[];
   showWelcome: () => boolean;
   readyUpdate: () => string | null;
   showAnnouncement: () => boolean;
   showFeedback: () => boolean;
   showRepoPrompt: () => boolean;
+  engine?: () => string;
+  accent?: () => string;
   background?: () => NewTabBackground | null;
   suggestions: (query: string) => AddressSuggestion[];
-}
-
-export function renderPinned(pages: RecentPage[]): string {
-  if (pages.length === 0) return '';
-  const items = pages
-    .map((page) => {
-      const host = displayHost(page.url);
-      const icon = page.faviconUrl?.startsWith('https:')
-        ? `<img src="${escapeHtml(page.faviconUrl)}" alt="" width="24" height="24" />`
-        : `<span class="letter">${escapeHtml(host.charAt(0).toLocaleUpperCase(getLocale()))}</span>`;
-      return `<li><a href="${escapeHtml(page.url)}" title="${escapeHtml(page.title || host)}"><span class="tile">${icon}</span><span class="name">${escapeHtml(host)}</span></a></li>`;
-    })
-    .join('');
-  return `<nav class="pinned" aria-label="${t('internalPages.pinned')}"><ul>${items}</ul></nav>`;
 }
 
 function renderWelcome(): string {
@@ -135,11 +120,11 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
       const feedbackVisible = !welcomeVisible && sources.showFeedback();
       const slots: [string, string][] = [
         [WELCOME_MARKER, welcomeVisible ? renderWelcome() : ''],
-        [PINNED_MARKER, renderPinned(sources.pinned())],
         [TIPS_MARKER, welcomeVisible ? renderTips() : ''],
         [UPDATE_MARKER, readyUpdate ? renderUpdate(readyUpdate) : ''],
         [ANNOUNCEMENT_MARKER, announcementVisible ? renderAnnouncement() : ''],
         [FEEDBACK_MARKER, feedbackVisible ? renderFeedback() : ''],
+        [ENGINE_MARKER, escapeHtml(sources.engine?.() ?? '')],
         [
           REPO_PROMPT_MARKER,
           !welcomeVisible && !readyUpdate && !announcementVisible && !feedbackVisible && sources.showRepoPrompt()
@@ -147,8 +132,13 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
             : '',
         ],
       ];
-      const template = sources.background?.()
-        ? assets.template.replace('<html ', '<html data-background ')
+      const accent = sources.accent?.();
+      const attributes = [
+        sources.background?.() && 'data-background',
+        accent && `style="--accent: ${escapeHtml(accent)}"`,
+      ].filter(Boolean);
+      const template = attributes.length
+        ? assets.template.replace('<html ', `<html ${attributes.join(' ')} `)
         : assets.template;
       const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), template);
       return htmlResponse(body, NEW_TAB_CSP, false);

@@ -12,7 +12,8 @@
   "desktopName": "yalqen.desktop",
   "scripts": {
     "postinstall": "node scripts/prepare-terminal.mjs",
-    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer && npm run build:native",
+    "build:native": "node scripts/build-native.mjs",
     "build:main": "npm exec rimraf -- dist/main dist/shared && npm exec tsc -- -p tsconfig.main.json",
     "build:preload": "node scripts/build-preload.mjs",
     "build:renderer": "vite build",
@@ -33,7 +34,7 @@
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
     "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
-    "dev": "npm run build:main && npm run build:preload && node scripts/dev.mjs",
+    "dev": "npm run build:main && npm run build:preload && npm run build:native && node scripts/dev.mjs",
     "package:mac": "npm run build && npm exec electron-builder -- --mac",
     "package:win": "npm run build && npm exec electron-builder -- --win",
     "package:linux": "npm run build && npm exec electron-builder -- --linux"
@@ -70,11 +71,13 @@
       "output": "build/release"
     },
     "asarUnpack": [
+      "dist/native/**/*",
       "node_modules/node-pty/prebuilds/**/*",
       "node_modules/node-pty/build/**/*"
     ],
     "files": [
       "dist/main/**/*",
+      "dist/native/**/*",
       "dist/preload/**/*",
       "dist/page-scripts/**/*",
       "dist/renderer/**/*",

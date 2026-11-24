@@ -96,6 +96,7 @@ export function installAppMenu(host: AppMenuHost): void {
           else if (panelCollapsed) updateSettings({ sidebarVisible: false });
           else updateSettings({ panelCollapsed: true });
         },
+        toggleFullScreen: () => current()?.toggleFullScreen(),
         toggleAgentPanel: () => current()?.toggleAgentPanel(),
         toggleToolbar: () => updateSettings({ toolbarVisible: !settings.get().toolbarVisible }),
         toggleDevTools: () => current()?.tabs.toggleDevTools(),

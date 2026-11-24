@@ -151,7 +151,8 @@ import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
-import { YalqenWindow, glassAtLaunch, type AppContext, type WindowOptions } from './window/window.js';
+import { YalqenWindow, type AppContext, type WindowOptions } from './window/window.js';
+import { glassAvailable } from './window/glass.js';
 import { createPageView } from './tabs/tabs.js';
 import { createOverlayView } from './window/overlay-view.js';
 import { openMiniWindow } from './window/mini-window.js';
@@ -306,7 +307,7 @@ function startBrowser(): void {
     preload: preloadPath('page-preload'),
     session: daily,
     icon: appIcon,
-    glass: () => glassAtLaunch(settings),
+    glass: () => glassAvailable,
     openTab: (url) => {
       const window = mainWindow() ?? openWindow({});
       window.tabs.open(url, { isPrivate: false });
@@ -657,7 +658,10 @@ function startBrowser(): void {
   const updater = new Updater({
     load: app.isPackaged && !bench ? loadAutoUpdater : null,
     automatic: () => settings.get().autoUpdate,
-    onChange: () => broadcastSettings(settingsView()),
+    onChange: () => {
+      broadcastSettings(settingsView());
+      pushState();
+    },
     beforeInstall: async () => {
       if (!(await confirmQuit())) return false;
       quitting = true;
@@ -720,6 +724,7 @@ function startBrowser(): void {
       if (status.state === 'ready') settings.update({ dismissedUpdate: status.version });
     },
     installUpdate: () => updater.install(),
+    updateReady: () => updater.status().state === 'ready',
     chatPreferences,
     downloads,
     bookmarks,
@@ -857,9 +862,6 @@ function startBrowser(): void {
   });
   const servePages = (browsing: Session, isPrivate: boolean) =>
     serveInternalPages(browsing, internalPages, {
-      pinned: () => [
-        ...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values(),
-      ],
       visits: (query) => history.list(query),
       archived: () => (isPrivate ? [] : closedTabs),
       downloads: { list: () => downloads.list(), changes: downloadManager.changes },
@@ -879,6 +881,8 @@ function startBrowser(): void {
       showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
       background: () => backgroundFile(userData, settings.get().newTabBackground),
+      engine: () => searchEngine().label,
+      accent: () => accentHex(settings.get().accentColor),
       suggestions: (query) =>
         suggest(query, {
           tabs: [],
@@ -965,10 +969,13 @@ function startBrowser(): void {
   refreshAppMenu = () => installAppMenu(appMenuHost);
   refreshAppMenu();
 
-  const senderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
+  const uiSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     windows.find((window) => window.uiContents === event.sender);
+  // The floating chat view hosts the agent panel too, but only the window UI may change the layout.
+  const senderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
+    windows.find((window) => window.ownsAgentPanel(event.sender));
   ipcMain.handle(IpcChannel.getState, (event) => senderWindow(event)?.state() ?? null);
-  ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => senderWindow(event)?.setLayout(next));
+  ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => uiSenderWindow(event)?.setLayout(next));
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
   const agentSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     event.senderFrame === event.sender.mainFrame ? senderWindow(event) : undefined;
@@ -1188,6 +1195,9 @@ function startBrowser(): void {
       if (saved) updateSettings({ newTabBackground: saved });
     },
     onRequestRulesSaved: () => eachWindow((window) => window.tabs.refreshRequestRules()),
+    setSpaceTheme: (id, theme) => {
+      if (workspaces.setTheme(id, theme)) workspacesChanged();
+    },
   });
 
   const stopMemorySaver = startMemorySaver({
@@ -1339,7 +1349,7 @@ function startBrowser(): void {
         accent: values.accentColor,
         theme: values.theme,
         tabs: invitationTabs(values),
-        material: glassAtLaunch(settings) ? 'glass' : 'opaque',
+        material: glassAvailable ? 'glass' : 'opaque',
         sources: sources.map(({ id, browser, profile }) => ({ id, browser, profile })),
       },
       onAction: (action) => {

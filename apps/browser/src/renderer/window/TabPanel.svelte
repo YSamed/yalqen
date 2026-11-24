@@ -1,5 +1,14 @@
 <script lang="ts">
-  import type { Favorite, PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import type {
+    DownloadsSummary,
+    Favorite,
+    PanelSide,
+    PinnedDisplay,
+    ProfileKind,
+    SidebarMenuKind,
+    TabId,
+    TabSnapshot,
+  } from '../../shared/types';
   import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
@@ -24,10 +33,12 @@
     activeTabId,
     selectedTabIds,
     splitTabIds,
+    splitGroups = [],
     groups,
     collapsed,
     fading,
     closing,
+    slide = 0,
     side,
     topInset,
     rowInset,
@@ -43,7 +54,11 @@
     media,
     pageRect,
     onSplitDrop,
+    card = false,
     toggleInToolbar = false,
+    agents = { waiting: 0, working: 0 },
+    updateReady = false,
+    downloads = { active: 0, progress: null, started: 0 },
   }: {
     tabs: TabSnapshot[];
     listOrder: TabId[];
@@ -51,10 +66,12 @@
     activeTabId: TabId | null;
     selectedTabIds: TabId[];
     splitTabIds: TabId[];
+    splitGroups?: TabId[][];
     groups: TabGroup[];
     collapsed: boolean;
     fading: boolean;
     closing: boolean;
+    slide?: number;
     side: PanelSide;
     topInset: number;
     rowInset: number;
@@ -70,7 +87,11 @@
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
+    card?: boolean;
     toggleInToolbar?: boolean;
+    agents?: { waiting: number; working: number };
+    updateReady?: boolean;
+    downloads?: DownloadsSummary;
   } = $props();
 
   type DragGroup = 'pinned' | 'listed';
@@ -114,6 +135,19 @@
   let addingLiveFolder = $state(false);
   const swipe = createSwipeTracker();
   let addMenu: HTMLDivElement | undefined = $state();
+  let moreButton: HTMLButtonElement | undefined = $state();
+
+  $effect(() => window.yalqen.onAddLiveFolder(() => (addingLiveFolder = true)));
+
+  function openSidebarMenu(kind: SidebarMenuKind): void {
+    const rect = moreButton?.getBoundingClientRect();
+    if (!rect) return;
+    send({
+      type: 'open-sidebar-menu',
+      kind,
+      anchor: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+    });
+  }
 
   const send = window.yalqen.send;
   const previews = createHoverPreviews(send);
@@ -135,19 +169,47 @@
     tabCleanup ? listed.filter((tab) => !tab.live && !tab.isPrivate && tab.id !== activeTabId).length : 0,
   );
   const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
+  const mergedSplits = $derived.by(() => {
+    const merged = (card && !collapsed ? splitGroups : []).flatMap((group) => {
+      const members = group.flatMap((id) => tabsById.get(id) ?? []);
+      if (members.length !== group.length || members.some((tab) => !listedIndex.has(tab.id))) return [];
+      const head = members.reduce((first, tab) =>
+        listedIndex.get(tab.id)! < listedIndex.get(first.id)! ? tab : first,
+      );
+      return [{ head, members }];
+    });
+    return {
+      heads: new Map(merged.map(({ head, members }) => [head.id, members])),
+      hidden: new Set(
+        merged.flatMap(({ head, members }) => members.filter((tab) => tab !== head).map((tab) => tab.id)),
+      ),
+    };
+  });
   const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
-  const wide = $derived(!collapsed);
+  const activeSpaceName = $derived(
+    !card && !collapsed && spaces.length > 1 ? spaces.find((space) => space.id === activeSpaceId)?.name : undefined,
+  );
+  const wide = $derived(card && !collapsed);
   const inSpaceRow = $derived(!collapsed && spaces.length > 0);
   const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
-  const entries = $derived(
-    listOrder
-      .map((id) => tabsById.get(id))
-      .filter((tab): tab is TabSnapshot => tab !== undefined && (!showPinned || !collapsed || !tab.pinned)),
+  const visibleEntries = $derived(
+    listOrder.flatMap((id) => {
+      const tab = tabsById.get(id);
+      return tab && !(showPinned && collapsed && tab.pinned) ? [tab] : [];
+    }),
+  );
+  const entriesByGroup = $derived(
+    new Map(
+      [...new Set(visibleEntries.map((tab) => tab.group || ''))].map((key) => [
+        key,
+        visibleEntries.filter((tab) => (tab.group || '') === key),
+      ]),
+    ),
   );
   const groupsByName = $derived(new Map(groups.map((group) => [group.name, group])));
   const sections = $derived(
     [
-      { key: 'ungrouped', group: null, depth: 0, entries: entries.filter((tab) => !tab.group) },
+      { key: 'ungrouped', group: null, depth: 0, entries: entriesByGroup.get('') ?? [] },
       ...groups.flatMap((group) => {
         const ancestors = groupAncestors(group);
         return ancestors.some((ancestor) => ancestor.collapsed)
@@ -157,7 +219,7 @@
                 key: 'group:' + group.name,
                 group,
                 depth: ancestors.length,
-                entries: entries.filter((tab) => tab.group === group.name),
+                entries: entriesByGroup.get(group.name) ?? [],
               },
             ];
       }),
@@ -565,8 +627,7 @@
 {/snippet}
 
 {#snippet panelToggle()}
-  {#if !toggleInToolbar}
-    <IconButton
+  {#if !toggleInToolbar}<IconButton
       size="lg"
       variant="surface"
       tone="muted"
@@ -582,8 +643,7 @@
       title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
       aria-expanded={!collapsed}
       onclick={() => send({ type: 'toggle-panel' })}
-    />
-  {/if}
+    />{/if}
 {/snippet}
 
 {#snippet compactTab(tab: TabSnapshot)}
@@ -631,6 +691,25 @@
   </div>
 {/snippet}
 
+{#snippet splitRow(members: TabSnapshot[])}
+  <div class="split-row">
+    {#each members as member (member.id)}
+      <button
+        class="split-half"
+        class:current={member.id === activeTabId}
+        title={member.url}
+        aria-label={label(member)}
+        aria-current={member.id === activeTabId ? 'page' : undefined}
+        onclick={(e) => selectTab(e, member.id)}
+        onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: member.id })}
+      >
+        {@render favicon(member, 16, member.unread)}
+        <span class="title">{member.title}</span>
+      </button>
+    {/each}
+  </div>
+{/snippet}
+
 {#snippet selectButton(tab: TabSnapshot, tabLabel: string)}
   <button
     class="select"
@@ -660,14 +739,6 @@
     />
   {/if}
 {/snippet}
-
-<svelte:window
-  onpointermove={onPointerMove}
-  onpointerup={onPointerUp}
-  onpointercancel={endDrag}
-  onkeydown={onKeyDown}
-  onblur={endDrag}
-/>
 
 {#snippet sectionBody(section: (typeof sections)[number])}
   {#if section.group}
@@ -723,12 +794,13 @@
   {/if}
   {#if !section.group?.collapsed}
     <ol class="rows" style:margin-inline-start={indent(section.depth)}>
-      {#each section.entries as tab (tab.id)}
+      {#each section.entries.filter((entry) => !mergedSplits.hidden.has(entry.id)) as tab (tab.id)}
         {@const index = listedIndex.get(tab.id) ?? -1}
+        {@const merged = mergedSplits.heads.get(tab.id)}
         <li
           class="row"
           class:private={tab.isPrivate}
-          class:active={tab.id === activeTabId}
+          class:active={tab.id === activeTabId || !!merged?.some((member) => member.id === activeTabId)}
           class:selected={selected.has(tab.id)}
           class:discarded={!tab.live}
           class:lifted={index >= 0 && tab.id === dragId}
@@ -750,15 +822,24 @@
             send({ type: 'open-tab-menu', id: tab.id });
           }}
         >
-          {@render tabRow(tab)}
+          {#if merged}{@render splitRow(merged)}{:else}{@render tabRow(tab)}{/if}
         </li>
       {/each}
     </ol>
   {/if}
 {/snippet}
 
+<svelte:window
+  onpointermove={onPointerMove}
+  onpointerup={onPointerUp}
+  onpointercancel={endDrag}
+  onkeydown={onKeyDown}
+  onblur={endDrag}
+/>
+
 <aside
-  class="panel card"
+  class="panel"
+  class:card
   class:collapsed
   class:dragging={dragId !== null}
   class:fading
@@ -771,7 +852,7 @@
 >
   <div class="top" style:height="{topInset}px"></div>
 
-  <div class="body">
+  <div class="body" style:transform={slide ? `translateX(${slide}px)` : undefined}>
     <div class="lists" bind:this={lists}>
       {#if favorites.length > 0}
         <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
@@ -800,6 +881,10 @@
           {/each}
         </ul>
         {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
+      {/if}
+
+      {#if activeSpaceName}
+        <p class="space-name">{activeSpaceName}</p>
       {/if}
 
       {#if showPinned && pinned.length > 0}
@@ -909,6 +994,32 @@
       <MediaPlayer {media} compact={collapsed} />
     {/if}
 
+    {#if wide && agents.waiting + agents.working > 0}
+      <button
+        type="button"
+        class="agents"
+        class:waiting={agents.waiting > 0}
+        onclick={() => send({ type: 'toggle-agent-panel' })}
+      >
+        <span class="orb" aria-hidden="true"></span>
+        {#if agents.waiting > 0}<span class="agents-waiting"
+            >{t('tabPanel.agentsWaiting', { count: agents.waiting })}</span
+          >{/if}
+        <span class="agents-count">{t('tabPanel.agentsWorking', { count: agents.waiting + agents.working })}</span>
+        <Icon name="up" size={12} />
+      </button>
+    {/if}
+
+    {#if wide && updateReady}
+      <div class="update-card">
+        <Icon name="download" size={16} />
+        <span class="update-label">{t('tabPanel.updateReady')}</span>
+        <button type="button" class="update-restart" onclick={() => send({ type: 'install-update' })}>
+          {t('tabPanel.restart')}
+        </button>
+      </div>
+    {/if}
+
     {#if spaces.length > 0}
       <div class="spaces" class:compact={collapsed}>
         {#if inSpaceRow}{@render panelToggle()}{/if}
@@ -927,26 +1038,49 @@
             }}
           />
         {:else}
-          <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
-            {#each spaces.length > 1 ? spaces : [] as space (space.id)}
-              <button
-                class="space-dot"
-                aria-pressed={space.id === activeSpaceId}
-                aria-label={space.name}
-                title={space.name}
-                onclick={() => send({ type: 'switch-space', id: space.id })}
-                ondblclick={() => startSpaceRename(space)}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  send({ type: 'open-space-menu', id: space.id });
-                }}
-                onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
-              >
-                {#if space.icon}{space.icon}{:else}<span class="dot" aria-hidden="true"></span>{/if}
+          {#if wide}
+            {#if profile !== 'private'}
+              <button type="button" class="footer-button chats-button" onclick={() => openSidebarMenu('chats')}>
+                <Icon name="sparkle" size={14} />
+                <span class="footer-label">{t('sidebarMenu.chats')}</span>
               </button>
-            {/each}
-          </div>
-          {#if !collapsed}
+            {:else}
+              <span class="footer-fill"></span>
+            {/if}
+            <button
+              bind:this={moreButton}
+              type="button"
+              class="footer-button more-button"
+              aria-label={t('sidebarMenu.more')}
+              title={t('sidebarMenu.more')}
+              aria-haspopup="dialog"
+              onclick={() => openSidebarMenu('tabs')}
+            >
+              <Icon name="down" size={14} />
+              {#if downloads.active > 0}<span class="download-dot" aria-hidden="true"></span>{/if}
+            </button>
+          {:else}
+            <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
+              {#each spaces.length > 1 ? spaces : [] as space (space.id)}
+                <button
+                  class="space-dot"
+                  aria-pressed={space.id === activeSpaceId}
+                  aria-label={space.name}
+                  title={space.name}
+                  onclick={() => send({ type: 'switch-space', id: space.id })}
+                  ondblclick={() => startSpaceRename(space)}
+                  oncontextmenu={(e) => {
+                    e.preventDefault();
+                    send({ type: 'open-space-menu', id: space.id });
+                  }}
+                  onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
+                >
+                  {#if space.icon}{space.icon}{:else}<span class="dot" aria-hidden="true"></span>{/if}
+                </button>
+              {/each}
+            </div>
+          {/if}
+          {#if !collapsed && !wide}
             <IconButton
               size="lg"
               variant="surface"
@@ -1204,6 +1338,16 @@
     margin: 0 0 8px;
     padding: 0;
     list-style: none;
+  }
+
+  .space-name {
+    margin: 0 0 6px;
+    padding: 0 10px;
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .section-divider {
@@ -1536,6 +1680,176 @@
 
   .tidy-label {
     font-size: 13px;
+  }
+
+  .agents {
+    --agents-gold: light-dark(#8a5a00, #e6c278);
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 9px;
+    height: 32px;
+    margin-top: 8px;
+    padding: 0 12px 0 8px;
+    white-space: nowrap;
+    border: 0;
+    border-radius: 999px;
+    background: var(--card-tile);
+    color: color-mix(in srgb, var(--agents-gold) 75%, transparent);
+    font-size: 14px;
+  }
+
+  .agents.waiting {
+    background: color-mix(in srgb, var(--agents-gold) 12%, var(--card-tile));
+  }
+
+  .agents:hover {
+    background: var(--surface-hover);
+  }
+
+  .agents-waiting {
+    color: var(--agents-gold);
+  }
+
+  .agents-count {
+    margin-left: auto;
+  }
+
+  .orb {
+    --orb-light: light-dark(#7a6a40, #f4e2b0);
+    --orb-dark: light-dark(#3a3020, #6b5a30);
+    display: block;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--orb-light), var(--orb-dark) 75%);
+    mask: radial-gradient(circle, #000 0.85px, transparent 1.1px) 0 0 / 2.4px 2.4px;
+  }
+
+  .update-card {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    height: 32px;
+    margin-top: 5px;
+    padding: 0 4px 0 11px;
+    border-radius: 16px;
+    background: var(--card-tile);
+    color: var(--text-muted);
+  }
+
+  .update-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .update-restart {
+    flex: none;
+    height: 24px;
+    padding: 0 11px;
+    border: 0;
+    border-radius: 999px;
+    background: light-dark(#1d1d22, #f4f4f5);
+    color: light-dark(#ffffff, #18181b);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .update-restart:hover {
+    background: light-dark(#34343b, #ffffff);
+  }
+
+  .download-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: light-dark(#b07a00, #e6c278);
+  }
+
+  .footer-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 35px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .footer-button:hover {
+    background: var(--card-tile);
+    color: var(--text);
+  }
+
+  .chats-button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .footer-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .more-button {
+    position: relative;
+    flex: none;
+    justify-content: center;
+    width: 40px;
+    padding: 0;
+  }
+
+  .footer-fill {
+    flex: 1;
+  }
+
+  .panel.card .add-menu {
+    left: anchor(left);
+    right: anchor(right);
+  }
+
+  .split-row {
+    display: flex;
+    flex: 1;
+    gap: 2px;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .split-half {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .split-half .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .card .section-divider {

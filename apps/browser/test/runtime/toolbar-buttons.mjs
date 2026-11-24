@@ -61,7 +61,8 @@ const state = {
   favorites: [],
   spaces: [],
   activeSpaceId: '',
-  sidebarVisible: true,
+  // With the card sidebar showing, these buttons move into its menu; tabs on top keep them in the toolbar.
+  sidebarVisible: false,
   media: null,
   toolbarVisible: true,
   toolbarTabs: true,

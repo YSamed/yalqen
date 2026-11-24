@@ -37,10 +37,8 @@
     conversationId,
     backgroundChats,
     width,
-    collapsed,
-    fading,
     onresize,
-    oncollapse,
+    floating = false,
   }: {
     open: boolean;
     session: AgentSessionState;
@@ -56,10 +54,8 @@
     conversationId: string;
     backgroundChats: AgentBackgroundChat[];
     width: number;
-    collapsed: boolean;
-    fading: boolean;
     onresize(width: number): void;
-    oncollapse(collapsed: boolean): void;
+    floating?: boolean;
   } = $props();
 
   let requesting = $state(false);
@@ -123,29 +119,12 @@
   const sessionOpen = $derived(
     view === 'terminal' ? active : ['starting', 'thinking', 'approval', 'ready'].includes(chat.status),
   );
-  let finishedUnseen = $state(false);
-  let wasWorking = false;
   const working = $derived(
     view === 'terminal' ? session.status === 'starting' : chatBusy && chat.status !== 'approval',
   );
   const activity: ProviderActivity = $derived(
-    hasError
-      ? 'error'
-      : view === 'chat' && chat.status === 'approval'
-        ? 'waiting'
-        : working
-          ? 'working'
-          : finishedUnseen
-            ? 'done'
-            : 'idle',
+    hasError ? 'error' : view === 'chat' && chat.status === 'approval' ? 'waiting' : working ? 'working' : 'idle',
   );
-
-  $effect(() => {
-    const busy = working || (view === 'chat' && chat.status === 'approval');
-    if (wasWorking && !busy && collapsed) finishedUnseen = true;
-    if (busy || !collapsed) finishedUnseen = false;
-    wasWorking = busy;
-  });
 
   async function chooseProject(): Promise<boolean> {
     requesting = true;
@@ -191,11 +170,6 @@
     void window.yalqen.newAgentChat().catch(() => undefined);
   }
 
-  function startNewChat(): void {
-    if (chat.id) newChat();
-    oncollapse(false);
-  }
-
   function beginResize(event: PointerEvent & { currentTarget: HTMLButtonElement }): void {
     if (event.button !== 0 || !event.isPrimary) return;
     event.preventDefault();
@@ -230,44 +204,9 @@
   });
 </script>
 
-<section
-  class="agent-panel"
-  class:collapsed
-  class:fading
-  style:width={collapsed ? null : `${width}px`}
-  aria-label={t('agentPanel.toggle')}
->
-  {#if collapsed}
-    <div class="rail">
-      <IconButton
-        size="lg"
-        variant="surface"
-        label="{t('agentPanel.expand')} · {view === 'terminal'
-          ? 'Claude Code'
-          : PROVIDER_LABELS[chat.provider]}{showStatus ? ` · ${status}` : ''}"
-        title={showStatus ? status : t('agentPanel.expand')}
-        onclick={() => oncollapse(false)}
-      >
-        <ProviderMark mark={view === 'terminal' ? 'claude-code' : chat.provider} {activity} />
-      </IconButton>
-      <span class="visually-hidden" role="status">{showStatus ? status : ''}</span>
-      {#if view === 'chat'}
-        <IconButton size="lg" variant="surface" icon="plus" label={t('agentChat.newChat')} onclick={startNewChat} />
-      {/if}
-      <IconButton
-        class="rail-toggle"
-        size="lg"
-        variant="surface"
-        tone="muted"
-        icon="panel-expand-right"
-        label={t('agentPanel.expand')}
-        aria-expanded="false"
-        onclick={() => oncollapse(false)}
-      />
-    </div>
-  {/if}
+<section class="agent-panel" class:floating style:width="{width}px" aria-label={t('agentPanel.toggle')}>
   <button
-    hidden={collapsed}
+    hidden={floating}
     class="resize-handle"
     aria-label={t('agentPanel.resize')}
     title={t('agentPanel.resize')}
@@ -279,7 +218,7 @@
     onkeydown={resizeByKeyboard}
     ondblclick={() => onresize(DEFAULT_AGENT_PANEL_WIDTH)}
   ></button>
-  <header hidden={collapsed}>
+  <header>
     <div class="identity">
       <span class="header-mark"
         ><ProviderMark mark={view === 'terminal' ? 'claude-code' : chat.provider} {activity} /></span
@@ -297,9 +236,9 @@
       {#if view === 'terminal' && active}
         <IconButton icon="stop" label={t('agentPanel.stop')} onclick={stop} />
       {:else if view === 'chat'}
-        <IconButton icon="plus" label={t('agentChat.newChat')} onclick={newChat} />
+        <IconButton class="new-chat" icon="plus" label={t('agentChat.newChat')} onclick={newChat} />
       {/if}
-      {#if view === 'chat' && providers.length > 1}
+      {#if view === 'chat' && providers.length > 1 && !floating}
         {#if providerLocked}
           <span class="provider" title={t('agentChat.provider')}>{PROVIDER_LABELS[chat.provider]}</span>
         {:else}
@@ -322,7 +261,7 @@
           onclick={() => (historyOpen = !historyOpen)}
         />
       {/if}
-      {#if view === 'chat' && SIGN_IN_PROVIDERS.includes(chat.provider) && chat.error !== 'authentication-required'}
+      {#if !floating && view === 'chat' && SIGN_IN_PROVIDERS.includes(chat.provider) && chat.error !== 'authentication-required'}
         <IconButton
           icon="profile"
           label={t('agentChat.signOutOf', { agent: PROVIDER_LABELS[chat.provider] })}
@@ -331,10 +270,9 @@
         />
       {/if}
       <IconButton
-        icon="panel-close-right"
-        label={t('agentPanel.collapse')}
-        aria-expanded="true"
-        onclick={() => oncollapse(true)}
+        icon={floating ? 'float' : 'sidebar'}
+        label={floating ? t('agentPanel.dock') : t('agentPanel.float')}
+        onclick={() => window.yalqen.send({ type: 'set-agent-floating', floating: !floating })}
       />
       <IconButton
         icon="close"
@@ -343,8 +281,8 @@
       />
     </div>
   </header>
-  {#if !collapsed && view === 'chat' && backgroundChats.length}<BackgroundChats chats={backgroundChats} />{/if}
-  {#if !collapsed && (session.directory || terminal)}
+  {#if view === 'chat' && backgroundChats.length}<BackgroundChats chats={backgroundChats} />{/if}
+  {#if session.directory || terminal}
     <div class="bar">
       {#if session.directory}<Button
           class="project"
@@ -398,33 +336,29 @@
         />{/if}
     </div>
   {/if}
-  {#if historyOpen && view === 'chat' && !collapsed}
+  {#if historyOpen && view === 'chat'}
     <div class="panel-view"><AgentHistory onclose={() => (historyOpen = false)} /></div>
   {/if}
   {#key conversationId}
-    <div class="panel-view chat-view" id="agent-chat" hidden={collapsed || view !== 'chat' || historyOpen}>
+    <div class="panel-view chat-view" id="agent-chat" hidden={view !== 'chat' || historyOpen}>
       <AgentChat
         composer={composerFor(conversationId)}
-        open={open && !collapsed && view === 'chat' && !historyOpen}
+        open={open && view === 'chat' && !historyOpen}
         directory={session.directory}
         {activeTab}
         {tabs}
         {developer}
         {elements}
+        {floating}
         onchoose={() => void chooseProject()}
       />
     </div>
   {/key}
   {#key projectId}
     {#if terminal}
-      <div class="panel-view" id="agent-terminal" hidden={collapsed || view !== 'terminal'}>
+      <div class="panel-view" id="agent-terminal" hidden={view !== 'terminal'}>
         {#if TerminalView}
-          <TerminalView
-            open={open && !collapsed && view === 'terminal'}
-            {session}
-            {activeTab}
-            onchoose={chooseProject}
-          />
+          <TerminalView open={open && view === 'terminal'} {session} {activeTab} onchoose={chooseProject} />
         {/if}
       </div>
     {/if}
@@ -456,40 +390,20 @@
     background: transparent;
     box-shadow: none;
   }
-  .agent-panel > * {
-    transition: opacity 120ms ease-out;
+  /* The floating view is see-through around the card, so the panel always paints its own surface. */
+  /* The card style's header drags the window; over the page the header drags the floating card instead. */
+  .agent-panel.floating header {
+    -webkit-app-region: no-drag;
   }
-  .fading > * {
-    opacity: 0;
-  }
-  .agent-panel.collapsed {
-    background: transparent;
-    box-shadow: none;
-  }
-  .rail {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    padding: 4px 5px 0 0;
-  }
-  .rail :global(.rail-toggle) {
-    margin-top: auto;
-  }
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .resize-handle[hidden],
-  header[hidden] {
+  .agent-panel.floating :global(.welcome) {
     display: none;
   }
-  :global([data-style='card']) .agent-panel:not(.collapsed) {
+  .agent-panel.floating {
+    --page: light-dark(#f7f7f8, #2b2b2d);
+    background: var(--page);
+    box-shadow: inset 0 0 0 1px light-dark(rgb(16 18 24 / 0.1), rgb(255 255 255 / 0.1));
+  }
+  :global([data-style='card']) .agent-panel {
     border-radius: 10px;
     background: var(--page);
     box-shadow: none;
@@ -524,6 +438,9 @@
   }
   :global([data-style='card']) .actions > :global(:not(.new-chat)) {
     order: 1;
+  }
+  .resize-handle[hidden] {
+    display: none;
   }
   .resize-handle {
     position: absolute;

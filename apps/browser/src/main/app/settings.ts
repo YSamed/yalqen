@@ -12,7 +12,6 @@ import type {
   ToolbarItemId,
 } from '../../shared/types.js';
 import {
-  DEFAULT_GLASS_TINT,
   DEFAULT_TOOLBAR_BUTTONS,
   DEFAULT_ZOOM_FACTORS,
   REQUIRED_TOOLBAR_BUTTON,
@@ -24,6 +23,7 @@ import { sanitizeSpaceRules } from '../../shared/space-rules.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
 import { DEFAULT_WINDOW_COLOR, isWindowColor } from '../../shared/window-color.js';
+import { DEFAULT_FRAME_THEME, sanitizeFrameTheme } from '../../shared/frame-theme.js';
 import { JsonFile } from '../storage/json-file.js';
 import { isAutoArchiveHours } from '../tabs/auto-archive.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
@@ -42,9 +42,8 @@ const DEFAULTS: Settings = {
   searchEngine: DEFAULT_SEARCH_ENGINE,
   customSearchTemplate: null,
   theme: 'light',
-  transparency: true,
   darkSites: false,
-  glassTint: DEFAULT_GLASS_TINT,
+  frameTheme: DEFAULT_FRAME_THEME,
   startupBehavior: 'restore',
   startupUrls: [],
   spaceRules: [],
@@ -97,6 +96,7 @@ const DEFAULTS: Settings = {
   agentActions: 'ask',
   agentTracing: false,
   agentTerminal: false,
+  agentFloating: false,
   recentTabCycling: true,
   shortcuts: {},
 };
@@ -141,9 +141,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     searchEngine,
     customSearchTemplate,
     theme,
-    transparency,
     darkSites,
-    glassTint,
+    frameTheme,
     startupBehavior,
     startupUrls,
     spaceRules,
@@ -197,6 +196,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     agentActions,
     agentTracing,
     agentTerminal,
+    agentFloating,
     recentTabCycling,
     shortcuts,
   } = input;
@@ -211,12 +211,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? customSearchTemplate?.trim() || null
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
-    transparency: typeof transparency === 'boolean' ? transparency : base.transparency,
     darkSites: typeof darkSites === 'boolean' ? darkSites : base.darkSites,
-    glassTint:
-      typeof glassTint === 'number' && Number.isFinite(glassTint)
-        ? Math.round(Math.min(100, Math.max(0, glassTint)))
-        : base.glassTint,
+    frameTheme: sanitizeFrameTheme(frameTheme, base.frameTheme),
     startupBehavior:
       typeof startupBehavior === 'string' && STARTUP_BEHAVIORS.has(startupBehavior)
         ? (startupBehavior as Settings['startupBehavior'])
@@ -298,6 +294,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.agentActions,
     agentTracing: typeof agentTracing === 'boolean' ? agentTracing : base.agentTracing,
     agentTerminal: typeof agentTerminal === 'boolean' ? agentTerminal : base.agentTerminal,
+    agentFloating: typeof agentFloating === 'boolean' ? agentFloating : base.agentFloating,
     recentTabCycling: typeof recentTabCycling === 'boolean' ? recentTabCycling : base.recentTabCycling,
     shortcuts: shortcuts === undefined ? base.shortcuts : sanitizeShortcuts(shortcuts),
   };

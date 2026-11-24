@@ -14,6 +14,7 @@ export interface SpaceView {
   id: string;
   name: string;
   icon: string | null;
+  theme?: import('./frame-theme').FrameTheme;
 }
 export interface WorkspaceSummary extends SpaceView {
   count: number;

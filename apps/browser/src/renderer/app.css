@@ -211,6 +211,16 @@ button:not(:disabled) {
   );
 }
 
+:root[data-style='card'][data-frame]:not([data-mode='private']) {
+  --page: color-mix(in srgb, var(--frame-primary) 4%, #ffffff);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-style='card'][data-frame]:not([data-mode='private']) {
+    --page: color-mix(in srgb, var(--frame-primary) 12%, #15171a);
+  }
+}
+
 :root[data-mode='developer'] body::after {
   position: fixed;
   z-index: 2147483000;

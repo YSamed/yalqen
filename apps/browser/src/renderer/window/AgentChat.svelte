@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { displayHost } from '../../shared/hosts';
   import { onMount, tick } from 'svelte';
   import { t } from '../../shared/i18n';
   import { EMPTY_AGENT_CHAT, MAX_CHAT_TABS, SIGN_IN_PROVIDERS } from '../../shared/agent-panel';
@@ -43,6 +44,7 @@
     tabs,
     developer,
     elements,
+    floating = false,
     onchoose,
   }: {
     composer: AgentChatComposer;
@@ -52,6 +54,7 @@
     tabs: TabSnapshot[];
     developer: boolean;
     elements: AgentElementRef[];
+    floating?: boolean;
     onchoose(): void;
   } = $props();
   let snapshot: AgentChatSnapshot = $state.raw({
@@ -167,6 +170,8 @@
   const attachable = $derived(
     activeTab && (!activeTab.isPrivate || developer) && /^https?:/.test(activeTab.url) ? activeTab : null,
   );
+  // Floating over a page, the chat asks about that page unless other tabs are attached, like Dia.
+  const pageContext = $derived(floating && composer.attachments.length === 0 ? attachable : null);
   const attachableTabs = $derived(tabs.filter((tab) => (!tab.isPrivate || developer) && /^https?:/.test(tab.url)));
   const suggestions: (ComposerSuggestion & { insert: string | null })[] = $derived.by(() => {
     if (!trigger || dismissedTrigger === `${trigger.kind}:${trigger.start}`) return [];
@@ -274,7 +279,7 @@
     const text = composer.text;
     try {
       const sent = composer.images;
-      const attached = composer.attachments;
+      const attached = composer.attachments.length ? composer.attachments : pageContext ? [pageContext] : [];
       if (
         !(await window.yalqen.sendAgentChat(
           snapshot.state.id,
@@ -842,11 +847,24 @@
       {/if}
       {#if imageRejected}<p class="image-hint" role="status">{t('agentChat.imageRejected')}</p>{/if}
       {#if attachmentChanged}<p class="image-hint" role="status">{t('agentChat.tabChanged')}</p>{/if}
+      {#if pageContext}
+        <div class="page-context" title={pageContext.url}>
+          <span class="page-icon">
+            {#if pageContext.faviconUrl}<img src={pageContext.faviconUrl} alt="" />{:else}<Icon
+                name="globe"
+                size={14}
+              />{/if}
+          </span>
+          <span class="page-text"><span>{pageContext.title}</span><small>{displayHost(pageContext.url)}</small></span>
+        </div>
+      {/if}
       {#if composer.attachments.length || elements.length}
         <div class="chips">
           {#each composer.attachments as attachment (attachment.id)}
             <div class="attachment" title={attachment.url}>
-              <Icon name="globe" size={12} /><span>{attachment.title}</span><IconButton
+              <Icon name="globe" size={12} /><span class="attachment-text"
+                ><span>{attachment.title}</span><small>{displayHost(attachment.url)}</small></span
+              ><IconButton
                 size="sm"
                 icon="close"
                 label={t('agentChat.removeTab')}
@@ -884,7 +902,9 @@
         rows="1"
         maxlength="65536"
         aria-label={t('agentChat.messageAgent', { agent: agentName })}
-        placeholder={t('agentChat.placeholderAgent', { agent: agentName })}
+        placeholder={pageContext
+          ? t('agentChat.placeholderPage')
+          : t('agentChat.placeholderAgent', { agent: agentName })}
         disabled={loading}
         onpaste={pasteImages}
         onkeydown={composeKey}></textarea>
@@ -1318,6 +1338,53 @@
   .work-mode {
     color: var(--accent);
   }
+  .page-context {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: fit-content;
+    max-width: 100%;
+    margin: 2px 0 10px;
+    padding: 8px 14px 8px 8px;
+    border-radius: 10px;
+    background: rgb(from var(--text) r g b / 0.08);
+  }
+  .page-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: light-dark(#ffffff, #1c1c1e);
+    color: var(--text-muted);
+  }
+  .page-icon img {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+  }
+  .page-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+  }
+  .page-text > span,
+  .page-text small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .page-text > span {
+    max-width: 180px;
+    font-size: var(--ai-small);
+    font-weight: 500;
+  }
+  .page-text small {
+    color: var(--text-muted);
+    font-size: var(--ai-meta);
+  }
   .composer {
     flex: none;
     padding: 0 12px 10px;
@@ -1471,37 +1538,37 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
-  @media (prefers-reduced-motion: reduce) {
-    .suggestion,
-    .composer-box {
-      transition: none;
-    }
-    .working-dot {
-      animation: none;
-    }
+  .attachment-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
+  .attachment-text > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .attachment-text small {
+    display: none;
+  }
+
   :global([data-style='card']) .welcome {
     align-items: center;
     text-align: center;
   }
-
   :global([data-style='card']) .welcome-mark {
     margin: 0 0 14px;
   }
-
   :global([data-style='card']) h2 {
     font-size: 15px;
     letter-spacing: -0.1px;
   }
-
   :global([data-style='card']) .intro {
     margin: 6px auto 18px;
   }
-
   :global([data-style='card']) .hint {
     margin-inline: auto;
   }
-
   :global([data-style='card']) .composer-box {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1511,53 +1578,62 @@
     border-color: rgb(from var(--text) r g b / 0.12);
     background: rgb(from var(--text) r g b / 0.04);
   }
-
   :global([data-style='card']) .composer-box > * {
     grid-column: 1 / -1;
   }
-
   :global([data-style='card']) .composer-box > textarea {
     grid-column: 1;
     align-self: center;
     min-height: 22px;
     padding: 3px 0;
   }
-
   :global([data-style='card']) .composer-box > .composer-controls {
     grid-column: 2;
     margin: 0;
   }
-
   :global([data-style='card']) .composer-controls :global(.settings-trigger .summary) {
     display: none;
   }
-
   :global([data-style='card']) .composer-controls :global(.settings-trigger) {
     width: 28px;
     padding: 0;
     justify-content: center;
   }
-
   :global([data-style='card']) .composer-controls :global(.send-button),
   :global([data-style='card']) .composer-controls :global(.send-button.accent:disabled) {
     border-radius: 50%;
     background-color: var(--frame-primary, var(--accent));
     color: #fff;
   }
-
   :global([data-style='card']) .composer-controls :global(.send-button:disabled) {
     opacity: 0.55;
   }
-
   :global([data-style='card']) .composer-box .chips {
     margin-bottom: 6px;
   }
-
   :global([data-style='card']) .composer-box .attachment {
     gap: 10px;
     padding: 6px 4px 6px 8px;
     border-radius: 10px;
     background: rgb(from var(--text) r g b / 0.06);
     color: var(--text);
+  }
+  :global([data-style='card']) .composer-box .attachment-text > span {
+    font-weight: 600;
+  }
+  :global([data-style='card']) .composer-box .attachment-text small {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--ai-meta);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .suggestion,
+    .composer-box {
+      transition: none;
+    }
+    .working-dot {
+      animation: none;
+    }
   }
 </style>

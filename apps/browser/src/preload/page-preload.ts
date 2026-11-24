@@ -3,7 +3,6 @@ import {
   AutofillChannel,
   AgentBridgeChannel,
   ExtensionsChannel,
-  NEW_TAB_URL,
   PageChannel,
   PasswordsChannel,
   RequestRulesChannel,
@@ -17,7 +16,6 @@ import {
   type AgentSetupResult,
   type ClearDataRequest,
   type ExtensionInfo,
-  type NewTabCenter,
   type PasswordsView,
   type ManualPassword,
   type PasswordTransferResult,
@@ -97,44 +95,12 @@ if (location.href.startsWith(WORKSPACES_URL) && window === window.top) {
 }
 const GAP_MS = 350;
 const COOLDOWN_MS = 650;
-const PENDING_CENTER_MS = 250;
 
 let distance = 0;
 let lastAt = 0;
 let navigatedAt = 0;
 let gestureAt = -Infinity;
 let gestureInScroller = false;
-
-if (location.href === NEW_TAB_URL && window === window.top) {
-  let centerOffset = 0;
-  let pending: NewTabCenter | null = null;
-  let pendingTimer = 0;
-  const applyCenterOffset = () => {
-    document.documentElement?.style.setProperty('--newtab-center-offset', `${centerOffset}px`);
-  };
-  const apply = (offset: number) => {
-    pending = null;
-    clearTimeout(pendingTimer);
-    centerOffset = offset;
-    applyCenterOffset();
-  };
-  const receive = (center: NewTabCenter | undefined) => {
-    if (!center || !Number.isFinite(center.offset)) return;
-    if (center.width === null || Math.abs(window.innerWidth - center.width) < 1) {
-      apply(center.offset);
-      return;
-    }
-    pending = center;
-    clearTimeout(pendingTimer);
-    pendingTimer = window.setTimeout(() => apply(center.offset), PENDING_CENTER_MS);
-  };
-  window.addEventListener('resize', () => {
-    if (pending) receive(pending);
-  });
-  ipcRenderer.on(PageChannel.newTabCenter, (_event, center: NewTabCenter) => receive(center));
-  receive(ipcRenderer.sendSync(PageChannel.newTabCenter));
-  window.addEventListener('DOMContentLoaded', applyCenterOffset, { once: true });
-}
 
 function hasHorizontalScroller(event: WheelEvent): boolean {
   for (const target of event.composedPath()) {
@@ -186,6 +152,12 @@ window.addEventListener(
   { capture: true, passive: true },
 );
 
+// Electron's mouse events on a WebContents are unreliable, so the page reports presses to activate its split pane.
+window.addEventListener('pointerdown', () => ipcRenderer.send(PageChannel.pointerDown), {
+  capture: true,
+  passive: true,
+});
+
 if (location.origin === WEB_STORE_ORIGIN && window === window.top) setupWebStorePage();
 if (location.hostname === 'accounts.google.com') setupGoogleSignInPage();
 
@@ -209,6 +181,7 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
     chooseNewTabBackground: () => ipcRenderer.invoke(settingsChannel.chooseNewTabBackground) as Promise<SettingsView>,
     removeNewTabBackground: () => ipcRenderer.invoke(settingsChannel.removeNewTabBackground) as Promise<SettingsView>,
+    setSpaceTheme: (id, theme) => ipcRenderer.invoke(settingsChannel.setSpaceTheme, id, theme) as Promise<SettingsView>,
     showImportMenu: (kind: 'bookmarks' | 'history') =>
       ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,
     updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,

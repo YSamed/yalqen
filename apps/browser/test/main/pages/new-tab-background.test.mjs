@@ -11,7 +11,6 @@ const { backgroundFile, removeBackground, saveBackground } = background;
 
 const assets = { template: '<html lang="en"><body></body></html>', script: '', mark: Buffer.alloc(0) };
 const sources = (extra) => ({
-  pinned: () => [],
   showWelcome: () => false,
   readyUpdate: () => null,
   showAnnouncement: () => false,

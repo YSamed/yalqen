@@ -79,6 +79,7 @@ const api: YalqenApi = {
     ipcRenderer.invoke(channel.agentChatCancelQueued, id, messageId) as Promise<void>,
   onAgentChat: (listener) => subscribe<string>(channel.agentChatUpdate, listener),
   onPagePress: (listener) => subscribe<void>(channel.pagePress, listener),
+  onAddLiveFolder: (listener) => subscribe<void>(channel.addLiveFolder, listener),
 };
 
 contextBridge.exposeInMainWorld('yalqen', api);

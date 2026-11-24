@@ -29,6 +29,7 @@ function fixture() {
     ]),
     app: { agentConnection: async () => null, releaseAgentConnection: () => {} },
     uiContents: { isDestroyed: () => false, send: (channel, data) => sent.push({ channel, data }) },
+    floatingChat: { contents: null },
     pushState: () => {},
   });
   host.agentProjects = ['shop', 'admin', 'loose'].map((id) => ({

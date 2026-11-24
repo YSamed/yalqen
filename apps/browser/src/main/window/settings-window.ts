@@ -27,7 +27,9 @@ export class SettingsWindow {
 
   open(pane?: string): void {
     const glass = this.host.glass();
-    const url = `${SETTINGS_URL}${pane ?? ''}${glass ? '?window' : ''}`;
+    const target = new URL(pane ?? '', SETTINGS_URL);
+    if (glass) target.searchParams.set('window', '');
+    const url = target.toString();
     const existing = this.browserWindow;
     if (existing) {
       if (pane) void existing.loadURL(url);

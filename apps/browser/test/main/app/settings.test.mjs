@@ -34,15 +34,15 @@ test('unknown or mistyped fields fall back', () => {
       agentActions: 'always',
       agentTracing: 'yes',
       agentTerminal: 'yes',
+      agentFloating: 'yes',
     }),
     {
       version: 1,
       searchEngine: 'google',
       customSearchTemplate: null,
       theme: 'light',
-      transparency: true,
       darkSites: false,
-      glassTint: 25,
+      frameTheme: { colors: ['#de5a92'], intensity: 50, texture: 'none', textureStrength: 40 },
       startupBehavior: 'restore',
       startupUrls: [],
       spaceRules: [],
@@ -95,6 +95,7 @@ test('unknown or mistyped fields fall back', () => {
       agentActions: 'ask',
       agentTracing: false,
       agentTerminal: false,
+      agentFloating: false,
       recentTabCycling: true,
       shortcuts: {},
     },
@@ -319,16 +320,6 @@ test('the invitation name is trimmed, single-spaced and capped, and the accent s
   assert.equal(sanitizeSettings({ invitationSeen: 'yes' }).invitationSeen, false);
 });
 
-test('the glass tint is a whole percentage between 0 and 100', () => {
-  assert.equal(sanitizeSettings({}).glassTint, 25);
-  assert.equal(sanitizeSettings({ glassTint: 0 }).glassTint, 0);
-  assert.equal(sanitizeSettings({ glassTint: 62.6 }).glassTint, 63);
-  assert.equal(sanitizeSettings({ glassTint: 180 }).glassTint, 100);
-  assert.equal(sanitizeSettings({ glassTint: -4 }).glassTint, 0);
-  for (const value of ['40', null, Number.NaN, Infinity])
-    assert.equal(sanitizeSettings({ glassTint: value }).glassTint, 25);
-});
-
 test('space rules keep only valid, unique entries and cap at fifty', () => {
   const rules = sanitizeSettings({
     spaceRules: [
@@ -351,4 +342,29 @@ test('space rules keep only valid, unique entries and cap at fifty', () => {
   const many = Array.from({ length: 80 }, (_, i) => ({ host: `site${i}.test`, space: 'work' }));
   assert.equal(sanitizeSettings({ spaceRules: many }).spaceRules.length, 50);
   assert.deepEqual(sanitizeSettings({ spaceRules: 'x' }).spaceRules, []);
+});
+
+test('frame theme keeps valid colors and clamps its numbers', () => {
+  const theme = sanitizeSettings({
+    frameTheme: {
+      colors: ['#FF0000', 'red', 7, '#00ff00', '#0000ff', '#ffffff'],
+      intensity: 140,
+      texture: 'dots',
+      textureStrength: -5,
+    },
+  }).frameTheme;
+  assert.deepEqual(theme, {
+    colors: ['#ff0000', '#00ff00', '#0000ff'],
+    intensity: 100,
+    texture: 'dots',
+    textureStrength: 0,
+  });
+});
+
+test('frame theme falls back to defaults for unknown values', () => {
+  const theme = sanitizeSettings({
+    frameTheme: { colors: [], texture: 'stripes', intensity: 'x' },
+  }).frameTheme;
+  assert.deepEqual(theme, sanitizeSettings({}).frameTheme);
+  assert.deepEqual(sanitizeSettings({ frameTheme: null }).frameTheme, sanitizeSettings({}).frameTheme);
 });

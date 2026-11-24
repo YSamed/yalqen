@@ -1,9 +1,11 @@
 import type { Rectangle, WebContentsView } from 'electron';
-import { NEW_TAB_URL, PageChannel, type DeviceFrame, type NewTabCenter } from '../../shared/types.js';
+import type { DeviceFrame } from '../../shared/types.js';
 import { applyDeviceMetrics, applyEmulation, clearEmulation, fitDevice } from '../devtools/devices.js';
-import { liveContents, type Tab } from './tab.js';
+import type { Tab } from './tab.js';
+import { SPLIT_GAP, slotRect, type PaneSlot } from '../../shared/split-layout.js';
 
-export const SPLIT_GAP = 6;
+export { SPLIT_GAP, slotRect, type PaneSlot };
+
 export const DEVTOOLS_MIN_WIDTH = 280;
 const PAGE_MIN_WIDTH = 320;
 
@@ -21,23 +23,9 @@ export function devToolsSplit(
   };
 }
 
-export interface PaneSlot {
-  index: number;
-  count: number;
-}
-
-export function slotRect(bounds: Rectangle, { index, count }: PaneSlot, gap = SPLIT_GAP): Rectangle {
-  if (count < 2) return bounds;
-  const free = Math.max(0, bounds.width - gap * (count - 1));
-  const left = Math.round((free * index) / count);
-  const right = Math.round((free * (index + 1)) / count);
-  return { x: bounds.x + left + gap * index, y: bounds.y, width: right - left, height: bounds.height };
-}
-
 export class PagePlacement {
   bounds: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
   radius = 0;
-  newTabCenterOffset = 0;
   devToolsWidth: number | null = null;
 
   constructor(private readonly slotOf: (tab: Tab) => PaneSlot | null = () => null) {}
@@ -98,18 +86,5 @@ export class PagePlacement {
     const area = this.area(tab);
     const frame = fitDevice(tab.emulation, area);
     return { ...frame, x: frame.x + area.x - this.bounds.x };
-  }
-
-  newTabCenter(tab: Tab): NewTabCenter {
-    const contents = liveContents(tab);
-    const zoom = contents ? contents.getZoomFactor() : 1;
-    if (tab.emulation) return { offset: 0, width: null };
-    if (this.slotOf(tab)) return { offset: 0, width: this.area(tab).width / zoom };
-    return { offset: this.newTabCenterOffset / zoom, width: this.bounds.width / zoom };
-  }
-
-  syncNewTabCenter(tab: Tab): void {
-    if (tab.url !== NEW_TAB_URL) return;
-    liveContents(tab)?.send(PageChannel.newTabCenter, this.newTabCenter(tab));
   }
 }

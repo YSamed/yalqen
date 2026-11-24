@@ -145,7 +145,7 @@
 {#snippet content(id: PaneId, view: SettingsView)}
   {#if id === 'general'}
     <GeneralPane section="general" {view} {update} {makeDefault} />
-    <AppearancePane section="look" values={view.values} {update} />
+    <AppearancePane section="look" values={view.values} spaces={view.spaces} {update} />
   {:else if id === 'tabs'}
     <AppearancePane section="tabs" values={view.values} {update} />
     <GeneralPane section="windows" {view} {update} {makeDefault} />

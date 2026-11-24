@@ -23,10 +23,10 @@ export const WINDOW_BASES = {
 const TINT_STRENGTH = 0.18;
 export const MIN_CONTRAST = 4.5;
 
-const mix = (from: Rgb, to: Rgb, amount: number): Rgb =>
+export const mix = (from: Rgb, to: Rgb, amount: number): Rgb =>
   from.map((channel, index) => Math.round(channel + (to[index] - channel) * amount)) as unknown as Rgb;
 
-const parseHex = (hex: string): Rgb =>
+export const parseHex = (hex: string): Rgb =>
   [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16)) as unknown as Rgb;
 
 function luminance(color: Rgb): number {
