@@ -755,15 +755,8 @@ export class TabManager {
     }));
   }
 
-  setSelectedGroup(value: unknown): boolean {
-    return this.setGroup(this.selected.size ? this.selected : new Set(this.activeId ? [this.activeId] : []), value);
-  }
-
   setTabGroup(id: TabId, value: unknown): boolean {
-    return this.setGroup(this.selected.has(id) ? this.selected : new Set([id]), value);
-  }
-
-  private setGroup(ids: ReadonlySet<TabId>, value: unknown): boolean {
+    const ids = this.selected.has(id) ? this.selected : new Set([id]);
     const name = value === null ? null : tabGroupName(value);
     if (value !== null && !name) return false;
     if (name && !this.hasGroup(name) && this.groupView().length >= 50) return false;

@@ -385,8 +385,6 @@ export const en = {
   'commandBar.suggestions': 'Suggestions',
   'commandBar.pageTitle': 'Search',
 
-  'app.addressPlaceholder': 'Search or enter address',
-
   'agentPanel.toggle': 'AI panel',
   'agentPanel.toggleTitle': 'AI panel (⇧⌘A)',
   'agentPanel.close': 'Hide panel · session keeps running',

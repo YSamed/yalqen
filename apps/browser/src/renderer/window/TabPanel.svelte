@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type {
     DownloadsSummary,
     Favorite,
@@ -219,6 +220,7 @@
 
   const send = window.yalqen.send;
   const previews = createHoverPreviews(send);
+  onDestroy(previews.dismiss);
   const selected = $derived(new Set(selectedTabIds));
   const split = $derived(new Set(splitTabIds));
 
@@ -856,6 +858,9 @@
 {/snippet}
 
 <svelte:window
+  onpointerdowncapture={previews.dismiss}
+  onwheelcapture={previews.dismiss}
+  onkeydowncapture={previews.dismiss}
   onpointermove={onPointerMove}
   onpointerup={onPointerUp}
   onpointercancel={endDrag}

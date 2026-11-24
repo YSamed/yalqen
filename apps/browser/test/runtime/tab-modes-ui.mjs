@@ -56,7 +56,6 @@ app
       developer: false,
       pageFullScreen: false,
       windowFullScreen: false,
-      addressPlaceholder: 'Search',
       panelCollapsed: false,
       tabModes: modesOn,
       modeSwitch: modesOn,

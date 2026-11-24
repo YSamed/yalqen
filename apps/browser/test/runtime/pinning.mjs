@@ -46,7 +46,6 @@ app
       developer: false,
       pageFullScreen: false,
       windowFullScreen: false,
-      addressPlaceholder: 'Search',
       panelCollapsed: false,
       favorites: [],
       spaces: [],
@@ -114,10 +113,8 @@ app
       } else if (action.type === 'select-tab') manager.selectTab(action.id, action.mode);
       else if (action.type === 'clear-tab-selection') manager.clearSelection();
       else if (action.type === 'close-selected-tabs') void manager.closeSelected();
-      else if (action.type === 'set-tab-group') manager.setSelectedGroup(action.name);
       else if (action.type === 'rename-tab-group') manager.renameGroup(action.name, action.next);
       else if (action.type === 'toggle-tab-group') manager.toggleGroup(action.name);
-      else if (action.type === 'remove-tab-group') manager.removeGroup(action.name);
     });
     await window.loadFile(path.resolve('dist/renderer/index.html'));
     await eventually("document.querySelectorAll('aside button.select').length === 8");

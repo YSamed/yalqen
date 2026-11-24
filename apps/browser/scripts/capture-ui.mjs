@@ -203,7 +203,7 @@ const tab = (index) => ({
 });
 const state = {
   tabs: [0, 1, 2, 3, 4].map(tab), listOrder: ['tab-0', 'tab-1', 'tab-2', 'tab-3', 'tab-4'], developer: false,
-  activeTabId: 'tab-0', selectedTabIds: [], pageFullScreen: false, windowFullScreen: false, addressPlaceholder: 'Search or type an address',
+  activeTabId: 'tab-0', selectedTabIds: [], pageFullScreen: false, windowFullScreen: false,
   panelCollapsed: false, favorites: [], sidebarVisible: true, splitTabIds: [],
   activeSpaceId: '', spaces: [{ id: '', name: 'Default', icon: null }], sidebarFooterItems: ['downloads'],
   media: { tabId: 'tab-3', title: 'Page 3', duration: 200, position: 80, playing: false, canPrevious: true, canNext: true, updatedAt: 0 },

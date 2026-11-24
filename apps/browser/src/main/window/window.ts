@@ -779,7 +779,6 @@ export class YalqenWindow {
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
       windowMenu: !IS_MAC,
-      addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
       tabModes: this.app.settings.get().tabModes,
       bookmarksPanel: this.bookmarksPanelVisible ? this.bookmarksPanelView() : null,
@@ -798,7 +797,6 @@ export class YalqenWindow {
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
       profile: this.profile,
-      profileName: this.app.persistentProfiles.currentName(),
       agentPanelOpen: this.agentPanelOpen,
       agentFloating: this.app.settings.get().agentFloating,
       agentSession: this.agentSession.state(),
@@ -1923,11 +1921,6 @@ export class YalqenWindow {
           return id;
         }).then((id) => id && !this.window.isDestroyed() && this.tabs.switchSpace(id));
         break;
-      case 'rename-space':
-        if (action.id === DEFAULT_SPACE_ID || !app.workspaces.rename(action.id, action.name)) {
-          this.notice.show([t('spaces.failed')]);
-        } else app.spacesChanged();
-        break;
       case 'open-space-menu':
         this.openSpaceMenu(action.id);
         break;
@@ -1943,17 +1936,11 @@ export class YalqenWindow {
       case 'clean-tabs':
         void tabs.closeIdle();
         break;
-      case 'set-tab-group':
-        if (!tabs.setSelectedGroup(action.name)) this.notice.show([t('tabGroups.failed')]);
-        break;
       case 'rename-tab-group':
         if (!tabs.renameGroup(action.name, action.next)) this.notice.show([t('tabGroups.failed')]);
         break;
       case 'toggle-tab-group':
         tabs.toggleGroup(action.name);
-        break;
-      case 'remove-tab-group':
-        tabs.removeGroup(action.name);
         break;
       case 'move-tab-to-group':
         tabs.setTabGroup(action.id, action.name);
@@ -1986,12 +1973,6 @@ export class YalqenWindow {
       }
       case 'close-tab':
         tabs.close(action.id);
-        break;
-      case 'discard-tab':
-        tabs.discard(action.id);
-        break;
-      case 'toggle-pin':
-        tabs.togglePin(action.id);
         break;
       case 'toggle-mute':
         tabs.toggleMute(action.id);
@@ -2055,12 +2036,6 @@ export class YalqenWindow {
         break;
       case 'reload':
         tabs.reload();
-        break;
-      case 'open-devtools':
-        tabs.openDevTools();
-        break;
-      case 'toggle-devtools':
-        tabs.toggleDevTools();
         break;
       case 'resize-split':
         tabs.resizeSplit(action.index, action.x);
@@ -2224,9 +2199,6 @@ export class YalqenWindow {
         break;
       case 'open-extensions-menu':
         this.openExtensionsMenu(sanitizeAnchor(action.anchor));
-        break;
-      case 'open-extension-store':
-        tabs.open(STORE_HOME, { isPrivate: false });
         break;
       case 'open-history':
         tabs.openHistory();

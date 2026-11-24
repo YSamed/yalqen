@@ -47,7 +47,6 @@ app
       developer: false,
       pageFullScreen: false,
       windowFullScreen: false,
-      addressPlaceholder: 'Search',
       panelCollapsed: collapsed,
       devToolsDivider: divider,
       favorites: [],

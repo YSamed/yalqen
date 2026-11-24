@@ -161,7 +161,6 @@ export interface BrowserState {
   pageFullScreen: boolean;
   windowFullScreen: boolean;
   windowMenu?: boolean;
-  addressPlaceholder: string;
   panelCollapsed: boolean;
   tabCleanup?: boolean;
   tabModes?: boolean;
@@ -181,7 +180,6 @@ export interface BrowserState {
   downloads: DownloadsSummary;
   extensions: boolean;
   profile: ProfileKind;
-  profileName?: string;
   agentPanelOpen: boolean;
   agentFloating?: boolean;
   agentSession: AgentSessionState;
@@ -421,10 +419,8 @@ export type UiAction =
   | { type: 'clear-tab-selection' }
   | { type: 'close-selected-tabs' }
   | { type: 'clean-tabs' }
-  | { type: 'set-tab-group'; name: string | null }
   | { type: 'rename-tab-group'; name: string; next: string }
   | { type: 'toggle-tab-group'; name: string }
-  | { type: 'remove-tab-group'; name: string }
   | { type: 'move-tab-to-group'; id: TabId; name: string | null }
   | { type: 'move-tab-group'; name: string; parent: string | null }
   | { type: 'open-folder-menu'; name: string }
@@ -436,11 +432,8 @@ export type UiAction =
   | { type: 'switch-space'; id: string }
   | { type: 'create-space' }
   | { type: 'import-space' }
-  | { type: 'rename-space'; id: string; name: string }
   | { type: 'open-space-menu'; id: string }
   | { type: 'close-tab'; id: TabId }
-  | { type: 'discard-tab'; id: TabId }
-  | { type: 'toggle-pin'; id: TabId }
   | { type: 'open-favorite'; url: string }
   | { type: 'open-favorite-menu'; url: string }
   | { type: 'toggle-mute'; id: TabId }
@@ -461,8 +454,6 @@ export type UiAction =
   | { type: 'go-back' }
   | { type: 'go-forward' }
   | { type: 'reload' }
-  | { type: 'open-devtools' }
-  | { type: 'toggle-devtools' }
   | { type: 'resize-devtools'; x: number }
   | { type: 'resize-split'; index: number; x: number }
   | { type: 'open-dev-menu' }
@@ -493,7 +484,6 @@ export type UiAction =
   | { type: 'open-downloads' }
   | { type: 'install-update' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
-  | { type: 'open-extension-store' }
   | { type: 'open-history' }
   | { type: 'toggle-translation' }
   | { type: 'open-app-menu' }

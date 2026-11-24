@@ -43,6 +43,5 @@ export function createHoverPreviews(send: (action: UiAction) => void) {
     send({ type: 'hide-preview' });
   }
 
-  for (const name of ['pointerdown', 'wheel', 'keydown'] as const) window.addEventListener(name, dismiss, true);
-  return { enter, leave, has: (url: string) => previewKind(url) !== null };
+  return { enter, leave, dismiss, has: (url: string) => previewKind(url) !== null };
 }

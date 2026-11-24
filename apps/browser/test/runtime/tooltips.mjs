@@ -52,7 +52,6 @@ const state = {
   splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
-  addressPlaceholder: 'Search',
   panelCollapsed: false,
   favorites: [],
   spaces: [],

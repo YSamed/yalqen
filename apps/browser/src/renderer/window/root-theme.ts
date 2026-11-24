@@ -18,7 +18,6 @@ export function applyRootTheme(browser: BrowserState, mode: ChromeMode, dark: bo
   root.dataset.mode = mode;
   root.dataset.style = 'card';
   root.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : browser.accent);
-  root.toggleAttribute('data-fullscreen', browser.windowFullScreen);
   const frameTheme =
     browser.spaces.find((space) => space.id === browser.activeSpaceId)?.theme ??
     browser.frameTheme ??

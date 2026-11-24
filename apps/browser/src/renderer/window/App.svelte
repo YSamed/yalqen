@@ -51,7 +51,6 @@
     splitTabIds: [],
     pageFullScreen: false,
     windowFullScreen: false,
-    addressPlaceholder: t('app.addressPlaceholder'),
     panelCollapsed: true,
     favorites: [],
     spaces: [],

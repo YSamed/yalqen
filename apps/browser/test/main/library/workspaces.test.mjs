@@ -25,7 +25,7 @@ function manager() {
 test('groups assign selections, match visual/shortcut order, rename/collapse, persist only normal members and ungroup without closing', () => {
   const m = manager();
   m.selected = new Set(['a', 'c']);
-  assert.equal(m.setSelectedGroup('Work'), true);
+  assert.equal(m.setTabGroup('a', 'Work'), true);
   assert.deepEqual(
     order.tabListOrder(m.tabs, m.openedPinned).map((tab) => tab.id),
     ['b', 'd', 'private', 'a', 'c'],
@@ -35,7 +35,7 @@ test('groups assign selections, match visual/shortcut order, rename/collapse, pe
   assert.equal(m.renameGroup('Work', 'Research'), true);
   assert.equal(m.groupView()[0].collapsed, true);
   m.selected = new Set(['private']);
-  m.setSelectedGroup('Secret');
+  m.setTabGroup('private', 'Secret');
   m.toggleGroup('Secret');
   const saved = m.toSavedWindow();
   assert.deepEqual(saved.collapsedGroups, ['Research']);
@@ -43,7 +43,7 @@ test('groups assign selections, match visual/shortcut order, rename/collapse, pe
     saved.tabs.some((tab) => tab.url.includes('private')),
     false,
   );
-  assert.equal(m.setSelectedGroup('x'.repeat(81)), false);
+  assert.equal(m.setTabGroup('private', 'x'.repeat(81)), false);
   m.removeGroup('Research');
   assert.equal(m.tabs.length, 5);
   assert.equal(m.tabs.find((tab) => tab.id === 'a').group, null);
@@ -53,7 +53,7 @@ test('workspace saves, renames and removes atomically; independent opens have fr
   try {
     const m = manager();
     m.selected = new Set(['a', 'c']);
-    m.setSelectedGroup('Work');
+    m.setTabGroup('a', 'Work');
     m.togglePin('a');
     m.toggleGroup('Work');
     m.tabs[0].history = { entries: [{ url: 'https://a.example/', title: 'A', pageState: 'FORM SECRET' }], index: 0 };

@@ -392,8 +392,6 @@ export const tr: Record<MessageKey, string> = {
   'commandBar.suggestions': 'Öneriler',
   'commandBar.pageTitle': 'Ara',
 
-  'app.addressPlaceholder': 'Ara veya adres yaz',
-
   'agentPanel.toggle': 'Yapay zekâ paneli',
   'agentPanel.toggleTitle': 'Yapay zekâ paneli (⇧⌘A)',
   'agentPanel.close': 'Paneli gizle · oturum devam eder',

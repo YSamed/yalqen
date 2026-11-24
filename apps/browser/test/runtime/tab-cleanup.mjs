@@ -55,7 +55,6 @@ app
       developer: false,
       pageFullScreen: false,
       windowFullScreen: false,
-      addressPlaceholder: 'Search',
       panelCollapsed: false,
       tabCleanup,
       favorites: [],

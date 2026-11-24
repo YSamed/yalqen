@@ -67,7 +67,6 @@ app
       developer: false,
       pageFullScreen: false,
       windowFullScreen: false,
-      addressPlaceholder: 'Search',
       panelCollapsed: collapsed,
       bookmarksPanel: panelOpen ? panelView : null,
       favorites: [],

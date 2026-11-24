@@ -102,7 +102,6 @@ ipcRenderer.on('bench:state', (_event, state) => {
     tabGroups: [],
     pageFullScreen: false,
     windowFullScreen: false,
-    addressPlaceholder: 'Ara veya adres yaz',
     panelCollapsed: false,
     favorites: [],
     splitTabIds: [],

@@ -46,16 +46,16 @@ let window;
 const state = {
   tabs: [
     tab('a'),
+    tab('p', { isPrivate: true }),
     tab('m', { title: 'Inbox (2) - someone@gmail.com - Gmail', url: 'https://mail.google.com/mail/u/0/#inbox' }),
   ],
-  listOrder: ['a', 'm'],
+  listOrder: ['a', 'p', 'm'],
   developer: false,
   activeTabId: 'a',
   selectedTabIds: [],
   splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
-  addressPlaceholder: 'Search',
   panelCollapsed: false,
   favorites: [],
   spaces: [],
@@ -110,10 +110,11 @@ app
     const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const rowOf = (title) =>
       `[...document.querySelectorAll('aside li.row')].find((row) => row.textContent.includes(${JSON.stringify(title)}))`;
-    await eventually("document.querySelectorAll('aside li.row').length === 2");
+    await eventually("document.querySelectorAll('aside li.row').length === 3");
 
     assert.equal(await run(`${rowOf('Inbox (2)')}.hasAttribute('data-hover-preview')`), true);
-    assert.equal(await run(`${rowOf('Tab a')}.hasAttribute('data-hover-preview')`), false);
+    assert.equal(await run(`${rowOf('Tab a')}.hasAttribute('data-hover-preview')`), true);
+    assert.equal(await run(`${rowOf('Tab p')}.hasAttribute('data-hover-preview')`), false);
 
     const count = actions.length;
     await run(`${rowOf('Inbox (2)')}.dispatchEvent(new PointerEvent('pointerenter'))`);
@@ -142,12 +143,21 @@ app
     await run(`document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
     assert.equal(actions.at(-1).type, 'hide-preview');
     const before = actions.length;
-    await run(`${rowOf('Tab a')}.dispatchEvent(new PointerEvent('pointerenter'))`);
+    await run(`${rowOf('Tab p')}.dispatchEvent(new PointerEvent('pointerenter'))`);
     await wait(700);
     assert.equal(
       actions.slice(before).some((action) => action.type === 'show-preview'),
       false,
     );
+
+    const shownCount = actions.filter((action) => action.type === 'show-preview').length;
+    await run(`${rowOf('Tab a')}.dispatchEvent(new PointerEvent('pointerenter'))`);
+    await wait(700);
+    assert.equal(actions.filter((action) => action.type === 'show-preview').length, shownCount + 1);
+    assert.equal(actions.findLast((action) => action.type === 'show-preview').preview.tabId, 'a');
+    window.webContents.send(IpcChannel.state, JSON.stringify({ ...state, sidebarVisible: false }));
+    await eventually("!document.querySelector('aside.panel')");
+    assert.equal(actions.at(-1).type, 'hide-preview');
 
     const chosen = [];
     const preview = new HoverPreview(window, (choice) => chosen.push(choice));
