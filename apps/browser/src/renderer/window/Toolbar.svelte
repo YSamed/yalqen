@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId, TranslationStatus } from '../../shared/types';
   import type { AgentSessionState } from '../../shared/agent';
+  import { anchorRect } from './anchor';
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
   import { devStates, isNewTab, siteLabel } from './format';
@@ -126,8 +127,7 @@
   );
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
-    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
-    send({ type: 'open-extensions-menu', anchor: { x, y, width, height } });
+    send({ type: 'open-extensions-menu', anchor: anchorRect(event.currentTarget) });
   }
 
   $effect(() => {

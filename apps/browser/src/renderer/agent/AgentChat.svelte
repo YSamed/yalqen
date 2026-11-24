@@ -6,7 +6,6 @@
   import type { AgentChatComposer } from '../../shared/agent-panel';
   import type { TabSnapshot } from '../../shared/types';
   import type {
-    AgentChatImage,
     AgentChatMessage,
     AgentChatPermission,
     AgentChatSettings,
@@ -23,12 +22,14 @@
   import AgentMarkdown from './AgentMarkdown.svelte';
   import AgentRewind from './AgentRewind.svelte';
   import AgentToolCard from './AgentToolCard.svelte';
-  import ComposerSuggestions, { type ComposerSuggestion } from './ComposerSuggestions.svelte';
+  import ComposerSuggestions from './ComposerSuggestions.svelte';
+  import { composerSuggestions } from './composer-suggestions';
+  import { acceptsImage, MAX_IMAGES, readImage } from './images';
   import { reuseChatSnapshot } from '../../shared/chat-snapshot';
   import { complete, findTrigger } from '../../shared/composer-trigger';
   import { FILE_EDIT_TOOLS } from '../../shared/file-change';
   import ElementChip from './ElementChip.svelte';
-  import { modelName } from '../window/format';
+  import { modelName } from './model-name';
   import ComposerSettings from './ComposerSettings.svelte';
   import ProviderMark from './ProviderMark.svelte';
   import TabAttachments from './TabAttachments.svelte';
@@ -184,44 +185,11 @@
   // Floating over a page, the chat asks about that page unless other tabs are attached, like Dia.
   const pageContext = $derived(floating && composer.attachments.length === 0 ? attachable : null);
   const attachableTabs = $derived(tabs.filter((tab) => (!tab.isPrivate || developer) && /^https?:/.test(tab.url)));
-  const suggestions: (ComposerSuggestion & { insert: string | null })[] = $derived.by(() => {
-    if (!trigger || dismissedTrigger === `${trigger.kind}:${trigger.start}`) return [];
-    const query = trigger.query.toLowerCase();
-    if (trigger.kind === 'command')
-      return snapshot.state.commands
-        .filter((command) => command.name.toLowerCase().startsWith(query))
-        .slice(0, 8)
-        .map((command) => ({
-          key: `command:${command.name}`,
-          label: `/${command.name}`,
-          detail: command.argumentHint ? `${command.argumentHint} · ${command.description}` : command.description,
-          icon: 'code' as const,
-          insert: `/${command.name}`,
-        }));
-    const tab =
-      composer.attachments.length < MAX_CHAT_TABS
-        ? attachableTabs
-            .filter((item) => !composer.attachments.some((attached) => attached.id === item.id))
-            .filter((item) => item.title.toLowerCase().includes(query) || item.url.toLowerCase().includes(query))
-            .map((item) => ({
-              key: `tab:${item.id}`,
-              label: item.title || item.url,
-              detail: item.url,
-              icon: 'globe' as const,
-              insert: null,
-            }))
-        : [];
-    return [
-      ...tab,
-      ...files.map((file) => ({
-        key: `file:${file}`,
-        label: file,
-        detail: '',
-        icon: 'folder' as const,
-        insert: `@${file}`,
-      })),
-    ].slice(0, 8);
-  });
+  const suggestions = $derived(
+    !trigger || dismissedTrigger === `${trigger.kind}:${trigger.start}`
+      ? []
+      : composerSuggestions(trigger, snapshot.state.commands, composer.attachments, attachableTabs, files),
+  );
   const editedAfter = $derived.by(() => {
     const edited: string[] = [];
     let seen = false;
@@ -251,9 +219,6 @@
     { title: t('agentChat.suggestionErrors'), prompt: t('agentChat.promptErrors'), icon: 'warning' as const },
     { title: t('agentChat.suggestionDesign'), prompt: t('agentChat.promptDesign'), icon: 'sparkle' as const },
   ];
-  const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-  const MAX_IMAGES = 4;
-  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const errors = {
     'claude-not-found': '',
     'invalid-directory': t('agentPanel.invalidDirectory'),
@@ -365,40 +330,17 @@
     }
   }
 
-  function base64Of(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).slice(String(reader.result).indexOf(',') + 1));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function thumbnailOf(bitmap: ImageBitmap): string {
-    const scale = Math.min(1, 160 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.7);
-  }
-
   async function addImages(files: Iterable<File>): Promise<void> {
     imageRejected = false;
     for (const file of files) {
-      if (!IMAGE_TYPES.includes(file.type) || file.size > MAX_IMAGE_BYTES || composer.images.length >= MAX_IMAGES) {
+      if (!acceptsImage(file) || composer.images.length >= MAX_IMAGES) {
         imageRejected = true;
         continue;
       }
       try {
-        const bitmap = await createImageBitmap(file);
-        const thumbnail = thumbnailOf(bitmap);
-        bitmap.close();
-        const data = await base64Of(file);
+        const image = await readImage(file);
         if (composer.images.length >= MAX_IMAGES) continue;
-        updateDraft({
-          images: [...composer.images, { mediaType: file.type as AgentChatImage['mediaType'], data, thumbnail }],
-        });
+        updateDraft({ images: [...composer.images, image] });
       } catch {
         imageRejected = true;
       }
@@ -604,12 +546,9 @@
         {:else}
           <div class="suggestions">
             {#each prompts as prompt (prompt.title)}
-              <button class="suggestion" onclick={() => suggest(prompt.prompt)}
-                ><Icon name={prompt.icon} size={14} /><span>{prompt.title}</span><Icon
-                  name="forward"
-                  size={12}
-                /></button
-              >
+              <button class="suggestion" onclick={() => suggest(prompt.prompt)}>
+                <Icon name={prompt.icon} size={14} /><span>{prompt.title}</span><Icon name="forward" size={12} />
+              </button>
             {/each}
           </div>
         {/if}
@@ -665,15 +604,15 @@
     {#each snapshot.permissions as request (request.id)}
       <div class="approval">
         <div class="approval-heading">
-          <Icon name={request.questions.length ? 'info' : 'lock'} size={14} /><strong
-            >{t(
+          <Icon name={request.questions.length ? 'info' : 'lock'} size={14} /><strong>
+            {t(
               request.questions.length
                 ? 'agentChat.question'
                 : request.plan !== null
                   ? 'agentChat.planReady'
                   : 'agentChat.approval',
-            )}</strong
-          >
+            )}
+          </strong>
         </div>
         {#if request.questions.length}
           {#each request.questions as question (question.question)}
@@ -687,10 +626,9 @@
                     checked={(answers[request.id]?.[question.question] ?? '').split(', ').includes(option.label)}
                     onchange={() => selectAnswer(request.id, question.question, option.label, question.multiSelect)}
                   />
-                  <span
-                    ><strong>{option.label}</strong>{#if option.description}<small>{option.description}</small
-                      >{/if}</span
-                  >
+                  <span>
+                    <strong>{option.label}</strong>{#if option.description}<small>{option.description}</small>{/if}
+                  </span>
                 </label>
               {/each}
               <input
@@ -714,21 +652,22 @@
         {/if}
         <div class="approval-actions">
           <Button onclick={() => respond(request, false)}>{t('agentChat.deny')}</Button>
-          {#if request.canAlwaysAllow}<Button onclick={() => respond(request, true, true)}
-              >{t('agentChat.alwaysAllow')}</Button
-            >{/if}
+          {#if request.canAlwaysAllow}<Button onclick={() => respond(request, true, true)}>
+              {t('agentChat.alwaysAllow')}
+            </Button>{/if}
           <Button
             variant="primary"
             disabled={request.questions.some((question) => !answers[request.id]?.[question.question]?.trim())}
             onclick={() => respond(request, true)}
-            >{t(
+          >
+            {t(
               request.questions.length
                 ? 'agentChat.answer'
                 : request.plan !== null
                   ? 'agentChat.approvePlan'
                   : 'agentChat.allow',
-            )}</Button
-          >
+            )}
+          </Button>
         </div>
       </div>
     {/each}
@@ -740,9 +679,9 @@
       </div>
     {/if}
     {#if !follow && snapshot.messages.length}
-      <Button class="latest" variant="surface" icon="down" onclick={() => (follow = true)}
-        >{t('agentChat.latest')}</Button
-      >
+      <Button class="latest" variant="surface" icon="down" onclick={() => (follow = true)}>
+        {t('agentChat.latest')}
+      </Button>
     {/if}
   </div>
   {#if snapshot.state.error || failed}
@@ -766,9 +705,9 @@
       {#if snapshot.state.error === 'authentication-required' && SIGN_IN_PROVIDERS.includes(snapshot.state.provider)}
         <Button variant="primary" disabled={signingIn} onclick={signIn}>{t('agentChat.signIn')}</Button>
       {:else if snapshot.state.error === 'claude-not-found' || snapshot.state.error === 'authentication-required'}
-        <Button onclick={() => window.yalqen.send({ type: 'new-tab', url: SETUP_GUIDES[snapshot.state.provider] })}
-          >{t('agentPanel.installGuide')}</Button
-        >
+        <Button onclick={() => window.yalqen.send({ type: 'new-tab', url: SETUP_GUIDES[snapshot.state.provider] })}>
+          {t('agentPanel.installGuide')}
+        </Button>
       {:else if failed && !snapshot.state.error}<IconButton
           icon="reload"
           size="sm"
@@ -872,9 +811,9 @@
         <div class="chips">
           {#each composer.attachments as attachment (attachment.id)}
             <div class="attachment" title={attachment.url}>
-              <Icon name="globe" size={12} /><span class="attachment-text"
-                ><span>{attachment.title}</span><small>{displayHost(attachment.url)}</small></span
-              ><IconButton
+              <Icon name="globe" size={12} /><span class="attachment-text">
+                <span>{attachment.title}</span><small>{displayHost(attachment.url)}</small>
+              </span><IconButton
                 size="sm"
                 icon="close"
                 label={t('agentChat.removeTab')}
@@ -966,8 +905,10 @@
                 title={t('agentChat.context', {
                   used: numbers.format(usage.contextTokens),
                   limit: numbers.format(usage.contextLimit),
-                })}>{Math.round((usage.contextTokens / usage.contextLimit) * 100)}%</span
-              >{/if}
+                })}
+              >
+                {Math.round((usage.contextTokens / usage.contextLimit) * 100)}%
+              </span>{/if}
             <span title={t('agentChat.cost')}>{currency.format(usage.cost)}</span>
           </span>
         {/if}

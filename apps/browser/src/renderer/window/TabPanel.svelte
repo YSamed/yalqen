@@ -6,7 +6,6 @@
     ProfileKind,
     SidebarMenuKind,
     SidebarFooterItem,
-    AnchorRect,
     TabId,
     TabSnapshot,
   } from '../../shared/types';
@@ -14,9 +13,13 @@
   import { t } from '../../shared/i18n';
   import { placeSidebarFooterItem } from '../../shared/types';
   import { cubicOut } from 'svelte/easing';
+  import { prefersReducedMotion } from 'svelte/motion';
+  import { anchorRect } from './anchor';
+  import { footerButton } from './footer-buttons';
+  import { SpaceSwipe } from './space-swipe.svelte';
   import { flip } from 'svelte/animate';
   import { devStates } from './format';
-  import Icon, { type IconName } from '../ui/Icon.svelte';
+  import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import MediaPlayer from './MediaPlayer.svelte';
   import LiveFolders from './LiveFolders.svelte';
@@ -117,38 +120,17 @@
   let renaming: string | null = $state(null);
   let renameValue = $state('');
   let addingLiveFolder = $state(false);
-  const SPACE_SWIPE_COMMIT = 64;
-  const SPACE_SWIPE_IDLE_MS = 160;
-  const SPACE_SHIFT = 48;
-  const SPACE_SETTLE_MS = 300;
-  let spaceShift = $state(0);
-  let spaceShifting = $state(false);
-  let spaceFollowing = $state(false);
-  let swipeTotal = 0;
-  let swipeCross = 0;
-  let swipeAxis: 'x' | 'y' | null = null;
-  let swipeLastDx = 0;
-  let swipeLocked = false;
-  let swipeIdle: ReturnType<typeof setTimeout> | undefined;
-  let spaceSettle: ReturnType<typeof setTimeout> | undefined;
-  let shownSpaceId: string | undefined;
-  let swipedDirection: 1 | -1 | null = null;
   let moreButton: HTMLButtonElement | undefined = $state();
 
   $effect(() => window.yalqen.onAddLiveFolder(() => (addingLiveFolder = true)));
-
-  function rectOf(element: Element): AnchorRect {
-    const { x, y, width, height } = element.getBoundingClientRect();
-    return { x, y, width, height };
-  }
 
   function openSidebarMenu(kind: SidebarMenuKind, from: HTMLElement | undefined = moreButton): void {
     if (!from) return;
     send({
       type: 'open-sidebar-menu',
       kind,
-      anchor: rectOf(from),
-      ...(footerTools ? { footer: rectOf(footerTools) } : {}),
+      anchor: anchorRect(from),
+      ...(footerTools ? { footer: anchorRect(footerTools) } : {}),
     });
   }
 
@@ -163,60 +145,6 @@
 
   function setFooterItems(items: SidebarFooterItem[]): void {
     send({ type: 'set-sidebar-footer-items', items });
-  }
-
-  function footerButton(item: SidebarFooterItem): {
-    icon: IconName;
-    label: string;
-    popup?: boolean;
-    run: (button: HTMLElement) => void;
-  } {
-    switch (item) {
-      case 'history':
-        return { icon: 'history', label: t('toolbar.history'), run: () => send({ type: 'open-history' }) };
-      case 'bookmarks':
-        return {
-          icon: 'bookmarks',
-          label: t('toolbar.bookmarks'),
-          run: () => send({ type: 'toggle-bookmarks-panel' }),
-        };
-      case 'spaces':
-        return {
-          icon: 'sidebar',
-          label: t('spaces.switcher'),
-          popup: true,
-          run: (button) => openSidebarMenu('spaces', button),
-        };
-      case 'downloads':
-        return {
-          icon: 'download',
-          label: t('toolbar.downloads'),
-          popup: true,
-          run: (button) => openSidebarMenu('downloads', button),
-        };
-      case 'extensions':
-        return {
-          icon: 'extensions',
-          label: t('toolbar.extensions'),
-          popup: true,
-          run: (button) => send({ type: 'open-extensions-menu', anchor: rectOf(button) }),
-        };
-      case 'screenshot':
-        return {
-          icon: 'screenshot',
-          label: t('toolbar.fullPageScreenshot'),
-          run: () => send({ type: 'dev-command', id: 'full-page-screenshot' }),
-        };
-      case 'settings':
-        return { icon: 'settings', label: t('toolbar.settings'), run: () => send({ type: 'open-settings' }) };
-      case 'profile':
-        return {
-          icon: 'profile',
-          label: t('toolbar.profile'),
-          popup: true,
-          run: () => send({ type: 'open-profile-menu' }),
-        };
-    }
   }
 
   const send = window.yalqen.send;
@@ -352,71 +280,16 @@
     if (renameValue.trim() && renameValue !== name) send({ type: 'rename-tab-group', name, next: renameValue });
   }
 
-  function shiftSpace(offset: number, following: boolean): void {
-    if (reducedMotion.matches) return;
-    clearTimeout(spaceSettle);
-    spaceShifting = true;
-    spaceFollowing = following;
-    spaceShift = offset;
-    if (!following && offset === 0) spaceSettle = setTimeout(() => (spaceShifting = false), SPACE_SETTLE_MS);
-  }
-
-  function switchSpaceBySwipe(event: WheelEvent): void {
-    if (spaces.length < 2 || event.ctrlKey) return;
-    const dx = Math.abs(event.deltaX);
-    // Momentum only slows down, so a sharp rise in horizontal speed is a new swipe, not the old one's tail.
-    if ((swipeLocked || swipeAxis === 'y') && dx > 4 && dx > swipeLastDx * 2.5) endSpaceSwipe();
-    swipeLastDx = dx;
-    clearTimeout(swipeIdle);
-    swipeIdle = setTimeout(endSpaceSwipe, SPACE_SWIPE_IDLE_MS);
-    if (swipeLocked) return;
-    swipeTotal -= event.deltaX;
-    swipeCross += Math.abs(event.deltaY);
-    if (!swipeAxis) {
-      if (Math.abs(swipeTotal) + swipeCross < 8) return;
-      swipeAxis = Math.abs(swipeTotal) > swipeCross ? 'x' : 'y';
-    }
-    if (swipeAxis === 'y') return;
-    const direction = swipeTotal < 0 ? 1 : -1;
-    if (Math.abs(swipeTotal) >= SPACE_SWIPE_COMMIT) {
-      const index = spaces.findIndex((space) => space.id === activeSpaceId);
-      swipeLocked = true;
-      swipedDirection = direction;
-      send({ type: 'switch-space', id: spaces[(index + direction + spaces.length) % spaces.length].id });
-      return;
-    }
-    shiftSpace(swipeTotal * 0.6, true);
-  }
-
-  function endSpaceSwipe(): void {
-    swipeTotal = 0;
-    swipeCross = 0;
-    swipeAxis = null;
-    swipeLocked = false;
-    if (spaceFollowing) shiftSpace(0, false);
-  }
-
-  $effect(() => {
-    const previous = shownSpaceId;
-    shownSpaceId = activeSpaceId;
-    if (previous === undefined || previous === activeSpaceId) return;
-    const from = spaces.findIndex((space) => space.id === previous);
-    const to = spaces.findIndex((space) => space.id === activeSpaceId);
-    const direction = swipedDirection ?? (to > from ? 1 : -1);
-    swipedDirection = null;
-    if (from < 0 || to < 0) return;
-    shiftSpace(direction * SPACE_SHIFT, true);
-    requestAnimationFrame(() => requestAnimationFrame(() => shiftSpace(0, false)));
-  });
+  const spaceSwipe = new SpaceSwipe((id) => send({ type: 'switch-space', id }));
+  $effect(() => spaceSwipe.showSpace(activeSpaceId, spaces));
 
   function focusSelect(node: HTMLInputElement): void {
     node.focus();
     node.select();
   }
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
-    return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
+    return flip(node, { from, to }, { duration: prefersReducedMotion.current ? 0 : 200, easing: cubicOut });
   }
   const draggingPinned = $derived(dragGroup === 'pinned');
   const draggingListed = $derived(dragGroup === 'listed');
@@ -867,7 +740,7 @@
   class="panel card"
   class:dragging={dragId !== null}
   aria-label={t('tabPanel.tabs')}
-  onwheel={switchSpaceBySwipe}
+  onwheel={(event) => spaceSwipe.wheel(event, spaces, activeSpaceId)}
   style:--panel-full-width="{fullWidth}px"
 >
   <div class="top" style:height="{topInset}px"></div>
@@ -875,10 +748,10 @@
   <div class="body" style:transform={slide ? `translateX(${slide}px)` : undefined}>
     <div
       class="lists"
-      class:space-shifting={spaceShifting}
-      class:space-settling={spaceShifting && !spaceFollowing}
-      style:--space-shift="{spaceShift}px"
-      style:--space-fade={1 - Math.min(Math.abs(spaceShift) / 120, 0.6)}
+      class:space-shifting={spaceSwipe.shifting}
+      class:space-settling={spaceSwipe.shifting && !spaceSwipe.following}
+      style:--space-shift="{spaceSwipe.shift}px"
+      style:--space-fade={1 - Math.min(Math.abs(spaceSwipe.shift) / 120, 0.6)}
       bind:this={lists}
     >
       {#if favorites.length > 0}
@@ -1056,7 +929,7 @@
           >
             {#each footerItems as item (item)}
               {#if item !== 'spaces' || spaces.length > 0}
-                {@const button = footerButton(item)}
+                {@const button = footerButton(item, send, openSidebarMenu)}
                 <button
                   type="button"
                   class="footer-button tool-button"

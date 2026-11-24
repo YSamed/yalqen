@@ -1,17 +1,20 @@
+import { MediaQuery } from 'svelte/reactivity';
 import { DEFAULT_FRAME_THEME, frameGradient, readableFrameAmount, type FrameTheme } from '../../shared/frame-theme';
 import type { BrowserState, TabSnapshot } from '../../shared/types';
 
-export type ChromeMode = 'normal' | 'developer' | 'private';
+type ChromeMode = 'normal' | 'developer' | 'private';
 
 const PRIVATE_ACCENT = '#d4d4d8';
 
-export function chromeMode(browser: BrowserState, activeTab: TabSnapshot | null): ChromeMode {
+export const darkScheme = new MediaQuery('(prefers-color-scheme: dark)');
+
+function chromeMode(browser: BrowserState, activeTab: TabSnapshot | null): ChromeMode {
   if (!browser.tabModes) return 'normal';
   if (browser.developer || activeTab?.developer) return 'developer';
   return activeTab?.isPrivate ? 'private' : 'normal';
 }
 
-export function frameThemeOf(browser: BrowserState): FrameTheme {
+function frameThemeOf(browser: BrowserState): FrameTheme {
   return (
     browser.spaces.find((space) => space.id === browser.activeSpaceId)?.theme ??
     browser.frameTheme ??
@@ -19,14 +22,31 @@ export function frameThemeOf(browser: BrowserState): FrameTheme {
   );
 }
 
-export interface RootTheme {
-  material: BrowserState['material'];
-  accent: string;
-  frameTheme: FrameTheme;
+// Every renderer that shows browser chrome themes itself from these root attributes and variables.
+// Call during component initialisation: the effect reruns only when a theme input changes, not on every push.
+export function syncRootTheme(browser: () => BrowserState | null, activeTab: () => TabSnapshot | null): void {
+  const material = $derived(browser()?.material);
+  const accent = $derived(browser()?.accent);
+  const frameTheme = $derived.by(() => {
+    const state = browser();
+    return state && frameThemeOf(state);
+  });
+  const mode = $derived.by(() => {
+    const state = browser();
+    return state ? chromeMode(state, activeTab()) : 'normal';
+  });
+  $effect(() => {
+    if (material && accent && frameTheme) applyRootTheme(material, accent, frameTheme, mode, darkScheme.current);
+  });
 }
 
-// Every renderer that shows browser chrome themes itself from these root attributes and variables.
-export function applyRootTheme({ material, accent, frameTheme }: RootTheme, mode: ChromeMode, dark: boolean): void {
+function applyRootTheme(
+  material: BrowserState['material'],
+  accent: string,
+  frameTheme: FrameTheme,
+  mode: ChromeMode,
+  dark: boolean,
+): void {
   const root = document.documentElement;
   root.dataset.material = material;
   root.dataset.mode = mode;

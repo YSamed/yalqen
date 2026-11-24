@@ -3,12 +3,12 @@
   import { t } from '../../shared/i18n';
   import IconButton from '../ui/IconButton.svelte';
   import { cubicOut } from 'svelte/easing';
+  import { prefersReducedMotion } from 'svelte/motion';
   import { fly } from 'svelte/transition';
 
   let { media }: { media: MediaInfo } = $props();
 
   const send = window.yalqen.send;
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const DRAG_THRESHOLD = 4;
 
@@ -114,7 +114,7 @@
   }
 
   function appear(node: Element) {
-    return fly(node, { y: 6, duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
+    return fly(node, { y: 6, duration: prefersReducedMotion.current ? 0 : 200, easing: cubicOut });
   }
 </script>
 

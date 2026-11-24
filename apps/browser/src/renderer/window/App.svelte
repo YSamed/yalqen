@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { prefersReducedMotion } from 'svelte/motion';
   import { t } from '../../shared/i18n';
   import type { BrowserState } from '../../shared/types';
   import { slotRect } from '../../shared/split-layout';
@@ -7,7 +8,8 @@
   import type { LiveFolderView } from '../../shared/live-folders';
   import { reuseBrowserState } from '../../shared/browser-state';
   import { accentHex, DEFAULT_ACCENT } from '../../shared/accent';
-  import { applyRootTheme, chromeMode, frameThemeOf } from './root-theme';
+  import { syncRootTheme } from '../chrome/root-theme.svelte';
+  import { onBrowserState } from '../chrome/browser-state';
   import { isNewTab } from './format';
   import DeviceControls from './DeviceControls.svelte';
   import BookmarksPanel from './BookmarksPanel.svelte';
@@ -96,7 +98,6 @@
   const tabGroups = $derived(browser.tabGroups ?? NO_GROUPS);
   const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
   const developer = $derived(browser.developer);
-  const mode = $derived(chromeMode(browser, activeTab));
   const profile = $derived(browser.profile);
   const media = $derived(browser.media);
   const favorites = $derived(browser.favorites);
@@ -137,14 +138,12 @@
         ? 'running'
         : agentSession.status,
   );
-  const pageInset = CARD_PAGE_INSET;
-  const fullPanelWidth = PANEL_WIDTH;
   const pageFullScreen = $derived(browser.pageFullScreen);
   const floatingAgent = $derived(browser.agentFloating ?? false);
   const agentVisible = $derived(agentPanelOpen && !pageFullScreen && !floatingAgent);
   const collapsed = $derived(
     browser.panelCollapsed ||
-      (agentVisible && windowWidth < fullPanelWidth + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + pageInset * 2),
+      (agentVisible && windowWidth < PANEL_WIDTH + MIN_AGENT_PANEL_WIDTH + MIN_AGENT_PAGE_WIDTH + CARD_PAGE_INSET * 2),
   );
   const bookmarksPanel = $derived(browser.bookmarksPanel ?? null);
   const bookmarksVisible = $derived(bookmarksPanel !== null && !pageFullScreen && !agentVisible);
@@ -152,19 +151,11 @@
   const windowFullScreen = $derived(browser.windowFullScreen);
   const windowMenu = $derived(browser.windowMenu ?? false);
   // Card style tucks a collapsed sidebar away entirely; the traffic lights then sit inside the page card's toolbar.
-  const panelWidth = $derived(sidebarVisible && !collapsed ? fullPanelWidth : pageInset);
+  const panelWidth = $derived(sidebarVisible && !collapsed ? PANEL_WIDTH : CARD_PAGE_INSET);
   const agentWidth = $derived(fitAgentPanelWidth(requestedAgentWidth, windowWidth, panelWidth));
   const agentReservedWidth = $derived(
-    agentVisible ? agentWidth + pageInset : bookmarksVisible ? BOOKMARKS_PANEL_WIDTH + pageInset : 0,
+    agentVisible ? agentWidth + CARD_PAGE_INSET : bookmarksVisible ? BOOKMARKS_PANEL_WIDTH + CARD_PAGE_INSET : 0,
   );
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
-  let prefersDark = $state(darkScheme.matches);
-  $effect(() => {
-    const sync = () => (prefersDark = darkScheme.matches);
-    darkScheme.addEventListener('change', sync);
-    return () => darkScheme.removeEventListener('change', sync);
-  });
   let shownWidth = $state(PANEL_WIDTH);
   let panelSlide = $state(0);
   let panelMode = '';
@@ -228,7 +219,7 @@
     panelMode = mode;
     cancelAnimationFrame(panelAnimation);
     const from = untrack(() => shownWidth);
-    if (!modeChanged || !animateModeChanges || reducedMotion.matches || from === target) {
+    if (!modeChanged || !animateModeChanges || untrack(() => prefersReducedMotion.current) || from === target) {
       shownWidth = target;
       panelSlide = 0;
       contentCollapsed = collapsed;
@@ -263,7 +254,7 @@
     const bounds = {
       x: pageLeft,
       y: 0,
-      width: Math.max(0, windowWidth - panelWidth - pageInset - agentReservedWidth),
+      width: Math.max(0, windowWidth - panelWidth - CARD_PAGE_INSET - agentReservedWidth),
       height: 0,
     };
     return ids.map((id, index) => {
@@ -271,45 +262,37 @@
       return { tab: tabs.find((tab) => tab.id === id) ?? null, x, width };
     });
   });
-  const topInset = CHROME_HEIGHT;
-  const pageRadius = PAGE_RADIUS;
-  const menuInset = $derived(windowMenu && !pageFullScreen && !sidebarVisible ? pageInset + CONTROL_SIZE + 8 : 0);
+  const menuInset = $derived(windowMenu && !pageFullScreen && !sidebarVisible ? CARD_PAGE_INSET + CONTROL_SIZE + 8 : 0);
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
-  const material = $derived(browser.material);
-  const accent = $derived(browser.accent);
-  const frameTheme = $derived(frameThemeOf(browser));
-  $effect(() => applyRootTheme({ material, accent, frameTheme }, mode, prefersDark));
+  syncRootTheme(
+    () => browser,
+    () => activeTab,
+  );
 
   $effect.pre(() => {
     if (!stateReceived) return;
     window.yalqen.setLayout({
       panelWidth,
       panelSlide,
-      chromeHeight: topInset,
-      pageInset,
-      pageRadius,
+      chromeHeight: CHROME_HEIGHT,
+      pageInset: CARD_PAGE_INSET,
+      pageRadius: PAGE_RADIUS,
       agentPanelWidth: agentReservedWidth,
     });
   });
 
   onMount(() => {
-    const initialState = window.yalqen.getState();
+    const offState = onBrowserState((next) => {
+      browser = reuseBrowserState(browser, next);
+      if (stateReceived) return;
+      stateReceived = true;
+      requestAnimationFrame(() => (animateModeChanges = true));
+    });
     try {
       const savedWidth = Number(localStorage.getItem('yalqen:agent-panel-width'));
       if (Number.isFinite(savedWidth) && savedWidth >= MIN_AGENT_PANEL_WIDTH) requestedAgentWidth = savedWidth;
     } catch {}
-    void initialState.then((next) => {
-      browser = reuseBrowserState(browser, next);
-      stateReceived = true;
-      requestAnimationFrame(() => (animateModeChanges = true));
-    });
-    const offState = window.yalqen.onState((serializedState) => {
-      browser = reuseBrowserState(browser, JSON.parse(serializedState));
-      stateReceived = true;
-    });
-    return () => {
-      offState();
-    };
+    return offState;
   });
 </script>
 
@@ -322,7 +305,7 @@
   style:grid-template-columns={pageFullScreen
     ? 'minmax(0, 1fr)'
     : `${shownWidth}px minmax(0, 1fr)${sideVisible ? ` ${agentReservedWidth}px` : ''}`}
-  style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${topInset}px minmax(0, 1fr)`}
+  style:grid-template-rows={pageFullScreen ? 'minmax(0, 1fr)' : `${CHROME_HEIGHT}px minmax(0, 1fr)`}
 >
   {#if !pageFullScreen}
     {#if sidebarVisible && !(collapsed && contentCollapsed)}
@@ -337,9 +320,9 @@
         pageRect={() => pageElement?.getBoundingClientRect()}
         onSplitDrop={(next) => (splitDrop = next)}
         groups={tabGroups}
-        slide={shownWidth - fullPanelWidth}
-        {topInset}
-        fullWidth={fullPanelWidth}
+        slide={shownWidth - PANEL_WIDTH}
+        topInset={CHROME_HEIGHT}
+        fullWidth={PANEL_WIDTH}
         {agents}
         updateReady={browser.updateReady ?? false}
         {downloads}
@@ -376,7 +359,7 @@
         ? Math.max(wcoTbleftInset, menuInset)
         : Math.max(Math.max(0, wcoTbleftInset - shownWidth), menuInset)}
       alignLeading={!sidebarVisible && !IS_MAC}
-      trailingInset={pageInset + wcoTbrightInset}
+      trailingInset={CARD_PAGE_INSET + wcoTbrightInset}
       centerOffset={spanToolbar ? 0 : -shownWidth / 2}
     />
   {/if}
@@ -405,7 +388,7 @@
     </div>
   {/if}
   {#if windowMenu && !pageFullScreen}
-    <div class="menu-button" style:height="{topInset}px"><MenuButton /></div>
+    <div class="menu-button" style:height="{CHROME_HEIGHT}px"><MenuButton /></div>
   {/if}
   {#if devToolsDivider}<DevToolsDivider rect={devToolsDivider} />{/if}
   {#each splitPanes as pane, index (index)}
@@ -439,19 +422,19 @@
     class="page"
     class:blank
     class:split={splitPanes.length > 1}
-    style:margin={pageFullScreen ? '0' : `0 ${pageInset}px ${pageInset}px 0`}
+    style:margin={pageFullScreen ? '0' : `0 ${CARD_PAGE_INSET}px ${CARD_PAGE_INSET}px 0`}
     style:border-radius={pageFullScreen || splitPanes.length > 1
       ? '0'
       : blank
-        ? `0 0 ${pageRadius}px ${pageRadius}px`
-        : `${pageRadius}px`}
+        ? `0 0 ${PAGE_RADIUS}px ${PAGE_RADIUS}px`
+        : `${PAGE_RADIUS}px`}
   >
     {#each splitPanes as pane, index (index)}
       <div
         class="pane-bg"
         style:left="{pane.x - pageLeft}px"
         style:width="{pane.width}px"
-        style:border-radius="0 0 {pageRadius}px {pageRadius}px"
+        style:border-radius="0 0 {PAGE_RADIUS}px {PAGE_RADIUS}px"
       ></div>
     {/each}
     <div class="viewport" aria-hidden="true">

@@ -42,6 +42,7 @@ Modules depend on interfaces they are handed rather than on `main.ts`, for examp
 | Folder         | Contents                                                                      |
 | -------------- | ----------------------------------------------------------------------------- |
 | `ui/`          | Primitives shared by every page: buttons, fields, selects, switches and icons |
+| `chrome/`      | State subscription and root theme shared by the window interface and the floating chat |
 | `window/`      | The window interface: `App`, `TabPanel`, `Toolbar` and device controls        |
 | `agent/` | Chat, terminal, project controls and the floating panel |
 | `settings/`    | The settings shell, one component per pane and `SettingRow`                   |

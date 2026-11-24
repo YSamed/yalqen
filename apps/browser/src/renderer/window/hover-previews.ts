@@ -1,6 +1,7 @@
 import { previewKind } from '../../shared/previews';
 import type { UiAction } from '../../shared/types';
 import { interfaceTheme } from './tooltips';
+import { anchorRect } from './anchor';
 
 const DELAY_MS = 450;
 const RETURN_MS = 600;
@@ -12,10 +13,10 @@ export function createHoverPreviews(send: (action: UiAction) => void) {
 
   function request(element: HTMLElement, tabId: string | null, url: string): void {
     if (!element.isConnected) return;
-    const { x, y, width, height } = element.getBoundingClientRect();
-    if (width === 0 || height === 0) return;
+    const anchor = anchorRect(element);
+    if (anchor.width === 0 || anchor.height === 0) return;
     requested = element;
-    send({ type: 'show-preview', preview: { tabId, url, anchor: { x, y, width, height }, theme: interfaceTheme() } });
+    send({ type: 'show-preview', preview: { tabId, url, anchor, theme: interfaceTheme() } });
   }
 
   function enter(element: HTMLElement, tabId: string | null, url: string): void {
