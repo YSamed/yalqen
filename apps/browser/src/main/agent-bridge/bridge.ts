@@ -1,4 +1,4 @@
-import type { AgentSetupKind } from '../../shared/types.js';
+import type { AgentSetupKind } from '../../shared/agent.js';
 import { TRACES_PATH } from './tracing.js';
 import { DEFAULT_PORT, MCP_PATH, startBridgeServer, type BridgeServer, type ClientInfo } from './server.js';
 import type { BridgeHost } from './tools.js';

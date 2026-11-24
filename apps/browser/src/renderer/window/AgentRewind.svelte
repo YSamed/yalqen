@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../../shared/i18n';
-  import type { AgentRewindPreview } from '../../shared/types';
+  import type { AgentRewindPreview } from '../../shared/agent';
   import Button from '../ui/Button.svelte';
   import Icon from '../ui/Icon.svelte';
 

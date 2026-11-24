@@ -1,12 +1,6 @@
 <script lang="ts">
-  import type {
-    AgentSessionState,
-    DownloadsSummary,
-    TabId,
-    TabSnapshot,
-    ToolbarButtonId,
-    TranslationStatus,
-  } from '../../shared/types';
+  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId, TranslationStatus } from '../../shared/types';
+  import type { AgentSessionState } from '../../shared/agent';
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
   import { devStates, isNewTab, siteLabel } from './format';

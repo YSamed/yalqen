@@ -1,5 +1,5 @@
 import type { WebContents } from 'electron';
-import type { AgentChatImage } from '../../shared/types.js';
+import type { AgentChatImage } from '../../shared/agent.js';
 import type { VisualComparisonViewport } from '../../shared/visual-comparison.js';
 import { MAX_VISUAL_COMPARISON_EDGE, MAX_VISUAL_COMPARISON_IMAGE_BYTES } from '../../shared/visual-comparison.js';
 import { VisualComparisonError } from './visual-comparison.js';

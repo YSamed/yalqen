@@ -1,5 +1,6 @@
 import type { WebContents } from 'electron';
-import type { AgentActionPolicy, RequestRule } from '../../shared/types.js';
+import type { RequestRule } from '../../shared/types.js';
+import type { AgentActionPolicy } from '../../shared/agent.js';
 import { maskHeaders, truncateBytes } from './redact.js';
 import { callPageToolExpression, LIST_PAGE_TOOLS, pageToolResult, sanitizePageTools } from './webmcp.js';
 import type { TabManager } from '../tabs/tabs.js';

@@ -1,16 +1,15 @@
 import { ipcMain, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import {
-  AgentBridgeChannel,
   AutofillChannel,
   ExtensionsChannel,
   PasswordsChannel,
   SETTINGS_URL,
   SettingsChannel,
-  type AgentBridgeView,
   type ExtensionInfo,
   type PasswordsView,
   type SettingsView,
 } from '../../shared/types.js';
+import { AgentBridgeChannel, type AgentBridgeView } from '../../shared/agent.js';
 
 const settings = new URL(SETTINGS_URL);
 

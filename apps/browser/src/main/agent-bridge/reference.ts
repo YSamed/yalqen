@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { AgentElementRef } from '../../shared/types.js';
+import type { AgentElementRef } from '../../shared/agent.js';
 import type { Truncated } from './redact.js';
 import type { Box } from './selection.js';
 

@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
   AutofillChannel,
-  AgentBridgeChannel,
   ExtensionsChannel,
   PageChannel,
   PasswordsChannel,
@@ -9,11 +8,6 @@ import {
   SETTINGS_URL,
   SettingsChannel as settingsChannel,
   SitePermissionsChannel,
-  type AgentBridgeView,
-  type AgentSetupKind,
-  type AgentClientId,
-  type AgentConnections,
-  type AgentSetupResult,
   type ClearDataRequest,
   type ExtensionInfo,
   type PasswordsView,
@@ -30,6 +24,14 @@ import {
   type SitePermissionsView,
   type SubmittedCredential,
 } from '../shared/types.js';
+import {
+  AgentBridgeChannel,
+  type AgentBridgeView,
+  type AgentSetupKind,
+  type AgentClientId,
+  type AgentConnections,
+  type AgentSetupResult,
+} from '../shared/agent.js';
 import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
 import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';

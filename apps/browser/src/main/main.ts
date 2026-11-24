@@ -22,11 +22,11 @@ import {
   NEW_TAB_URL,
   IpcChannel,
   type ChromeLayout,
-  type AgentBridgeView,
   type ClearDataRequest,
   type UiAction,
   type SettingsView,
 } from '../shared/types.js';
+import { type AgentBridgeView } from '../shared/agent.js';
 import { AdBlocker } from './privacy/adblock.js';
 import { SiteProtections } from './privacy/site-protections.js';
 import { LocalThreatLists } from './privacy/threat-lists.js';

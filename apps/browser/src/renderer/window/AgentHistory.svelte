@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t, getLocale } from '../../shared/i18n';
-  import type { AgentChatSession } from '../../shared/types';
+  import type { AgentChatSession } from '../../shared/agent';
   import { timeAgo } from '../../shared/relative-time';
   import Button from '../ui/Button.svelte';
   import Icon from '../ui/Icon.svelte';

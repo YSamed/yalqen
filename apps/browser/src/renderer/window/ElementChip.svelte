@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../../shared/i18n';
   import { displayHost } from '../../shared/hosts';
-  import type { AgentElementRef } from '../../shared/types';
+  import type { AgentElementRef } from '../../shared/agent';
   import Icon from '../ui/Icon.svelte';
   import IconButton from '../ui/IconButton.svelte';
 

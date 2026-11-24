@@ -1,5 +1,5 @@
 import { nativeImage } from 'electron';
-import type { AgentChatImage } from '../../shared/types.js';
+import type { AgentChatImage } from '../../shared/agent.js';
 import type { ResponsiveScanViewport } from '../../shared/responsive-scan.js';
 import { MAX_VISUAL_COMPARISON_EDGE, MAX_VISUAL_COMPARISON_IMAGE_BYTES } from '../../shared/visual-comparison.js';
 

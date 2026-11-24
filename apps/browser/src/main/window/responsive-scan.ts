@@ -1,4 +1,5 @@
-import type { AgentChatImage, TabId } from '../../shared/types.js';
+import type { TabId } from '../../shared/types.js';
+import type { AgentChatImage } from '../../shared/agent.js';
 import {
   RESPONSIVE_SCAN_VIEWPORTS,
   type ResponsiveScanErrorCode,

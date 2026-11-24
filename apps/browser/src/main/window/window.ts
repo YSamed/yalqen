@@ -27,8 +27,6 @@ import {
   sanitizeSidebarFooterItems,
   type AnchorRect,
   type BrowserState,
-  type AgentElementRef,
-  type AgentProviderId,
   type ChromeLayout,
   type DevCommandId,
   type DeviceId,
@@ -40,6 +38,7 @@ import {
   type UiAction,
   type WindowMaterial,
 } from '../../shared/types.js';
+import { type AgentElementRef, type AgentProviderId } from '../../shared/agent.js';
 import { isTabMode, modeFlags } from '../../shared/tab-modes.js';
 import { canBookmark, type BookmarkStore } from '../library/bookmarks.js';
 import { siteIcons } from '../library/site-icons.js';

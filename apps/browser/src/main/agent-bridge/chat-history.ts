@@ -1,4 +1,4 @@
-import type { AgentChatMessage, AgentChatPart, AgentChatSession } from '../../shared/types.js';
+import type { AgentChatMessage, AgentChatPart, AgentChatSession } from '../../shared/agent.js';
 import { normalizeAgentContexts } from '../../shared/agent-panel.js';
 
 const MAX_TEXT = 64 * 1024;

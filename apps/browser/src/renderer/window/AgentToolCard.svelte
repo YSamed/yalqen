@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t, type MessageKey } from '../../shared/i18n';
   import { fileChange, relativePath } from '../../shared/file-change';
-  import type { AgentChatPart } from '../../shared/types';
+  import type { AgentChatPart } from '../../shared/agent';
   import { flowVerificationView } from '../../shared/verification-result';
   import Icon from '../ui/Icon.svelte';
 

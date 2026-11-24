@@ -3,7 +3,8 @@
   import { Terminal } from '@xterm/xterm';
   import { FitAddon } from '@xterm/addon-fit';
   import '@xterm/xterm/css/xterm.css';
-  import type { AgentSessionState, AgentTerminalOutput, TabSnapshot } from '../../shared/types';
+  import type { TabSnapshot } from '../../shared/types';
+  import type { AgentSessionState, AgentTerminalOutput } from '../../shared/agent';
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
   import Icon from '../ui/Icon.svelte';

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../../shared/i18n';
-  import type { AgentBackgroundChat } from '../../shared/types';
+  import type { AgentBackgroundChat } from '../../shared/agent';
   import IconButton from '../ui/IconButton.svelte';
 
   let { chats }: { chats: AgentBackgroundChat[] } = $props();

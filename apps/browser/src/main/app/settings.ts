@@ -1,13 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type {
-  AgentActionPolicy,
   InterfaceLanguage,
   PromptPermission,
   SecureDnsSetting,
   SettingsValues,
   ThemeSource,
 } from '../../shared/types.js';
+import type { AgentActionPolicy } from '../../shared/agent.js';
 import { DEFAULT_SIDEBAR_FOOTER_ITEMS, sanitizeSidebarFooterItems, DEFAULT_ZOOM_FACTORS } from '../../shared/types.js';
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSpaceRules } from '../../shared/space-rules.js';

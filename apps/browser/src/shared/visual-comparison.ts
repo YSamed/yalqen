@@ -1,4 +1,5 @@
-import type { AgentChatImage, TabId } from './types.js';
+import type { TabId } from './types.js';
+import type { AgentChatImage } from './agent.js';
 
 export const MAX_VISUAL_COMPARISON_IMAGE_BYTES = 2 * 1024 * 1024;
 export const MAX_VISUAL_COMPARISON_EDGE = 1600;

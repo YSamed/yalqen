@@ -2,15 +2,17 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
   IpcChannel as channel,
   type BrowserState,
+  type ChromeLayout,
+  type UiAction,
+  type YalqenApi,
+} from '../shared/types.js';
+import {
   type AgentSessionState,
   type AgentTerminalSnapshot,
   type AgentChatSession,
   type AgentChatSnapshot,
   type AgentRewindPreview,
-  type ChromeLayout,
-  type UiAction,
-  type YalqenApi,
-} from '../shared/types.js';
+} from '../shared/agent.js';
 import type { VisualComparisonPreview, VisualComparisonReview } from '../shared/visual-comparison.js';
 import type { ResponsiveScanPreview, ResponsiveScanReview } from '../shared/responsive-scan.js';
 

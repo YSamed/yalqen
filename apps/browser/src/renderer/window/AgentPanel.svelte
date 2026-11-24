@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
+  import type { TabSnapshot } from '../../shared/types';
   import type {
     AgentBackgroundChat,
     AgentChatState,
@@ -8,8 +9,7 @@
     AgentProviderId,
     AgentSessionState,
     ProjectRunState,
-    TabSnapshot,
-  } from '../../shared/types';
+  } from '../../shared/agent';
   import { AGENT_LABELS, DEFAULT_AGENT_PANEL_WIDTH, SIGN_IN_PROVIDERS } from '../../shared/agent-panel';
   import type { AgentChatComposer } from '../../shared/agent-panel';
   import { t } from '../../shared/i18n';

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { IPty, IPtyForkOptions } from 'node-pty';
 import { EMPTY_AGENT_SESSION, isAgentTerminalSize } from '../../shared/agent-panel.js';
 import { defaultShell } from '../platform.js';
-import type { AgentSessionState, AgentTerminalOutput, AgentTerminalSnapshot } from '../../shared/types.js';
+import type { AgentSessionState, AgentTerminalOutput, AgentTerminalSnapshot } from '../../shared/agent.js';
 
 const MAX_REPLAY_LENGTH = 1024 * 1024;
 const MAX_INPUT_LENGTH = 64 * 1024;

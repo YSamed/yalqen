@@ -1,7 +1,8 @@
 <script lang="ts">
   import { getLocale, t } from '../../shared/i18n';
   import { dayLabel, timeAgo } from '../../shared/relative-time';
-  import type { AgentChatSession, CommandBarAction } from '../../shared/types';
+  import type { CommandBarAction } from '../../shared/types';
+  import type { AgentChatSession } from '../../shared/agent';
   import Icon from '../ui/Icon.svelte';
 
   let {

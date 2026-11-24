@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import type { AgentProviderId } from '../../shared/types.js';
+import type { AgentProviderId } from '../../shared/agent.js';
 import type { AcpAgent } from './acp-client.js';
 import { childEnv, findCommand } from './shell-command.js';
 

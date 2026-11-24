@@ -4,6 +4,7 @@
   import { t } from '../../shared/i18n';
   import { EMPTY_AGENT_CHAT, MAX_CHAT_TABS, SIGN_IN_PROVIDERS } from '../../shared/agent-panel';
   import type { AgentChatComposer } from '../../shared/agent-panel';
+  import type { TabSnapshot } from '../../shared/types';
   import type {
     AgentChatImage,
     AgentChatMessage,
@@ -14,8 +15,7 @@
     AgentElementRef,
     AgentPermissionMode,
     AgentWorkMode,
-    TabSnapshot,
-  } from '../../shared/types';
+  } from '../../shared/agent';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Icon from '../ui/Icon.svelte';

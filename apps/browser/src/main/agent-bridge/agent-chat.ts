@@ -27,7 +27,7 @@ import type {
   AgentChatPermission,
   AgentChatSnapshot,
   AgentChatState,
-} from '../../shared/types.js';
+} from '../../shared/agent.js';
 import type { AgentConnection } from './agent-session.js';
 import { historyMessages, sessionOf } from './chat-history.js';
 import { EFFORTS, MAX_MODELS, type ChatPreferences } from './chat-preferences.js';

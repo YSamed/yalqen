@@ -8,7 +8,7 @@ import type {
   AgentProjectSummary,
   AgentProviderId,
   AgentTerminalOutput,
-} from '../../shared/types.js';
+} from '../../shared/agent.js';
 import { acpClient } from '../agent-bridge/acp-client.js';
 import { AgentChat } from '../agent-bridge/agent-chat.js';
 import { ACP_AGENTS } from '../agent-bridge/agent-providers.js';

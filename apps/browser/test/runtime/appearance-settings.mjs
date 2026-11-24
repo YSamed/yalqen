@@ -7,6 +7,7 @@ import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helper
 import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
 import internal from '../../dist/main/pages/internal-pages.js';
+import agent from '../../dist/shared/agent.js';
 import types from '../../dist/shared/types.js';
 import siteStorage from '../../dist/shared/site-storage.js';
 import settingsPage from '../../dist/main/app/settings-page.js';
@@ -49,7 +50,7 @@ app
       neverSave: [],
     }));
     settingsPage.handleSettingsCall(types.AutofillChannel.list, () => ({ available: false, records: [] }));
-    settingsPage.handleSettingsCall(types.AgentBridgeChannel.status, () => ({
+    settingsPage.handleSettingsCall(agent.AgentBridgeChannel.status, () => ({
       enabled: false,
       port: null,
       error: null,

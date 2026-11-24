@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { AgentConnectionState, AgentSetupResult } from '../../shared/types.js';
+import type { AgentConnectionState, AgentSetupResult } from '../../shared/agent.js';
 
 const TABLE = 'mcp_servers.yalqen';
 const HEADER = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/;

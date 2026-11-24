@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import type { AgentConnectionState, AgentSetupResult } from '../../shared/types.js';
+import type { AgentConnectionState, AgentSetupResult } from '../../shared/agent.js';
 import { defaultShell, IS_POSIX, isExecutableScript } from '../platform.js';
 
 const TIMEOUT_MS = 20_000;
