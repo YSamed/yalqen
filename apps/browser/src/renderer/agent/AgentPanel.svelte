@@ -18,7 +18,6 @@
   import AgentChat from './AgentChat.svelte';
   import BackgroundChats from './BackgroundChats.svelte';
   import AgentHistory from './AgentHistory.svelte';
-  import ProviderMark, { type ProviderActivity } from './ProviderMark.svelte';
 
   let {
     open,
@@ -95,12 +94,6 @@
   );
   const sessionOpen = $derived(
     view === 'terminal' ? active : ['starting', 'thinking', 'approval', 'ready'].includes(chat.status),
-  );
-  const working = $derived(
-    view === 'terminal' ? session.status === 'starting' : chatBusy && chat.status !== 'approval',
-  );
-  const activity: ProviderActivity = $derived(
-    hasError ? 'error' : view === 'chat' && chat.status === 'approval' ? 'waiting' : working ? 'working' : 'idle',
   );
 
   async function chooseProject(): Promise<boolean> {
@@ -197,17 +190,15 @@
   ></button>
   <header>
     <div class="identity">
-      <span class="header-mark"
-        ><ProviderMark mark={view === 'terminal' ? 'claude-code' : chat.provider} {activity} /></span
-      >
       <strong>Yalqen AI</strong>
       <span
         class="status"
         class:error={hasError}
         class:waiting={view === 'chat' && chat.status === 'approval'}
         role="status"
-        >{#if showStatus}<span class="dot" class:active={sessionOpen}></span>{status}{/if}</span
       >
+        {#if showStatus}<span class="dot" class:active={sessionOpen}></span>{status}{/if}
+      </span>
     </div>
     <div class="actions">
       {#if view === 'terminal' && active}
@@ -272,8 +263,10 @@
             .filter(Boolean)
             .join('\n')}
           disabled={projectLocked || requesting}
-          onclick={chooseProject}>{projectName}</Button
-        >{/if}
+          onclick={chooseProject}
+        >
+          {projectName}
+        </Button>{/if}
       {#if session.directory && run.command}
         <div class="run">
           {#if run.status === 'running' && run.url}
@@ -282,8 +275,10 @@
               variant="tonal"
               icon="globe"
               title={t('agentRun.open', { url: run.url })}
-              onclick={openRun}>{new URL(run.url).host}</Button
+              onclick={openRun}
             >
+              {new URL(run.url).host}
+            </Button>
           {:else if runActive}
             <span class="run-status">{t(run.status === 'starting' ? 'agentRun.starting' : 'agentRun.running')}</span>
           {/if}
@@ -364,63 +359,20 @@
     height: 100%;
     min-width: 0;
     overflow: visible;
-    border-radius: 16px;
+    border-radius: 10px;
     background: var(--page);
-    box-shadow: var(--page-shadow);
     -webkit-app-region: no-drag;
   }
-  :global([data-material='glass']) .agent-panel {
-    background: transparent;
-    box-shadow: none;
-  }
-  /* The floating view is see-through around the card, so the panel always paints its own surface. */
-  /* The card style's header drags the window; over the page the header drags the floating card instead. */
+  /* The header drags the window; over the page the header drags the floating card instead. */
   .agent-panel.floating header {
     -webkit-app-region: no-drag;
   }
   .agent-panel.floating :global(.welcome) {
     display: none;
   }
+  /* The floating view is see-through around the card, so the panel always paints its own surface. */
   .agent-panel.floating {
     --page: light-dark(#f7f7f8, #2b2b2d);
-    background: var(--page);
-    box-shadow: inset 0 0 0 1px light-dark(rgb(16 18 24 / 0.1), rgb(255 255 255 / 0.1));
-  }
-  :global([data-style='card']) .agent-panel {
-    border-radius: 10px;
-    background: var(--page);
-    box-shadow: none;
-  }
-  :global([data-style='card']) header {
-    height: 41px;
-    padding: 0 6px;
-    -webkit-app-region: drag;
-  }
-  :global([data-style='card']) .actions {
-    display: contents;
-  }
-  :global([data-style='card']) header :global(.new-chat) {
-    order: -1;
-  }
-  :global([data-style='card']) .identity {
-    order: 0;
-    justify-content: center;
-  }
-  :global([data-style='card']) .header-mark {
-    display: none;
-  }
-  :global([data-style='card']) .identity strong {
-    height: 26px;
-    padding: 0 12px;
-    border-radius: 13px;
-    background: rgb(255 255 255 / 0.92);
-    color: color-mix(in srgb, var(--frame-primary, var(--accent)) 70%, #000);
-    font-size: 12.5px;
-    line-height: 26px;
-    letter-spacing: 0;
-  }
-  :global([data-style='card']) .actions > :global(:not(.new-chat)) {
-    order: 1;
   }
   .resize-handle[hidden] {
     display: none;
@@ -450,35 +402,37 @@
     flex: none;
     justify-content: space-between;
     gap: 8px;
-    height: 48px;
-    padding: 0 10px 0 var(--ai-gutter);
+    height: 41px;
+    padding: 0 6px;
+    -webkit-app-region: drag;
+  }
+  header :global(.new-chat) {
+    order: -1;
   }
   .identity {
     flex: 1;
+    order: 0;
+    justify-content: center;
     gap: 8px;
     min-width: 0;
   }
-  .header-mark {
-    display: grid;
-    flex: none;
-    width: 26px;
-    height: 26px;
-    margin-left: -4px;
-  }
-  .header-mark :global(.glyph) {
-    width: 16px;
-    height: 16px;
-  }
   .identity strong {
     flex: none;
-    font-size: 14px;
+    height: 26px;
+    padding: 0 12px;
+    border-radius: 13px;
+    background: rgb(255 255 255 / 0.92);
+    color: color-mix(in srgb, var(--frame-primary, var(--accent)) 70%, #000);
+    font-size: 12.5px;
     font-weight: 600;
-    letter-spacing: -0.2px;
+    line-height: 26px;
     white-space: nowrap;
   }
   .actions {
-    flex: none;
-    gap: 2px;
+    display: contents;
+  }
+  .actions > :global(:not(.new-chat)) {
+    order: 1;
   }
   .status {
     gap: 6px;

@@ -356,16 +356,6 @@
                   {/each}
                 </div>
               {:else}
-                {#if tab.security !== 'local'}
-                  <IconButton
-                    size="sm"
-                    icon="lock"
-                    class={['site', tab.security]}
-                    label={tab.security === 'secure' ? t('toolbar.siteInfoSecure') : t('toolbar.siteInfoNotSecure')}
-                    title={t('toolbar.siteInfo')}
-                    onclick={() => send({ type: 'open-site-info' })}
-                  />
-                {/if}
                 {#if developer}
                   <span class="private-badge developer" title={t('toolbar.developerWindow')}>
                     <Icon name="gauge" size={14} />
@@ -378,7 +368,6 @@
               {/if}
               <button
                 class="address"
-                class:after-site={modeSwitch || tab.security !== 'local' || tab.isPrivate}
                 title={t('toolbar.addressTitle')}
                 aria-current="page"
                 onclick={() => send({ type: 'open-address' })}
@@ -400,15 +389,6 @@
                 />
               {/if}
               <PageActions {tab} {zoom} {defaultZoom} />
-              <IconButton
-                size="sm"
-                icon="close"
-                tone="muted"
-                class="close"
-                label={t('toolbar.close')}
-                title={t('toolbar.closeTitle')}
-                onclick={() => send({ type: 'close-tab', id: tab.id })}
-              />
             </div>
           </li>
         {/key}
@@ -569,13 +549,9 @@
     display: flex;
     grid-area: bar;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     min-width: 0;
     -webkit-app-region: drag;
-  }
-
-  .toolbar.card {
-    gap: 4px;
   }
 
   .toolbar.card.span {
@@ -752,13 +728,6 @@
     color: var(--text-muted);
   }
 
-  .toolbar.card .leading {
-    min-width: 0;
-    justify-content: flex-start;
-    gap: 6px;
-    padding-left: 8px;
-  }
-
   .toolbar.card.span .leading {
     padding-top: 6px;
     padding-left: 0;
@@ -766,8 +735,7 @@
   }
 
   .toolbar.card :global(.icon-btn.surface),
-  .toolbar.card :global(.capsule),
-  .toolbar.card .pill {
+  .toolbar.card :global(.capsule) {
     background: transparent;
     box-shadow: none;
   }
@@ -778,11 +746,6 @@
 
   .toolbar.card :global(.icon-btn:disabled) {
     opacity: 0.6;
-  }
-
-  .toolbar.card .chip.active :global(.site),
-  .toolbar.card .chip.active :global(.close) {
-    display: none;
   }
 
   .toolbar.card :global(.page-actions) {
@@ -803,22 +766,6 @@
     opacity: 1;
   }
 
-  .toolbar.card .chip.active {
-    width: clamp(240px, 40vw, 520px);
-  }
-
-  .toolbar.card .address {
-    gap: 6px;
-    padding-left: 6px;
-    color: var(--text-muted);
-    font-size: 13px;
-    font-weight: 400;
-  }
-
-  .toolbar.card .address::after {
-    display: none;
-  }
-
   .side {
     display: flex;
     flex: 1 1 0;
@@ -827,7 +774,10 @@
   }
 
   .leading {
-    justify-content: space-between;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-left: 8px;
   }
 
   .trailing {
@@ -852,10 +802,6 @@
     .new-tab-slot {
       flex-basis: var(--chrome-control-size);
     }
-  }
-
-  :global([data-material='glass']) .pill {
-    box-shadow: var(--shadow), var(--rim);
   }
 
   .strip {
@@ -891,7 +837,7 @@
 
   .chip.active {
     gap: 6px;
-    width: clamp(280px, 34vw, 480px);
+    width: clamp(240px, 40vw, 520px);
     max-width: none;
     min-width: 160px;
     padding-right: 0;
@@ -906,41 +852,23 @@
     height: 100%;
     padding-right: 5px;
     border-radius: 999px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-  }
-
-  .chip :global(.close:focus-visible) {
-    opacity: 1;
-    pointer-events: auto;
   }
 
   .address {
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 7px;
+    justify-content: center;
+    gap: 6px;
     min-width: 0;
     height: 100%;
-    padding: 0 6px 0 11px;
+    padding: 0 6px;
     border: 0;
     border-radius: 999px;
     background: transparent;
     color: var(--text-muted);
     font-size: 13px;
-  }
-
-  .address {
-    justify-content: center;
-    padding-left: 33px;
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  .address:not(.after-site)::after {
-    flex: none;
-    width: 16px;
-    content: '';
+    font-weight: 400;
   }
 
   .private-badge {
@@ -1053,18 +981,6 @@
     }
   }
 
-  .chip :global(.site) {
-    margin-left: 4px;
-  }
-
-  .chip :global(.site.insecure) {
-    color: var(--warn);
-  }
-
-  .chip :global(.site.dangerous) {
-    color: #d93025;
-  }
-
   .tab-group :global(.star[aria-pressed='true'] path) {
     fill: currentColor;
   }
@@ -1110,10 +1026,6 @@
     .tab-group :global(.dev-state.agent-read) {
       animation: none;
     }
-  }
-
-  .address.after-site {
-    padding-left: 6px;
   }
 
   .ring {

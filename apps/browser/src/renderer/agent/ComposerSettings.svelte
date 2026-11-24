@@ -25,7 +25,6 @@
   popovertarget="{uid}-settings"
 >
   <Icon name="settings" size={12} />
-  <span class="summary">{summary}</span>
 </button>
 
 <div
@@ -44,11 +43,6 @@
   .settings-trigger {
     flex: 0 1 auto;
     min-width: 0;
-  }
-  .summary {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
   }
   .settings {
     right: anchor(right);

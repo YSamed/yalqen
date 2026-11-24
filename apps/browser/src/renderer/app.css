@@ -146,28 +146,29 @@ button:not(:disabled) {
   }
 }
 
-:root[data-style='card'] {
-  --pill-radius: 8px;
+:root {
   --card-sidebar-top: rgb(220 220 248 / 0.92);
   --card-sidebar-bottom: rgb(248 230 236 / 0.92);
   --card-frame-alpha: 0.92;
   --card-tile: rgb(60 60 140 / 0.06);
   --card-active: rgb(255 255 255 / 0.9);
   --card-shadow: 0 1px 2px rgb(40 40 90 / 0.08), 0 2px 8px rgb(40 40 90 / 0.06);
+  --page-veil: rgb(from var(--page) r g b / 0.74);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-style='card'] {
+  :root {
     --card-sidebar-top: rgb(31 34 46 / 0.94);
     --card-sidebar-bottom: rgb(58 52 96 / 0.94);
     --card-frame-alpha: 0.94;
     --card-tile: rgb(255 255 255 / 0.07);
     --card-active: rgb(255 255 255 / 0.13);
     --card-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+    --page-veil: rgb(from var(--page) r g b / 0.82);
   }
 }
 
-:root[data-style='card'][data-material='glass'] {
+:root[data-material='glass'] {
   --card-sidebar-top: rgb(220 220 248 / 0.22);
   --card-sidebar-bottom: rgb(248 230 236 / 0.22);
   /* A tinted frame needs more body than the plain glass to read as colored glass. */
@@ -175,29 +176,18 @@ button:not(:disabled) {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-style='card'][data-material='glass'] {
+  :root[data-material='glass'] {
     --card-sidebar-top: rgb(31 34 46 / 0.32);
     --card-sidebar-bottom: rgb(58 52 96 / 0.32);
-    --card-frame-alpha: 0.4;
   }
 }
 
-:root[data-style='card'] {
-  --page-veil: rgb(from var(--page) r g b / 0.74);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-style='card'] {
-    --page-veil: rgb(from var(--page) r g b / 0.82);
-  }
-}
-
-:root[data-style='card'][data-frame]:not([data-mode='private']) {
+:root[data-frame]:not([data-mode='private']) {
   --page: color-mix(in srgb, var(--frame-primary) 4%, #ffffff);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root[data-style='card'][data-frame]:not([data-mode='private']) {
+  :root[data-frame]:not([data-mode='private']) {
     --page: color-mix(in srgb, var(--frame-primary) 12%, #15171a);
   }
 }

@@ -365,7 +365,7 @@
   {/if}
   {#if IS_MAC && windowFullScreen && !pageFullScreen}
     <!-- Full screen hides the native window buttons; Dia keeps them, so draw them where macOS puts them. -->
-    <div class="traffic-lights card">
+    <div class="traffic-lights">
       <button
         type="button"
         class="light close"
@@ -514,36 +514,36 @@
     transition: background-color var(--transition);
   }
 
-  :global(:root[data-style='card']:not([data-mode='private'])) .shell {
+  :global(:root:not([data-mode='private'])) .shell {
     isolation: isolate;
     background-image: linear-gradient(to bottom, var(--card-sidebar-top), var(--card-sidebar-bottom));
   }
 
-  :global(:root[data-style='card'][data-frame]:not([data-mode='private'])) .shell {
+  :global(:root[data-frame]:not([data-mode='private'])) .shell {
     background-image: var(--frame-gradient);
   }
 
-  :global(:root[data-style='card']:not([data-mode='private'])) .shell::before {
+  :global(:root:not([data-mode='private'])) .shell::before {
     position: absolute;
     z-index: -1;
     inset: 0;
     pointer-events: none;
   }
 
-  :global(:root[data-style='card'][data-frame-texture='grain']:not([data-mode='private'])) .shell::before {
+  :global(:root[data-frame-texture='grain']:not([data-mode='private'])) .shell::before {
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     content: '';
     mix-blend-mode: overlay;
     opacity: calc(var(--frame-texture-strength) * 0.6);
   }
 
-  :global(:root[data-style='card'][data-frame-texture='dots']:not([data-mode='private'])) .shell::before {
+  :global(:root[data-frame-texture='dots']:not([data-mode='private'])) .shell::before {
     background: radial-gradient(circle, rgb(from var(--text) r g b / 0.5) 0.8px, transparent 1.4px) 0 0 / 8px 8px;
     content: '';
     opacity: var(--frame-texture-strength);
   }
 
-  :global(:root[data-style='card'][data-material='glass']:not([data-mode='private'])) .shell {
+  :global(:root[data-material='glass']:not([data-mode='private'])) .shell {
     background-color: transparent;
   }
 
@@ -556,26 +556,22 @@
     z-index: 2;
   }
 
+  /* Like Dia, the side panel is a full-height card beside the page, with its header on the toolbar row. */
   .shell.with-agent {
     grid-template-areas:
-      'panel bar bar'
+      'panel bar agent'
       'panel page agent';
   }
 
   .traffic-lights {
     position: absolute;
     z-index: 3;
-    /* Same circles as the native buttons at WINDOW_CONTROLS_INSET and CARD_WINDOW_CONTROLS_INSET in window.ts. */
-    top: 15px;
-    left: 16px;
+    /* Same circles as the native buttons at WINDOW_CONTROLS_INSET in window.ts. */
+    top: 20px;
+    left: 18px;
     display: flex;
     gap: 9px;
     -webkit-app-region: no-drag;
-  }
-
-  .traffic-lights.card {
-    top: 20px;
-    left: 18px;
   }
 
   .light {
@@ -630,14 +626,7 @@
     margin: 0 8px 8px 0;
   }
 
-  /* Like Dia, the side panel is a full-height card beside the page, with its header on the toolbar row. */
-  :global(:root[data-style='card']) .shell.with-agent:not(.fullscreen) {
-    grid-template-areas:
-      'panel bar agent'
-      'panel page agent';
-  }
-
-  :global(:root[data-style='card']) .shell.with-agent:not(.fullscreen) .agent-slot {
+  .shell.with-agent:not(.fullscreen) .agent-slot {
     margin-top: 6px;
   }
 
@@ -666,10 +655,6 @@
     grid-template-areas: 'page';
   }
 
-  .shell.fullscreen .page {
-    box-shadow: none;
-  }
-
   .page {
     position: relative;
     display: flex;
@@ -679,12 +664,10 @@
     min-height: 0;
     overflow: hidden;
     background: var(--page);
-    box-shadow: var(--page-shadow);
   }
 
   .page.split {
     background: transparent;
-    box-shadow: none;
   }
 
   /* Outside the toolbar on purpose: a ring inside its drag region would turn page clicks into window drags. */
@@ -734,16 +717,7 @@
   }
 
   .page.blank {
-    background: transparent;
-    box-shadow: none;
-  }
-
-  :global(:root[data-style='card']) .page.blank {
     background: var(--page-veil);
-  }
-
-  :global(:root[data-style='card']:not([data-mode='developer'])) .page {
-    box-shadow: none;
   }
 
   :global(:root[data-mode='developer']) .page {

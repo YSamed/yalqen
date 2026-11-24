@@ -595,22 +595,25 @@
     padding: 0 12px 10px;
   }
   .composer-box {
-    padding: 10px 8px 8px 12px;
-    border: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0 6px;
+    padding: 8px 8px 8px 14px;
+    border: 1px solid rgb(from var(--text) r g b / 0.12);
     border-radius: 16px;
-    background: var(--surface);
-    transition: border-color var(--transition);
+    background: rgb(from var(--text) r g b / 0.04);
   }
-  .composer-box:focus-within {
-    border-color: var(--accent);
+  .composer-box > * {
+    grid-column: 1 / -1;
   }
   textarea {
     box-sizing: border-box;
     display: block;
     width: 100%;
-    min-height: 44px;
+    min-height: 22px;
     max-height: 180px;
-    padding: 0 4px 0 0;
+    padding: 3px 0;
     border: 0;
     outline: 0;
     resize: none;
@@ -618,6 +621,10 @@
     background: none;
     color: var(--text);
     font: var(--ai-text) / 1.55 var(--font);
+  }
+  .composer-box > textarea {
+    grid-column: 1;
+    align-self: center;
   }
   textarea::placeholder {
     color: var(--text-muted);
@@ -631,7 +638,10 @@
     align-items: center;
     gap: 2px;
     min-width: 0;
-    margin: 6px 0 0 -6px;
+    margin: 0;
+  }
+  .composer-box > .composer-controls {
+    grid-column: 2;
   }
   .composer-controls :global(.icon-btn:not(.send-button)) {
     color: var(--text-muted);
@@ -641,11 +651,6 @@
   }
   .composer-controls :global(.send-button) {
     flex: none;
-  }
-  .composer-controls :global(.send-button.accent:disabled) {
-    background-color: var(--surface-hover);
-    color: var(--text-muted);
-    opacity: 1;
   }
   .spacer {
     flex: 1;
@@ -718,19 +723,19 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
   .attachment {
     width: fit-content;
     max-width: 100%;
-    padding: 0 2px 0 10px;
-    border-radius: var(--radius-pill);
-    background: var(--surface-hover);
-    color: var(--accent);
+    padding: 6px 4px 6px 8px;
+    border-radius: 10px;
+    background: rgb(from var(--text) r g b / 0.06);
+    color: var(--text);
     font-size: var(--ai-meta);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     min-width: 0;
   }
   .attachment > span {
@@ -751,8 +756,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .attachment-text > span {
+    font-weight: 600;
+  }
   .attachment-text small {
-    display: none;
+    color: var(--text-muted);
+    font-size: var(--ai-meta);
   }
   .page-context {
     display: flex;
@@ -802,67 +811,19 @@
     font-size: var(--ai-meta);
   }
 
-  :global([data-style='card']) .composer-box {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 0 6px;
-    padding: 8px 8px 8px 14px;
-    border-color: rgb(from var(--text) r g b / 0.12);
-    background: rgb(from var(--text) r g b / 0.04);
-  }
-  :global([data-style='card']) .composer-box > * {
-    grid-column: 1 / -1;
-  }
-  :global([data-style='card']) .composer-box > textarea {
-    grid-column: 1;
-    align-self: center;
-    min-height: 22px;
-    padding: 3px 0;
-  }
-  :global([data-style='card']) .composer-box > .composer-controls {
-    grid-column: 2;
-    margin: 0;
-  }
-  :global([data-style='card']) .composer-controls :global(.settings-trigger .summary) {
-    display: none;
-  }
-  :global([data-style='card']) .composer-controls :global(.settings-trigger) {
+  /* .composer-box keeps these above the shared button and select rules. */
+  .composer-box .composer-controls :global(.settings-trigger) {
     width: 28px;
     padding: 0;
     justify-content: center;
   }
-  :global([data-style='card']) .composer-controls :global(.send-button),
-  :global([data-style='card']) .composer-controls :global(.send-button.accent:disabled) {
+  .composer-box .composer-controls :global(.send-button),
+  .composer-box .composer-controls :global(.send-button.accent:disabled) {
     border-radius: 50%;
     background-color: var(--frame-primary, var(--accent));
     color: #fff;
   }
-  :global([data-style='card']) .composer-controls :global(.send-button:disabled) {
+  .composer-box .composer-controls :global(.send-button:disabled) {
     opacity: 0.55;
-  }
-  :global([data-style='card']) .composer-box .chips {
-    margin-bottom: 6px;
-  }
-  :global([data-style='card']) .composer-box .attachment {
-    gap: 10px;
-    padding: 6px 4px 6px 8px;
-    border-radius: 10px;
-    background: rgb(from var(--text) r g b / 0.06);
-    color: var(--text);
-  }
-  :global([data-style='card']) .composer-box .attachment-text > span {
-    font-weight: 600;
-  }
-  :global([data-style='card']) .composer-box .attachment-text small {
-    display: block;
-    color: var(--text-muted);
-    font-size: var(--ai-meta);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .composer-box {
-      transition: none;
-    }
   }
 </style>

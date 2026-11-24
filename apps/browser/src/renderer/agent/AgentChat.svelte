@@ -451,16 +451,17 @@
   .welcome {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     min-height: 100%;
     padding: 16px 0 32px;
+    text-align: center;
   }
   .welcome-mark {
     display: grid;
     width: 32px;
     height: 32px;
-    margin: 0 0 14px -2px;
+    margin: 0 0 14px;
   }
   .welcome-mark :global(.glyph) {
     width: 28px;
@@ -469,7 +470,7 @@
   }
   .hint {
     max-width: 320px;
-    margin: 14px 0 0;
+    margin: 14px auto 0;
     color: var(--text-muted);
     font-size: var(--ai-small);
     line-height: 1.5;
@@ -477,15 +478,15 @@
   }
   h2 {
     margin: 0;
-    font-size: 20px;
+    font-size: 15px;
     font-weight: 600;
     line-height: 1.25;
-    letter-spacing: -0.4px;
+    letter-spacing: -0.1px;
     text-wrap: balance;
   }
   .intro {
     max-width: 320px;
-    margin: 8px 0 20px;
+    margin: 6px auto 18px;
     color: var(--text-muted);
     font-size: var(--ai-text);
     line-height: 1.55;
@@ -667,24 +668,6 @@
   button:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-  }
-
-  :global([data-style='card']) .welcome {
-    align-items: center;
-    text-align: center;
-  }
-  :global([data-style='card']) .welcome-mark {
-    margin: 0 0 14px;
-  }
-  :global([data-style='card']) h2 {
-    font-size: 15px;
-    letter-spacing: -0.1px;
-  }
-  :global([data-style='card']) .intro {
-    margin: 6px auto 18px;
-  }
-  :global([data-style='card']) .hint {
-    margin-inline: auto;
   }
 
   @media (prefers-reduced-motion: reduce) {

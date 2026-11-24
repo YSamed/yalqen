@@ -401,7 +401,6 @@
           class:private={tab.isPrivate}
           class:active={tab.id === activeTabId || !!merged?.some((member) => member.id === activeTabId)}
           class:selected={selected.has(tab.id)}
-          class:discarded={!tab.live}
           class:lifted={index >= 0 && tab.id === drag.dragId}
           class:returning={index >= 0 && tab.id === drag.returningId}
           class:drop-before={index >= 0 && draggingListed && drag.dropIndex === index}
@@ -499,7 +498,6 @@
               class="favorite"
               class:active={tab.id === activeTabId}
               class:selected={selected.has(tab.id)}
-              class:discarded={!tab.live}
               class:lifted={tab.id === drag.dragId}
               class:returning={tab.id === drag.returningId}
               class:drop-before={draggingPinned && drag.dropIndex === index}
@@ -552,8 +550,6 @@
             <span class="tidy-label">{t('tabPanel.tidy')}</span>
           </IconButton>
         </div>
-      {:else if favorites.length > 0 || pinned.length > 0}
-        <span class="section-divider" aria-hidden="true"></span>
       {/if}
 
       {#each sections as section (section.key)}
@@ -690,10 +686,6 @@
     overflow-x: clip;
   }
 
-  .panel.card .lists {
-    padding-top: 4px;
-  }
-
   .top {
     flex: none;
     -webkit-app-region: drag;
@@ -704,6 +696,7 @@
     flex: 0 1 auto;
     flex-direction: column;
     min-height: 0;
+    padding-top: 4px;
     overflow-y: auto;
     scrollbar-width: none;
   }
@@ -750,18 +743,11 @@
 
   .favorites:not(.rows) {
     display: grid;
-    grid-template-columns: repeat(4, var(--chrome-control-size));
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
     gap: 6px;
     margin: 0 0 8px;
     padding: 0;
     list-style: none;
-  }
-
-  .section-divider {
-    flex: none;
-    height: 1px;
-    margin: 0 10px 6px;
-    background: var(--page-divider);
   }
 
   .tab-cleanup {
@@ -786,15 +772,7 @@
     position: relative;
   }
 
-  .favorite.active :global(.tile) {
-    background-color: var(--surface-strong);
-    box-shadow:
-      var(--shadow),
-      inset 0 0 0 1.5px var(--accent);
-  }
-
-  .favorite.selected :global(.icon-btn),
-  .row.selected .pill {
+  .favorite.selected :global(.icon-btn) {
     box-shadow: inset 0 0 0 1.5px var(--accent);
     background-color: color-mix(in srgb, var(--accent) 12%, transparent);
   }
@@ -817,11 +795,6 @@
     background: var(--surface);
     color: inherit;
     font: inherit;
-  }
-
-  .favorite.discarded .favicon {
-    opacity: 0.45;
-    filter: grayscale(1);
   }
 
   .audible-dot {
@@ -859,16 +832,10 @@
     display: flex;
     align-items: center;
     min-width: 0;
-    height: var(--chrome-control-size);
-    border-radius: var(--pill-radius, 999px);
-    color: var(--text-muted);
-    transition:
-      background var(--transition),
-      color var(--transition);
-  }
-
-  .panel.card .row {
-    gap: 6px;
+    height: 36px;
+    border-radius: 10px;
+    color: var(--text);
+    transition: background var(--transition);
   }
 
   .pill {
@@ -877,40 +844,7 @@
     align-items: center;
     min-width: 0;
     height: 100%;
-    border-radius: var(--pill-radius, 999px);
-    transition:
-      background var(--transition),
-      box-shadow var(--transition);
-  }
-
-  .panel:not(.dragging) .row:not(.active):hover .pill {
-    background: var(--surface-hover);
-  }
-
-  .row:hover {
-    color: var(--text);
-  }
-
-  .row.active {
-    color: var(--text);
-  }
-
-  .row.active .pill {
-    background: var(--surface);
-    box-shadow: var(--shadow);
-  }
-
-  .row.discarded :global(.tab-icon) {
-    opacity: 0.55;
-  }
-
-  :global([data-material='glass']) .row.active .pill {
-    box-shadow: var(--shadow), var(--rim);
-  }
-
-  .card .favorites:not(.rows) {
-    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
-    gap: 6px;
+    border-radius: 8px;
   }
 
   .card .favorites:not(.rows) :global(.tile) {
@@ -934,45 +868,13 @@
     gap: 5px;
   }
 
-  .panel.card .row {
-    gap: 0;
-    height: 36px;
-    border-radius: 10px;
-  }
-
-  .panel.card .row :global(.tab-icon),
-  .panel.card .row .pill {
+  .panel.card .row :global(.tab-icon) {
     background: transparent;
     box-shadow: none;
   }
 
-  .panel.card:not(.dragging) .row:not(.active):hover .pill {
-    background: transparent;
-  }
-
   .panel.card .body {
     width: calc(var(--panel-full-width) - 12px);
-  }
-
-  .panel.card .select {
-    padding-left: 0;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .panel.card .row,
-  .panel.card .row.discarded .title {
-    color: var(--text);
-    opacity: 1;
-  }
-
-  .panel.card .row .favicon,
-  .panel.card .row.discarded .favicon img,
-  .panel.card .row.discarded .favicon > :global(svg),
-  .panel.card .row.discarded :global(.tab-icon),
-  .panel.card .favorite.discarded .favicon {
-    opacity: 1;
-    filter: none;
   }
 
   .card:not(.dragging) .row:not(.active):hover {
@@ -1160,10 +1062,6 @@
     white-space: nowrap;
   }
 
-  .card .section-divider {
-    display: none;
-  }
-
   .card .footer :global(.icon-btn.surface) {
     background: transparent;
     box-shadow: none;
@@ -1178,7 +1076,7 @@
     height: 36px;
     gap: 9px;
     padding-left: 9px;
-    border-radius: var(--pill-radius, 999px);
+    border-radius: 8px;
     background: transparent;
     box-shadow: none;
     color: var(--text-muted);
@@ -1191,10 +1089,6 @@
     color: var(--text);
   }
 
-  .row:not(.active) .favicon {
-    opacity: 0.7;
-  }
-
   .select {
     display: flex;
     flex: 1;
@@ -1202,12 +1096,13 @@
     gap: 10px;
     min-width: 0;
     height: 100%;
-    padding: 0 6px 0 10px;
+    padding: 0 6px 0 0;
     border: 0;
-    border-radius: var(--pill-radius, 999px);
+    border-radius: 8px;
     background: transparent;
     color: inherit;
-    font-size: var(--font-size);
+    font-size: 13px;
+    font-weight: 500;
     text-align: left;
   }
 
@@ -1238,16 +1133,6 @@
     background: var(--accent);
     box-shadow: 0 0 0 1.5px var(--surface-strong);
     pointer-events: none;
-  }
-
-  .row.discarded .favicon img,
-  .row.discarded .favicon > :global(svg) {
-    opacity: 0.45;
-    filter: grayscale(1);
-  }
-
-  .row.discarded .title {
-    opacity: 0.7;
   }
 
   .title {
@@ -1298,12 +1183,6 @@
     .returning {
       transition: transform 200ms var(--ease-out);
     }
-  }
-
-  .row.lifted .pill,
-  .row.lifted :global(.tab-icon) {
-    background: linear-gradient(var(--surface), var(--surface)), var(--page);
-    box-shadow: var(--shadow);
   }
 
   .row.lifted .actions {

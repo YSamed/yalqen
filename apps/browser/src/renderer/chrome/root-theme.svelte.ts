@@ -50,7 +50,6 @@ function applyRootTheme(
   const root = document.documentElement;
   root.dataset.material = material;
   root.dataset.mode = mode;
-  root.dataset.style = 'card';
   root.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : accent);
   const frameColors = frameTheme.colors;
   const frameAmount = readableFrameAmount(frameColors, frameTheme.intensity, dark ? 'dark' : 'light');
