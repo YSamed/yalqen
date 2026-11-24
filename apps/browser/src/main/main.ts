@@ -529,6 +529,7 @@ function startBrowser(): void {
     directory: () => settings.get().downloadDirectory ?? app.getPath('downloads'),
     askBeforeDownload: () => settings.get().askBeforeDownload,
     parentOf: (contents) => windowOf(contents)?.window,
+    ignore: (contents) => extensionBridge.isSilentAuth(contents),
     onStateChange: pushState,
     checkFile: (file) => threatLists.checkFile(file),
   });

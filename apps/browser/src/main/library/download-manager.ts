@@ -31,6 +31,7 @@ interface DownloadManagerOptions {
   directory: () => string;
   askBeforeDownload: () => boolean;
   parentOf: (contents: WebContents) => BaseWindow | undefined;
+  ignore?: (contents: WebContents) => boolean;
   onStateChange: () => void;
   checkFile?: (file: string) => Promise<string | null>;
 }
@@ -210,6 +211,10 @@ export class DownloadManager {
 
   private onWillDownload(isPrivate: boolean) {
     return (_event: Event, item: DownloadItem, contents?: WebContents): void => {
+      if (contents && this.options.ignore?.(contents)) {
+        item.cancel();
+        return;
+      }
       const chain = item.getURLChain();
       const retryUrl = chain.find((url) => this.approvedUrls.has(url));
       const retryPath = retryUrl ? this.approvedUrls.get(retryUrl) : undefined;

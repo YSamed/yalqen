@@ -1,4 +1,4 @@
-import { WebContentsView, type Session } from 'electron';
+import { WebContentsView, type Session, type WebContents } from 'electron';
 import { authRedirectExtension } from '../../shared/extension-bridge.js';
 import { signInUserAgent } from '../app/page-preferences.js';
 
@@ -42,8 +42,13 @@ function isWeb(url: string): boolean {
 // Chrome's non-interactive launchWebAuthFlow: a hidden page that must redirect to the extension without user input.
 export class SilentAuthFlows {
   private readonly running = new Map<string, () => void>();
+  private readonly views = new Set<WebContents>();
 
   constructor(private readonly session: Session) {}
+
+  owns(contents: WebContents): boolean {
+    return this.views.has(contents);
+  }
 
   cancel(extensionId: string): void {
     this.running.get(extensionId)?.();
@@ -55,14 +60,12 @@ export class SilentAuthFlows {
     return new Promise((resolve, reject) => {
       const view = new WebContentsView({ webPreferences: { session: this.session, sandbox: true } });
       const contents = view.webContents;
-      const blockDownload = (event: Electron.Event, _item: Electron.DownloadItem, source: Electron.WebContents) => {
-        if (source === contents) event.preventDefault();
-      };
+      this.views.add(contents);
+      contents.once('destroyed', () => this.views.delete(contents));
       const finish = (result: string | Error) => {
         if (this.running.get(extensionId) !== fail) return;
         this.running.delete(extensionId);
         clearTimeout(timer);
-        this.session.off('will-download', blockDownload);
         if (!view.webContents.isDestroyed()) view.webContents.close();
         if (typeof result === 'string') resolve(result);
         else reject(result);
@@ -81,7 +84,6 @@ export class SilentAuthFlows {
         }
       };
       // shortcut: permission prompts and subframe external-protocol prompts still reach the shared session handlers, deny them per view if a silent flow ever triggers one.
-      this.session.on('will-download', blockDownload);
       contents.setWindowOpenHandler(() => ({ action: 'deny' }));
       contents.setAudioMuted(true);
       // shortcut: the Google sign-in user agent is set only when the flow starts there, follow tabs.ts if a redirect into Google needs it.

@@ -156,6 +156,10 @@ export class ExtensionBridge {
     });
   }
 
+  isSilentAuth(contents: WebContents): boolean {
+    return this.silentAuth.owns(contents);
+  }
+
   attachLibrary(stores: LibraryStores): void {
     this.library = new ExtensionLibrary(stores, {
       wants: (permission) =>

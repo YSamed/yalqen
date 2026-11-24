@@ -95,6 +95,16 @@ test('openPopup targets the given window and uses the active tab popup', () => {
   api.call(ID, 'setPopup', [{ popup: 'tab.html', tabId: 7 }]);
   api.call(ID, 'openPopup', [{}]);
   assert.deepEqual(opened[1], [null, `${BASE}tab.html`]);
+  api.call(ID, 'disable', [7]);
+  assert.throws(() => api.call(ID, 'openPopup', [{ windowId: 5 }]), /does not have a popup on the active tab/);
+  api.call(ID, 'enable', [7]);
+  api.call(ID, 'disable', []);
+  api.dropTab(7);
+  assert.throws(() => api.call(ID, 'openPopup', [{}]), /does not have a popup on the active tab/);
+  assert.equal(opened.length, 2);
+  api.call(ID, 'enable', []);
+  api.call(ID, 'openPopup', [{}]);
+  assert.equal(opened.length, 3);
 });
 
 test('colors and titles fall back to defaults, and listeners are forgotten on unload', () => {

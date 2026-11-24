@@ -201,7 +201,10 @@ export class ActionApi {
     if (windowId !== undefined && windowId !== null && typeof windowId !== 'number')
       throw new Error('Invalid windowId.');
     const target = typeof windowId === 'number' ? windowId : null;
-    const result = this.host.openActionPopup(target, (tab) => this.state(extensionId, tab)?.popupUrl ?? null);
+    const result = this.host.openActionPopup(target, (tab) => {
+      const state = this.state(extensionId, tab);
+      return state?.enabled ? state.popupUrl : null;
+    });
     if (result === 'no-window')
       throw new Error(target === null ? 'No window to open the popup in.' : `No window with id: ${target}.`);
     if (result === 'no-popup') throw new Error('Extension does not have a popup on the active tab.');

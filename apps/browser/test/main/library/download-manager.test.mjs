@@ -8,7 +8,7 @@ const { DownloadManager } = downloadManager;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const downloads = path.join('downloads');
 
-function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } = {}) {
+function fixture(t, { askBefore = true, responses = [], paths = [], checkFile, ignore } = {}) {
   const session = new EventEmitter();
   session.downloadURL = (url) => {
     session.retried = url;
@@ -42,13 +42,14 @@ function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } 
       directory: () => downloads,
       askBeforeDownload: () => askBefore,
       parentOf: () => undefined,
+      ignore,
       onStateChange: () => {},
       checkFile,
     },
     dialogs,
   );
   t.after(() => manager.destroy());
-  const start = (name = 'report.pdf') => {
+  const start = (name = 'report.pdf', contents) => {
     const item = new EventEmitter();
     item.state = 'progressing';
     item.paused = false;
@@ -70,7 +71,7 @@ function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } 
     item.cancel = () => {
       item.state = 'cancelled';
     };
-    session.emit('will-download', {}, item);
+    session.emit('will-download', {}, item, contents);
     return item;
   };
   return { manager, start, prompts, saves, entries, session };
@@ -209,4 +210,17 @@ test('extension downloads that never start resolve null and a late will-download
   const item = f.start();
   assert.equal(item.savePath, path.join(downloads, 'report.pdf'));
   assert.equal(f.entries.size, 1);
+});
+
+test('ignored sources are cancelled without a prompt or an entry', async (t) => {
+  const hidden = {};
+  const f = fixture(t, { ignore: (contents) => contents === hidden });
+  const ignored = f.start('hidden.bin', hidden);
+  assert.equal(ignored.state, 'cancelled');
+  assert.equal(ignored.paused, false);
+  assert.equal(ignored.savePath, undefined);
+  await tick();
+  assert.deepEqual(f.prompts, []);
+  assert.equal(f.entries.size, 0);
+  assert.equal(f.start('shown.bin', {}).paused, true);
 });
