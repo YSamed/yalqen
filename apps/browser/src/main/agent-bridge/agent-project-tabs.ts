@@ -1,4 +1,4 @@
-import { originOf } from '../agent-bridge/tab-scope.js';
+import { originOf } from './tab-scope.js';
 
 interface Project {
   id: string;

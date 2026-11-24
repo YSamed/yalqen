@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import capture from '../../../dist/main/window/visual-capture.js';
-import comparison from '../../../dist/main/window/visual-comparison.js';
+import capture from '../../../dist/main/agent-bridge/visual-capture.js';
+import comparison from '../../../dist/main/agent-bridge/visual-comparison.js';
 
 const { captureVisualPage } = capture;
 const { VisualComparisonManager, MAX_VISUAL_COMPARISON_EDGE, MAX_VISUAL_COMPARISON_IMAGE_BYTES } = comparison;

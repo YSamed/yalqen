@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import comparison from '../../../dist/main/window/visual-comparison.js';
+import comparison from '../../../dist/main/agent-bridge/visual-comparison.js';
 
 const { VisualComparisonManager, MAX_VISUAL_COMPARISON_IMAGE_BYTES } = comparison;
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4n8AAAAASUVORK5CYII=';

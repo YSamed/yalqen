@@ -94,7 +94,7 @@ import { LinkPeek, type PeekOwner } from './link-peek.js';
 import { createOverlayView } from './overlay-view.js';
 import { validTooltip } from '../../shared/tooltip.js';
 import { PageNotice } from './page-notice.js';
-import { AgentControl } from './agent-control.js';
+import { AgentControl } from '../agent-bridge/agent-control.js';
 import type { ActionWindow } from '../agent-bridge/action-runner.js';
 import type { Verification } from '../agent-bridge/verification.js';
 import { formatLocation } from '../agent-bridge/component-source.js';
@@ -142,20 +142,28 @@ import type { ProjectRunner } from '../agent-bridge/project-runner.js';
 import { projectIncludes } from '../agent-bridge/tab-scope.js';
 import { signIn, signOut } from '../agent-bridge/agent-login.js';
 import { chatDigest } from '../agent-bridge/chat-digest.js';
-import { AgentProject } from './agent-project.js';
-import { AgentProjectTabs } from './agent-project-tabs.js';
+import { AgentProject } from '../agent-bridge/agent-project.js';
+import { AgentProjectTabs } from '../agent-bridge/agent-project-tabs.js';
 import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
 import { MAX_REFERENCES, referenceRef, type ReferenceCapture } from '../agent-bridge/reference.js';
-import { VisualComparisonManager, VisualComparisonError, type VisualComparisonTab } from './visual-comparison.js';
-import { captureVisualPage } from './visual-capture.js';
-import { ResponsiveScanManager, ResponsiveScanError, createResponsiveScanSession } from './responsive-scan.js';
+import {
+  VisualComparisonManager,
+  VisualComparisonError,
+  type VisualComparisonTab,
+} from '../agent-bridge/visual-comparison.js';
+import { captureVisualPage } from '../agent-bridge/visual-capture.js';
+import {
+  ResponsiveScanManager,
+  ResponsiveScanError,
+  createResponsiveScanSession,
+} from '../agent-bridge/responsive-scan.js';
 import { acquirePageWork, pageWorkBusy } from '../tabs/page-work.js';
 import { readingUrl } from '../../shared/reading-list.js';
 import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
 import { accentHex } from '../../shared/accent.js';
 import { IS_MAC, openAsText } from '../platform.js';
-import { FloatingChat } from './floating-chat.js';
+import { FloatingChat } from '../agent-bridge/floating-chat.js';
 import { hideFullScreenTitlebar, menuBarEdge } from './fullscreen-titlebar.js';
 import { RESTING_SLIDE, slideMenuBar } from './menu-bar-slide.js';
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import projectsModule from '../../../dist/main/window/agent-project-tabs.js';
+import projectsModule from '../../../dist/main/agent-bridge/agent-project-tabs.js';
 
 const { AgentProjectTabs } = projectsModule;
 const project = (id, ...origins) => ({ id, origins: new Set(origins) });

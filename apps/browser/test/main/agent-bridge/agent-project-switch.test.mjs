@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import windowModule from '../../../dist/main/window/window.js';
-import linksModule from '../../../dist/main/window/agent-project-tabs.js';
+import linksModule from '../../../dist/main/agent-bridge/agent-project-tabs.js';
 
 const { YalqenWindow } = windowModule;
 const { AgentProjectTabs } = linksModule;

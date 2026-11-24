@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import floatingChat from '../../../dist/main/window/floating-chat.js';
+import floatingChat from '../../../dist/main/agent-bridge/floating-chat.js';
 
 const { floatingChatBounds } = floatingChat;
 

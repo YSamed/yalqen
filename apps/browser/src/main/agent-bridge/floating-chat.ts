@@ -2,7 +2,7 @@ import { WebContentsView, type BaseWindow, type Rectangle, type WebContents } fr
 import { getLocale } from '../../shared/i18n.js';
 import { loadRenderer } from '../app/dev-renderer.js';
 import { preloadPath, rendererPath } from '../app/paths.js';
-import { raiseToTop } from './overlay-view.js';
+import { raiseToTop } from '../window/overlay-view.js';
 
 const WIDTH = 440;
 const INSET = 12;

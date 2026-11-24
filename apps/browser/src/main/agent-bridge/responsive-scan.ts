@@ -9,7 +9,7 @@ import {
   type ResponsiveScanViewport,
 } from '../../shared/responsive-scan.js';
 import { MAX_VISUAL_COMPARISON_IMAGE_BYTES } from '../../shared/visual-comparison.js';
-import { isInScope } from '../agent-bridge/tab-scope.js';
+import { isInScope } from './tab-scope.js';
 import { RESPONSIVE_SCAN_SCRIPT, RESPONSIVE_SCAN_WORLD } from './responsive-scan-script.js';
 
 export interface ResponsiveScanTab {

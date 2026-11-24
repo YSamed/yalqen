@@ -1,5 +1,5 @@
 import { WebContentsView, type BaseWindow, type Rectangle } from 'electron';
-import { createOverlayView, raiseToTop } from './overlay-view.js';
+import { createOverlayView, raiseToTop } from '../window/overlay-view.js';
 
 const EDGE = 3;
 const BANNER_WIDTH = 260;

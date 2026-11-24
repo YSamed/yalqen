@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import projectModule from '../../../dist/main/window/agent-project.js';
+import projectModule from '../../../dist/main/agent-bridge/agent-project.js';
 
 const { AgentProject } = projectModule;
 

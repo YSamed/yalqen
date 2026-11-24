@@ -9,13 +9,13 @@ import type {
   AgentProviderId,
   AgentTerminalOutput,
 } from '../../shared/agent.js';
-import { acpClient } from '../agent-bridge/acp-client.js';
-import { AgentChat } from '../agent-bridge/agent-chat.js';
-import { ACP_AGENTS } from '../agent-bridge/agent-providers.js';
-import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
-import { AgentSession, type AgentConnection } from '../agent-bridge/agent-session.js';
-import { ProjectRunner } from '../agent-bridge/project-runner.js';
-import { originOf } from '../agent-bridge/tab-scope.js';
+import { acpClient } from './acp-client.js';
+import { AgentChat } from './agent-chat.js';
+import { ACP_AGENTS } from './agent-providers.js';
+import type { ChatPreferenceStore } from './chat-preferences.js';
+import { AgentSession, type AgentConnection } from './agent-session.js';
+import { ProjectRunner } from './project-runner.js';
+import { originOf } from './tab-scope.js';
 
 interface AgentProjectOptions {
   connect(project: AgentProject): Promise<AgentConnection>;

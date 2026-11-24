@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import scan from '../../../dist/main/window/responsive-scan.js';
+import scan from '../../../dist/main/agent-bridge/responsive-scan.js';
 import shared from '../../../dist/shared/responsive-scan.js';
 
 const { ResponsiveScanManager, createResponsiveScanSession, parseResponsiveMeasurements } = scan;

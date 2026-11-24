@@ -1,4 +1,4 @@
-import { isInScope } from '../agent-bridge/tab-scope.js';
+import { isInScope } from './tab-scope.js';
 import type { TabId } from '../../shared/types.js';
 import type { AgentChatImage } from '../../shared/agent.js';
 import {

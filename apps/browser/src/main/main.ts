@@ -34,7 +34,7 @@ import { ThreatGuard } from './privacy/threat-guard.js';
 import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
 import type { BridgeHost } from './agent-bridge/tools.js';
-import type { AgentProject } from './window/agent-project.js';
+import type { AgentProject } from './agent-bridge/agent-project.js';
 import {
   DEFAULT_TARGETS,
   connectionStates,
