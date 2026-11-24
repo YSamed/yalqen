@@ -197,3 +197,16 @@ test('extension downloads resolve with their entry and keep the download prompt'
   assert.equal(await refused, null);
   assert.equal(asked.prompts.length, 1);
 });
+
+test('extension downloads that never start resolve null and a late will-download still works', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = fixture(t, { askBefore: false });
+  const started = f.manager.download('https://example.com/report.pdf', 'named.pdf');
+  t.mock.timers.tick(30_000);
+  assert.equal(await started, null);
+  assert.equal(f.manager.waiters.size, 0);
+  assert.equal(f.manager.suggestedNames.size, 0);
+  const item = f.start();
+  assert.equal(item.savePath, path.join(downloads, 'report.pdf'));
+  assert.equal(f.entries.size, 1);
+});

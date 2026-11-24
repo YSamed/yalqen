@@ -19,6 +19,8 @@ export function sidePanelBounds(page: Rectangle): Rectangle {
 export class ExtensionSidePanel {
   private view: WebContentsView | null = null;
   private owner: string | null = null;
+  private url: string | null = null;
+  private hidden = false;
 
   constructor(private readonly options: SidePanelOptions) {}
 
@@ -27,7 +29,7 @@ export class ExtensionSidePanel {
   }
 
   get reserved(): number {
-    return this.view ? SIDE_PANEL_WIDTH : 0;
+    return this.view && !this.hidden ? SIDE_PANEL_WIDTH : 0;
   }
 
   owns(contents: WebContents): boolean {
@@ -36,7 +38,9 @@ export class ExtensionSidePanel {
 
   open(extensionId: string, url: string): WebContents {
     if (this.view && this.owner === extensionId) {
-      if (this.view.webContents.getURL() !== url) void this.view.webContents.loadURL(url).catch(() => {});
+      if (this.url !== url) void this.view.webContents.loadURL(url).catch(() => {});
+      this.url = url;
+      this.setHidden(false);
       return this.view.webContents;
     }
     this.close();
@@ -52,6 +56,7 @@ export class ExtensionSidePanel {
     contents.once('destroyed', () => this.detach(view));
     this.view = view;
     this.owner = extensionId;
+    this.url = url;
     this.options.window.contentView.addChildView(view);
     this.options.onResize();
     void contents
@@ -67,16 +72,28 @@ export class ExtensionSidePanel {
     if (!view.webContents.isDestroyed()) view.webContents.close();
   }
 
+  hide(): void {
+    this.setHidden(true);
+  }
+
   place(page: Rectangle | null): void {
     if (!this.view) return;
     this.view.setVisible(page !== null);
     if (page) this.view.setBounds(sidePanelBounds(page));
   }
 
+  private setHidden(hidden: boolean): void {
+    if (!this.view || this.hidden === hidden) return;
+    this.hidden = hidden;
+    this.options.onResize();
+  }
+
   private detach(view: WebContentsView): void {
     if (this.view !== view) return;
     this.view = null;
     this.owner = null;
+    this.url = null;
+    this.hidden = false;
     if (!this.options.window.isDestroyed()) {
       this.options.window.contentView.removeChildView(view);
       this.options.onResize();

@@ -27,3 +27,51 @@ test('the side panel docks right of the page and the manifest names its page', (
   assert.equal(manifests.sidePanelPage({ side_panel: { default_path: 'panel.html' } }), 'panel.html');
   assert.equal(manifests.sidePanelPage({}), null);
 });
+
+function fakePanels() {
+  const extension = { url: BASE, manifest: { side_panel: { default_path: 'panel.html' } } };
+  const session = { extensions: { getExtension: (id) => (id === 'ext' ? extension : null) } };
+  const tabs = new Map([5, 15].map((id) => [id, { id }]));
+  const state = { active: 5, open: true, refreshed: [] };
+  const host = {
+    windowId: () => 1,
+    isActive: (tab) => tab.id === state.active,
+    sidePanelOpen: () => state.open,
+    refreshSidePanel: (windowId) => state.refreshed.push(windowId),
+    openSidePanel: () => null,
+    closeSidePanel() {},
+  };
+  const api = new sidePanelApi.SidePanelApi(
+    session,
+    host,
+    () => {},
+    (id) => tabs.get(id) ?? null,
+  );
+  return { api, tabs, state };
+}
+
+test('per-tab side panel options override the global ones and refresh an open panel on the active tab', () => {
+  const { api, tabs, state } = fakePanels();
+  api.call('ext', 'setOptions', [{ path: 'global.html' }]);
+  api.call('ext', 'setOptions', [{ tabId: 15, path: 'other.html' }]);
+  assert.deepEqual(state.refreshed, []);
+  api.call('ext', 'setOptions', [{ tabId: 5, enabled: false }]);
+  assert.deepEqual(state.refreshed, [1]);
+  state.open = false;
+  api.call('ext', 'setOptions', [{ tabId: 5, path: 'own.html' }]);
+  assert.deepEqual(state.refreshed, [1]);
+
+  assert.equal(api.panelUrl('ext', null), `${BASE}global.html`);
+  assert.equal(api.panelUrl('ext', tabs.get(5)), null);
+  assert.equal(api.panelUrl('ext', tabs.get(15)), `${BASE}other.html`);
+  assert.equal(api.panelUrl('unknown', tabs.get(15)), null);
+});
+
+test('closing a tab drops only its own side panel options', () => {
+  const { api, tabs } = fakePanels();
+  api.call('ext', 'setOptions', [{ tabId: 5, enabled: false }]);
+  api.call('ext', 'setOptions', [{ tabId: 15, path: 'other.html' }]);
+  api.dropTab(5);
+  assert.equal(api.panelUrl('ext', tabs.get(5)), `${BASE}panel.html`);
+  assert.equal(api.panelUrl('ext', tabs.get(15)), `${BASE}other.html`);
+});

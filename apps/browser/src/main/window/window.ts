@@ -72,7 +72,7 @@ import {
 } from '../library/downloads.js';
 import { sanitizeAnchor, type ExtensionPopup } from '../extensions/extension-popup.js';
 import { STORE_HOME } from '../extensions/chrome-web-store.js';
-import { extensionsMenuTemplate, type ExtensionManager } from '../extensions/extensions.js';
+import { extensionsMenuTemplate, runAction, type ExtensionManager } from '../extensions/extensions.js';
 import { ExtensionSidePanel } from '../extensions/extension-side-panel.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
@@ -503,6 +503,7 @@ export class YalqenWindow {
       spaceSession: (id) => app.spaceSession(id),
       onChange: (persist) => {
         this.syncAgentProjectWithTab();
+        this.syncExtensionSidePanel();
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
           this.htmlFullScreenTabId = null;
           this.syncPageFullScreen();
@@ -2379,20 +2380,48 @@ export class YalqenWindow {
     if (this.sidePanel?.extensionId === extensionId) this.sidePanel.close();
   }
 
+  syncExtensionSidePanel(): void {
+    const panel = this.sidePanel;
+    const extensionId = panel?.extensionId;
+    if (!panel || !extensionId) return;
+    const url = this.app.extensionBridge.sidePanelUrl(extensionId, this.tabs.activeContents());
+    if (url) panel.open(extensionId, url);
+    else panel.hide();
+  }
+
   private toggleExtensionSidePanel(extensionId: string): void {
     this.app.extensionBridge.toggleSidePanel(extensionId, this.window.id, this.tabs.activeContents());
   }
 
   openExtensionAction(extensionId: string): void {
-    const popupUrl = this.app.extensions.actions().find((action) => action.id === extensionId)?.popupUrl;
-    if (this.isPrivate) return;
-    if (!popupUrl) {
-      if (this.app.extensionBridge.opensSidePanelOnAction(extensionId)) this.toggleExtensionSidePanel(extensionId);
-      return;
-    }
+    const action = this.extensionActions().find((candidate) => candidate.id === extensionId);
+    if (this.isPrivate || !action) return;
     const { width } = this.window.getContentBounds();
     const anchor = this.sidebarMenuAnchor.width > 0 ? this.sidebarMenuAnchor : { x: width, y: 0, width: 0, height: 0 };
-    this.openExtensionPopup(popupUrl, anchor);
+    runAction(action, this.extensionActionHandlers(anchor));
+  }
+
+  private extensionActions() {
+    const tab = this.tabs.activeContents();
+    const bridge = this.app.extensionBridge;
+    return this.app.extensions.actions().map((action) => {
+      const state = action.id ? bridge.actionState(action.id, tab) : null;
+      return {
+        ...action,
+        ...(state && { ...state, icon: state.icon ?? action.icon }),
+        sidePanel: action.id && bridge.sidePanelUrl(action.id, tab) ? action.id : null,
+        sidePanelOnAction: action.id ? bridge.opensSidePanelOnAction(action.id) : false,
+      };
+    });
+  }
+
+  private extensionActionHandlers(anchor: AnchorRect) {
+    return {
+      openPopup: (url: string) => this.openExtensionPopup(url, anchor),
+      openOptions: (url: string) => this.tabs.open(url, { isPrivate: false }),
+      clickAction: (id: string) => this.app.extensionBridge.actionClicked(id, this.tabs.activeContents()),
+      toggleSidePanel: (id: string) => this.toggleExtensionSidePanel(id),
+    };
   }
 
   private openExtensionPopup(url: string, anchor: AnchorRect): void {
@@ -2407,15 +2436,9 @@ export class YalqenWindow {
 
   private openExtensionsMenu(anchor: AnchorRect): void {
     const openTab = (url: string) => this.tabs.open(url, { isPrivate: false });
-    const tab = this.tabs.activeContents();
-    const actions = this.app.extensions.actions().map((action) => ({
-      ...action,
-      sidePanel: action.id && this.app.extensionBridge.sidePanelUrl(action.id, tab) ? action.id : null,
-      sidePanelOnAction: action.id ? this.app.extensionBridge.opensSidePanelOnAction(action.id) : false,
-    }));
-    const template = extensionsMenuTemplate(actions, {
+    const template = extensionsMenuTemplate(this.extensionActions(), {
+      ...this.extensionActionHandlers(anchor),
       sidePanelOpen: this.sidePanel?.extensionId ?? null,
-      toggleSidePanel: (id) => this.toggleExtensionSidePanel(id),
       canRequestAccess: !this.isPrivate && !this.isDeveloper && /^https?:/.test(this.tabs.activeUrl),
       requestAccess: (directory) => {
         const contents = this.tabs.activeContents();
@@ -2437,8 +2460,6 @@ export class YalqenWindow {
               void dialog.showMessageBox(this.window, { type: 'info', message: error });
           });
       },
-      openPopup: (url) => this.openExtensionPopup(url, anchor),
-      openOptions: openTab,
       openStore: () => openTab(STORE_HOME),
       manage: () => this.tabs.openSettings('extensions'),
     });

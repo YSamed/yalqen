@@ -18,6 +18,7 @@ interface Bridge {
   notifications(method: string, args: unknown[]): Promise<unknown>;
   library(namespace: string, method: string, args: unknown[]): Promise<unknown>;
   sidePanel(method: string, args: unknown[]): Promise<unknown>;
+  action(method: string, args: unknown[]): Promise<unknown>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
@@ -37,6 +38,7 @@ const bridge: Bridge = {
   notifications: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.notifications, method, args),
   library: (namespace, method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.library, namespace, method, args),
   sidePanel: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.sidePanel, method, args),
+  action: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.action, method, args),
   shortcut: (suggested) => suggestedShortcut(suggested, globalThis.process?.platform ?? ''),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
@@ -337,6 +339,82 @@ function installExtensionApis(api: Bridge): void {
       onClosed: event('sidePanel.onClosed'),
     });
   }
+  // Electron's own chrome.action is a stub that drops every value, so it is replaced, not only filled in.
+  {
+    type Pixels = { width: number; height: number; data: Uint8ClampedArray<ArrayBuffer> };
+    const isPixels = (value: unknown): value is Pixels =>
+      typeof value === 'object' && value !== null && 'data' in value && typeof (value as Pixels).width === 'number';
+    // ImageData does not survive IPC, so it crosses as a PNG data url.
+    const pngUrl = async (pixels: Pixels): Promise<string> => {
+      const canvas = new OffscreenCanvas(pixels.width, pixels.height);
+      canvas.getContext('2d')!.putImageData(new ImageData(pixels.data, pixels.width, pixels.height), 0, 0);
+      const bytes = new Uint8Array(await (await canvas.convertToBlob()).arrayBuffer());
+      let binary = '';
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return `data:image/png;base64,${btoa(binary)}`;
+    };
+    const imageData = async (value: unknown): Promise<unknown> => {
+      if (isPixels(value)) return pngUrl(value);
+      if (typeof value !== 'object' || value === null) return value;
+      const entries = await Promise.all(
+        Object.entries(value).map(async ([size, pixels]) => [size, isPixels(pixels) ? await pngUrl(pixels) : pixels]),
+      );
+      return Object.fromEntries(entries);
+    };
+    const call =
+      (method: string) =>
+      (...args: unknown[]) =>
+        settle(
+          api.action(
+            method,
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        );
+    const clicked = event('action.onClicked');
+    const actionApi = {
+      ...Object.fromEntries(
+        [
+          'setBadgeText',
+          'getBadgeText',
+          'setBadgeBackgroundColor',
+          'getBadgeBackgroundColor',
+          'setBadgeTextColor',
+          'getBadgeTextColor',
+          'setTitle',
+          'getTitle',
+          'setPopup',
+          'getPopup',
+          'enable',
+          'disable',
+          'isEnabled',
+          'openPopup',
+        ].map((method) => [method, call(method)]),
+      ),
+      setIcon: (details: unknown, callback: Callback) => {
+        const { imageData: raw, ...rest } = (typeof details === 'object' && details !== null ? details : {}) as {
+          imageData?: unknown;
+        };
+        return settle(
+          imageData(raw).then((converted) =>
+            api.action('setIcon', [converted === undefined ? rest : { ...rest, imageData: converted }]),
+          ),
+          callback,
+        );
+      },
+      getUserSettings: (callback: Callback) => settle(Promise.resolve({ isOnToolbar: true }), callback),
+      onClicked: {
+        ...clicked,
+        addListener: (listener: Listener) => {
+          clicked.addListener(listener);
+          api.action('listen', []).catch(() => {});
+        },
+      },
+    };
+    define(chromeApi, 'action', actionApi);
+    define(chromeApi, 'browserAction', actionApi);
+  }
+
   const downloads = chromeApi.downloads as Record<string, unknown> | undefined;
   if (downloads && permissions.includes('downloads.open') && !downloads.open) {
     // Chrome opens a downloaded file only in response to a user gesture.

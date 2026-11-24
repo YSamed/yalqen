@@ -30,6 +30,7 @@ import { ExtensionMenus } from './extension-menus.js';
 import { extensionFile } from './extension-manifest.js';
 import { ExtensionLibrary, type LibraryNamespace, type LibraryStores } from './extension-library.js';
 import { SidePanelApi } from './side-panel-api.js';
+import { ActionApi, type ActionState } from './action-api.js';
 
 const ACTION_COMMANDS = new Set(['_execute_action', '_execute_browser_action', '_execute_page_action']);
 
@@ -44,6 +45,7 @@ export interface ExtensionBridgeHost {
   openSidePanel(extensionId: string, url: string, windowId: number | null): WebContents | null;
   closeSidePanel(extensionId: string, windowId: number | null): void;
   sidePanelOpen(extensionId: string, windowId: number): boolean;
+  refreshSidePanel(windowId: number): void;
 }
 
 interface Receiver {
@@ -61,6 +63,7 @@ export class ExtensionBridge {
   private readonly notifications = new Map<string, Map<string, Notification>>();
   private library: ExtensionLibrary | null = null;
   private readonly sidePanels: SidePanelApi;
+  private readonly actions: ActionApi;
 
   constructor(
     private readonly session: Session,
@@ -73,6 +76,7 @@ export class ExtensionBridge {
       (extensionId, name, args) => this.deliver(extensionId, name, args),
       (id) => this.tabContents(id),
     );
+    this.actions = new ActionApi(session, host, (id) => this.tabContents(id));
     for (const type of ['service-worker', 'frame'] as const) {
       session.registerPreloadScript({ type, filePath: preloadFile, matches: ['chrome-extension://*/*'] });
     }
@@ -104,6 +108,9 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.sidePanel, (event, method, args) =>
       this.sidePanel(this.frameExtension(event), method, args),
     );
+    ipcMain.handle(ExtensionBridgeChannel.action, (event, method, args) =>
+      this.action(this.frameExtension(event), method, args),
+    );
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -121,6 +128,7 @@ export class ExtensionBridge {
       for (const notification of this.notifications.get(id)?.values() ?? []) notification.close();
       this.notifications.delete(id);
       this.sidePanels.forget(id);
+      this.actions.forget(id);
     });
     session.cookies.on('changed', (_event, cookie, cause, removed) => {
       const change = chromeCookieChange(cookie, cause, removed);
@@ -140,9 +148,16 @@ export class ExtensionBridge {
       wants: (permission) =>
         this.session.extensions.getAllExtensions().some(({ id }) => this.grant(id).permissions.includes(permission)),
       emit: (permission, name, args) => {
-        for (const receiver of this.receivers()) {
-          const extensionId = receiver.extensionId();
-          if (extensionId && this.grant(extensionId).permissions.includes(permission)) receiver.send(name, args);
+        if (permission === 'history') {
+          // shortcut: history events skip sleeping workers (waking one per visit is costly), wake them if an extension needs it.
+          for (const receiver of this.receivers()) {
+            const extensionId = receiver.extensionId();
+            if (extensionId && this.grant(extensionId).permissions.includes(permission)) receiver.send(name, args);
+          }
+          return;
+        }
+        for (const { id } of this.session.extensions.getAllExtensions()) {
+          if (this.grant(id).permissions.includes(permission)) this.deliver(id, name, args);
         }
       },
     });
@@ -193,6 +208,21 @@ export class ExtensionBridge {
 
   toggleSidePanel(extensionId: string, windowId: number, tab: WebContents | null): void {
     if (this.sidePanelUrl(extensionId, tab)) this.sidePanels.toggle(extensionId, windowId, tab);
+  }
+
+  actionState(extensionId: string, tab: WebContents | null): ActionState | null {
+    return this.actions.state(extensionId, tab);
+  }
+
+  actionClicked(extensionId: string, contents: WebContents | null): void {
+    if (contents && contents.session !== this.session) return;
+    const tab = contents && this.host.isTab(contents) ? this.tab(contents, extensionId) : undefined;
+    this.deliver(extensionId, 'action.onClicked', [tab]);
+  }
+
+  private action(extensionId: string, method: unknown, args: unknown): unknown {
+    if (typeof method !== 'string') throw new Error('Unsupported action method');
+    return this.actions.call(extensionId, method, Array.isArray(args) ? args : []);
   }
 
   private sidePanel(extensionId: string, method: unknown, args: unknown): unknown {
@@ -315,7 +345,7 @@ export class ExtensionBridge {
     );
   }
 
-  // shortcut: fires only while a Yalqen window has focus (no "global" commands), and _execute_action only opens a popup.
+  // shortcut: fires only while a Yalqen window has focus (no "global" commands).
   private command(input: Electron.Input): { extensionId: string; name: string } | null {
     for (const { id, manifest } of this.session.extensions.getAllExtensions()) {
       const commands = (manifest as { commands?: Record<string, { suggested_key?: unknown }> }).commands ?? {};
@@ -384,6 +414,7 @@ export class ExtensionBridge {
     worker.ipc.handle(ExtensionBridgeChannel.sidePanel, (_event, method, args) =>
       this.sidePanel(extensionId, method, args),
     );
+    worker.ipc.handle(ExtensionBridgeChannel.action, (_event, method, args) => this.action(extensionId, method, args));
   }
 
   private frameExtension(event: IpcMainInvokeEvent): string {
@@ -494,6 +525,8 @@ export class ExtensionBridge {
       this.watched.delete(contents);
       this.keepAlive.get(contents.id)?.();
       this.keepAlive.delete(contents.id);
+      this.actions.dropTab(contents.id);
+      this.sidePanels.dropTab(contents.id);
       if (lastWindow === -1) return;
       for (const receiver of this.receivers()) {
         if (receiver.extensionId())

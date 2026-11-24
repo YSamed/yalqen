@@ -63,7 +63,7 @@ export function actionTitle(manifest: Manifest, fallback: string): string {
   return nonEmpty(action(manifest)?.default_title) ?? fallback;
 }
 
-function sizedIcon(icons: Record<string, unknown> | null, size: number): string | null {
+export function sizedIcon(icons: Record<string, unknown> | null, size: number): string | null {
   const sized = Object.entries(icons ?? {})
     .flatMap(([key, file]) => {
       const pixels = Number(key);

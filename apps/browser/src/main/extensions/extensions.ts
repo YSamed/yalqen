@@ -59,11 +59,15 @@ interface ExtensionAction {
   optionsUrl: string | null;
   sidePanel?: string | null;
   sidePanelOnAction?: boolean;
+  badge?: string;
+  enabled?: boolean;
+  listens?: boolean;
 }
 
 interface ExtensionsMenuHandlers {
   openPopup(url: string): void;
   openOptions(url: string): void;
+  clickAction?(extensionId: string): void;
   openStore(): void;
   manage(): void;
   requestAccess?(directory: string): void;
@@ -74,6 +78,26 @@ interface ExtensionsMenuHandlers {
 
 const panelOnAction = (action: ExtensionAction) => Boolean(action.sidePanel && action.sidePanelOnAction);
 
+type ActionTarget = 'popup' | 'clicked' | 'panel' | 'options' | null;
+
+export function actionTarget(action: ExtensionAction): ActionTarget {
+  if (action.enabled === false) return null;
+  if (action.popupUrl) return 'popup';
+  if (panelOnAction(action)) return 'panel';
+  if (action.listens && action.id) return 'clicked';
+  return action.optionsUrl ? 'options' : null;
+}
+
+type ActionHandlers = Pick<ExtensionsMenuHandlers, 'openPopup' | 'openOptions' | 'clickAction' | 'toggleSidePanel'>;
+
+export function runAction(action: ExtensionAction, handlers: ActionHandlers): void {
+  const target = actionTarget(action);
+  if (target === 'popup') handlers.openPopup(action.popupUrl!);
+  else if (target === 'clicked') handlers.clickAction?.(action.id!);
+  else if (target === 'panel') handlers.toggleSidePanel?.(action.sidePanel!);
+  else if (target === 'options') handlers.openOptions(action.optionsUrl!);
+}
+
 export function extensionsMenuTemplate(
   actions: readonly ExtensionAction[],
   handlers: ExtensionsMenuHandlers,
@@ -82,14 +106,10 @@ export function extensionsMenuTemplate(
     .sort((a, b) => a.title.localeCompare(b.title, 'tr'))
     .flatMap((action): MenuItemConstructorOptions[] => [
       {
-        label: action.title,
+        label: action.badge ? `${action.title} (${action.badge})` : action.title,
         icon: action.icon ?? undefined,
-        enabled: action.popupUrl !== null || action.optionsUrl !== null || panelOnAction(action),
-        click: () => {
-          if (action.popupUrl) handlers.openPopup(action.popupUrl);
-          else if (panelOnAction(action)) handlers.toggleSidePanel?.(action.sidePanel!);
-          else if (action.optionsUrl) handlers.openOptions(action.optionsUrl);
-        },
+        enabled: actionTarget(action) !== null,
+        click: () => runAction(action, handlers),
       },
       ...(action.sidePanel && handlers.toggleSidePanel
         ? [

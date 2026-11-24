@@ -6,7 +6,9 @@ export interface SidePanelHost {
   openSidePanel(extensionId: string, url: string, windowId: number | null): WebContents | null;
   closeSidePanel(extensionId: string, windowId: number | null): void;
   sidePanelOpen(extensionId: string, windowId: number): boolean;
+  refreshSidePanel(windowId: number): void;
   windowId(contents: WebContents): number;
+  isActive(contents: WebContents): boolean;
 }
 
 type Deliver = (extensionId: string, name: ExtensionBridgeEvent, args: unknown[]) => void;
@@ -44,7 +46,10 @@ export class SidePanelApi {
     this.openOnAction.delete(extensionId);
   }
 
-  // shortcut: per-tab options apply when the panel opens; an open panel does not follow tab switches yet.
+  dropTab(tabId: number): void {
+    for (const key of [...this.options.keys()]) if (key.endsWith(`:${tabId}`)) this.options.delete(key);
+  }
+
   panelUrl(extensionId: string, tab: WebContents | null): string | null {
     const extension = this.session.extensions.getExtension(extensionId);
     if (!extension) return null;
@@ -80,6 +85,10 @@ export class SidePanelApi {
         if (typeof enabled === 'boolean') next.enabled = enabled;
         this.options.set(key, next);
         if (next.enabled === false && !tab) this.host.closeSidePanel(extensionId, null);
+        if (tab && this.host.isActive(tab)) {
+          const window = this.host.windowId(tab);
+          if (this.host.sidePanelOpen(extensionId, window)) this.host.refreshSidePanel(window);
+        }
         return undefined;
       }
       case 'getOptions': {

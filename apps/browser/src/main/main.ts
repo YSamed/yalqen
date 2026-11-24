@@ -398,6 +398,7 @@ function startBrowser(): void {
           window?.closeExtensionSidePanel(extensionId);
       },
       sidePanelOpen: (extensionId, windowId) => extensionWindowById(windowId)?.sidePanelExtension === extensionId,
+      refreshSidePanel: (windowId) => extensionWindowById(windowId)?.syncExtensionSidePanel(),
     },
     preloadPath('extension-apis'),
   );

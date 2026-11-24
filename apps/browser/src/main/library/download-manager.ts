@@ -20,6 +20,7 @@ import { t } from '../../shared/i18n.js';
 
 const STATE_PUSH_MS = 250;
 const PAGE_PUSH_MS = 500;
+const DOWNLOAD_START_TIMEOUT_MS = 30_000;
 const ITEM_COMMANDS = new Set<string>(['open', 'show', 'pause', 'resume', 'cancel', 'retry', 'remove']);
 
 interface DownloadManagerOptions {
@@ -123,7 +124,17 @@ export class DownloadManager {
   download(url: string, filename: string | null, headers?: Record<string, string>): Promise<string | null> {
     return new Promise((resolve) => {
       this.waiters.get(url)?.(null);
-      this.waiters.set(url, resolve);
+      const timer = setTimeout(() => {
+        if (this.waiters.get(url) !== settle) return;
+        this.waiters.delete(url);
+        this.suggestedNames.delete(url);
+        resolve(null);
+      }, DOWNLOAD_START_TIMEOUT_MS);
+      const settle = (id: string | null) => {
+        clearTimeout(timer);
+        resolve(id);
+      };
+      this.waiters.set(url, settle);
       if (filename) this.suggestedNames.set(url, path.basename(filename));
       this.options.daily.downloadURL(url, headers ? { headers } : undefined);
     });
