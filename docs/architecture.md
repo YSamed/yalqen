@@ -54,7 +54,7 @@ Vite builds eight renderer entry points: `index.html`, `settings.html`, `command
 
 ## Tests and benchmarks
 
-Tests in `apps/browser/test` mirror the source tree (`test/main/library/history.test.mjs` covers `src/main/library/history.ts`) and import the compiled modules from `dist/`, so `npm test` builds the main process and preloads first. Benchmarks in `apps/browser/scripts` read their page list from `apps/browser/bench/pages.txt`, write results to the ignored `bench/results/`, and accept `--module-dir` or `--renderer-dir` to compare a preserved baseline build; `scripts/main-module.mjs` also resolves builds from before the domain folders existed.
+Tests in `apps/browser/test` mirror the source tree (`test/main/library/history.test.mjs` covers `src/main/library/history.ts`) and import the compiled modules from `dist/`, so `npm test` builds the main process and preloads first. `npm run test:runtime` runs each file in `test/runtime` in its own Electron process; `test/helpers/interface-harness.mjs` opens the built window interface in a hidden window with a fixed state, answers its IPC requests, records the actions it sends and drives it with real mouse and keyboard events. Benchmarks in `apps/browser/scripts` read their page list from `apps/browser/bench/pages.txt`, write results to the ignored `bench/results/`, and accept `--module-dir` or `--renderer-dir` to compare a preserved baseline build; `scripts/main-module.mjs` also resolves builds from before the domain folders existed.
 
 ## Shared styles
 
