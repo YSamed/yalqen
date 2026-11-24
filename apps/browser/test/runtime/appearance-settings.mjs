@@ -84,7 +84,7 @@ app
       },
       updater: {},
       relaunch() {},
-      permissions: { origins: () => [] },
+      permissionsFor: () => ({ origins: () => [] }),
       requestRules: { list: () => [] },
       onRequestRulesSaved() {},
     });

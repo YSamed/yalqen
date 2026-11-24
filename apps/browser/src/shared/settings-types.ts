@@ -112,7 +112,10 @@ export interface SettingsView {
   update: UpdateStatus;
   threatLists?: ThreatListsView;
   spaces: import('./workspaces').SpaceView[];
+  spaceShares: { id: string; spaceIds: string[] }[];
 }
+
+export type SpaceAction = 'create' | 'rename' | 'remove' | 'share';
 
 export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
 
@@ -136,6 +139,7 @@ export const SettingsChannel = {
   installUpdate: 'yalqen-settings:install-update',
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
   setSpaceTheme: 'yalqen-settings:set-space-theme',
+  spaceAction: 'yalqen-settings:space-action',
   updateThreatLists: 'yalqen-settings:update-threat-lists',
   profiles: 'yalqen-settings:profiles',
   profileAction: 'yalqen-settings:profile-action',
@@ -293,6 +297,7 @@ export interface SettingsApi {
   installUpdate(): Promise<void>;
   chooseDownloadDirectory(): Promise<SettingsView>;
   setSpaceTheme(id: string, theme: import('./frame-theme').FrameTheme | null): Promise<SettingsView>;
+  spaceAction(action: SpaceAction, id?: string, value?: string | null): Promise<string | null>;
   showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;
   updateThreatLists(): Promise<SettingsView>;
   profiles(): Promise<ProfilesView>;

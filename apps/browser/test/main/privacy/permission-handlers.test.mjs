@@ -19,7 +19,7 @@ function fixture(isPrivate = false, blocked = []) {
         isPrivate,
       ],
     ],
-    storeFor: (privateSession) => {
+    storeFor: (_browsing, privateSession) => {
       assert.equal(privateSession, isPrivate);
       return store;
     },

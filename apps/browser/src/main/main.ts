@@ -134,7 +134,9 @@ import {
   broadcastAutofill,
   broadcastSettings,
   isSettingsFrame,
+  settingsSpace,
 } from './app/settings-page.js';
+import { partitionDataProfile, ProfileStores } from './privacy/profile-stores.js';
 import { registerSettingsIpc } from './app/settings-ipc.js';
 import {
   applyCookieBlocking,
@@ -225,6 +227,8 @@ function startBrowser(): void {
   const workspaces = new WorkspaceStore(userData, (partition) => {
     forgetSessionData(partitionSession(partition));
     sessions.spaces.delete(partition);
+    const profile = partitionDataProfile(partition);
+    if (profile) profileStores.forget(profile);
   });
   const regularSessions = () => [daily, ...workspaces.storedPartitions().map(partitionSession)];
   const favorites = new FavoriteStore(userData);
@@ -251,7 +255,30 @@ function startBrowser(): void {
   const closedTabs = closedTabStore.tabs;
   let privatePermissions = new PermissionStore(null);
   let privateZoom = new ZoomStore(null, defaultZoom);
-  const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
+  const profileStores = new ProfileStores(userData, safeStorageCipher, { passwords, autofill, permissions });
+  // undefined means the session or settings scope belongs to no known profile, so it gets no data at all.
+  const dataProfileOf = (contents: WebContents): string | null | undefined => {
+    const space = settingsSpace(contents);
+    if (space !== null)
+      return space === DEFAULT_SPACE_ID || workspaces.spaces().some(({ id }) => id === space)
+        ? workspaces.profile(space)
+        : undefined;
+    return sessionDataProfile(contents.session);
+  };
+  const sessionDataProfile = (browsing: Session): string | null | undefined => {
+    if (browsing === sessions.daily) return null;
+    const partition = [...sessions.spaces].find(([, candidate]) => candidate === browsing)?.[0];
+    return partition === undefined ? undefined : (partitionDataProfile(partition) ?? undefined);
+  };
+  const dataFor = (contents: WebContents) => {
+    const profile = dataProfileOf(contents);
+    return profile === undefined ? null : profileStores.get(profile);
+  };
+  const permissionsFor = (browsing: Session | null, isPrivate: boolean) => {
+    if (isPrivate) return privatePermissions;
+    const profile = browsing ? sessionDataProfile(browsing) : undefined;
+    return profile === undefined ? null : (profileStores.get(profile)?.permissions ?? null);
+  };
 
   const windows: YalqenWindow[] = [];
   const readingListChanged = () => broadcastReadingList(webContents.getAllWebContents());
@@ -281,6 +308,31 @@ function startBrowser(): void {
     defaultName: () => t('easels.defaultName'),
   });
   const storageOrigins = new StorageOrigins(userData);
+  const runSpaceAction = async (action: unknown, id: unknown, value: unknown): Promise<string | null> => {
+    if (action === 'create') {
+      const names = new Set(workspaces.spaces().map(({ name }) => name));
+      let number = 1;
+      while (names.has(t('spaces.newName', { number }))) number++;
+      return workspaces.create(t('spaces.newName', { number }));
+    }
+    if (typeof id !== 'string') return null;
+    if (action === 'rename') return workspaces.rename(id, value) ? id : null;
+    if (action === 'share')
+      return (value === null || typeof value === 'string') && workspaces.setProfile(id, value) ? id : null;
+    if (action !== 'remove') return null;
+    const space = workspaces.spaces().find((entry) => entry.id === id);
+    if (!space) return null;
+    const { response } = await dialog.showMessageBox({
+      type: 'question',
+      message: t('spaces.deleteConfirm', { name: space.name }),
+      detail: t('spaces.deleteDetail'),
+      buttons: [t('spaces.cancel'), t('spaces.delete')],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    return response === 1 && workspaces.remove(id) ? id : null;
+  };
   const workspacesChanged = () => {
     for (const contents of webContents.getAllWebContents())
       if (!contents.isDestroyed() && contents.getURL().startsWith(WORKSPACES_URL))
@@ -484,21 +536,21 @@ function startBrowser(): void {
     parentOf: (contents) => windowOf(contents)?.window,
   });
   installPasswordHandlers({
-    store: passwords,
+    storeFor: (contents) => dataFor(contents)?.passwords ?? null,
     savesPasswords: (contents) =>
       isRegularSession(sessions, contents.session) && windows.some((window) => window.tabs.hasContents(contents)),
     parentOf: (contents) => settingsParent(contents) ?? windowOf(contents)?.window,
     isSettingsFrame,
-    onChange: () => broadcastPasswords(passwords.view()),
+    onChange: () => broadcastPasswords((contents) => dataFor(contents)?.passwords.view() ?? null),
   });
   installAutofillHandlers({
-    store: autofill,
+    storeFor: (contents) => dataFor(contents)?.autofill ?? null,
     allowed: (contents) =>
       isRegularSession(sessions, contents.session) &&
       !certificates.hasException(contents.getURL()) &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.activeContents() === contents),
     parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
-    changed: () => broadcastAutofill(autofill.view()),
+    changed: () => broadcastAutofill((contents) => dataFor(contents)?.autofill.view() ?? null),
   });
   installOneTimeCodeHandlers({
     allowed: (contents) =>
@@ -678,6 +730,7 @@ function startBrowser(): void {
       update: updater.status(),
       threatLists: threatLists.view(),
       spaces: [{ id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null }, ...workspaces.spaces()],
+      spaceShares: workspaces.profiles(),
     };
   };
   const updater = new Updater({
@@ -787,6 +840,10 @@ function startBrowser(): void {
       const existing = bookmarks.find(url);
       if (existing) bookmarks.remove(existing.id);
       else bookmarks.add(url, title);
+      bookmarksChanged();
+    },
+    bookmarkTabs: (tabs) => {
+      for (const { url, title } of tabs) if (!bookmarks.has(url)) bookmarks.add(url, title);
       bookmarksChanged();
     },
     runBookmarksCommand: (command, params) => {
@@ -1213,11 +1270,16 @@ function startBrowser(): void {
       });
     },
     requestRules,
-    permissions,
+    permissionsFor: (contents) => dataFor(contents)?.permissions ?? null,
     siteIcons: (domains) => siteIcons(history.list(), domains),
     onRequestRulesSaved: () => eachWindow((window) => window.tabs.refreshRequestRules()),
     setSpaceTheme: (id, theme) => {
       if (workspaces.setTheme(id, theme)) workspacesChanged();
+    },
+    spaceAction: async (action, id, value) => {
+      const result = await runSpaceAction(action, id, value);
+      if (result !== null) workspacesChanged();
+      return result;
     },
   });
 
@@ -1271,8 +1333,7 @@ function startBrowser(): void {
     bookmarks.saveNow();
     liveFolders.saveNow();
     zoom.saveNow();
-    permissions.saveNow();
-    passwords.saveNow();
+    profileStores.saveAll();
     closedTabStore.saveNow();
     requestRules.saveNow();
   });

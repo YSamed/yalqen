@@ -5,11 +5,14 @@
   import Select from '../ui/Select.svelte';
   import TextField from '../ui/TextField.svelte';
 
-  let { folders, adding = $bindable(false) }: { folders: LiveFolderView[]; adding?: boolean } = $props();
+  let {
+    folders,
+    adding = $bindable(false),
+    kind = $bindable('feed'),
+  }: { folders: LiveFolderView[]; adding?: boolean; kind?: LiveFolderKind } = $props();
 
   const send = window.yalqen.send;
 
-  let kind = $state<LiveFolderKind>('feed');
   let input = $state('');
 
   const kinds = $derived([

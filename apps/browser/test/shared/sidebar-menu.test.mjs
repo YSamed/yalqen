@@ -27,6 +27,11 @@ test('sidebar menu actions pass only for commands and ids the open menu offered'
   assert.deepEqual(sidebarMenuAction({ type: 'switch-tab', id: 'tab-1' }, menu), { type: 'switch-tab', id: 'tab-1' });
   assert.deepEqual(sidebarMenuAction({ type: 'switch-space', id: 'work' }, menu), { type: 'switch-space', id: 'work' });
   assert.deepEqual(sidebarMenuAction({ type: 'open-chat', id: 'chat-1' }, menu), { type: 'open-chat', id: 'chat-1' });
+  assert.deepEqual(sidebarMenuAction({ type: 'open-space-menu', id: 'work' }, menu), {
+    type: 'open-space-menu',
+    id: 'work',
+  });
+  assert.equal(sidebarMenuAction({ type: 'open-space-menu', id: 'home' }, menu), null);
 
   assert.deepEqual(sidebarMenuAction({ type: 'open-link', url: 'https://bookmark.example/' }, menu), {
     type: 'open-link',

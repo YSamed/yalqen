@@ -53,7 +53,7 @@
     ACCENT_COLORS.find(({ hex }) => hex === frame.colors[0])?.id ?? values.accentColor,
   );
 
-  // One color themes the card frame; for the shared theme it also becomes the accent.
+  // One color themes the card frame and the accent; the shared theme also stores it as the global accent.
   function setThemeColor(id: AccentColorId): void {
     const theme: FrameTheme = { ...frame, colors: [accentHex(id)], texture: 'none' };
     if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
@@ -96,9 +96,9 @@
   <SettingRow title={scopedSpace ? t('settings.themeColorFor', { space: scopedSpace.name }) : t('settings.themeColor')}>
     <AccentPicker label={t('settings.themeColor')} value={themeColor} onchange={setThemeColor} />
     {#if scopedSpace?.theme}
-      <Button variant="ghost" onclick={() => api.setSpaceTheme(scopedSpace.id, null)}
-        >{t('settings.frameScopeReset')}</Button
-      >
+      <Button variant="ghost" onclick={() => api.setSpaceTheme(scopedSpace.id, null)}>
+        {t('settings.frameScopeReset')}
+      </Button>
     {/if}
   </SettingRow>
 

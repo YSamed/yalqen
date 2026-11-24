@@ -86,9 +86,9 @@
     <span class="icon"><Icon name={icon} /></span>
     <span class="label">{label}</span>
     {#if trail || more}
-      <span class="trail"
-        >{trail}{#if more}<Icon name="forward" size={14} />{/if}</span
-      >
+      <span class="trail">
+        {trail}{#if more}<Icon name="forward" size={14} />{/if}
+      </span>
     {/if}
   </button>
 {/snippet}
@@ -97,10 +97,18 @@
   {@render row('back', t('spaces.switcher'), () => (view = 'main'))}
   <div class="divider"></div>
   {#each menu.spaces as space (space.id)}
-    <button type="button" class="item" onclick={() => onaction({ type: 'switch-space', id: space.id })}>
-      <span class="icon"
-        >{#if space.icon}{space.icon}{:else}<span class="dot"></span>{/if}</span
-      >
+    <button
+      type="button"
+      class="item"
+      onclick={() => onaction({ type: 'switch-space', id: space.id })}
+      oncontextmenu={(event) => {
+        event.preventDefault();
+        onaction({ type: 'open-space-menu', id: space.id });
+      }}
+    >
+      <span class="icon">
+        {#if space.icon}{space.icon}{:else}<span class="dot"></span>{/if}
+      </span>
       <span class="label">{space.name}</span>
       {#if space.active}<span class="trail"><Icon name="check" size={14} /></span>{/if}
     </button>

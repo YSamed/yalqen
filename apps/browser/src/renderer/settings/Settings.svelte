@@ -13,8 +13,10 @@
   import GeneralPane from './GeneralPane.svelte';
   import Passwords from './Passwords.svelte';
   import Autofill from './Autofill.svelte';
+  import DataScope from './DataScope.svelte';
   import PerformancePane from './PerformancePane.svelte';
   import PrivacyPane from './PrivacyPane.svelte';
+  import Profiles from './Profiles.svelte';
   import ProfilesPane from './ProfilesPane.svelte';
   import RequestRules from './RequestRules.svelte';
   import Sites from './Sites.svelte';
@@ -42,10 +44,35 @@
     '/about': 'advanced',
   };
   const paneFromPath = panes.find((item) => `/${item.id}` === location.pathname)?.id ?? aliases[location.pathname];
-  let trail = $state<PaneId[]>([paneFromPath ?? 'general']);
+  type Page = PaneId | `profile:${string}`;
+  let dataSpace = $state(new URLSearchParams(location.search).get('space') ?? '');
+  // The main process reads ?space= from this page's URL to pick whose passwords, cards and permissions to serve.
+  function setDataSpace(id: string): void {
+    const url = new URL(location.href);
+    if (id) url.searchParams.set('space', id);
+    else url.searchParams.delete('space');
+    history.replaceState(null, '', url);
+    dataSpace = id;
+  }
+
+  function showData(page: 'privacy' | 'passwords', space: string): void {
+    setDataSpace(space);
+    showPane(page);
+  }
+
+  const profileFromHash = new URLSearchParams(location.hash.slice(1)).get('profile');
+  let trail = $state<Page[]>([
+    paneFromPath === 'profiles' && profileFromHash !== null
+      ? `profile:${profileFromHash}`
+      : (paneFromPath ?? 'general'),
+  ]);
   let at = $state(0);
-  const pane = $derived(trail[at]);
-  const paneLabel = $derived(panes.find((item) => item.id === pane)?.label ?? '');
+  const page = $derived(trail[at]);
+  const editedProfile = $derived(page.startsWith('profile:') ? page.slice('profile:'.length) : null);
+  const pane = $derived<PaneId>(editedProfile === null ? (page as PaneId) : 'profiles');
+  const paneLabel = $derived(
+    editedProfile === null ? (panes.find((item) => item.id === pane)?.label ?? '') : t('profiles.edit'),
+  );
   let view = $state<SettingsView | null>(null);
   let query = $state('');
   let results = $state<HTMLElement>();
@@ -102,9 +129,9 @@
     return () => observer.disconnect();
   });
 
-  function showPane(id: PaneId): void {
+  function showPane(id: Page): void {
     query = '';
-    if (id === pane) return;
+    if (id === page) return;
     trail = [...trail.slice(0, at + 1), id];
     at = trail.length - 1;
   }
@@ -152,18 +179,25 @@
     <PerformancePane values={view.values} {update} />
   {:else if id === 'privacy'}
     <PrivacyPane section="protection" values={view.values} threatLists={view.threatLists} {update} />
-    <Sites values={view.values} {update} />
+    {#key dataSpace}
+      <DataScope spaces={view.spaces} value={dataSpace} onchange={setDataSpace} />
+      <Sites values={view.values} {update} />
+    {/key}
   {:else if id === 'profiles'}
-    <ProfilesPane {view} {update} />
+    <ProfilesPane {view} {update} profile={searching ? null : editedProfile} open={showPane} {showData} />
   {:else if id === 'passwords'}
-    <Passwords />
-    <Autofill />
+    {#key dataSpace}
+      <DataScope spaces={view.spaces} value={dataSpace} onchange={setDataSpace} />
+      <Passwords />
+      <Autofill />
+    {/key}
   {:else if id === 'extensions'}
     <Extensions values={view.values} {update} />
   {:else if id === 'shortcuts'}
     <ShortcutsPane values={view.values} {update} />
   {:else}
     <AboutPane {view} {update} />
+    <Profiles />
     <PrivacyPane section="advanced" values={view.values} threatLists={view.threatLists} {update} />
     <AgentBridge values={view.values} {update} />
     <RequestRules />

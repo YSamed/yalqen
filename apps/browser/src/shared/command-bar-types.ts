@@ -76,6 +76,7 @@ export type CommandBarAction =
   | { type: 'input'; input: string }
   | { type: 'sidebar-command'; command: SidebarMenuCommand }
   | { type: 'switch-space'; id: string }
+  | { type: 'open-space-menu'; id: string }
   | { type: 'open-chat'; id: string }
   | { type: 'open-link'; url: string }
   | { type: 'download-action'; id: string }

@@ -46,7 +46,9 @@ import { storageDomain } from '../privacy/site-storage.js';
 import type { BookmarksPanelView } from '../../shared/bookmarks-panel.js';
 import type { FavoriteStore } from '../library/favorites.js';
 import type { LiveFolderRefresher, LiveFolderStore } from '../library/live-folders.js';
-import { isLiveFolderKind, liveFolderSource } from '../../shared/live-folders.js';
+import { isLiveFolderKind, LIVE_FOLDER_KINDS, liveFolderSource } from '../../shared/live-folders.js';
+import { colorSwatch } from './menu-swatch.js';
+import { shortcutAccelerator, type ShortcutId } from '../../shared/shortcuts.js';
 import type { WorkspaceStore } from '../library/workspaces.js';
 import { DEFAULT_SPACE_ID, SPACE_ICONS, type SpaceView } from '../../shared/workspaces.js';
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
@@ -163,7 +165,7 @@ import { acquirePageWork, pageWorkBusy } from '../tabs/page-work.js';
 import { readingUrl } from '../../shared/reading-list.js';
 import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
-import { accentHex } from '../../shared/accent.js';
+import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent.js';
 import { IS_MAC, openAsText } from '../platform.js';
 import { FloatingChat } from '../agent-bridge/floating-chat.js';
 import { hideFullScreenTitlebar, menuBarEdge } from './fullscreen-titlebar.js';
@@ -172,6 +174,12 @@ import { RESTING_SLIDE, slideMenuBar } from './menu-bar-slide.js';
 // The card toolbar is 41px tall inside a card inset 6px from the top; center the lights on it.
 const WINDOW_CONTROLS_INSET = { x: 18, y: 20 };
 const SIDEBAR_MENU_LINKS = 8;
+const LIVE_FOLDER_LABELS = {
+  feed: 'liveFolders.kindFeed',
+  releases: 'liveFolders.kindReleases',
+  commits: 'liveFolders.kindCommits',
+  tags: 'liveFolders.kindTags',
+} as const;
 // Polled at frame rate so the content follows the menu bar while it slides.
 const MENU_BAR_POLL_MS = 16;
 const TITLEBAR_SYMBOL_COLORS = { light: '#1a1b1e', dark: '#f4f4f7' };
@@ -241,13 +249,14 @@ export interface AppContext {
   onClosedTabsChange(): void;
   clearClosedTabs(): void;
   pageTheme: string;
-  permissionsFor(isPrivate: boolean): PermissionStore;
+  permissionsFor(browsing: Session, isPrivate: boolean): PermissionStore | null;
   openAppLink(contents: WebContents, url: string, isPrivate: boolean): void;
   zoomFor(isPrivate: boolean): ZoomStore;
   searchEngine(): SearchEngine;
   downloadActions(window: YalqenWindow): DownloadActions;
   downloadsChanged(): void;
   toggleBookmark(url: string, title: string): void;
+  bookmarkTabs(tabs: { url: string; title: string }[]): void;
   runBookmarksCommand(command: string, params: URLSearchParams): void;
   importBookmarks(file: string): Promise<BookmarkImportResult>;
   importHistory(file: string): Promise<HistoryImportResult>;
@@ -429,7 +438,7 @@ export class YalqenWindow {
       onRunCommand: (id) => this.runDevCommand(id),
       onSidebarMenu: (action) => {
         if (action.type === 'switch-tab') this.tabs.activate(action.id);
-        else if (action.type === 'switch-space') this.handleAction(action);
+        else if (action.type === 'switch-space' || action.type === 'open-space-menu') this.handleAction(action);
         else if (action.type === 'open-link') this.tabs.open(action.url);
         else if (action.type === 'download-action') this.runDownloadAction(action.id);
         else if (action.type === 'place-footer-item')
@@ -572,9 +581,9 @@ export class YalqenWindow {
       hasCertificateException: (url) => app.certificates.hasException(url),
       certificateToken: (url) => app.certificates.tokenFor(url),
       onCertificateProceed: (token, url) => app.certificates.proceed(token, url),
-      popupsAllowed: (url, isPrivate) => {
+      popupsAllowed: (url, isPrivate, browsing) => {
         const origin = permissionOrigin(url);
-        return origin !== null && app.permissionsFor(isPrivate).get(origin, 'popups') === 'allow';
+        return origin !== null && app.permissionsFor(browsing, isPrivate)?.get(origin, 'popups') === 'allow';
       },
       upgradeHttp: (url) => app.httpsOnly.upgrade(url),
       httpsOnlyWarning: (https, http) => app.httpsOnly.warn(https, http),
@@ -818,7 +827,7 @@ export class YalqenWindow {
       sidebarFooterItems: this.app.settings.get().sidebarFooterItems,
       material: this.material(),
       frameTheme: this.app.settings.get().frameTheme,
-      accent: accentHex(this.app.settings.get().accentColor),
+      accent: this.accent(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
@@ -1578,7 +1587,7 @@ export class YalqenWindow {
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
       engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
       material: this.material(),
-      accent: accentHex(this.app.settings.get().accentColor),
+      accent: this.accent(),
     });
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
@@ -1594,7 +1603,7 @@ export class YalqenWindow {
       mode: 'sidebar-menu',
       engines: [],
       material: this.material(),
-      accent: accentHex(this.app.settings.get().accentColor),
+      accent: this.accent(),
       menu: {
         kind,
         anchor,
@@ -1955,6 +1964,9 @@ export class YalqenWindow {
       case 'open-space-menu':
         this.openSpaceMenu(action.id);
         break;
+      case 'open-sidebar-context-menu':
+        this.openSidebarContextMenu();
+        break;
       case 'select-tab':
         tabs.selectTab(action.id, action.mode);
         break;
@@ -2112,7 +2124,7 @@ export class YalqenWindow {
         const template = blockedPopupsTemplate(new URL(origin).host, blocked, {
           open: (url) => tabs.openBlockedPopup(url),
           allowSite: () => {
-            app.permissionsFor(tabs.activeIsPrivate).set(origin, ['popups'], 'allow');
+            app.permissionsFor(tabs.activeSession(), tabs.activeIsPrivate)?.set(origin, ['popups'], 'allow');
             tabs.clearBlockedPopups();
           },
         });
@@ -2171,7 +2183,7 @@ export class YalqenWindow {
                     void dialog.showMessageBox(this.window, { type: 'error', message: t(`profiles.${error}`) });
                 });
               },
-              manage: () => tabs.openSettings('profiles'),
+              manage: () => tabs.openSettings('advanced#profiles'),
             },
             {
               current: this.profile,
@@ -2252,7 +2264,7 @@ export class YalqenWindow {
   private async openSiteInfo(): Promise<void> {
     const template = await siteInfoMenu({
       tabs: this.tabs,
-      permissions: (isPrivate) => this.app.permissionsFor(isPrivate),
+      permissions: (browsing, isPrivate) => this.app.permissionsFor(browsing, isPrivate),
       session: () => this.tabs.activeSession(),
       certificates: this.app.certificates,
       protections:
@@ -2532,6 +2544,11 @@ export class YalqenWindow {
     return this.isPrivate || this.webApp ? [] : this.app.workspaces.spaces();
   }
 
+  private accent(): string {
+    const space = this.spaces().find(({ id }) => id === this.tabs.activeSpaceId);
+    return space?.theme?.colors[0] ?? accentHex(this.app.settings.get().accentColor);
+  }
+
   private defaultSpace(): SpaceView {
     return { id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null };
   }
@@ -2576,6 +2593,120 @@ export class YalqenWindow {
     };
   }
 
+  private spaceIconMenu(space: SpaceView): Electron.MenuItemConstructorOptions {
+    return {
+      label: t('spaces.icon'),
+      submenu: SPACE_ICONS.map((icon) => ({
+        label: icon,
+        type: 'radio',
+        checked: icon === space.icon,
+        click: () => {
+          if (this.app.workspaces.setIcon(space.id, icon)) this.app.spacesChanged();
+        },
+      })),
+    };
+  }
+
+  private setSpaceColor(space: SpaceView, color: AccentColorId): void {
+    const { frameTheme } = this.app.settings.get();
+    const theme = { ...(space.theme ?? frameTheme), colors: [accentHex(color)], texture: 'none' as const };
+    if (space.id === DEFAULT_SPACE_ID) this.app.updateSettings({ accentColor: color, frameTheme: theme });
+    else if (this.app.workspaces.setTheme(space.id, theme)) this.app.spacesChanged();
+  }
+
+  private spaceEditMenu(space: SpaceView): Electron.MenuItemConstructorOptions[] {
+    const color = space.theme?.colors[0] ?? accentHex(this.app.settings.get().accentColor);
+    const openProfile = () => this.tabs.openSettings(`profiles#profile=${encodeURIComponent(space.id)}`);
+    const own = space.id !== DEFAULT_SPACE_ID;
+    return [
+      ...ACCENT_COLORS.map(({ id, hex }): Electron.MenuItemConstructorOptions => ({
+        label: t(`accent.${id}`),
+        type: 'radio',
+        checked: hex === color,
+        icon: colorSwatch(hex),
+        click: () => this.setSpaceColor(space, id),
+      })),
+      { type: 'separator' },
+      ...(own ? [this.spaceIconMenu(space)] : []),
+      { label: t('sidebarContext.rename'), enabled: own, click: openProfile },
+      { label: t('sidebarContext.profileSettings'), click: openProfile },
+    ];
+  }
+
+  private openSidebarContextMenu(): void {
+    const tabs = this.tabs;
+    const { shortcuts, panelCollapsed } = this.app.settings.get();
+    const shortcut = (id: ShortcutId) => ({
+      accelerator: shortcutAccelerator(id, shortcuts),
+      registerAccelerator: false,
+    });
+    const persistent = !this.isPrivate && !this.webApp;
+    const space = persistent
+      ? [this.defaultSpace(), ...this.spaces()].find(({ id }) => id === tabs.activeSpaceId)
+      : undefined;
+    const open = tabs.state().tabs.filter((tab) => !tab.pinned);
+    const separator = { type: 'separator' } as const;
+    this.popup([
+      { label: t('menu.newTab'), ...shortcut('newTab'), click: () => this.handleAction({ type: 'new-tab' }) },
+      {
+        label: t('menu.reopenClosedTab'),
+        ...shortcut('reopenClosedTab'),
+        enabled: persistent && this.app.closedTabs.length > 0,
+        click: () => tabs.reopenClosed(),
+      },
+      separator,
+      {
+        label: t('sidebarContext.newGroup'),
+        enabled: tabs.activeTabId !== null,
+        click: () => {
+          if (tabs.activeTabId) tabs.setTabGroup(tabs.activeTabId, tabs.newGroupName(t('window.newFolderName')));
+        },
+      },
+      ...(persistent
+        ? [
+            {
+              label: t('sidebarContext.newLiveGroup'),
+              submenu: LIVE_FOLDER_KINDS.map((kind) => ({
+                label: t(LIVE_FOLDER_LABELS[kind]),
+                click: () => {
+                  if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.addLiveFolder, kind);
+                },
+              })),
+            },
+          ]
+        : []),
+      separator,
+      ...(space
+        ? [
+            { label: t('spaces.theme'), submenu: this.spaceEditMenu(space) },
+            { label: t('sidebarContext.newProfile'), click: () => this.createSpace() },
+            separator,
+          ]
+        : []),
+      {
+        label: t('sidebarContext.bookmarkAll'),
+        enabled: persistent && open.length > 0,
+        click: () => this.app.bookmarkTabs(open.map(({ url, title }) => ({ url, title }))),
+      },
+      separator,
+      {
+        label: t('sidebarContext.showTabs'),
+        type: 'checkbox',
+        checked: !panelCollapsed,
+        ...shortcut('togglePanel'),
+        click: () => this.handleAction({ type: 'toggle-panel' }),
+      },
+      separator,
+      {
+        label: t('sidebarContext.closeAll'),
+        enabled: open.length > 0,
+        click: () => {
+          for (const tab of open) tabs.close(tab.id);
+        },
+      },
+    ]);
+  }
+
   private openSpaceMenu(id: string): void {
     if (id === DEFAULT_SPACE_ID) {
       if (this.spaces().length > 0) this.popup([this.profileMenu(id)]);
@@ -2584,20 +2715,10 @@ export class YalqenWindow {
     const space = this.spaces().find((item) => item.id === id);
     if (!space) return;
     this.popup([
-      {
-        label: t('spaces.icon'),
-        submenu: SPACE_ICONS.map((icon) => ({
-          label: icon,
-          type: 'radio',
-          checked: icon === space.icon,
-          click: () => {
-            if (this.app.workspaces.setIcon(id, icon)) this.app.spacesChanged();
-          },
-        })),
-      },
+      this.spaceIconMenu(space),
       {
         label: t('spaces.theme'),
-        click: () => this.tabs.openSettings(`appearance#space=${encodeURIComponent(id)}`),
+        click: () => this.tabs.openSettings(`profiles#profile=${encodeURIComponent(id)}`),
       },
       this.profileMenu(id),
       {

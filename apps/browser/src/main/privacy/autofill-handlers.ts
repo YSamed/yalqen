@@ -7,7 +7,7 @@ import { confirmOwner } from './password-handlers.js';
 import { passwordOrigin } from './passwords.js';
 import type { AutofillStore } from './autofill.js';
 interface Host {
-  store: AutofillStore;
+  storeFor(contents: WebContents): AutofillStore | null;
   allowed(contents: WebContents): boolean;
   parentOf(contents: WebContents): BaseWindow | undefined;
   changed(): void;
@@ -31,7 +31,7 @@ function chooseRecord(parent: BaseWindow, origin: string, choices: AutofillInfo[
   });
 }
 export function installAutofillHandlers({
-  store,
+  storeFor,
   allowed,
   parentOf,
   changed,
@@ -51,7 +51,7 @@ export function installAutofillHandlers({
   };
   const choosing = new WeakSet<WebContents>();
   ipcMain.handle(PageChannel.autofillAvailable, (event) => {
-    const choices = permitted(event) ? store.choices() : [];
+    const choices = permitted(event) ? (storeFor(event.sender)?.choices() ?? []) : [];
     return {
       address: choices.some((record) => record.kind === 'address'),
       card: choices.some((record) => record.kind === 'card'),
@@ -65,8 +65,9 @@ export function installAutofillHandlers({
       frame = event.senderFrame,
       parent = parentOf(contents);
     if (!origin || !parent || (kind !== 'address' && kind !== 'card') || choosing.has(contents)) return null;
-    const choices = store.choices(kind);
-    if (!choices.length) return null;
+    const store = storeFor(contents);
+    const choices = store?.choices(kind) ?? [];
+    if (!store || !choices.length) return null;
     const url = contents.getURL();
     let navigated = false;
     const navigation = (event: Electron.Event & { isMainFrame: boolean }) => {
@@ -101,26 +102,27 @@ export function installAutofillHandlers({
       choosing.delete(contents);
     }
   });
-  handleSettingsCall(AutofillChannel.list, () => store.view());
+  handleSettingsCall(AutofillChannel.list, (event) => storeFor(event.sender)?.view() ?? null);
   handleSettingsCall(AutofillChannel.save, async (event, value) => {
     if (!value || typeof value !== 'object') return false;
     const data = (value as { data?: { kind?: unknown } }).data;
     if (data?.kind === 'card' && (!(await authenticate(t('autofill.cardReason'))) || !isSettingsFrame(event)))
       return false;
-    const saved = store.save(value);
+    const saved = storeFor(event.sender)?.save(value) ?? false;
     if (saved) changed();
     return saved;
   });
   handleSettingsCall(AutofillChannel.read, async (event, id) => {
-    if (typeof id !== 'string') return null;
+    const store = storeFor(event.sender);
+    if (typeof id !== 'string' || !store) return null;
     const info = store.choices().find((record) => record.id === id);
     if (!info || (info.kind === 'card' && (!(await authenticate(t('autofill.cardReason'))) || !isSettingsFrame(event))))
       return null;
     return store.read(id);
   });
-  handleSettingsCall(AutofillChannel.remove, (_event, id) => {
+  handleSettingsCall(AutofillChannel.remove, (event, id) => {
     if (typeof id !== 'string') return false;
-    const removed = store.remove(id);
+    const removed = storeFor(event.sender)?.remove(id) ?? false;
     if (removed) changed();
     return removed;
   });

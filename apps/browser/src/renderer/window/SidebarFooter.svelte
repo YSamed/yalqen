@@ -99,6 +99,11 @@
               draggedFooterItem = null;
             }}
             onclick={(e) => button.run(e.currentTarget)}
+            oncontextmenu={(e) => {
+              if (item !== 'spaces') return;
+              e.preventDefault();
+              send({ type: 'open-space-menu', id: activeSpaceId });
+            }}
           >
             {#if item === 'spaces' && activeSpace?.icon}<span class="space-icon">
                 {activeSpace.icon}

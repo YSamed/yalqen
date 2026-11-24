@@ -19,7 +19,7 @@ const mediaDevices = (kinds: readonly SitePermission[]): MediaDevice[] =>
 
 interface PermissionHandlerOptions {
   sessions: readonly (readonly [Session, boolean])[];
-  storeFor: (isPrivate: boolean) => PermissionStore;
+  storeFor: (browsing: Session, isPrivate: boolean) => PermissionStore | null;
   parentOf: (contents: WebContents) => BaseWindow | undefined;
   blockedRequests: () => readonly SitePermission[];
   appLinks: AppLinks;
@@ -35,12 +35,11 @@ export function installPermissionHandlers({
   let prompts: Promise<unknown> = Promise.resolve();
   const ask = (
     contents: WebContents,
-    isPrivate: boolean,
+    store: PermissionStore,
     origin: string,
     kinds: SitePermission[],
   ): Promise<boolean> => {
     const answer = prompts.then(async () => {
-      const store = storeFor(isPrivate);
       const decided = store.decide(origin, kinds);
       if (decided !== 'ask') return decided === 'allow';
       if (kinds.some((kind) => blockedRequests().includes(kind))) return false;
@@ -112,9 +111,14 @@ export function installPermissionHandlers({
         callback(false);
         return;
       }
-      const decided = storeFor(isPrivate).decide(origin, kinds);
+      const store = storeFor(browsing, isPrivate);
+      if (!store) {
+        callback(false);
+        return;
+      }
+      const decided = store.decide(origin, kinds);
       const siteAllowed =
-        decided === 'ask' ? ask(contents, isPrivate, origin, kinds) : Promise.resolve(decided === 'allow');
+        decided === 'ask' ? ask(contents, store, origin, kinds) : Promise.resolve(decided === 'allow');
       siteAllowed.then((allowed) => allowed && systemAccess(contents, kinds)).then(callback, () => callback(false));
     });
     browsing.setPermissionCheckHandler((contents, permission, requestingOrigin, details) => {
@@ -125,7 +129,7 @@ export function installPermissionHandlers({
       if (permission === 'display-capture') return !!contents && origin === permissionOrigin(contents.getURL());
       const kinds = requestedPermissions(permission, details.mediaType ? [details.mediaType] : []);
       if (!kinds) return false;
-      return storeFor(isPrivate).decide(origin, kinds) === 'allow';
+      return storeFor(browsing, isPrivate)?.decide(origin, kinds) === 'allow';
     });
   };
   for (const [browsing, isPrivate] of sessions) add(browsing, isPrivate);

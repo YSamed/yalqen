@@ -1,4 +1,4 @@
-import { dialog, type OpenDialogOptions, type WebContents } from 'electron';
+import { dialog, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
 import { t } from '../../shared/i18n.js';
 import {
   RequestRulesChannel,
@@ -26,17 +26,18 @@ export interface SettingsIpcHost {
   updater: Updater;
   relaunch(): void;
   requestRules: RequestRuleStore;
-  permissions: PermissionStore;
+  permissionsFor(contents: WebContents): PermissionStore | null;
   onRequestRulesSaved(): void;
   updateThreatLists(): Promise<void>;
   profiles: import('./profile-controller.js').ProfileController;
   siteIcons?(domains: string[]): Record<string, string>;
   setSpaceTheme(id: string, theme: unknown): void;
+  spaceAction(action: unknown, id: unknown, value: unknown): Promise<string | null>;
 }
 
-function sitePermissionsView(store: PermissionStore): SitePermissionsView {
+function sitePermissionsView(store: PermissionStore | null): SitePermissionsView {
   return {
-    sites: store.origins().map((origin) => ({ origin, permissions: store.list(origin) })),
+    sites: store?.origins().map((origin) => ({ origin, permissions: store.list(origin) })) ?? [],
     system: systemAccessStatus(),
   };
 }
@@ -86,25 +87,30 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
     if (typeof id === 'string') host.setSpaceTheme(id, theme);
     return host.view();
   });
+  handleSettingsCall(SettingsChannel.spaceAction, (_event, action, id, value) => host.spaceAction(action, id, value));
   handleSettingsCall(
     SettingsChannel.siteIcons,
     (_event, domains) => host.siteIcons?.(sanitizeIconDomains(domains)) ?? {},
   );
-  handleSettingsCall(SitePermissionsChannel.list, () => sitePermissionsView(host.permissions));
-  handleSettingsCall(SitePermissionsChannel.set, (_event, origin, kind, decision) => {
+  const scoped = (event: IpcMainInvokeEvent) => host.permissionsFor(event.sender);
+  handleSettingsCall(SitePermissionsChannel.list, (event) => sitePermissionsView(scoped(event)));
+  handleSettingsCall(SitePermissionsChannel.set, (event, origin, kind, decision) => {
+    const store = scoped(event);
     if (
+      store &&
       typeof origin === 'string' &&
       permissionOrigin(origin) === origin &&
       isSitePermission(kind) &&
       (decision === 'allow' || decision === 'deny' || decision === null)
     ) {
-      host.permissions.set(origin, [kind], decision);
+      store.set(origin, [kind], decision);
     }
-    return sitePermissionsView(host.permissions);
+    return sitePermissionsView(store);
   });
-  handleSettingsCall(SitePermissionsChannel.forget, (_event, origin) => {
-    if (typeof origin === 'string') host.permissions.forget(origin);
-    return sitePermissionsView(host.permissions);
+  handleSettingsCall(SitePermissionsChannel.forget, (event, origin) => {
+    const store = scoped(event);
+    if (store && typeof origin === 'string') store.forget(origin);
+    return sitePermissionsView(store);
   });
   handleSettingsCall(SitePermissionsChannel.openSystemSettings, (_event, device) => {
     if (isSystemDevice(device)) openSystemSettings(device);

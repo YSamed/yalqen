@@ -38,6 +38,7 @@ export type UiAction =
   | { type: 'create-space' }
   | { type: 'import-space' }
   | { type: 'open-space-menu'; id: string }
+  | { type: 'open-sidebar-context-menu' }
   | { type: 'close-tab'; id: TabId }
   | { type: 'open-favorite'; url: string }
   | { type: 'open-favorite-menu'; url: string }
@@ -228,5 +229,5 @@ export interface YalqenApi extends VisualComparisonApi, ResponsiveScanApi {
   cancelQueuedAgentChat(sessionId: string, messageId: string): Promise<void>;
   onAgentChat(listener: (serializedSnapshot: string) => void): () => void;
   onPagePress(listener: () => void): () => void;
-  onAddLiveFolder(listener: () => void): () => void;
+  onAddLiveFolder(listener: (kind: import('./live-folders').LiveFolderKind | undefined) => void): () => void;
 }

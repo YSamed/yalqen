@@ -12,6 +12,7 @@ export type SidebarMenuAction = Extract<
     type:
       | 'sidebar-command'
       | 'switch-space'
+      | 'open-space-menu'
       | 'open-chat'
       | 'switch-tab'
       | 'open-link'
@@ -44,7 +45,8 @@ export function sidebarMenuAction(action: unknown, menu: SidebarMenu | undefined
     return [...menu.history, ...menu.bookmarks].some((link) => link.url === url) ? { type, url: url as string } : null;
   }
   if (typeof id !== 'string') return null;
-  if (type === 'switch-space') return menu.spaces.some((space) => space.id === id) ? { type, id } : null;
+  if (type === 'switch-space' || type === 'open-space-menu')
+    return menu.spaces.some((space) => space.id === id) ? { type, id } : null;
   if (type === 'open-chat') return menu.chats.some((chat) => chat.id === id) ? { type, id } : null;
   if (type === 'switch-tab') return menu.tabs.some((tab) => tab.id === id) ? { type, id } : null;
   if (type === 'download-action') return menu.downloads.some((entry) => entry.id === id) ? { type, id } : null;

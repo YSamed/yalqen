@@ -26,6 +26,7 @@
   import type { TabGroup } from '../../shared/tab-groups';
   import type { LiveFolderView } from '../../shared/live-folders';
   import type { SpaceView } from '../../shared/workspaces';
+  import type { LiveFolderKind } from '../../shared/live-folders';
   import { hostOf } from '../../shared/hosts';
 
   let {
@@ -85,7 +86,13 @@
   let renameValue = $state('');
   let addingLiveFolder = $state(false);
 
-  $effect(() => window.yalqen.onAddLiveFolder(() => (addingLiveFolder = true)));
+  let liveFolderKind = $state<LiveFolderKind>('feed');
+  $effect(() =>
+    window.yalqen.onAddLiveFolder((kind) => {
+      if (kind) liveFolderKind = kind;
+      addingLiveFolder = true;
+    }),
+  );
 
   const send = window.yalqen.send;
   const previews = createHoverPreviews(send);
@@ -437,6 +444,13 @@
   class:dragging={drag.dragId !== null}
   aria-label={t('tabPanel.tabs')}
   onwheel={(event) => spaceSwipe.wheel(event, spaces, activeSpaceId)}
+  oncontextmenu={(event) => {
+    // Rows open their own menus first; only empty sidebar space gets the sidebar menu.
+    if (event.defaultPrevented || (event.target as Element).closest('input, textarea, [contenteditable="true"]'))
+      return;
+    event.preventDefault();
+    send({ type: 'open-sidebar-context-menu' });
+  }}
   style:--panel-full-width="{fullWidth}px"
 >
   <div class="top" style:height="{topInset}px"></div>
@@ -562,7 +576,7 @@
     </div>
 
     {#if profile !== 'private'}
-      <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} />
+      <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} bind:kind={liveFolderKind} />
     {/if}
 
     <div class="spacer"></div>

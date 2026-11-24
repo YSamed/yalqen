@@ -170,7 +170,7 @@ interface TabManagerOptions {
   hasCertificateException: (url: string) => boolean;
   certificateToken: (url: string) => string | null;
   onCertificateProceed: (token: string, url: string) => boolean;
-  popupsAllowed: (url: string, isPrivate: boolean) => boolean;
+  popupsAllowed: (url: string, isPrivate: boolean, browsing: Session) => boolean;
   onPageCommand: (page: CommandPage, command: string, params: URLSearchParams, contents: WebContents) => void;
   isBookmarked: (url: string) => boolean;
   upgradeHttp: (url: string) => string | null;
@@ -2441,7 +2441,13 @@ export class TabManager {
         this.options.onAppLink?.(contents, url, tab.isPrivate);
         return { action: 'deny' };
       }
-      if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
+      if (
+        mayOpenWindow(
+          tab.activatedAt,
+          Date.now(),
+          this.options.popupsAllowed(contents.getURL(), tab.isPrivate, contents.session),
+        )
+      ) {
         tab.activatedAt = 0;
         if (opensPeek(disposition, features, url)) {
           this.options.onPeek(url, tab.isPrivate, tab.developer);

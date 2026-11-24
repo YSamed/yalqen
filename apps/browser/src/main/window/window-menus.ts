@@ -205,7 +205,7 @@ export function libraryMenuTemplate(
 
 interface SiteInfoHost {
   tabs: TabManager;
-  permissions(isPrivate: boolean): PermissionStore;
+  permissions(browsing: Session, isPrivate: boolean): PermissionStore | null;
   session(isPrivate: boolean): Session;
   certificates: CertificateExceptions;
   clearSiteData(): void;
@@ -218,8 +218,8 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
   const tab = tabs.snapshotFor();
   if (!tab) return null;
   const origin = permissionOrigin(tab.url);
-  const store = host.permissions(tab.isPrivate);
   const browsing = host.session(tab.isPrivate);
+  const store = host.permissions(browsing, tab.isPrivate);
   const [cookies, storage] = origin
     ? await Promise.all([
         browsing.cookies.get({}).then(
@@ -247,7 +247,7 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
               cookieBlockingEnabled: host.protections.settings().blockThirdPartyCookies,
             }
           : undefined,
-      permissions: origin ? store.list(origin) : [],
+      permissions: origin ? (store?.list(origin) ?? []) : [],
       data: origin ? { cookies: cookies.length, storage } : undefined,
     },
     {
@@ -262,7 +262,7 @@ export async function siteInfoMenu(host: SiteInfoHost): Promise<MenuItemConstruc
         tabs.reload();
       },
       setPermission: (kind, decision) => {
-        if (origin) store.set(origin, [kind], decision);
+        if (origin) store?.set(origin, [kind], decision);
       },
       revokeCertificateException: () => {
         host.certificates.revoke(tab.url);

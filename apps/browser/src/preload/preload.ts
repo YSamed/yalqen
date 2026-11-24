@@ -13,6 +13,7 @@ import {
   type AgentChatSnapshot,
   type AgentRewindPreview,
 } from '../shared/agent.js';
+import { isLiveFolderKind } from '../shared/live-folders.js';
 import type { VisualComparisonPreview, VisualComparisonReview } from '../shared/visual-comparison.js';
 import type { ResponsiveScanPreview, ResponsiveScanReview } from '../shared/responsive-scan.js';
 
@@ -83,7 +84,8 @@ const api: YalqenApi = {
     ipcRenderer.invoke(channel.agentChatCancelQueued, id, messageId) as Promise<void>,
   onAgentChat: (listener) => subscribe<string>(channel.agentChatUpdate, listener),
   onPagePress: (listener) => subscribe<void>(channel.pagePress, listener),
-  onAddLiveFolder: (listener) => subscribe<void>(channel.addLiveFolder, listener),
+  onAddLiveFolder: (listener) =>
+    subscribe<unknown>(channel.addLiveFolder, (kind) => listener(isLiveFolderKind(kind) ? kind : undefined)),
 };
 
 contextBridge.exposeInMainWorld('yalqen', api);

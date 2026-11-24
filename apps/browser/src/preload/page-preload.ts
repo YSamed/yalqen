@@ -182,6 +182,8 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
     chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
     setSpaceTheme: (id, theme) => ipcRenderer.invoke(settingsChannel.setSpaceTheme, id, theme) as Promise<SettingsView>,
+    spaceAction: (action, id, value) =>
+      ipcRenderer.invoke(settingsChannel.spaceAction, action, id, value) as Promise<string | null>,
     showImportMenu: (kind: 'bookmarks' | 'history') =>
       ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,
     updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,

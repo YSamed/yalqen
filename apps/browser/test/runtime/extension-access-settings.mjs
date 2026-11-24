@@ -54,7 +54,7 @@ app
       clearData: async () => {},
       updater: {},
       relaunch() {},
-      permissions: {},
+      permissionsFor: () => ({}),
       requestRules: {},
       onRequestRulesSaved() {},
     });
