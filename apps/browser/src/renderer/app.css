@@ -6,7 +6,7 @@
   --surface-menu: var(--surface-strong);
   --well: #e2e2e6;
   --focus: var(--accent);
-  --on-accent: oklch(from var(--accent) clamp(0.15, (0.78 - l) * 1000, 1) 0 0);
+  --on-accent: #ffffff;
   --profile-developer: #7c6cf2;
   --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.1), 0 1px 2px rgb(16 18 24 / 0.06);
   --window: var(--bg);
