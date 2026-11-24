@@ -916,7 +916,7 @@ export const en = {
   'settings.panePrivacy': 'Privacy',
   'settings.paneExtensions': 'Extensions',
   'settings.paneProfiles': 'Profiles',
-  'settings.panePasswordsAutofill': 'Passwords and autofill',
+  'settings.panePasswordsAutofill': 'Passwords',
   'settings.searchSettings': 'Search settings',
   'settings.searchEmpty': 'No settings match your search.',
   'settings.off': 'Off',

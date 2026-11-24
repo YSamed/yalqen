@@ -925,7 +925,7 @@ export const tr: Record<MessageKey, string> = {
   'settings.panePrivacy': 'Gizlilik',
   'settings.paneExtensions': 'Uzantılar',
   'settings.paneProfiles': 'Profiller',
-  'settings.panePasswordsAutofill': 'Şifreler ve otomatik doldurma',
+  'settings.panePasswordsAutofill': 'Şifreler',
   'settings.searchSettings': 'Ayarlarda ara',
   'settings.searchEmpty': 'Aramanızla eşleşen ayar yok.',
   'settings.off': 'Kapalı',

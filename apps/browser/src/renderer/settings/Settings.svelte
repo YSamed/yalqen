@@ -186,7 +186,7 @@
             onclick={() => showPane(item.id)}
             onkeydown={movePane}
           >
-            <Icon name={item.icon} size={16} />
+            <Icon name={item.icon} size={18} />
             <span>{item.label}</span>
           </button>
         {/each}
@@ -271,14 +271,22 @@
 
   .sidebar {
     flex: none;
-    width: 236px;
-    padding: 52px 10px 12px;
+    width: 196px;
+    padding: 64px 10px 12px;
     border-right: 1px solid var(--border);
     background: var(--settings-sidebar);
   }
 
+  :global(html.window) {
+    --settings-group: light-dark(#ffffff, #27282b);
+  }
+
   :global(html.window) .sidebar {
-    background: transparent;
+    background: light-dark(#ebebef, #232729);
+  }
+
+  :global(html.window) .main {
+    background: light-dark(#f5f5f7, #1e1f21);
   }
 
   :global(html.window) .sidebar,
@@ -301,15 +309,15 @@
   .pane-tab {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
     height: 30px;
-    padding: 0 10px;
+    padding: 0 12px;
     border: 0;
-    border-radius: 7px;
+    border-radius: 8px;
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     text-align: start;
     cursor: default;
   }
@@ -322,7 +330,8 @@
 
   .pane-tab :global(svg) {
     flex: none;
-    color: var(--text-muted);
+    color: rgb(from var(--text) r g b / 0.85);
+    stroke-width: 1.2;
   }
 
   .pane-tab:hover {
@@ -332,6 +341,7 @@
   .pane-tab[aria-selected='true'] {
     background: var(--accent);
     color: #fff;
+    font-weight: 600;
   }
 
   .pane-tab[aria-selected='true'] :global(svg) {
@@ -357,21 +367,21 @@
     align-items: center;
     gap: 12px;
     height: 52px;
-    padding: 0 16px;
+    padding: 0 16px 0 9px;
   }
 
   .history {
     display: flex;
     padding: 2px;
     border-radius: 999px;
-    background: var(--settings-group);
+    background: rgb(from var(--text) r g b / 0.1);
   }
 
   .history button {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 28px;
+    width: 34px;
+    height: 31px;
     padding: 0;
     border: 0;
     border-radius: 999px;
@@ -393,7 +403,7 @@
     min-width: 0;
     margin: 0;
     overflow: hidden;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -413,7 +423,7 @@
     flex-direction: column;
     max-width: 640px;
     margin: 0 auto;
-    padding: 4px 20px 32px;
+    padding: 8px 20px 32px;
   }
 
   .pane :global([hidden]) {
@@ -438,8 +448,8 @@
   }
 
   .pane :global(h2) {
-    margin: 22px 0 8px;
-    padding-inline: 2px;
+    margin: 26px 0 6px;
+    padding-inline: 10px;
     color: var(--text);
     font-size: 13px;
     font-weight: 600;
@@ -456,7 +466,7 @@
     justify-content: space-between;
     gap: 20px;
     min-height: 42px;
-    padding: 7px 12px;
+    padding: 7px 10px;
     background: var(--settings-group);
   }
 
@@ -464,19 +474,19 @@
     content: '';
     position: absolute;
     top: 0;
-    right: 12px;
-    left: 12px;
+    right: 10px;
+    left: 10px;
     border-top: 1px solid var(--border);
   }
 
   .pane :global(.row:not(.row + .row)) {
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
   }
 
   .pane :global(.row:not(:has(+ .row))) {
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
   }
 
   .pane :global(.row.stacked) {

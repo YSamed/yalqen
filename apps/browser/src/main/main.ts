@@ -306,7 +306,6 @@ function startBrowser(): void {
     preload: preloadPath('page-preload'),
     session: daily,
     icon: appIcon,
-    glass: () => glassAvailable,
     openTab: (url) => {
       const window = mainWindow() ?? openWindow({});
       window.tabs.open(url, { isPrivate: false });

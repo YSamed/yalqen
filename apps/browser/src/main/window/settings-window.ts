@@ -1,6 +1,5 @@
-import { BrowserWindow, type Session } from 'electron';
+import { BrowserWindow, nativeTheme, type Session } from 'electron';
 import { SETTINGS_URL } from '../../shared/types.js';
-import { applyGlass } from './glass.js';
 
 const IS_MAC = process.platform === 'darwin';
 
@@ -8,7 +7,6 @@ export interface SettingsWindowHost {
   preload: string;
   session: Session;
   icon: string;
-  glass: () => boolean;
   openTab: (url: string) => void;
 }
 
@@ -26,9 +24,8 @@ export class SettingsWindow {
   }
 
   open(pane?: string): void {
-    const glass = this.host.glass();
     const target = new URL(pane ?? '', SETTINGS_URL);
-    if (glass) target.searchParams.set('window', '');
+    target.searchParams.set('window', '');
     const url = target.toString();
     const existing = this.browserWindow;
     if (existing) {
@@ -46,9 +43,9 @@ export class SettingsWindow {
       title: 'Yalqen',
       icon: this.host.icon,
       titleBarStyle: IS_MAC ? 'hiddenInset' : 'default',
-      trafficLightPosition: { x: 18, y: 18 },
+      trafficLightPosition: { x: 18, y: 20 },
       fullscreenable: false,
-      transparent: glass,
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1f21' : '#f5f5f7',
       webPreferences: {
         preload: this.host.preload,
         session: this.host.session,
@@ -57,7 +54,6 @@ export class SettingsWindow {
         nodeIntegration: false,
       },
     });
-    if (glass) applyGlass(window);
     window.setMenuBarVisibility(false);
     window.webContents.on('before-input-event', (event, input) => {
       const modifier = IS_MAC ? input.meta : input.control;
