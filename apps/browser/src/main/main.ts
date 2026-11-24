@@ -86,6 +86,7 @@ import { chromeUserAgent } from './app/page-preferences.js';
 import { FindBar } from './window/find-bar.js';
 import { ExternalUrlInbox } from './app/external-urls.js';
 import { miniWindowUrl } from './app/launch.js';
+import { widevineReady } from './app/widevine.js';
 import { startAutoArchive } from './tabs/auto-archive.js';
 import { startMemorySaver } from './tabs/memory-saver.js';
 import { LAZY_SAVE_DELAY_MS } from './storage/json-file.js';
@@ -1401,9 +1402,10 @@ app.setAboutPanelOptions({
 if (!primary) {
   app.quit();
 } else {
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     bench?.mark('app-ready');
     if (!app.isPackaged) app.dock?.setIcon(appIcon);
+    await widevineReady();
     startBrowser();
   });
 }

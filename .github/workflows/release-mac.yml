@@ -80,6 +80,15 @@ jobs:
           profile="$RUNNER_TEMP/Yalqen.provisionprofile"
           printf '%s' "$MAC_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$profile"
           echo "PROVISIONING_PROFILE=$profile" >> "$GITHUB_ENV"
+      - name: Sign in to castLabs EVS for VMP signing
+        env:
+          EVS_ACCOUNT_NAME: ${{ secrets.EVS_ACCOUNT_NAME }}
+          EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
+        if: env.EVS_ACCOUNT_NAME != ''
+        run: |
+          python3 -m pip install --upgrade castlabs-evs
+          python3 -m castlabs_evs.account -n reauth
+          echo "EVS_ACCOUNT_NAME=$EVS_ACCOUNT_NAME" >> "$GITHUB_ENV"
       - name: Package
         run: |
           signing=()

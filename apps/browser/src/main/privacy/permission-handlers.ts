@@ -10,7 +10,7 @@ import { t } from '../../shared/i18n.js';
 import { openSystemSettings, requestSystemAccess } from './system-access.js';
 import type { AppLinks } from './app-links.js';
 
-const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write']);
+const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'clipboard-sanitized-write', 'mediaKeySystem']);
 
 type MediaDevice = 'camera' | 'microphone';
 

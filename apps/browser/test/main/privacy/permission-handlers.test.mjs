@@ -71,3 +71,11 @@ test('blocked kinds are refused without a prompt unless the site was allowed', a
   f.store.set(SITE, ['notifications'], 'allow');
   assert.equal(await f.request('notifications'), true);
 });
+
+for (const isPrivate of [false, true]) {
+  test(`protected content plays without a prompt (private=${isPrivate})`, async () => {
+    const f = fixture(isPrivate);
+    assert.equal(await f.request('mediaKeySystem'), true);
+    assert.equal(f.check('mediaKeySystem'), true);
+  });
+}

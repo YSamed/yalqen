@@ -48,7 +48,7 @@
     "@types/node": "^24.19.2",
     "@types/which": "^3.0.4",
     "bippy": "^0.7.3",
-    "electron": "^45.4.1",
+    "electron": "github:castlabs/electron-releases#v45.2.1+wvcus",
     "electron-builder": "^26.18.0",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
@@ -66,6 +66,9 @@
   "build": {
     "appId": "com.yalqen.browser",
     "npmRebuild": false,
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
+    },
     "productName": "Yalqen",
     "directories": {
       "output": "build/release"
@@ -139,6 +142,9 @@
       ],
       "target": "nsis",
       "icon": "resources/icon-512.png",
+      "signtoolOptions": {
+        "sign": "./scripts/sign-win.mjs"
+      },
       "publish": [
         {
           "provider": "github",

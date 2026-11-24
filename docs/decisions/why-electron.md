@@ -24,7 +24,7 @@ These are real trade-offs, not footnotes:
 - **Memory overhead.** The interface is itself a web page, so Yalqen carries one more renderer than a native browser. Our own benchmark shows the interface group at roughly 120 MB on an idle window (see [benchmarks](../benchmarks.md)).
 - **Download size.** The DMG is about 120 MB, because every Electron app bundles its own Chromium.
 - **Chromium lag.** Electron releases trail stable Chrome. Security fixes arrive with each Electron patch release, which Yalqen picks up through Dependabot and ships through its own auto-updater, but there is always some delay compared to Chrome itself.
-- **No DRM out of the box.** Stock Electron does not include Widevine, so DRM-protected streaming sites (Netflix, Disney+ and similar) do not play.
+- **DRM through a fork.** Stock Electron does not include Widevine, so Yalqen builds on castLabs' [Electron for Content Security](https://github.com/castlabs/electron-releases) (ECS). It downloads the Widevine CDM on first launch. Streaming services that require Verified Media Path only play once a release is VMP-signed through a castLabs EVS account. This is software Widevine (L3), so services that reserve HD or 4K for hardware DRM cap the resolution, and ECS releases trail stock Electron by a few patch versions.
 - **Partial extension support.** Electron implements a subset of the Chrome extension APIs. Content blockers and simple extensions work; extensions that depend on APIs Electron lacks do not.
 - **Not a native Mac app.** Menus, windows and text fields are close to native, but they are not AppKit. Some macOS behaviours (Services, some accessibility details, Handoff) are missing or approximated.
 
