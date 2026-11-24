@@ -323,6 +323,8 @@ function installExtensionApis(api: Bridge): void {
       'showDefaultFolder',
       'erase',
       'getFileIcon',
+      'removeFile',
+      'acceptDanger',
       'setShelfEnabled',
       'setUiOptions',
     ],
@@ -330,7 +332,6 @@ function installExtensionApis(api: Bridge): void {
       onCreated: 'downloads.onCreated',
       onChanged: 'downloads.onChanged',
       onErased: 'downloads.onErased',
-      onDeterminingFilename: undefined,
     },
   );
   const sidePanelCall =
@@ -432,6 +433,38 @@ function installExtensionApis(api: Bridge): void {
   }
 
   const downloads = chromeApi.downloads as Record<string, unknown> | undefined;
+  if (downloads && !downloads.onDeterminingFilename) {
+    type Naming = (item: unknown, suggest: (suggestion?: unknown) => void) => unknown;
+    const naming = new Set<Naming>();
+    // A context without listeners stays silent, so it cannot end a request that the worker still answers.
+    api.subscribe('downloads.onDeterminingFilename', (item, requestId) => {
+      if (naming.size === 0) return;
+      let answered = false;
+      let later = false;
+      const suggest = (suggestion?: unknown) => {
+        if (answered) return;
+        answered = true;
+        api.library('downloads', 'suggest', [requestId, suggestion ?? null]).catch(() => {});
+      };
+      for (const listener of [...naming]) {
+        try {
+          if (listener(item, suggest) === true) later = true;
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      if (!later) suggest();
+    });
+    define(downloads, 'onDeterminingFilename', {
+      addListener: (listener: Naming) => {
+        naming.add(listener);
+        api.library('downloads', 'listen', []).catch(() => {});
+      },
+      removeListener: (listener: Naming) => void naming.delete(listener),
+      hasListener: (listener: Naming) => naming.has(listener),
+      hasListeners: () => naming.size > 0,
+    });
+  }
   if (downloads && permissions.includes('downloads.open') && !downloads.open) {
     // Chrome opens a downloaded file only in response to a user gesture.
     define(downloads, 'open', (id: unknown, callback: Callback) =>

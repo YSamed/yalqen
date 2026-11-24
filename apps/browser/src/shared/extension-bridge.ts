@@ -42,6 +42,7 @@ export type ExtensionBridgeEvent =
   | 'downloads.onCreated'
   | 'downloads.onChanged'
   | 'downloads.onErased'
+  | 'downloads.onDeterminingFilename'
   | 'sidePanel.onOpened'
   | 'sidePanel.onClosed'
   | 'action.onClicked';

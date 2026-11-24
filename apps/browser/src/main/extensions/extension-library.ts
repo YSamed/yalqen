@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { app, type NativeImage } from 'electron';
 import { t } from '../../shared/i18n.js';
 import type { ExtensionBridgeEvent } from '../../shared/extension-bridge.js';
@@ -243,6 +244,15 @@ export function matchesDownload(item: ChromeDownload, query: unknown): boolean {
   return true;
 }
 
+const safeFilename = (filename: unknown): filename is string =>
+  typeof filename === 'string' && !/(^|[\\/])\.\.([\\/]|$)/.test(filename) && !/^([\\/]|[A-Za-z]:)/.test(filename);
+
+// shortcut: conflictAction is ignored and names always uniquify, so an extension can never overwrite a file; honor 'prompt' if an extension needs it.
+export function suggestedFilename(suggestion: unknown): string | null {
+  const { filename } = details(suggestion);
+  return safeFilename(filename) ? path.basename(filename) || null : null;
+}
+
 export function downloadRequest(options: unknown) {
   const { url, filename, method, headers } = details(options);
   if (typeof url !== 'string') throw new Error('Download url is required');
@@ -254,11 +264,7 @@ export function downloadRequest(options: unknown) {
   }
   if (!['http:', 'https:', 'data:'].includes(protocol)) throw new Error(`Cannot download ${protocol} urls`);
   if (method !== undefined && method !== 'GET') throw new Error('Only GET downloads are supported');
-  if (
-    filename !== undefined &&
-    (typeof filename !== 'string' || /(^|[\\/])\.\.([\\/]|$)/.test(filename) || /^([\\/]|[A-Za-z]:)/.test(filename))
-  )
-    throw new Error('Invalid filename');
+  if (filename !== undefined && !safeFilename(filename)) throw new Error('Invalid filename');
   const pairs = Array.isArray(headers) ? headers.map(details) : [];
   const record = Object.fromEntries(
     pairs
@@ -505,6 +511,10 @@ export class ExtensionLibrary {
     throw new Error(`Unsupported bookmarks method: ${method}`);
   }
 
+  pendingDownload(entry: DownloadEntry): ChromeDownload {
+    return chromeDownload(entry, this.downloadId(entry.id), false);
+  }
+
   private downloadId(id: string): number {
     let numeric = this.downloadIds.get(id);
     if (numeric === undefined) {
@@ -577,6 +587,24 @@ export class ExtensionLibrary {
         manager.changed();
         return erased;
       }
+      case 'removeFile': {
+        const found = entry(first);
+        if (found.state !== 'completed') throw new Error('Download must be complete');
+        const stat = await fs.promises.lstat(found.savePath).catch(() => null);
+        if (!stat) throw new Error('Download file already deleted');
+        if (!stat.isFile()) throw new Error('Download file was moved or replaced');
+        await fs.promises.unlink(found.savePath);
+        if (this.events.wants('downloads'))
+          this.events.emit('downloads', 'downloads.onChanged', [
+            { id: first, exists: { previous: true, current: false } },
+          ]);
+        manager.changed();
+        return undefined;
+      }
+      case 'acceptDanger':
+        entry(first);
+        // shortcut: extensions can never override a threat-list block, add a user-confirmed path if a trusted extension needs it.
+        throw new Error('Yalqen does not let extensions accept dangerous downloads.');
       case 'getFileIcon': {
         const { size } = details(second);
         const icon: NativeImage = await app.getFileIcon(entry(first).savePath, {

@@ -29,7 +29,9 @@ import {
 import { callCookies, chromeCookieChange, cookieUrl, extensionGrant, hostPermitted } from './extension-cookies.js';
 import { ExtensionMenus } from './extension-menus.js';
 import { extensionFile } from './extension-manifest.js';
-import { ExtensionLibrary, type LibraryNamespace, type LibraryStores } from './extension-library.js';
+import { ExtensionLibrary, suggestedFilename, type LibraryNamespace, type LibraryStores } from './extension-library.js';
+import { CHOOSE_NAME_TIMEOUT_MS } from '../library/download-manager.js';
+import type { DownloadEntry } from '../library/downloads.js';
 import { SidePanelApi } from './side-panel-api.js';
 import { ActionApi, type ActionState } from './action-api.js';
 import { SilentAuthFlows } from './auth-flow.js';
@@ -69,6 +71,11 @@ export class ExtensionBridge {
   private readonly notifications = new Map<string, Map<string, Notification>>();
   private library: ExtensionLibrary | null = null;
   private readonly historyListeners = new Set<string>();
+  private readonly filenameListeners = new Set<string>();
+  private readonly filenameRequests = new Map<
+    string,
+    { waiting: Set<string>; settle: (name: string | null) => void }
+  >();
   private readonly sidePanels: SidePanelApi;
   private readonly actions: ActionApi;
   private readonly silentAuth: SilentAuthFlows;
@@ -142,6 +149,9 @@ export class ExtensionBridge {
       this.sidePanels.forget(id);
       this.actions.forget(id);
       this.historyListeners.delete(id);
+      this.filenameListeners.delete(id);
+      for (const request of this.filenameRequests.values())
+        if (request.waiting.delete(id) && request.waiting.size === 0) request.settle(null);
       this.silentAuth.cancel(id);
     });
     session.cookies.on('changed', (_event, cookie, cause, removed) => {
@@ -173,6 +183,32 @@ export class ExtensionBridge {
         }
       },
     });
+  }
+
+  chooseDownloadName(entry: DownloadEntry): Promise<string | null> | null {
+    const waiting = new Set(
+      [...this.filenameListeners].filter((id) => this.grant(id).permissions.includes('downloads')),
+    );
+    if (!this.library || waiting.size === 0) return null;
+    const item = this.library.pendingDownload(entry);
+    const requestId = randomUUID();
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => settle(null), CHOOSE_NAME_TIMEOUT_MS);
+      const settle = (name: string | null) => {
+        clearTimeout(timer);
+        this.filenameRequests.delete(requestId);
+        resolve(name);
+      };
+      this.filenameRequests.set(requestId, { waiting, settle });
+      for (const id of waiting) this.deliver(id, 'downloads.onDeterminingFilename', [item, requestId]);
+    });
+  }
+
+  private suggestFilename(extensionId: string, requestId: unknown, suggestion: unknown): void {
+    const request = typeof requestId === 'string' ? this.filenameRequests.get(requestId) : undefined;
+    if (!request?.waiting.delete(extensionId)) return;
+    const name = suggestedFilename(suggestion);
+    if (name || request.waiting.size === 0) request.settle(name);
   }
 
   windowCreated(state: ExtensionWindowState): void {
@@ -265,6 +301,16 @@ export class ExtensionBridge {
     // shortcut: a sleeping worker wakes for history events only once it has run since launch and registered a listener, persist them like Chrome's lazy listeners if that bites.
     if (namespace === 'history' && method === 'listen') {
       this.historyListeners.add(extensionId);
+      return undefined;
+    }
+    // shortcut: an extension that listens in both a page and its worker counts only its first answer, merge them if an extension needs that.
+    if (namespace === 'downloads' && method === 'listen') {
+      this.filenameListeners.add(extensionId);
+      return undefined;
+    }
+    if (namespace === 'downloads' && method === 'suggest') {
+      const [requestId, suggestion] = Array.isArray(args) ? args : [];
+      this.suggestFilename(extensionId, requestId, suggestion);
       return undefined;
     }
     return this.library.call(

@@ -18,6 +18,7 @@ const {
   downloadRequest,
   matchesDownload,
   searchHistory,
+  suggestedFilename,
 } = library;
 
 const visit = (id, url, visitedAt, title = url) => ({ id, url, title, visitedAt });
@@ -199,4 +200,64 @@ test('extension bookmark and history calls edit the stores and emit Chrome event
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('extensions remove only completed download files and cannot accept dangerous downloads', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-extension-library-'));
+  try {
+    const downloads = new downloadsModule.DownloadStore(directory);
+    const file = (name) => path.join(directory, name);
+    fs.writeFileSync(file('done.txt'), 'x');
+    fs.mkdirSync(file('folder.txt'));
+    const base = { url: 'https://x.test/f', receivedBytes: 1, totalBytes: 1, startedAt: 1 };
+    for (const [name, state] of [
+      ['done.txt', 'completed'],
+      ['folder.txt', 'completed'],
+      ['run.txt', 'progressing'],
+      ['bad.txt', 'blocked'],
+    ])
+      downloads.add({ ...base, id: name, filename: name, savePath: file(name), state });
+    const events = [];
+    const api = new ExtensionLibrary(
+      {
+        history: new historyModule.HistoryStore(directory),
+        bookmarks: new bookmarksModule.BookmarkStore(directory),
+        downloads,
+        downloadManager: { onChange: null, actions: () => ({}), changed() {} },
+        bookmarksChanged() {},
+      },
+      { wants: () => true, emit: (_permission, name, args) => events.push([name, args]) },
+    );
+    const items = await api.call('downloads', 'search', [{}], []);
+    const id = (name) => items.find((item) => item.filename === file(name)).id;
+    const remove = (name) => api.call('downloads', 'removeFile', [id(name)], []);
+    await assert.rejects(remove('run.txt'), /Download must be complete/);
+    await assert.rejects(remove('bad.txt'), /Download must be complete/);
+    await assert.rejects(api.call('downloads', 'removeFile', [9999], []), /Invalid download id/);
+    await assert.rejects(remove('folder.txt'), /moved or replaced/);
+    assert.ok(fs.existsSync(file('folder.txt')));
+    await assert.rejects(
+      api.call('downloads', 'acceptDanger', [id('bad.txt')], []),
+      /Yalqen does not let extensions accept dangerous downloads/,
+    );
+
+    await remove('done.txt');
+    assert.equal(fs.existsSync(file('done.txt')), false);
+    const [removed] = await api.call('downloads', 'search', [{ id: id('done.txt') }], []);
+    assert.equal(removed.exists, false);
+    assert.deepEqual(events.at(-1), [
+      'downloads.onChanged',
+      [{ id: id('done.txt'), exists: { previous: true, current: false } }],
+    ]);
+    await assert.rejects(remove('done.txt'), /already deleted/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('filename suggestions keep only a safe base name', () => {
+  assert.equal(suggestedFilename({ filename: 'notes/renamed.txt', conflictAction: 'overwrite' }), 'renamed.txt');
+  for (const filename of ['../x', '/etc/x', 'C:x', '', 7, undefined])
+    assert.equal(suggestedFilename({ filename }), null);
+  assert.equal(suggestedFilename(null), null);
 });

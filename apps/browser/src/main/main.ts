@@ -532,6 +532,7 @@ function startBrowser(): void {
     ignore: (contents) => extensionBridge.isSilentAuth(contents),
     onStateChange: pushState,
     checkFile: (file) => threatLists.checkFile(file),
+    chooseName: (entry) => extensionBridge.chooseDownloadName(entry),
   });
   const downloadsChanged = () => downloadManager.changed();
   extensionBridge.attachLibrary({ history, bookmarks, downloads, downloadManager, bookmarksChanged });
