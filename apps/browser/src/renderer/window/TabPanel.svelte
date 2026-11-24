@@ -25,6 +25,7 @@
   import type { TabGroup } from '../../shared/tab-groups';
   import type { LiveFolderView } from '../../shared/live-folders';
   import type { SpaceView } from '../../shared/workspaces';
+  import { hostOf } from '../../shared/hosts';
 
   let {
     tabs,
@@ -263,14 +264,7 @@
       return tab ? [tab] : [];
     }),
   );
-  const entriesByGroup = $derived(
-    new Map(
-      [...new Set(visibleEntries.map((tab) => tab.group || ''))].map((key) => [
-        key,
-        visibleEntries.filter((tab) => (tab.group || '') === key),
-      ]),
-    ),
-  );
+  const entriesByGroup = $derived(Map.groupBy(visibleEntries, (tab) => tab.group || ''));
   const groupsByName = $derived(new Map(groups.map((group) => [group.name, group])));
   const sections = $derived(
     [
@@ -427,13 +421,13 @@
   const draggingPinned = $derived(dragGroup === 'pinned');
   const draggingListed = $derived(dragGroup === 'listed');
 
+  const unreadHosts = $derived(
+    new Set(tabs.flatMap((tab) => (tab.unread && !tab.isPrivate ? (hostOf(tab.url) ?? []) : []))),
+  );
+
   function favoriteUnread(url: string): boolean {
-    try {
-      const { host } = new URL(url);
-      return tabs.some((tab) => tab.unread && !tab.isPrivate && new URL(tab.url).host === host);
-    } catch {
-      return false;
-    }
+    const host = hostOf(url);
+    return host !== null && unreadHosts.has(host);
   }
 
   function label(tab: TabSnapshot): string {
@@ -756,10 +750,11 @@
   >
     <span class="title">{tab.title}</span>
     {#if split.has(tab.id)}<span class="mark" title={t('tabPanel.splitTab')}><Icon name="split" size={13} /></span>{/if}
-    {#if developer}<span class="mark" title={t('tabPanel.developerTab')}><Icon name="gauge" size={13} /></span
-      >{:else if tab.isPrivate}<span class="mark" title={t('tabPanel.privateTab')}
-        ><Icon name="private" size={13} /></span
-      >{/if}
+    {#if developer}<span class="mark" title={t('tabPanel.developerTab')}>
+        <Icon name="gauge" size={13} />
+      </span>{:else if tab.isPrivate}<span class="mark" title={t('tabPanel.privateTab')}>
+        <Icon name="private" size={13} />
+      </span>{/if}
   </button>
   {#if tab.audible || tab.muted}
     <IconButton
@@ -1015,9 +1010,9 @@
         onclick={() => send({ type: 'toggle-agent-panel' })}
       >
         <span class="orb" aria-hidden="true"></span>
-        {#if agents.waiting > 0}<span class="agents-waiting"
-            >{t('tabPanel.agentsWaiting', { count: agents.waiting })}</span
-          >{/if}
+        {#if agents.waiting > 0}<span class="agents-waiting">
+            {t('tabPanel.agentsWaiting', { count: agents.waiting })}
+          </span>{/if}
         <span class="agents-count">{t('tabPanel.agentsWorking', { count: agents.waiting + agents.working })}</span>
         <Icon name="up" size={12} />
       </button>
@@ -1083,8 +1078,9 @@
                   }}
                   onclick={(e) => button.run(e.currentTarget)}
                 >
-                  {#if item === 'spaces' && activeSpace?.icon}<span class="space-icon">{activeSpace.icon}</span
-                    >{:else}<Icon name={button.icon} size={16} />{/if}
+                  {#if item === 'spaces' && activeSpace?.icon}<span class="space-icon">
+                      {activeSpace.icon}
+                    </span>{:else}<Icon name={button.icon} size={16} />{/if}
                   {#if item === 'downloads' && downloads.active > 0}<span class="download-dot" aria-hidden="true"
                     ></span>{/if}
                 </button>
@@ -1125,8 +1121,10 @@
           <button
             class="clear-selection"
             aria-label={t('tabPanel.clearSelection')}
-            onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
+            onclick={() => send({ type: 'clear-tab-selection' })}
           >
+            Esc
+          </button>
         </div>
       </footer>
     {/if}

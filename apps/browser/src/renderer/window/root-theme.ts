@@ -1,4 +1,4 @@
-import { DEFAULT_FRAME_THEME, frameGradient, readableFrameAmount } from '../../shared/frame-theme';
+import { DEFAULT_FRAME_THEME, frameGradient, readableFrameAmount, type FrameTheme } from '../../shared/frame-theme';
 import type { BrowserState, TabSnapshot } from '../../shared/types';
 
 export type ChromeMode = 'normal' | 'developer' | 'private';
@@ -11,17 +11,27 @@ export function chromeMode(browser: BrowserState, activeTab: TabSnapshot | null)
   return activeTab?.isPrivate ? 'private' : 'normal';
 }
 
-// Every renderer that shows browser chrome themes itself from these root attributes and variables.
-export function applyRootTheme(browser: BrowserState, mode: ChromeMode, dark: boolean): void {
-  const root = document.documentElement;
-  root.dataset.material = browser.material;
-  root.dataset.mode = mode;
-  root.dataset.style = 'card';
-  root.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : browser.accent);
-  const frameTheme =
+export function frameThemeOf(browser: BrowserState): FrameTheme {
+  return (
     browser.spaces.find((space) => space.id === browser.activeSpaceId)?.theme ??
     browser.frameTheme ??
-    DEFAULT_FRAME_THEME;
+    DEFAULT_FRAME_THEME
+  );
+}
+
+export interface RootTheme {
+  material: BrowserState['material'];
+  accent: string;
+  frameTheme: FrameTheme;
+}
+
+// Every renderer that shows browser chrome themes itself from these root attributes and variables.
+export function applyRootTheme({ material, accent, frameTheme }: RootTheme, mode: ChromeMode, dark: boolean): void {
+  const root = document.documentElement;
+  root.dataset.material = material;
+  root.dataset.mode = mode;
+  root.dataset.style = 'card';
+  root.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : accent);
   const frameColors = frameTheme.colors;
   const frameAmount = readableFrameAmount(frameColors, frameTheme.intensity, dark ? 'dark' : 'light');
   const framed = frameColors.length > 0 && frameAmount > 0;

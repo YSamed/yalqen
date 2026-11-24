@@ -7,7 +7,7 @@
   import type { LiveFolderView } from '../../shared/live-folders';
   import { reuseBrowserState } from '../../shared/browser-state';
   import { accentHex, DEFAULT_ACCENT } from '../../shared/accent';
-  import { applyRootTheme, chromeMode } from './root-theme';
+  import { applyRootTheme, chromeMode, frameThemeOf } from './root-theme';
   import { isNewTab } from './format';
   import DeviceControls from './DeviceControls.svelte';
   import BookmarksPanel from './BookmarksPanel.svelte';
@@ -41,6 +41,7 @@
   const TUCK_ANIMATION_MS = 160;
   const NO_GROUPS: TabGroup[] = [];
   const NO_LIVE_FOLDERS: LiveFolderView[] = [];
+  const NO_SPLIT_GROUPS: NonNullable<BrowserState['splitGroups']> = [];
 
   let browser: BrowserState = $state.raw({
     tabs: [],
@@ -118,10 +119,17 @@
   const agentProjectId = $derived(browser.agentProjectId);
   const agentConversationId = $derived(browser.agentConversationId);
   const agentBackgroundChats = $derived(browser.agentBackgroundChats);
+  const agentProjects = $derived(browser.agentProjects);
   const agents = $derived({
-    waiting: browser.agentProjects.filter((project) => project.waiting).length,
-    working: browser.agentProjects.filter((project) => project.busy && !project.waiting).length,
+    waiting: agentProjects.filter((project) => project.waiting).length,
+    working: agentProjects.filter((project) => project.busy && !project.waiting).length,
   });
+  const splitTabIds = $derived(browser.splitTabIds);
+  const splitGroups = $derived(browser.splitGroups ?? NO_SPLIT_GROUPS);
+  const splitWeights = $derived(browser.splitWeights);
+  const liveFolders = $derived(browser.liveFolders ?? NO_LIVE_FOLDERS);
+  const footerItems = $derived(browser.sidebarFooterItems);
+  const devToolsDivider = $derived(browser.devToolsDivider);
   const agentStatus = $derived(
     agentChat.status === 'error'
       ? 'error'
@@ -246,9 +254,9 @@
   const pageLeft = $derived(panelWidth + panelSlide);
   const splitPanes = $derived.by(() => {
     if (!spanToolbar || pageFullScreen || !activeTabId) return [];
-    const groupIndex = browser.splitGroups?.findIndex((group) => group.includes(activeTabId)) ?? -1;
-    const ids: (string | null)[] = [...(browser.splitGroups?.[groupIndex] ?? [activeTabId])];
-    const weights = splitDrop ? undefined : (browser.splitWeights?.[groupIndex] ?? undefined);
+    const groupIndex = splitGroups.findIndex((group) => group.includes(activeTabId));
+    const ids: (string | null)[] = [...(splitGroups[groupIndex] ?? [activeTabId])];
+    const weights = splitDrop ? undefined : (splitWeights?.[groupIndex] ?? undefined);
     if (splitDrop === 'left') ids.unshift(null);
     else if (splitDrop === 'right') ids.push(null);
     if (ids.length < 2) return [];
@@ -267,7 +275,10 @@
   const pageRadius = PAGE_RADIUS;
   const menuInset = $derived(windowMenu && !pageFullScreen && !sidebarVisible ? pageInset + CONTROL_SIZE + 8 : 0);
   const blank = $derived(activeTab !== null && isNewTab(activeTab.url));
-  $effect(() => applyRootTheme(browser, mode, prefersDark));
+  const material = $derived(browser.material);
+  const accent = $derived(browser.accent);
+  const frameTheme = $derived(frameThemeOf(browser));
+  $effect(() => applyRootTheme({ material, accent, frameTheme }, mode, prefersDark));
 
   $effect.pre(() => {
     if (!stateReceived) return;
@@ -321,8 +332,8 @@
         {developer}
         {activeTabId}
         {selectedTabIds}
-        splitTabIds={browser.splitTabIds}
-        splitGroups={browser.splitGroups ?? []}
+        {splitTabIds}
+        {splitGroups}
         pageRect={() => pageElement?.getBoundingClientRect()}
         onSplitDrop={(next) => (splitDrop = next)}
         groups={tabGroups}
@@ -333,10 +344,10 @@
         updateReady={browser.updateReady ?? false}
         {downloads}
         {profile}
-        footerItems={browser.sidebarFooterItems}
+        {footerItems}
         tabCleanup={browser.tabCleanup ?? false}
         {favorites}
-        liveFolders={browser.liveFolders ?? NO_LIVE_FOLDERS}
+        {liveFolders}
         {spaces}
         {activeSpaceId}
         {media}
@@ -396,7 +407,7 @@
   {#if windowMenu && !pageFullScreen}
     <div class="menu-button" style:height="{topInset}px"><MenuButton /></div>
   {/if}
-  {#if browser.devToolsDivider}<DevToolsDivider rect={browser.devToolsDivider} />{/if}
+  {#if devToolsDivider}<DevToolsDivider rect={devToolsDivider} />{/if}
   {#each splitPanes as pane, index (index)}
     {#if pane.tab?.id === activeTabId}
       <div class="pane-ring" style:left="{pane.x}px" style:width="{pane.width}px" aria-hidden="true"></div>

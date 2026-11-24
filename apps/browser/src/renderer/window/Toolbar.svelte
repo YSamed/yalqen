@@ -110,6 +110,7 @@
     send(action);
   }
   const surface = $derived(span && activeTab && !isNewTab(activeTab.url) ? (activeTab.pageColor ?? null) : null);
+  const surfaceTone = $derived(surface === null ? null : toneScheme(surface));
   const chatPill = $derived(span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
   const bookmarkable = $derived(
     activeTab !== null && (activeTab.url.startsWith('http') || activeTab.url.startsWith('file:')),
@@ -138,7 +139,8 @@
 
   let alignGroup: (() => void) | null = null;
   $effect(() => {
-    void activeTab;
+    // The active chip is keyed by tab id, so only a new id replaces the element the observer watches.
+    void activeTab?.id;
     if (!toolbar || !group || !strip || !trailing) return;
     const header = toolbar;
     const tabGroup = group;
@@ -319,8 +321,8 @@
   class:span
   class:split
   class:blank-page={activeTab !== null && isNewTab(activeTab.url)}
-  class:surface-light={surface !== null && toneScheme(surface) === 'light'}
-  class:surface-dark={surface !== null && toneScheme(surface) === 'dark'}
+  class:surface-light={surfaceTone === 'light'}
+  class:surface-dark={surfaceTone === 'dark'}
   style:--card-surface={surface}
   class:busy={downloads.active > 0 || agentStatus === 'running' || agentStatus === 'error'}
   bind:this={toolbar}
@@ -559,13 +561,13 @@
             {#if isNewTab(tab.url)}
               <span class="label hint">{t('commandBar.placeholder')}</span>
             {:else}
-              <span class="label"
-                ><span class="crumb">{siteLabel(tab)}</span>{#if tab.title && tab.title !== siteLabel(tab)}<span
+              <span class="label">
+                <span class="crumb">{siteLabel(tab)}</span>{#if tab.title && tab.title !== siteLabel(tab)}<span
                     class="crumb-title"
                   >
-                    / {tab.title}</span
-                  >{/if}</span
-              >
+                    / {tab.title}
+                  </span>{/if}
+              </span>
             {/if}
           </button>
           <IconButton
