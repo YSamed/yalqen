@@ -59,6 +59,12 @@
     if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
     else void update({ frameTheme: theme, accentColor: id });
   }
+
+  function setIntensity(intensity: number): void {
+    const theme: FrameTheme = { ...frame, intensity };
+    if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
+    else void update({ frameTheme: theme });
+  }
 </script>
 
 {#snippet mockWindow(scheme: 'light' | 'dark')}
@@ -100,6 +106,16 @@
         {t('settings.frameScopeReset')}
       </Button>
     {/if}
+  </SettingRow>
+  <SettingRow title={t('settings.themeIntensity')} hint={t('settings.themeIntensityHint')} labelFor="theme-intensity">
+    <input
+      id="theme-intensity"
+      type="range"
+      min="0"
+      max="100"
+      value={frame.intensity}
+      onchange={(event) => setIntensity(event.currentTarget.valueAsNumber)}
+    />
   </SettingRow>
 
   <SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>

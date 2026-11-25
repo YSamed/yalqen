@@ -1039,6 +1039,8 @@ export const en = {
   'settings.themeColor': 'Theme color',
   'settings.themeColorFor': 'Theme color for {space}',
   'settings.frameScopeReset': 'Use the shared theme',
+  'settings.themeIntensity': 'Color intensity',
+  'settings.themeIntensityHint': 'Sets how strongly the theme color tints the window frame.',
   'spaces.theme': 'Edit Profile…',
   'settings.tabPanel': 'Sidebar',
   'settings.protection': 'Protection',

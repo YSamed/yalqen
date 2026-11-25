@@ -1048,6 +1048,8 @@ export const tr: Record<MessageKey, string> = {
   'settings.themeColor': 'Tema rengi',
   'settings.themeColorFor': '{space} için tema rengi',
   'settings.frameScopeReset': 'Genel temayı kullan',
+  'settings.themeIntensity': 'Renk yoğunluğu',
+  'settings.themeIntensityHint': 'Tema renginin pencere çerçevesindeki gücünü ayarlar.',
   'spaces.theme': 'Profili düzenle…',
   'settings.tabPanel': 'Sekme paneli',
   'settings.protection': 'Koruma',
