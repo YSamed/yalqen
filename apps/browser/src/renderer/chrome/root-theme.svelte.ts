@@ -1,3 +1,4 @@
+import { accentCss } from '../../shared/accent';
 import { MediaQuery } from 'svelte/reactivity';
 import { DEFAULT_FRAME_THEME, frameGradient, readableFrameAmount, type FrameTheme } from '../../shared/frame-theme';
 import type { BrowserState, TabSnapshot } from '../../shared/types';
@@ -50,7 +51,7 @@ function applyRootTheme(
   const root = document.documentElement;
   root.dataset.material = material;
   root.dataset.mode = mode;
-  root.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : accent);
+  root.style.setProperty('--accent', mode === 'private' ? PRIVATE_ACCENT : accentCss(accent));
   const frameColors = frameTheme.colors;
   const frameAmount = readableFrameAmount(frameColors, frameTheme.intensity, dark ? 'dark' : 'light');
   const framed = frameColors.length > 0 && frameAmount > 0;

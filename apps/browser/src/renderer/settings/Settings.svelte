@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import type { SettingsSaveResult, SettingsValues, SettingsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
-  import { accentHex } from '../../shared/accent';
+  import { accentCss, accentHex } from '../../shared/accent';
   import type { IconName } from '../ui/Icon.svelte';
   import Icon from '../ui/Icon.svelte';
   import SearchField from '../ui/SearchField.svelte';
@@ -81,7 +81,7 @@
   const searching = $derived(query.trim() !== '');
 
   $effect(() => {
-    if (view) document.documentElement.style.setProperty('--accent', accentHex(view.values.accentColor));
+    if (view) document.documentElement.style.setProperty('--accent', accentCss(accentHex(view.values.accentColor)));
   });
 
   $effect(() => {

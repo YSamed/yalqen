@@ -20,3 +20,7 @@ export function isAccentColor(value: unknown): value is AccentColorId {
 export function accentHex(id: AccentColorId): string {
   return HEX.get(id) ?? HEX.get(DEFAULT_ACCENT)!;
 }
+
+export function accentCss(hex: string): string {
+  return hex.toLowerCase() === accentHex('orange') ? 'var(--orange-accent)' : hex;
+}

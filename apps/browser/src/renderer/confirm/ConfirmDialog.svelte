@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { accentCss } from '../../shared/accent';
   import { onMount, tick } from 'svelte';
   import type { ConfirmOpen } from '../../shared/types';
   import Button from '../ui/Button.svelte';
@@ -23,7 +24,7 @@
 
   onMount(() =>
     api.onOpen(async (next) => {
-      document.documentElement.style.setProperty('--accent', next.accent);
+      document.documentElement.style.setProperty('--accent', accentCss(next.accent));
       open = next;
       await tick();
       // Keyboard users still get the ring once they press a key; a fresh dialog should not open with one.

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { accentCss } from '../../shared/accent';
   import { onMount, tick } from 'svelte';
   import type { AddressSuggestion, CommandBarAction, CommandBarOpen } from '../../shared/types';
   import { matchSearchKeyword } from '../../shared/search-keyword';
@@ -87,7 +88,7 @@
 
   onMount(() => {
     const offOpen = window.yalqenCommand.onOpen((open) => {
-      document.documentElement.style.setProperty('--accent', open.accent);
+      document.documentElement.style.setProperty('--accent', accentCss(open.accent));
       placeholder = open.placeholder;
       tint = open.tint ?? null;
       area = open.area ?? null;

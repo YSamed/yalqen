@@ -1,3 +1,4 @@
+import { accentCss } from '../../shared/accent.js';
 import { t } from '../../shared/i18n.js';
 import { NEW_TAB_URL, type AddressSuggestion } from '../../shared/types.js';
 import { FORGET_ICON, escapeHtml, fillSlot } from './html.js';
@@ -68,7 +69,7 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
       ];
       const accent = sources.accent?.();
       const template = accent
-        ? assets.template.replace('<html ', `<html style="--accent: ${escapeHtml(accent)}" `)
+        ? assets.template.replace('<html ', `<html style="--accent: ${escapeHtml(accentCss(accent))}" `)
         : assets.template;
       const body = slots.reduce((page, [marker, content]) => fillSlot(page, marker, content), template);
       return htmlResponse(body, NEW_TAB_CSP, false);
