@@ -111,13 +111,20 @@ finish(
 
     const sidebar = await ui.center(row('a'));
     for (let step = 0; step < 4; step++) {
-      ui.window.webContents.sendInputEvent({
-        type: 'mouseWheel',
-        ...sidebar,
-        deltaX: -30,
-        deltaY: 0,
-        hasPreciseScrollingDeltas: true,
-      });
+      // shortcut: Chromium drops synthetic mouseWheel input on Windows and Linux, so those runs dispatch the DOM event; use real input if Electron fixes it.
+      if (process.platform === 'darwin') {
+        ui.window.webContents.sendInputEvent({
+          type: 'mouseWheel',
+          ...sidebar,
+          deltaX: -30,
+          deltaY: 0,
+          hasPreciseScrollingDeltas: true,
+        });
+      } else {
+        await ui.window.webContents.executeJavaScript(
+          `document.elementFromPoint(${sidebar.x}, ${sidebar.y}).dispatchEvent(new WheelEvent('wheel', { deltaX: -30, bubbles: true, cancelable: true }))`,
+        );
+      }
       await ui.settle(30);
     }
     await ui.settle(250);
