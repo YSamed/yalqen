@@ -10,6 +10,8 @@ import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helper
 import closed from '../../dist/main/tabs/closed-tabs.js';
 import tabs from '../../dist/main/tabs/tabs.js';
 
+// shortcut: Electron launched from an Electron test process crashes its zygote on the Linux CI runner, so nested runs skip the sandbox; drop this once nested sandboxed launches work there.
+const nestedSwitches = process.platform === 'linux' ? ['--no-sandbox'] : [];
 const parent = !process.env.YALQEN_CLOSED_TEST_ROOT;
 const profile = process.env.YALQEN_CLOSED_TEST_ROOT ?? fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-closed-runtime-'));
 const directory = path.join(profile, parent ? 'parent' : 'data');
@@ -36,13 +38,12 @@ app
       fs.writeFileSync(path.join(profile, 'back.html'), '<title>Previous page</title><p>Back</p>');
       fs.writeFileSync(path.join(profile, 'final.html'), '<title>Final page</title><p>Restored offline</p>');
       for (const phase of ['write', 'restore', 'empty']) {
-        await promisify(execFile)(process.execPath, [fileURLToPath(import.meta.url)], {
+        await promisify(execFile)(process.execPath, [fileURLToPath(import.meta.url), ...nestedSwitches], {
           env: {
             ...process.env,
             ELECTRON_RUN_AS_NODE: undefined,
             YALQEN_CLOSED_TEST_ROOT: profile,
             YALQEN_CLOSED_TEST_PHASE: phase,
-            ELECTRON_ENABLE_LOGGING: '1',
           },
           timeout: 10_000,
           killSignal: 'SIGKILL',
