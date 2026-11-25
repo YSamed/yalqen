@@ -574,7 +574,7 @@
       {/each}
 
       <div class="new-tab-row">
-        <NewTabButton compact={false} />
+        <NewTabButton />
       </div>
     </div>
 

@@ -7,7 +7,6 @@
   import { isNewTab, siteLabel } from './format';
   import Capsule from './Capsule.svelte';
   import Icon from '../ui/Icon.svelte';
-  import NewTabButton from './NewTabButton.svelte';
   import PageActions from './PageActions.svelte';
   import LoadProgress from './LoadProgress.svelte';
   import IconButton from '../ui/IconButton.svelte';
@@ -136,8 +135,7 @@
       }
       const headerBounds = header.getBoundingClientRect();
       const groupBounds = tabGroup.getBoundingClientRect();
-      const contentRight =
-        tabGroup.querySelector('.new-tab-slot > *')?.getBoundingClientRect().right ?? groupBounds.right;
+      const contentRight = groupBounds.right;
       const contentCenter = (contentRight - groupBounds.left) / 2;
       const leftLimit = headerBounds.left + leadingInset + 8;
       const targetLeft = alignLeading
@@ -393,11 +391,6 @@
         {/key}
       {/if}
     </ol>
-    {#if !sidebarMenu}
-      <div class="new-tab-slot">
-        <NewTabButton />
-      </div>
-    {/if}
   </div>
 
   {#if split}
@@ -833,18 +826,6 @@
     align-items: center;
     gap: 6px;
     min-width: 0;
-  }
-
-  .new-tab-slot {
-    display: flex;
-    flex: 0 1000 92px;
-    min-width: var(--chrome-control-size);
-  }
-
-  @media (max-width: 760px) {
-    .new-tab-slot {
-      flex-basis: var(--chrome-control-size);
-    }
   }
 
   .strip {

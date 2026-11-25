@@ -1,33 +1,19 @@
 <script lang="ts">
   import { t } from '../../shared/i18n';
   import Button from '../ui/Button.svelte';
-  import IconButton from '../ui/IconButton.svelte';
-
-  let { compact = true }: { compact?: boolean } = $props();
 
   const send = window.yalqen.send;
 </script>
 
-{#if compact}
-  <IconButton
-    size="lg"
-    variant="surface"
-    icon="plus"
-    label={t('newTabButton.label')}
-    title={t('newTabButton.title')}
-    onclick={() => send({ type: 'new-tab' })}
-  />
-{:else}
-  <Button
-    size="lg"
-    icon="plus"
-    class="new-tab-wide"
-    title={t('newTabButton.title')}
-    onclick={() => send({ type: 'new-tab' })}
-  >
-    {t('newTabButton.label')}
-  </Button>
-{/if}
+<Button
+  size="lg"
+  icon="plus"
+  class="new-tab-wide"
+  title={t('newTabButton.title')}
+  onclick={() => send({ type: 'new-tab' })}
+>
+  {t('newTabButton.label')}
+</Button>
 
 <style>
   :global(.btn.new-tab-wide) {
