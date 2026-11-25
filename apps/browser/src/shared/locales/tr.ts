@@ -1736,7 +1736,7 @@ export const tr: Record<MessageKey, string> = {
   'widgets.elapsed': '{elapsed} / {duration}',
   'settings.mediaPlayer': 'Kenar çubuğunda medya oynatıcı',
   'settings.mediaPlayerHint': 'Bir sekmede çalanı kontrollerle sekme listesinin altında gösterir.',
-  'accent.orange': 'Yalqen turuncusu',
+  'accent.orange': 'Turuncu',
   'accent.coral': 'Kırmızı',
   'accent.rose': 'Gül',
   'accent.lavender': 'Mor',

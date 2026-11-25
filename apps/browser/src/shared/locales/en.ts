@@ -1724,7 +1724,7 @@ export const en = {
   'widgets.elapsed': '{elapsed} of {duration}',
   'settings.mediaPlayer': 'Media player in sidebar',
   'settings.mediaPlayerHint': 'Shows what a tab is playing, with controls, under the tab list.',
-  'accent.orange': 'Yalqen orange',
+  'accent.orange': 'Orange',
   'accent.coral': 'Red',
   'accent.rose': 'Rose',
   'accent.lavender': 'Purple',
