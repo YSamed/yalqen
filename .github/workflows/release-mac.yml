@@ -86,8 +86,11 @@ jobs:
           EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
         if: env.EVS_ACCOUNT_NAME != ''
         run: |
-          python3 -m pip install --upgrade castlabs-evs
-          python3 -m castlabs_evs.account -n reauth
+          # The runner's Homebrew Python rejects system-wide pip installs (PEP 668); vmp-sign.mjs finds python3 on PATH.
+          python3 -m venv "$RUNNER_TEMP/evs"
+          echo "$RUNNER_TEMP/evs/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/evs/bin/python3" -m pip install --upgrade castlabs-evs
+          "$RUNNER_TEMP/evs/bin/python3" -m castlabs_evs.account -n reauth
           echo "EVS_ACCOUNT_NAME=$EVS_ACCOUNT_NAME" >> "$GITHUB_ENV"
       - name: Package
         run: |
