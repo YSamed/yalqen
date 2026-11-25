@@ -1578,9 +1578,14 @@ export class YalqenWindow {
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
 
-  async openSidebarMenu(kind: SidebarMenuKind, anchor: AnchorRect, footer: AnchorRect | null = null): Promise<void> {
+  menuTint(): string | null {
     const state = this.state();
     const theme = state.spaces.find((space) => space.id === state.activeSpaceId)?.theme ?? state.frameTheme;
+    return theme?.colors[0] ?? null;
+  }
+
+  async openSidebarMenu(kind: SidebarMenuKind, anchor: AnchorRect, footer: AnchorRect | null = null): Promise<void> {
+    const state = this.state();
     const persistent = this.profile !== 'private';
     this.sidebarMenuAnchor = anchor;
     const chats = kind === 'chats' ? await this.agentChat.history().catch(() => []) : [];
@@ -1593,7 +1598,7 @@ export class YalqenWindow {
       menu: {
         kind,
         anchor,
-        tint: theme?.colors[0] ?? null,
+        tint: this.menuTint(),
         // Pinned tabs already sit in the tiles above the list.
         tabs: state.tabs
           .filter((tab) => !tab.pinned)

@@ -763,6 +763,7 @@ function startBrowser(): void {
     preload: preloadPath('confirm-preload'),
     page: rendererPath('confirm.html'),
     accent: () => accentHex(settings.get().accentColor),
+    tint: (base) => windows.find((window) => window.window === base)?.menuTint() ?? null,
   });
   setPageAccent(accentHex(settings.get().accentColor));
   nativeTheme.themeSource = settings.get().theme;

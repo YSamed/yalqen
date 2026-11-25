@@ -1,5 +1,6 @@
 export interface ConfirmRequest {
   icon: 'extensions' | 'trash';
+  image?: string;
   title: string;
   message?: string;
   items: string[];
@@ -10,6 +11,7 @@ export interface ConfirmRequest {
 
 export interface ConfirmOpen extends ConfirmRequest {
   accent: string;
+  tint: string | null;
 }
 
 export const ConfirmChannel = {
