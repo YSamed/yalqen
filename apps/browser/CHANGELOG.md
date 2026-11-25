@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.2](https://github.com/YSamed/yalqen/compare/v0.5.1...v0.5.2) (2026-11-25)
+
+
+### Features
+
+* move mute control from toolbar to tab favicon ([4f4f96b](https://github.com/YSamed/yalqen/commit/4f4f96bf5dfa457d04c7ce4360d6c8f58f9dc178))
+* restyle page-load error page ([6025757](https://github.com/YSamed/yalqen/commit/6025757c81859fa7fa88b17b31a688d3da41be55))
+* restyle sidebar media player as single card ([44ee1ec](https://github.com/YSamed/yalqen/commit/44ee1ecc5de98ae26f22447ccdf1a36ac9a20a10))
+
+
+### Bug Fixes
+
+* change default frame theme color to brand green ([01d7fa7](https://github.com/YSamed/yalqen/commit/01d7fa739c5b9c1be4e33973a9772fe4ff2daa75))
+
 ## [0.5.1](https://github.com/YSamed/yalqen/compare/v0.5.0...v0.5.1) (2026-11-25)
 
 
