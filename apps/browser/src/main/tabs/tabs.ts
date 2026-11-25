@@ -563,6 +563,26 @@ export class TabManager {
     this.split(side === 'left' ? [id, ...current] : [...current, id], true);
   }
 
+  splitInto(id: TabId, target: TabId): void {
+    if (id === target || !this.find(id) || !this.find(target)) return;
+    const current = this.splitOf(target) ?? [target];
+    if (current.includes(id) || current.length >= MAX_SPLIT_PANES) return;
+    this.splitPreview = null;
+    this.split([...current, id], true);
+  }
+
+  splitWithNewTab(): void {
+    const active = this.activeId;
+    if (!active) return;
+    if (this.splitOf(active)) {
+      this.unsplit(active);
+      return;
+    }
+    const id = this.open(NEW_TAB_URL, { activate: false });
+    this.splitWithActive(id);
+    this.activate(id);
+  }
+
   previewSplit(id: TabId | null, side: unknown): void {
     const next = id && this.canSplitWithActive(id) ? (side === 'left' ? 'left' : 'right') : null;
     if (next === this.splitPreview) return;
@@ -601,7 +621,7 @@ export class TabManager {
     this.changed(true);
   }
 
-  private splitOf(id: TabId | null): TabId[] | undefined {
+  splitOf(id: TabId | null): TabId[] | undefined {
     return id ? this.splits.find((split) => split.includes(id)) : undefined;
   }
 
@@ -1117,6 +1137,29 @@ export class TabManager {
     const ordered = moveTabSelection(here, selected, id, toIndex);
     const slots = this.tabs.flatMap((tab, index) => (tab.space === this.space ? [index] : []));
     slots.forEach((slot, index) => (this.tabs[slot] = ordered[index]));
+    this.changed(true);
+  }
+
+  // Sidebar rows mix plain tabs and opened favorites, which sit after an anchor tab instead of at an index.
+  moveRow(id: TabId, target: TabId, after: boolean): void {
+    const order = this.listOrder().map((tab) => tab.id);
+    const selected = this.selectedTabIds;
+    const moving = new Set(selected.includes(id) ? selected.filter((item) => order.includes(item)) : [id]);
+    if (!order.includes(id) || !order.includes(target) || moving.has(target)) return;
+    const rest = order.filter((item) => !moving.has(item));
+    rest.splice(rest.indexOf(target) + (after ? 1 : 0), 0, ...order.filter((item) => moving.has(item)));
+    const rank = new Map(rest.map((item, index) => [item, index]));
+    const slots = this.tabs.flatMap((tab, index) => (!tab.pinnedUrl && rank.has(tab.id) ? [index] : []));
+    const sorted = slots.map((slot) => this.tabs[slot]).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+    slots.forEach((slot, index) => (this.tabs[slot] = sorted[index]));
+    const anchors: [TabId, TabId | null][] = [];
+    let anchor: TabId | null = null;
+    for (const item of rest) {
+      if (!this.find(item)?.pinnedUrl) anchor = item;
+      else if (this.openedPinned.has(item)) anchors.push([item, anchor]);
+    }
+    for (const [item] of anchors) this.openedPinned.delete(item);
+    for (const [item, value] of anchors) this.openedPinned.set(item, value);
     this.changed(true);
   }
 
@@ -2161,7 +2204,8 @@ export class TabManager {
   }
 
   private insertAfterActive(tab: Tab): void {
-    const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
+    const active = this.active();
+    const index = active && !active.pinnedUrl ? this.indexOf(active.id) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
   }
 
@@ -2238,7 +2282,7 @@ export class TabManager {
     const tab = this.createRecord({ url }, opener.isPrivate, opener.developer);
     tab.space = opener.space;
     tab.openerId = opener.id;
-    this.insertAfterActive(tab);
+    this.tabs.push(tab);
     let view: WebContentsView;
     if (webContents) {
       view = new WebContentsView({ webContents });

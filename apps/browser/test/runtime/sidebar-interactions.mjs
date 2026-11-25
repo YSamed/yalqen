@@ -43,12 +43,12 @@ finish(
 
     const b = await ui.center(row('b'));
     await ui.drag(b, [...nudge(b), await lowerHalf(row('d'))]);
-    assert.deepEqual(taken('move-tab', 'activate-tab'), [{ type: 'move-tab', id: 'b', toIndex: 3 }]);
+    assert.deepEqual(taken('move-row', 'activate-tab'), [{ type: 'move-row', id: 'b', target: 'd', after: true }]);
     console.log('PASS: dragging a tab below another moves it there without activating it');
 
     const c = await ui.center(row('c'));
     await ui.drag(c, [...nudge(c), await ui.center(folder('Work'))]);
-    assert.deepEqual(taken('move-tab-to-group', 'move-tab'), [{ type: 'move-tab-to-group', id: 'c', name: 'Work' }]);
+    assert.deepEqual(taken('move-tab-to-group', 'move-row'), [{ type: 'move-tab-to-group', id: 'c', name: 'Work' }]);
     console.log('PASS: dropping a tab on a folder moves it into that folder');
 
     const target = await lowerHalf(row('d'));
@@ -59,7 +59,7 @@ finish(
     await ui.settle();
     ui.mouse('mouseUp', after, false);
     await ui.settle();
-    assert.deepEqual(taken('move-tab', 'move-tab-to-group', 'activate-tab'), []);
+    assert.deepEqual(taken('move-row', 'move-tab-to-group', 'activate-tab'), []);
     console.log('PASS: Escape cancels a tab drag, even if the pointer keeps moving');
 
     const later = await ui.center(folder('Later'));
@@ -101,10 +101,13 @@ finish(
     ]);
     console.log('PASS: footer buttons reorder on drop and leave the footer when dropped outside');
 
-    await ui.click('.page-actions .star');
-    await ui.click('.page-actions .zoom');
-    assert.deepEqual(taken('toggle-bookmark', 'reset-zoom'), [{ type: 'toggle-bookmark' }, { type: 'reset-zoom' }]);
-    console.log('PASS: page actions bookmark the page and reset its zoom');
+    await ui.click('.page-actions .bookmark');
+    await ui.click('.page-actions .split');
+    assert.deepEqual(taken('toggle-bookmark', 'split-new-tab'), [
+      { type: 'toggle-bookmark' },
+      { type: 'split-new-tab' },
+    ]);
+    console.log('PASS: page actions bookmark the page and split it with a new tab');
 
     const sidebar = await ui.center(row('a'));
     for (let step = 0; step < 4; step++) {

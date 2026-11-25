@@ -105,8 +105,6 @@
   const activeSpaceId = $derived(browser.activeSpaceId);
   const sidebarVisible = $derived(browser.sidebarVisible);
   const toolbarButtons = $derived(browser.toolbarButtons);
-  const zoom = $derived(browser.zoom);
-  const defaultZoom = $derived(browser.defaultZoom);
   const downloads = $derived(browser.downloads);
   const extensions = $derived(browser.extensions);
   const device = $derived(browser.device);
@@ -344,8 +342,6 @@
       modeSwitch={browser.modeSwitch ?? false}
       bookmarksPanelOpen={bookmarksVisible}
       {activeTab}
-      {zoom}
-      {defaultZoom}
       {downloads}
       ready={stateReceived}
       {extensions}

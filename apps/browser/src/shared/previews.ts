@@ -182,11 +182,12 @@ export interface PreviewItem {
   live: boolean;
 }
 
-export type TabAction = 'pin' | 'bookmark' | 'split' | 'copy';
+export type TabAction = 'pin' | 'bookmark' | 'split' | 'copy' | 'chat';
 
 export interface TabCard {
   title: string;
   host: string;
+  members?: { title: string; host: string }[];
   actions: { id: TabAction; label: string; on: boolean; enabled: boolean }[];
 }
 

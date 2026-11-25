@@ -114,14 +114,13 @@
   const idleCount = $derived(
     tabCleanup ? listed.filter((tab) => !tab.live && !tab.isPrivate && tab.id !== activeTabId).length : 0,
   );
-  const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
   const mergedSplits = $derived.by(() => {
+    const shownIndex = new Map(listOrder.map((id, index) => [id, index]));
     const merged = splitGroups.flatMap((group) => {
       const members = group.flatMap((id) => tabsById.get(id) ?? []);
-      if (members.length !== group.length || members.some((tab) => !listedIndex.has(tab.id))) return [];
-      const head = members.reduce((first, tab) =>
-        listedIndex.get(tab.id)! < listedIndex.get(first.id)! ? tab : first,
-      );
+      const shown = members.filter((tab) => shownIndex.has(tab.id));
+      if (members.length < 2 || shown.length === 0) return [];
+      const head = shown.reduce((first, tab) => (shownIndex.get(tab.id)! < shownIndex.get(first.id)! ? tab : first));
       return [{ head, members }];
     });
     return {
@@ -131,7 +130,7 @@
       ),
     };
   });
-  const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
+  const orderKey = $derived(`${tabs.map((tab) => tab.id).join(',')}|${listOrder.join(',')}`);
   const visibleEntries = $derived(
     listOrder.flatMap((id) => {
       const tab = tabsById.get(id);
@@ -296,20 +295,30 @@
 {/snippet}
 
 {#snippet splitRow(members: TabSnapshot[])}
-  <div class="split-row">
+  <div class="split-row" class:compact={members.length > 2}>
     {#each members as member (member.id)}
-      <button
-        class="split-half"
-        class:current={member.id === activeTabId}
-        title={member.url}
-        aria-label={label(member)}
-        aria-current={member.id === activeTabId ? 'page' : undefined}
-        onclick={(e) => selectTab(e, member.id)}
-        onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: member.id })}
-      >
-        {@render favicon(member, 16, member.unread)}
-        <span class="title">{member.title}</span>
-      </button>
+      <div class="split-half">
+        <button
+          class="split-select"
+          title={member.url}
+          aria-label={label(member)}
+          aria-current={member.id === activeTabId ? 'page' : undefined}
+          onclick={(e) => selectTab(e, member.id)}
+          onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: member.id })}
+        >
+          {@render favicon(member, 16, member.unread)}
+          <span class="title">{member.title}</span>
+        </button>
+        <IconButton
+          size="sm"
+          tone="muted"
+          icon="close"
+          class="split-close"
+          label={t('tabPanel.close')}
+          title={t('tabPanel.closeTitle')}
+          onclick={() => send({ type: 'close-tab', id: member.id })}
+        />
+      </div>
     {/each}
   </div>
 {/snippet}
@@ -392,29 +401,25 @@
     {/if}
   {/if}
   {#if !section.group?.collapsed}
-    <ol class="rows">
+    <ol class="rows" class:shifting={draggingListed}>
       {#each section.entries.filter((entry) => !mergedSplits.hidden.has(entry.id)) as tab (tab.id)}
-        {@const index = listedIndex.get(tab.id) ?? -1}
         {@const merged = mergedSplits.heads.get(tab.id)}
         <li
           class="row"
           class:private={tab.isPrivate}
           class:active={tab.id === activeTabId || !!merged?.some((member) => member.id === activeTabId)}
+          class:split={!!merged}
           class:selected={selected.has(tab.id)}
-          class:lifted={index >= 0 && tab.id === drag.dragId}
-          class:returning={index >= 0 && tab.id === drag.returningId}
-          class:drop-before={index >= 0 && draggingListed && drag.dropIndex === index}
-          class:drop-after={index >= 0 &&
-            draggingListed &&
-            drag.dropIndex === index + 1 &&
-            tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
-          data-drag-index={index >= 0 ? index : undefined}
+          class:lifted={draggingListed && tab.id === drag.dragId}
+          class:returning={tab.id === drag.returningId}
+          class:split-drop={drag.dropTab === tab.id}
+          data-tab-id={tab.id}
           data-hover-preview={!tab.isPrivate ? '' : undefined}
           animate:reorder
-          style:transform={index >= 0 ? drag.style(tab.id) : undefined}
+          style:transform={draggingListed ? drag.style(tab.id) : undefined}
           onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
           onpointerleave={previews.leave}
-          onpointerdown={(e) => index >= 0 && drag.pressTab(e, tab.id, 'listed')}
+          onpointerdown={(e) => drag.pressTab(e, tab.id, 'listed')}
           oncontextmenu={(e) => {
             e.preventDefault();
             send({ type: 'open-tab-menu', id: tab.id });
@@ -498,14 +503,16 @@
               class="favorite"
               class:active={tab.id === activeTabId}
               class:selected={selected.has(tab.id)}
-              class:lifted={tab.id === drag.dragId}
+              class:lifted={draggingPinned && tab.id === drag.dragId}
               class:returning={tab.id === drag.returningId}
               class:drop-before={draggingPinned && drag.dropIndex === index}
               class:drop-after={draggingPinned && drag.dropIndex === index + 1 && index === pinned.length - 1}
+              class:split-drop={drag.dropTab === tab.id}
               data-drag-index={index}
+              data-tab-id={tab.id}
               data-hover-preview={!tab.isPrivate ? '' : undefined}
               animate:reorder
-              style:transform={drag.style(tab.id)}
+              style:transform={draggingPinned ? drag.style(tab.id) : undefined}
               onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
               onpointerleave={previews.leave}
               onpointerdown={(e) => drag.pressTab(e, tab.id, 'pinned')}
@@ -654,6 +661,7 @@
     margin: 6px 0 3px;
   }
   .group-heading.drop-target,
+  .split-drop,
   .group-rename:focus {
     outline: 2px solid var(--accent);
   }
@@ -1033,17 +1041,27 @@
     background: light-dark(#34343b, #ffffff);
   }
 
+  .panel.card .row.split:not(.active) {
+    background: var(--card-tile);
+  }
+
   .split-row {
     display: flex;
     flex: 1;
-    gap: 2px;
     min-width: 0;
     height: 100%;
   }
 
   .split-half {
+    position: relative;
     display: flex;
     flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .split-select {
+    display: flex;
+    flex: 1;
     align-items: center;
     gap: 8px;
     min-width: 0;
@@ -1056,10 +1074,42 @@
     text-align: left;
   }
 
-  .split-half .title {
+  .split-select .title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .split-row.compact .split-select {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .split-row.compact .title {
+    display: none;
+  }
+
+  .split-half :global(.split-close) {
+    position: absolute;
+    top: 50%;
+    left: 5px;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .split-row.compact .split-half :global(.split-close) {
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .row:is(:hover, :has(:focus-visible)) .split-half :global(.split-close) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .row:is(:hover, :has(:focus-visible)) .split-select .favicon {
+    visibility: hidden;
   }
 
   .card .footer :global(.icon-btn.surface) {
@@ -1180,32 +1230,14 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .returning {
+    .returning,
+    .rows.shifting > .row:not(.lifted) {
       transition: transform 200ms var(--ease-out);
     }
   }
 
   .row.lifted .actions {
     display: none;
-  }
-
-  .row.drop-before::before,
-  .row.drop-after::after {
-    content: '';
-    position: absolute;
-    right: 10px;
-    left: 10px;
-    height: 2px;
-    border-radius: 1px;
-    background: var(--accent);
-  }
-
-  .row.drop-before::before {
-    top: -2px;
-  }
-
-  .row.drop-after::after {
-    bottom: -2px;
   }
 
   .footer {

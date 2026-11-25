@@ -9,6 +9,7 @@
   import Icon from '../ui/Icon.svelte';
   import NewTabButton from './NewTabButton.svelte';
   import PageActions from './PageActions.svelte';
+  import LoadProgress from './LoadProgress.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import { modeOf, TAB_MODES, type TabMode } from '../../shared/tab-modes';
   import type { MessageKey } from '../../shared/i18n';
@@ -48,8 +49,6 @@
     span = false,
     activeTab,
     developer,
-    zoom,
-    defaultZoom,
     downloads,
     ready,
     extensions,
@@ -71,8 +70,6 @@
     span?: boolean;
     activeTab: TabSnapshot | null;
     developer: boolean;
-    zoom: number;
-    defaultZoom: number;
     downloads: DownloadsSummary;
     ready: boolean;
     extensions: boolean;
@@ -324,6 +321,7 @@
           {@const tab = activeTab}
           <li class="chip active">
             <div class="pill">
+              <LoadProgress loading={tab.loading} />
               {#if modeSwitch}
                 {@const mode = modeOf(tab)}
                 <div
@@ -388,7 +386,7 @@
                   onclick={() => send({ type: 'toggle-mute', id: tab.id })}
                 />
               {/if}
-              <PageActions {tab} {zoom} {defaultZoom} />
+              <PageActions {tab} />
             </div>
           </li>
         {/key}
@@ -437,23 +435,21 @@
             label={tab.loading ? t('toolbar.stop') : t('toolbar.reload')}
             onclick={() => paneAction(tab.id, { type: tab.loading ? 'stop' : 'reload' })}
           />
-          <button
-            class="pane-address"
-            title={t('toolbar.addressTitle')}
-            onclick={() => paneAction(tab.id, { type: 'open-address' })}
-          >
-            {#if isNewTab(tab.url)}
-              <span class="label hint">{t('commandBar.placeholder')}</span>
-            {:else}
-              <span class="label">
-                <span class="crumb">{siteLabel(tab)}</span>{#if tab.title && tab.title !== siteLabel(tab)}<span
-                    class="crumb-title"
-                  >
-                    / {tab.title}
-                  </span>{/if}
-              </span>
-            {/if}
-          </button>
+          <div class="pane-pill">
+            {#key tab.id}<LoadProgress loading={tab.loading} />{/key}
+            <button
+              class="pane-address"
+              title={t('toolbar.addressTitle')}
+              onclick={() => paneAction(tab.id, { type: 'open-address' })}
+            >
+              {#if isNewTab(tab.url)}
+                <span class="label hint">{t('commandBar.placeholder')}</span>
+              {:else}
+                <span class="label crumb">{siteLabel(tab)}</span>
+              {/if}
+            </button>
+            {#if tab.id === activeTab?.id}<PageActions {tab} />{/if}
+          </div>
           <IconButton
             size="lg"
             variant="surface"
@@ -580,13 +576,29 @@
   }
 
   /* The toolbar takes the page's own top color, so its text and icons follow that color's lightness. */
+  .toolbar {
+    --address-hover: rgb(16 18 24 / 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .toolbar {
+      --address-hover: rgb(0 0 0 / 0.4);
+    }
+  }
+
+  :global(:root[data-mode='private']) .toolbar {
+    --address-hover: rgb(255 255 255 / 0.06);
+  }
+
   .toolbar.surface-light {
+    --address-hover: rgb(16 18 24 / 0.06);
     --text: #1a1b1e;
     --text-muted: rgb(26 27 30 / 0.62);
     --surface-hover: rgb(16 18 24 / 0.06);
   }
 
   .toolbar.surface-dark {
+    --address-hover: rgb(0 0 0 / 0.4);
     --text: #f3f3f4;
     --text-muted: rgb(243 243 244 / 0.62);
     --surface-hover: rgb(255 255 255 / 0.08);
@@ -637,6 +649,7 @@
     visibility: hidden;
   }
 
+  /* In the last pane, --reserve keeps the hover-revealed trailing controls clear of the close button. */
   .pane-bar {
     position: absolute;
     top: 6px;
@@ -644,37 +657,52 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 0 6px;
+    padding: 0 calc(6px + var(--reserve, 0px)) 0 6px;
     border-radius: 10px 10px 0 0;
     background: var(--page);
   }
 
-  /* Leaves room for the nav buttons, the close button and, in the last pane, the hover-revealed trailing controls. */
-  .pane-address {
+  .pane-pill {
+    position: relative;
     display: flex;
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     align-items: center;
     min-width: 0;
-    max-width: calc(100% - 195px - var(--reserve, 0px));
-    height: 30px;
+    height: 32px;
+    padding-right: 5px;
+    border-radius: 8px;
+    transition: background-color var(--transition);
+    -webkit-app-region: no-drag;
+  }
+
+  .pane-pill:is(:hover, :focus-within) {
+    background: var(--address-hover);
+  }
+
+  .toolbar.card .pane-pill:is(:hover, :focus-within) :global(.page-actions) {
+    opacity: 1;
+  }
+
+  .pane-address {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
     padding: 0 6px;
     border: 0;
-    border-radius: 7px;
+    border-radius: 8px;
     background: transparent;
     color: var(--text-muted);
     font: inherit;
     font-size: 13px;
     text-align: left;
     cursor: default;
-    -webkit-app-region: no-drag;
   }
 
   .pane-bar :global(.pane-close) {
     margin-left: auto;
-  }
-
-  .pane-address:hover {
-    background: var(--surface-hover);
   }
 
   .toolbar.card.span .tab-group {
@@ -714,18 +742,32 @@
     padding: 6px 6px 0 0;
   }
 
+  .toolbar.card.span .strip {
+    flex: 1 1 auto;
+  }
+
   .toolbar.card.span .chip.active {
     flex: 1 1 auto;
     width: auto;
+    height: 32px;
+  }
+
+  .toolbar.card.span .pill {
+    border-radius: 8px;
+    transition: background-color var(--transition);
+  }
+
+  .toolbar.card.span .chip.active:is(:hover, :focus-within) .pill {
+    background: var(--address-hover);
+  }
+
+  .toolbar.card.span .address {
+    justify-content: flex-start;
   }
 
   .crumb {
     color: var(--text);
     font-weight: 500;
-  }
-
-  .crumb-title {
-    color: var(--text-muted);
   }
 
   .toolbar.card.span .leading {
@@ -855,6 +897,7 @@
   }
 
   .address {
+    position: relative;
     display: flex;
     flex: 1;
     align-items: center;
@@ -981,51 +1024,8 @@
     }
   }
 
-  .tab-group :global(.star[aria-pressed='true'] path) {
+  .tab-group :global(.bookmark[aria-pressed='true'] path) {
     fill: currentColor;
-  }
-
-  .tab-group :global(.zoom) {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tab-group :global(.dev-state) {
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tab-group :global(.dev-state.agent) {
-    position: relative;
-  }
-
-  .tab-group :global(.dev-state.agent)::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
-
-  .tab-group :global(.dev-state.agent-read) {
-    animation: agent-read 1.2s ease-out;
-  }
-
-  @keyframes agent-read {
-    from {
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-    to {
-      box-shadow: 0 0 0 2px transparent;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .tab-group :global(.dev-state.agent-read) {
-      animation: none;
-    }
   }
 
   .ring {

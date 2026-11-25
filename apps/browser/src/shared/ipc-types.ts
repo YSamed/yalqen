@@ -53,8 +53,11 @@ export type UiAction =
   | { type: 'skip-media'; id: TabId; direction: import('./sidebar-widgets').MediaSkip }
   | { type: 'open-tab-menu'; id: TabId }
   | { type: 'move-tab'; id: TabId; toIndex: number }
+  | { type: 'move-row'; id: TabId; target: TabId; after: boolean }
   | { type: 'preview-split'; id: TabId | null; side: 'left' | 'right' }
   | { type: 'split-tab'; id: TabId; side: 'left' | 'right' }
+  | { type: 'split-new-tab' }
+  | { type: 'split-into'; id: TabId; target: TabId }
   | { type: 'navigate'; input: string }
   | { type: 'go-home' }
   | { type: 'go-back' }

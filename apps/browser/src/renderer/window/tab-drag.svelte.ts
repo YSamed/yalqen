@@ -41,12 +41,16 @@ export class TabDrag {
   offset = $state({ x: 0, y: 0 });
   dropIndex: number | null = $state(null);
   dropFolder: string | null = $state(null);
+  dropTab: TabId | null = $state(null);
+  dropRow: number | null = $state(null);
   returningId: TabId | null = $state(null);
   #settleOrder: string | null = $state(null);
   #press: Press | null = null;
   #folderPress: { name: string; x: number; y: number; dragging: boolean } | null = null;
   #pointer = { x: 0, y: 0 };
   #splitSide: SplitSide | null = null;
+  #rows: { id: TabId; top: number; bottom: number }[] = [];
+  #from = -1;
   #scrollFrame = 0;
   #settleTimer = 0;
   #returnTimer = 0;
@@ -64,9 +68,26 @@ export class TabDrag {
   }
 
   style(id: TabId): string | undefined {
-    return id === this.dragId && (this.#settleOrder === null || this.#settleOrder === this.#host.orderKey())
+    if (id !== this.dragId) {
+      const shift = this.#shift(id);
+      return shift ? `translateY(${shift}px)` : undefined;
+    }
+    return this.#settleOrder === null || this.#settleOrder === this.#host.orderKey()
       ? `translate(${this.offset.x}px, ${this.offset.y}px)`
       : undefined;
+  }
+
+  // Rows between the dragged row and its slot step aside by one row, so the list shows the new order live.
+  #shift(id: TabId): number {
+    const slot = this.dropRow;
+    const from = this.#from;
+    if (slot === null || from < 0 || this.group !== 'listed') return 0;
+    const index = this.#rows.findIndex((row) => row.id === id);
+    if (index < 0) return 0;
+    const step = this.#rows.length > 1 ? this.#rows[1].top - this.#rows[0].top : 0;
+    if (from < slot && index > from && index < slot) return -step;
+    if (slot <= from && index >= slot && index < from) return step;
+    return 0;
   }
 
   pressTab(event: PointerEvent & { currentTarget: HTMLElement }, id: TabId, group: DragGroup): void {
@@ -105,12 +126,19 @@ export class TabDrag {
       press.dragging = true;
       this.dragId = press.id;
       this.group = press.group;
+      this.#captureRows(press);
     }
     this.#track();
     this.#setSplitSide(this.#splitSideAt(), press.id);
-    const folder = press.group === 'listed' && !this.#splitSide ? this.#folderAt() : null;
+    this.dropTab = this.#splitSide ? null : this.#tabAt(press);
+    // An opened favorite shows as a row but belongs to no folder.
+    const listed = this.#groupTabs(press.group).some((tab) => tab.id === press.id);
+    const folder = listed && press.group === 'listed' && !this.#splitSide && !this.dropTab ? this.#folderAt() : null;
     this.dropFolder = folder && folder !== this.#host.groupOf(press.id) ? folder : null;
-    if (this.#splitSide || this.dropFolder) this.dropIndex = null;
+    if (this.#splitSide || this.dropFolder || this.dropTab) {
+      this.dropIndex = null;
+      this.dropRow = null;
+    }
     if (this.#scrollSpeed() !== 0 && !this.#scrollFrame) this.#scrollFrame = requestAnimationFrame(this.#autoScroll);
   }
 
@@ -130,12 +158,17 @@ export class TabDrag {
         this.end();
         return;
       }
+      if (!press.cancelled && this.dropTab) {
+        this.#host.send({ type: 'split-into', id: press.id, target: this.dropTab });
+        this.end();
+        return;
+      }
       if (!press.cancelled && this.dropFolder) {
         this.#host.send({ type: 'move-tab-to-group', id: press.id, name: this.dropFolder });
         this.end();
         return;
       }
-      if (!press.cancelled && this.#commitMove(press)) {
+      if (!press.cancelled && (press.group === 'listed' ? this.#commitRow(press) : this.#commitMove(press))) {
         this.#settle();
         return;
       }
@@ -194,6 +227,53 @@ export class TabDrag {
     return null;
   }
 
+  // The middle half of a row (or a favorite tile) splits with that tab; its edges still reorder.
+  #tabAt(press: Press): TabId | null {
+    const { x, y } = this.#pointer;
+    // Rows of the dragged row's own list move aside, so they are judged where they stood when the drag began.
+    const scrolled = y + (this.lists?.scrollTop ?? 0);
+    const row = this.#rows.find((item) => scrolled >= item.top && scrolled < item.bottom);
+    if (row) return row.id !== press.id && inMiddle((scrolled - row.top) / (row.bottom - row.top)) ? row.id : null;
+    for (const element of document.elementsFromPoint(x, y)) {
+      const item = (element as HTMLElement).closest<HTMLElement>('[data-tab-id]');
+      if (!item || item === press.item || item.parentElement === press.list) continue;
+      const rect = item.getBoundingClientRect();
+      const across = rect.width > rect.height * 2 ? (y - rect.top) / rect.height : (x - rect.left) / rect.width;
+      return inMiddle(across) && item.dataset.tabId !== press.id ? item.dataset.tabId! : null;
+    }
+    return null;
+  }
+
+  #captureRows(press: Press): void {
+    const scroll = this.lists?.scrollTop ?? 0;
+    this.#rows =
+      press.group === 'listed'
+        ? [...press.list.querySelectorAll<HTMLElement>(':scope > [data-tab-id]')].map((item) => {
+            const rect = item.getBoundingClientRect();
+            return { id: item.dataset.tabId!, top: rect.top + scroll, bottom: rect.bottom + scroll };
+          })
+        : [];
+    this.#from = this.#rows.findIndex((row) => row.id === press.id);
+  }
+
+  #rowSlotAt(): number | null {
+    if (this.#from < 0) return null;
+    const y = this.#pointer.y + (this.lists?.scrollTop ?? 0);
+    const index = this.#rows.findIndex((row) => y < (row.top + row.bottom) / 2);
+    const slot = index < 0 ? this.#rows.length : index;
+    return slot === this.#from || slot === this.#from + 1 ? null : slot;
+  }
+
+  #commitRow(press: Press): boolean {
+    const slot = this.dropRow;
+    if (slot === null) return false;
+    const after = slot >= this.#rows.length;
+    const target = this.#rows[after ? this.#rows.length - 1 : slot];
+    if (!target || target.id === press.id) return false;
+    this.#host.send({ type: 'move-row', id: press.id, target: target.id, after });
+    return true;
+  }
+
   #splitSideAt(): SplitSide | null {
     const page = this.#host.pageRect?.();
     const { x, y } = this.#pointer;
@@ -227,10 +307,11 @@ export class TabDrag {
       x: horizontal ? Math.min(Math.max(this.#pointer.x - press.x, minX), maxX) : 0,
       y: Math.min(Math.max(this.#pointer.y - press.y + scrolled, minY), maxY),
     };
-    this.dropIndex = this.#slotAt(press, horizontal);
+    if (horizontal) this.dropIndex = this.#slotAt(press);
+    else this.dropRow = this.#rowSlotAt();
   }
 
-  #slotAt(press: Press, horizontal: boolean): number | null {
+  #slotAt(press: Press): number | null {
     const { x, y } = this.#pointer;
     let nearest: { index: number; rect: DOMRect } | null = null;
     let nearestDistance = Infinity;
@@ -250,10 +331,10 @@ export class TabDrag {
     }
     if (!nearest) return null;
     const { index, rect } = nearest;
-    const before = horizontal ? x < rect.left + rect.width / 2 : y < rect.top + rect.height / 2;
+    const before = x < rect.left + rect.width / 2;
     const slot = before ? index : index + 1;
     const from = this.#groupTabs(press.group).findIndex((tab) => tab.id === press.id);
-    return slot === from || slot === from + 1 ? null : slot;
+    return from < 0 || slot === from || slot === from + 1 ? null : slot;
   }
 
   #scrollSpeed(): number {
@@ -315,13 +396,21 @@ export class TabDrag {
     this.dragId = null;
     this.group = null;
     this.dropFolder = null;
+    this.dropTab = null;
     this.dropIndex = null;
+    this.dropRow = null;
+    this.#rows = [];
+    this.#from = -1;
     this.offset = { x: 0, y: 0 };
     this.#settleOrder = null;
     clearTimeout(this.#settleTimer);
     cancelAnimationFrame(this.#scrollFrame);
     this.#scrollFrame = 0;
   }
+}
+
+function inMiddle(fraction: number): boolean {
+  return fraction > 0.3 && fraction < 0.7;
 }
 
 function suppressNextClick(): void {

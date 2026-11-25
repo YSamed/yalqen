@@ -20,6 +20,7 @@ const ACTION_ICONS: Record<TabAction, string> = {
   pin: 'M6 2.5h4M6.5 2.5v4L4.5 9h7l-2-2.5v-4M8 9v4.5',
   bookmark: 'M4.5 2.5h7v11L8 11l-3.5 2.5z',
   split: 'M2.5 3.5h11v9h-11zM8 3.5v9',
+  chat: 'M4.5 3h7A1.5 1.5 0 0 1 13 4.5v5a1.5 1.5 0 0 1-1.5 1.5H7.5l-3 2.5V11A1.5 1.5 0 0 1 3 9.5v-5A1.5 1.5 0 0 1 4.5 3z',
   copy: 'M7 9a2.5 2.5 0 0 0 3.5 0l2-2a2.5 2.5 0 0 0-3.5-3.5l-.8.8M9 7a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 7 12.5l.8-.8',
 };
 
@@ -79,6 +80,16 @@ const PAGE = `<!doctype html>
   .tab-title, .tab-host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 18px; font-size: 14px; }
   .tab-title { font-weight: 600; }
   .tab-host { margin-top: 3px; color: color-mix(in srgb, var(--text) 55%, transparent); }
+  .card.split { width: 210px; padding: 4px 6px; }
+  .members[hidden] { display: none; }
+  .member { padding: 9px 6px; }
+  .member + .member { border-top: 0.5px solid color-mix(in srgb, var(--text) 14%, transparent); }
+  .member-title {
+    display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    font-size: 14px; font-weight: 600; line-height: 18px;
+  }
+  .member-host { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: color-mix(in srgb, var(--text) 55%, transparent); }
+  .card.split .actions { margin-top: 2px; padding: 0 2px 2px; }
   .actions { display: flex; justify-content: space-between; margin-top: 8px; }
   .act {
     display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px;
@@ -95,6 +106,7 @@ const PAGE = `<!doctype html>
 <body>
 <div class="card" id="card">
   <div class="tab" id="tab" hidden><div class="tab-title" id="tab-title"></div><div class="tab-host" id="tab-host"></div></div>
+  <div class="members" id="members" hidden></div>
   <div class="heading" id="heading"></div>
   <div class="items" id="items"></div>
   <div class="message" id="message"></div>
@@ -126,8 +138,18 @@ const PAGE = `<!doctype html>
       if (CSS.supports('color', theme[name])) root.style.setProperty('--' + name, theme[name]);
     }
     const tab = view.tab;
-    card.classList.toggle('tab-only', Boolean(tab) && view.items.length === 0 && !view.message);
-    document.getElementById('tab').hidden = !tab;
+    const members = tab && tab.members ? tab.members : null;
+    card.classList.toggle('split', Boolean(members));
+    card.classList.toggle('tab-only', !members && Boolean(tab) && view.items.length === 0 && !view.message);
+    document.getElementById('tab').hidden = !tab || Boolean(members);
+    document.getElementById('members').hidden = !members;
+    document.getElementById('members').replaceChildren(
+      ...(members || []).map((member) => {
+        const row = node('div', 'member', '');
+        row.append(node('div', 'member-title', member.title), node('div', 'member-host', member.host));
+        return row;
+      }),
+    );
     document.getElementById('tab-title').textContent = tab ? tab.title : '';
     document.getElementById('tab-host').textContent = tab ? tab.host : '';
     document.getElementById('actions').replaceChildren(
@@ -254,7 +276,7 @@ export class HoverPreview {
   }
 
   private report(title: string): void {
-    const event = /^([a-z]+)(?:-(\d+|tab|pin|bookmark|split|copy))?:\d+$/.exec(title);
+    const event = /^([a-z]+)(?:-(\d+|tab|pin|bookmark|split|copy|chat))?:\d+$/.exec(title);
     if (!event || !this.shown) return;
     if (event[1] === 'enter') {
       this.onCard = true;

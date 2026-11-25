@@ -2059,11 +2059,20 @@ export class YalqenWindow {
       case 'move-tab':
         tabs.move(action.id, action.toIndex);
         break;
+      case 'move-row':
+        tabs.moveRow(action.id, action.target, action.after === true);
+        break;
       case 'preview-split':
         tabs.previewSplit(action.id, action.side);
         break;
       case 'split-tab':
         tabs.splitWithActive(action.id, action.side);
+        break;
+      case 'split-new-tab':
+        tabs.splitWithNewTab();
+        break;
+      case 'split-into':
+        tabs.splitInto(action.id, action.target);
         break;
       case 'navigate':
         tabs.navigate(resolveInput(action.input, app.searchEngine()));
@@ -2295,12 +2304,13 @@ export class YalqenWindow {
     }
     const tab = this.tabs.previewTab(request.tabId, request.url);
     if (!tab) return;
-    const read = this.isDeveloper
-      ? null
-      : readPreview(tab, {
-          session: (tab.id && this.tabs.tabSession(tab.id)) || this.app.daily,
-          readInTab: (contents, code) => this.tabs.readForPreview(contents, code),
-        });
+    const read =
+      this.isDeveloper || (tab.id && this.tabs.splitOf(tab.id))
+        ? null
+        : readPreview(tab, {
+            session: (tab.id && this.tabs.tabSession(tab.id)) || this.app.daily,
+            readInTab: (contents, code) => this.tabs.readForPreview(contents, code),
+          });
     const card = tab.id ? this.tabCard(tab.id) : null;
     if (!read && !card) return;
     const ticket = this.preview.begin();
@@ -2318,7 +2328,7 @@ export class YalqenWindow {
     const tab = this.tabs.snapshotFor(id);
     if (!tab) return null;
     const bookmarked = this.app.bookmarks.has(tab.url);
-    const inSplit = this.tabs.splitTabIds.includes(id);
+    const split = this.tabs.splitOf(id);
     const actions: TabCard['actions'] = [
       { id: 'pin', label: t(tab.pinned ? 'window.unpinTab' : 'window.pinTab'), on: tab.pinned, enabled: true },
       {
@@ -2329,19 +2339,31 @@ export class YalqenWindow {
       },
       {
         id: 'split',
-        label: t(inSplit ? 'window.exitSplitView' : 'window.openInSplitView'),
-        on: inSplit,
-        enabled: inSplit || this.tabs.canSplitWithActive(id),
+        label: t(split ? 'window.exitSplitView' : 'window.openInSplitView'),
+        on: !!split,
+        enabled: !!split || this.tabs.canSplitWithActive(id),
       },
       { id: 'copy', label: t('devCommands.copyAddress'), on: false, enabled: canViewSource(tab.url) },
     ];
-    return { title: tab.title || tab.url, host: hostOf(tab.url) ?? tab.url, actions };
+    const card: TabCard = { title: tab.title || tab.url, host: hostOf(tab.url) ?? tab.url, actions };
+    if (!split) return card;
+    if (this.isDeveloper) actions.push({ id: 'chat', label: t('newTab.chat'), on: false, enabled: true });
+    const members = split.flatMap((member) => {
+      const snapshot = this.tabs.snapshotFor(member);
+      return snapshot ? [{ title: snapshot.title || snapshot.url, host: hostOf(snapshot.url) ?? snapshot.url }] : [];
+    });
+    return { ...card, members };
   }
 
   private runTabAction(id: TabId, action: TabAction): void {
     const tab = this.tabs.snapshotFor(id);
     if (!tab) return;
-    if (action === 'pin') this.tabs.togglePin(id);
+    const split = this.tabs.splitOf(id);
+    if (action === 'pin' && split) {
+      for (const member of [...split])
+        if (this.tabs.snapshotFor(member)?.pinned === tab.pinned) this.tabs.togglePin(member);
+    } else if (action === 'pin') this.tabs.togglePin(id);
+    else if (action === 'chat') this.openAgentPanel();
     else if (action === 'bookmark') this.app.toggleBookmark(tab.url, tab.title);
     else if (action === 'split') {
       if (this.tabs.splitTabIds.includes(id)) this.tabs.unsplit(id);
