@@ -2,6 +2,8 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import {
   app,
   dialog,
@@ -71,6 +73,7 @@ import { CommandBar } from './address-bar/command-bar.js';
 import { DEFAULT_DEVICE_ID } from './devtools/devices.js';
 import { DownloadManager } from './library/download-manager.js';
 import { DownloadStore } from './library/downloads.js';
+import { ScreenshotWatcher } from './library/screenshot-watcher.js';
 import { ExtensionBridge } from './extensions/extension-bridge.js';
 import { WINDOW_ID_NONE } from '../shared/extension-bridge.js';
 import { ExtensionPopup } from './extensions/extension-popup.js';
@@ -587,6 +590,21 @@ function startBrowser(): void {
     chooseName: (entry) => extensionBridge.chooseDownloadName(entry),
   });
   const downloadsChanged = () => downloadManager.changed();
+  const screenshots = new ScreenshotWatcher((file, size) => {
+    downloads.add({
+      id: randomUUID(),
+      url: pathToFileURL(file).href,
+      filename: path.basename(file),
+      savePath: file,
+      state: 'completed',
+      receivedBytes: size,
+      totalBytes: size,
+      startedAt: Date.now(),
+      screenshot: true,
+    });
+    downloadsChanged();
+  });
+  if (process.platform === 'darwin') screenshots.setEnabled(settings.get().screenshotsInDownloads);
   extensionBridge.attachLibrary({ history, bookmarks, downloads, downloadManager, bookmarksChanged });
 
   const agentTokens = new AgentTokenStore(userData, safeStorageCipher);
@@ -765,6 +783,7 @@ function startBrowser(): void {
     if (next.autoUpdate !== previous.autoUpdate) updater.schedule();
     if (next.autoUpdateExtensions !== previous.autoUpdateExtensions && !bench) extensions.scheduleUpdates();
     if (next.usageCounting !== previous.usageCounting) usage.schedule();
+    if (process.platform === 'darwin') screenshots.setEnabled(next.screenshotsInDownloads);
     if (next.agentBridge !== previous.agentBridge) void agentBridge.sync();
     else if (next.agentOrigins !== previous.agentOrigins) eachWindow((window) => window.tabs.syncAgent());
     if (next.agentTracing !== previous.agentTracing) eachWindow((window) => window.tabs.refreshRequestRules());
@@ -1316,6 +1335,7 @@ function startBrowser(): void {
     updater.stop();
     usage.stop();
     downloadManager.destroy();
+    screenshots.setEnabled(false);
     adBlocker.destroy();
     threatLists.stop();
     commandBar.destroy();

@@ -50,6 +50,7 @@ export interface SettingsValues {
   autoUpdateExtensions: boolean;
   usageCounting: boolean;
   askBeforeDownload: boolean;
+  screenshotsInDownloads: boolean;
   downloadDirectory: string | null;
   welcomeCompleted: boolean;
   invitationSeen: boolean;
@@ -65,6 +66,7 @@ export interface SettingsValues {
   agentTerminal: boolean;
   agentFloating: boolean;
   recentTabCycling: boolean;
+  pageSwipe: boolean;
   shortcuts: import('./shortcuts').ShortcutOverrides;
 }
 

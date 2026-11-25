@@ -525,7 +525,8 @@ export class ExtensionLibrary {
   }
 
   private visibleDownloads(): DownloadEntry[] {
-    return this.stores.downloads.list().filter((entry) => !entry.private);
+    // Chrome's API covers browser downloads only, so screenshots the user opted to list stay hidden from extensions.
+    return this.stores.downloads.list().filter((entry) => !entry.private && !entry.screenshot);
   }
 
   private downloadDiff(): Change[] {

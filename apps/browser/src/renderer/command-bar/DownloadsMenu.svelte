@@ -13,7 +13,16 @@
 </script>
 
 {#each shown as entry (entry.id)}
-  <button type="button" class="item download" onclick={() => onaction({ type: 'download-action', id: entry.id })}>
+  <button
+    type="button"
+    class="item download"
+    draggable="true"
+    onclick={() => onaction({ type: 'download-action', id: entry.id })}
+    ondragstart={(event) => {
+      event.preventDefault();
+      onaction({ type: 'drag-download', id: entry.id });
+    }}
+  >
     <span class="icon"><Icon name="download" /></span>
     <span class="text">
       <span class="label">{entry.filename}</span>

@@ -36,14 +36,25 @@ export interface SpaceFile {
   isolated: boolean;
   window: SavedWindow;
   theme?: FrameTheme;
+  isDefault?: boolean;
 }
 export function spacePartition(id: string, isolated: boolean): string | null {
   return isolated && UUID.test(id) ? `persist:space-${id}` : null;
 }
-export function spaceFileText({ name, icon, isolated, window, theme }: SpaceFile): string | null {
+export function spaceFileText({ name, icon, isolated, window, theme, isDefault }: SpaceFile): string | null {
   const snapshot = workspaceSnapshot(window, true);
   return (
-    snapshot && JSON.stringify({ format: SPACE_FILE_FORMAT, version: 1, name, icon, isolated, theme, window: snapshot })
+    snapshot &&
+    JSON.stringify({
+      format: SPACE_FILE_FORMAT,
+      version: 1,
+      name,
+      icon,
+      isolated,
+      theme,
+      ...(isDefault && { default: true }),
+      window: snapshot,
+    })
   );
 }
 export function parseSpaceFile(text: string): SpaceFile | null {
@@ -61,7 +72,14 @@ export function parseSpaceFile(text: string): SpaceFile | null {
   const window = workspaceSnapshot(file.window as SavedWindow, true);
   if (!name || !window) return null;
   const theme = spaceFrameTheme(file.theme);
-  return { name, icon: workspaceIcon(file.icon), isolated: file.isolated === true, window, ...(theme && { theme }) };
+  return {
+    name,
+    icon: workspaceIcon(file.icon),
+    isolated: file.isolated === true,
+    window,
+    ...(theme && { theme }),
+    ...(file.default === true && { isDefault: true }),
+  };
 }
 export function workspaceSnapshot(value: SavedWindow, allowEmpty = false): SavedWindow | null {
   if (!value || typeof value !== 'object' || !Array.isArray(value.tabs) || value.tabs.length > 500) return null;

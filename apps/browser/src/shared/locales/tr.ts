@@ -48,6 +48,8 @@ export const tr: Record<MessageKey, string> = {
   'spaces.newProfile': 'Yeni profil',
   'spaces.export': 'Alanı dışa aktar…',
   'spaces.import': 'Alan içe aktar…',
+  'spaces.exportAll': 'Tüm alanları dışa aktar…',
+  'spaces.exportAllButton': 'Buraya aktar',
   'spaces.chooseFile': 'Alan Dosyası Seçin',
   'spaces.exportFailed': 'Alan dışa aktarılamadı.',
   'spaces.importFailed': 'Alan içe aktarılamadı.',
@@ -1068,6 +1070,9 @@ export const tr: Record<MessageKey, string> = {
   'settings.blockThirdPartyCookiesHint':
     'Başka sitelerin, gömülü içeriklerle sizi siteler arasında izlemesini zorlaştırır. Bazı gömülü oturum açma ve yorum alanları çalışmayabilir.',
   'settings.askBeforeDownload': 'İndirmeden önce sor',
+  'settings.screenshotsInDownloads': 'Ekran görüntülerini indirmelerde göster',
+  'settings.screenshotsInDownloadsHint':
+    'Sistemle aldığınız ekran görüntülerini indirme listesine ekler. Onları bir sayfaya sürükleyebilirsiniz. macOS ekran görüntüsü klasörüne erişim için bir kez izin ister.',
   'settings.downloadDirectory': 'İndirme konumu',
   'settings.chooseDownloadDirectory': 'İndirme klasörü seç',
   'settings.changeDownloadDirectory': 'Değiştir…',
@@ -1104,6 +1109,8 @@ export const tr: Record<MessageKey, string> = {
   'settings.recentTabCycling': 'Sekmeler arasında son kullanım sırasıyla geç',
   'settings.recentTabCyclingHint':
     'Ctrl+Tab son kullandığınız sekmeye gider. Daha geriye gitmek için hızlıca yeniden basın. Kapalıyken sekme listesinin sırasını izler.',
+  'settings.pageSwipe': 'Geri ve ileri gitmek için kaydır',
+  'settings.pageSwipeHint': 'Geri veya ileri gitmek için sayfada iki parmakla sola ya da sağa kaydırın.',
   'settings.paneShortcuts': 'Kısayollar',
   'settings.shortcuts': 'Menü kısayolları',
   'settings.shortcutsHint':

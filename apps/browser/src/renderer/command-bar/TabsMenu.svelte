@@ -117,6 +117,7 @@
   {#if has('edit-space')}{@render row('settings', t('sidebarMenu.editSpace'), () => run('edit-space'))}{/if}
   {#if has('create-space')}{@render row('plus', t('spaces.add'), () => run('create-space'))}{/if}
   {#if has('import-space')}{@render row('folder', t('spaces.import'), () => run('import-space'))}{/if}
+  {#if has('export-spaces')}{@render row('folder', t('spaces.exportAll'), () => run('export-spaces'))}{/if}
   {#if has('add-live-folder')}{@render row('bookmarks', t('liveFolders.add'), () => run('add-live-folder'))}{/if}
 {:else}
   {#if needle || matches.length > 0}<h3 class="heading">{t('sidebarMenu.openTabs')}</h3>{/if}

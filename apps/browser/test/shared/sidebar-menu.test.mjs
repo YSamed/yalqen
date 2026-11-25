@@ -17,6 +17,7 @@ const menu = {
   downloadsActive: 0,
   history: [{ url: 'https://history.example/', title: 'Visited', faviconUrl: null }],
   bookmarks: [{ url: 'https://bookmark.example/', title: 'Saved', faviconUrl: null }],
+  downloads: [{ id: 'dl-1', filename: 'report.pdf', status: 'Done' }],
 };
 
 test('sidebar menu actions pass only for commands and ids the open menu offered', () => {
@@ -32,6 +33,11 @@ test('sidebar menu actions pass only for commands and ids the open menu offered'
     id: 'work',
   });
   assert.equal(sidebarMenuAction({ type: 'open-space-menu', id: 'home' }, menu), null);
+  assert.deepEqual(sidebarMenuAction({ type: 'drag-download', id: 'dl-1' }, menu), {
+    type: 'drag-download',
+    id: 'dl-1',
+  });
+  assert.equal(sidebarMenuAction({ type: 'drag-download', id: 'dl-2' }, menu), null);
 
   assert.deepEqual(sidebarMenuAction({ type: 'open-link', url: 'https://bookmark.example/' }, menu), {
     type: 'open-link',

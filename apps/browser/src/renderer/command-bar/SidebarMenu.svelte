@@ -55,8 +55,11 @@
   // The tabs menu leaves room for its flyout up front, so the panel never jumps while a row is hovered.
   const reserved = $derived(menu.kind === 'tabs' ? PANEL_WIDTH + FLYOUT_WIDTH - FLYOUT_OVERLAP : PANEL_WIDTH);
   const left = $derived(Math.max(EDGE, Math.min(menu.anchor.x, viewport.width - reserved - EDGE)));
+  // Footer buttons open the menu upward; toolbar buttons at the top open it downward.
+  const below = $derived(menu.anchor.y + menu.anchor.height / 2 < viewport.height / 2);
+  const top = $derived(menu.anchor.y + menu.anchor.height + GAP);
   const bottom = $derived(viewport.height - menu.anchor.y + GAP);
-  const maxHeight = $derived(Math.min(MAX_HEIGHT, menu.anchor.y - GAP - EDGE));
+  const maxHeight = $derived(Math.min(MAX_HEIGHT, below ? viewport.height - top - EDGE : menu.anchor.y - GAP - EDGE));
 
   const flyoutLinks = $derived(flyout ? menu[flyout.kind] : []);
   const flyoutLeft = $derived(
@@ -101,7 +104,8 @@
           ? t('toolbar.downloads')
           : t('sidebarMenu.more')}
     style:left="{left}px"
-    style:bottom="{bottom}px"
+    style:top={below ? `${top}px` : null}
+    style:bottom={below ? null : `${bottom}px`}
     style:max-height="{maxHeight}px"
     style:--menu-tint={menu.tint}
   >

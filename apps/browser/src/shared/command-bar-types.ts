@@ -26,6 +26,7 @@ export const SIDEBAR_MENU_COMMANDS = [
   'create-space',
   'edit-space',
   'import-space',
+  'export-spaces',
   'add-live-folder',
   'downloads-all',
   'downloads-folder',
@@ -80,6 +81,7 @@ export type CommandBarAction =
   | { type: 'open-chat'; id: string }
   | { type: 'open-link'; url: string }
   | { type: 'download-action'; id: string }
+  | { type: 'drag-download'; id: string }
   | { type: 'place-footer-item'; item: SidebarFooterItem; index: number };
 
 export const CommandBarChannel = {

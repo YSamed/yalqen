@@ -17,6 +17,7 @@ export type SidebarMenuAction = Extract<
       | 'switch-tab'
       | 'open-link'
       | 'download-action'
+      | 'drag-download'
       | 'place-footer-item';
   }
 >;
@@ -49,6 +50,7 @@ export function sidebarMenuAction(action: unknown, menu: SidebarMenu | undefined
     return menu.spaces.some((space) => space.id === id) ? { type, id } : null;
   if (type === 'open-chat') return menu.chats.some((chat) => chat.id === id) ? { type, id } : null;
   if (type === 'switch-tab') return menu.tabs.some((tab) => tab.id === id) ? { type, id } : null;
-  if (type === 'download-action') return menu.downloads.some((entry) => entry.id === id) ? { type, id } : null;
+  if (type === 'download-action' || type === 'drag-download')
+    return menu.downloads.some((entry) => entry.id === id) ? { type, id } : null;
   return null;
 }

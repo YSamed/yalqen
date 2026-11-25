@@ -49,7 +49,7 @@ import type { LiveFolderRefresher, LiveFolderStore } from '../library/live-folde
 import { isLiveFolderKind, LIVE_FOLDER_KINDS, liveFolderSource } from '../../shared/live-folders.js';
 import { colorSwatch } from './menu-swatch.js';
 import { shortcutAccelerator, type ShortcutId } from '../../shared/shortcuts.js';
-import type { WorkspaceStore } from '../library/workspaces.js';
+import { parseSpaceFile, spaceFileText, type WorkspaceStore } from '../library/workspaces.js';
 import { DEFAULT_SPACE_ID, SPACE_ICONS, type SpaceView } from '../../shared/workspaces.js';
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
@@ -65,13 +65,7 @@ import {
   overridePatch,
 } from '../devtools/dev-commands.js';
 import { devMenuTemplate } from '../devtools/dev-menu.js';
-import {
-  downloadCommands,
-  downloadsMenuTemplate,
-  downloadStatus,
-  type DownloadActions,
-  type DownloadStore,
-} from '../library/downloads.js';
+import { downloadCommands, downloadStatus, type DownloadActions, type DownloadStore } from '../library/downloads.js';
 import { sanitizeAnchor, type ExtensionPopup } from '../extensions/extension-popup.js';
 import { STORE_HOME } from '../extensions/chrome-web-store.js';
 import { extensionsMenuTemplate, runAction, type ExtensionManager } from '../extensions/extensions.js';
@@ -112,6 +106,7 @@ import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
 import {
   exportBookmarksWithDialog,
   exportSpaceWithDialog,
+  exportSpacesWithDialog,
   importBookmarksWithDialog,
   importHistoryWithDialog,
   importSpaceWithDialog,
@@ -436,6 +431,7 @@ export class YalqenWindow {
       },
       onSwitchTab: (id) => this.tabs.activate(id),
       onRunCommand: (id) => this.runDevCommand(id),
+      onDragDownload: (id, contents) => app.runDownloadsCommand('drag', new URLSearchParams({ id }), contents),
       onSidebarMenu: (action) => {
         if (action.type === 'switch-tab') this.tabs.activate(action.id);
         else if (action.type === 'switch-space' || action.type === 'open-space-menu') this.handleAction(action);
@@ -451,7 +447,7 @@ export class YalqenWindow {
           });
         else if (action.type === 'open-chat')
           void this.agentChat.open(action.id, false).finally(() => this.openAgentPanel());
-        else this.runSidebarCommand(action.command);
+        else if (action.type === 'sidebar-command') this.runSidebarCommand(action.command);
       },
     };
 
@@ -758,7 +754,7 @@ export class YalqenWindow {
   }
 
   private navigateByGesture(direction: 'back' | 'forward', source: 'native' | 'page'): void {
-    if (process.platform !== 'darwin') return;
+    if (!this.app.settings.get().pageSwipe) return;
     const now = Date.now();
     const last = this.lastNavigationGesture;
     if (last && last.source !== source && last.direction === direction && now - last.at < 650) return;
@@ -1623,7 +1619,7 @@ export class YalqenWindow {
           'settings',
           'profile',
           ...(state.spaces.length > 0 ? (['create-space', 'edit-space'] as const) : []),
-          ...(persistent ? (['import-space', 'add-live-folder'] as const) : []),
+          ...(persistent ? (['import-space', 'export-spaces', 'add-live-folder'] as const) : []),
           ...(kind === 'downloads' ? (['downloads-all', 'downloads-folder'] as const) : []),
         ],
         downloadsActive: state.downloads.active,
@@ -1680,6 +1676,7 @@ export class YalqenWindow {
       'create-space': { type: 'create-space' },
       'edit-space': { type: 'open-space-menu', id: this.tabs.activeSpaceId },
       'import-space': { type: 'import-space' },
+      'export-spaces': { type: 'export-spaces' },
     };
     this.handleAction(actions[command]);
   }
@@ -1931,7 +1928,7 @@ export class YalqenWindow {
   }
 
   handleAction(action: UiAction): void {
-    if (this.webApp && ['new-tab', 'open-settings', 'open-history', 'open-downloads'].includes(action.type)) {
+    if (this.webApp && ['new-tab', 'open-settings', 'open-history'].includes(action.type)) {
       this.app.openWindow({ from: this }).handleAction(action);
       return;
     }
@@ -1956,10 +1953,19 @@ export class YalqenWindow {
       case 'import-space':
         if (this.isPrivate || this.webApp) break;
         void importSpaceWithDialog(this.window, (text) => {
+          const file = parseSpaceFile(text);
+          if (file?.isDefault) {
+            this.tabs.importIntoSpace(file.window, DEFAULT_SPACE_ID);
+            return DEFAULT_SPACE_ID;
+          }
           const id = app.workspaces.importText(text);
           if (id) app.spacesChanged();
           return id;
-        }).then((id) => id && !this.window.isDestroyed() && this.tabs.switchSpace(id));
+        }).then((id) => id !== null && !this.window.isDestroyed() && this.tabs.switchSpace(id));
+        break;
+      case 'export-spaces':
+        if (this.isPrivate || this.webApp) break;
+        void exportSpacesWithDialog(this.window, this.spaceFiles());
         break;
       case 'open-space-menu':
         this.openSpaceMenu(action.id);
@@ -2245,9 +2251,6 @@ export class YalqenWindow {
         break;
       case 'install-update':
         app.installUpdate();
-        break;
-      case 'open-downloads':
-        this.popup(downloadsMenuTemplate(app.downloads.list(), app.downloadActions(this)));
         break;
       case 'open-extensions-menu':
         this.openExtensionsMenu(sanitizeAnchor(action.anchor));
@@ -2571,6 +2574,28 @@ export class YalqenWindow {
     return space?.theme?.colors[0] ?? accentHex(this.app.settings.get().accentColor);
   }
 
+  private spaceFileText(id: string): string | null {
+    const live = this.tabs.toSavedWindow(id);
+    return this.app.workspaces.exportText(id, live.tabs.length ? live : null);
+  }
+
+  private spaceFiles(): { name: string; text: string | null }[] {
+    const main = this.defaultSpace();
+    return [
+      {
+        name: main.name,
+        text: spaceFileText({
+          name: main.name,
+          icon: null,
+          isolated: false,
+          isDefault: true,
+          window: this.tabs.toSavedWindow(main.id),
+        }),
+      },
+      ...this.spaces().map(({ id, name }) => ({ name, text: this.spaceFileText(id) })),
+    ];
+  }
+
   private defaultSpace(): SpaceView {
     return { id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null };
   }
@@ -2746,9 +2771,7 @@ export class YalqenWindow {
       {
         label: t('spaces.export'),
         click: () => {
-          const live = this.tabs.toSavedWindow(id);
-          const text = this.app.workspaces.exportText(id, live.tabs.length ? live : null);
-          void exportSpaceWithDialog(this.window, space.name, text);
+          void exportSpaceWithDialog(this.window, space.name, this.spaceFileText(id));
         },
       },
       {

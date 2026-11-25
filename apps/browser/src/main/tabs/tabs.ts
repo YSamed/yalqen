@@ -1980,6 +1980,15 @@ export class TabManager {
     }
   }
 
+  importIntoSpace(saved: SavedWindow, space: string): void {
+    let state = this.groupStates.get(space);
+    if (!state) this.groupStates.set(space, (state = { collapsed: new Set(), parents: new Map() }));
+    for (const [name, parent] of parseGroupParents(saved.groupParents))
+      if (!state.parents.has(name) && canNestGroup(state.parents, name, parent)) state.parents.set(name, parent);
+    this.tabs.push(...saved.tabs.map((tab) => this.createRecord({ ...tab, space })));
+    this.changed(true);
+  }
+
   toSavedWindow(only?: string): SavedWindow {
     const kept = this.tabs.filter((tab) => !tab.isPrivate && (only === undefined || tab.space === only));
     const groupsOf = (space: string): SavedGroups => {

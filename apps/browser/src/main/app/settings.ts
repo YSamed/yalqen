@@ -66,6 +66,7 @@ const DEFAULTS: Settings = {
   autoUpdateExtensions: true,
   usageCounting: false,
   askBeforeDownload: true,
+  screenshotsInDownloads: false,
   downloadDirectory: null,
   welcomeCompleted: false,
   invitationSeen: false,
@@ -81,6 +82,7 @@ const DEFAULTS: Settings = {
   agentTerminal: false,
   agentFloating: false,
   recentTabCycling: true,
+  pageSwipe: true,
   shortcuts: {},
 };
 
@@ -148,6 +150,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     autoUpdateExtensions,
     usageCounting,
     askBeforeDownload,
+    screenshotsInDownloads,
     askDownloadLocation,
     downloadDirectory,
     welcomeCompleted,
@@ -164,6 +167,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     agentTerminal,
     agentFloating,
     recentTabCycling,
+    pageSwipe,
     shortcuts,
   } = input;
   return {
@@ -229,6 +233,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     askBeforeDownload:
       (typeof askBeforeDownload === 'boolean' ? askBeforeDownload : base.askBeforeDownload) ||
       askDownloadLocation === true,
+    screenshotsInDownloads:
+      typeof screenshotsInDownloads === 'boolean' ? screenshotsInDownloads : base.screenshotsInDownloads,
     downloadDirectory:
       downloadDirectory === null ||
       (typeof downloadDirectory === 'string' && path.isAbsolute(downloadDirectory) && !downloadDirectory.includes('\0'))
@@ -252,6 +258,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     agentTerminal: typeof agentTerminal === 'boolean' ? agentTerminal : base.agentTerminal,
     agentFloating: typeof agentFloating === 'boolean' ? agentFloating : base.agentFloating,
     recentTabCycling: typeof recentTabCycling === 'boolean' ? recentTabCycling : base.recentTabCycling,
+    pageSwipe: typeof pageSwipe === 'boolean' ? pageSwipe : base.pageSwipe,
     shortcuts: shortcuts === undefined ? base.shortcuts : sanitizeShortcuts(shortcuts),
   };
 }

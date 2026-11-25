@@ -93,6 +93,10 @@ export async function exportBookmarksWithDialog(window: BaseWindow, store: Bookm
 const SPACE_FILTERS = [{ name: 'Yalqen Space', extensions: ['json'] }];
 const MAX_SPACE_FILE_BYTES = 2 * 1024 * 1024;
 
+function spaceFileName(name: string): string {
+  return `${name.replace(/[\\/:*?"<>|]/g, '_')}.json`;
+}
+
 export async function exportSpaceWithDialog(window: BaseWindow, name: string, text: string | null): Promise<void> {
   try {
     if (!text) {
@@ -101,7 +105,7 @@ export async function exportSpaceWithDialog(window: BaseWindow, name: string, te
     }
     const { canceled, filePath } = await dialog.showSaveDialog(window, {
       title: t('spaces.export'),
-      defaultPath: path.join(app.getPath('documents'), `${name.replace(/[\\/:*?"<>|]/g, '_')}.json`),
+      defaultPath: path.join(app.getPath('documents'), spaceFileName(name)),
       filters: SPACE_FILTERS,
       properties: ['createDirectory', 'showOverwriteConfirmation'],
     });
@@ -109,6 +113,42 @@ export async function exportSpaceWithDialog(window: BaseWindow, name: string, te
     await fs.promises.writeFile(filePath, text, { mode: 0o600 });
   } catch (error) {
     console.warn('[spaces] could not export:', error);
+    if (!window.isDestroyed())
+      void dialog.showMessageBox(window, {
+        type: 'error',
+        message: t('spaces.exportFailed'),
+        detail: error instanceof Error ? error.message : String(error),
+      });
+  }
+}
+
+export async function exportSpacesWithDialog(
+  window: BaseWindow,
+  spaces: readonly { name: string; text: string | null }[],
+): Promise<void> {
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog(window, {
+      title: t('spaces.exportAll'),
+      buttonLabel: t('spaces.exportAllButton'),
+      defaultPath: app.getPath('documents'),
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    const folder = canceled ? undefined : filePaths[0];
+    if (!folder || window.isDestroyed()) return;
+    for (const { name, text } of spaces) {
+      if (!text) continue;
+      for (let n = 1; ; n++) {
+        const file = path.join(folder, spaceFileName(n === 1 ? name : `${name} ${n}`));
+        try {
+          await fs.promises.writeFile(file, text, { mode: 0o600, flag: 'wx' });
+          break;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[spaces] could not export all:', error);
     if (!window.isDestroyed())
       void dialog.showMessageBox(window, {
         type: 'error',
@@ -126,22 +166,27 @@ export async function importSpaceWithDialog(
     title: t('spaces.chooseFile'),
     buttonLabel: t('window.import'),
     filters: SPACE_FILTERS,
-    properties: ['openFile'],
+    properties: ['openFile', 'multiSelections'],
   });
-  const file = canceled ? undefined : filePaths[0];
-  if (!file) return null;
-  let id: string | null = null;
-  try {
-    if ((await fs.promises.stat(file)).size <= MAX_SPACE_FILE_BYTES)
-      id = importText(await fs.promises.readFile(file, 'utf8'));
-  } catch (error) {
-    console.warn('[spaces] could not import:', error);
+  if (canceled) return null;
+  let lastId: string | null = null;
+  let failed = 0;
+  for (const file of filePaths) {
+    let id: string | null = null;
+    try {
+      if ((await fs.promises.stat(file)).size <= MAX_SPACE_FILE_BYTES)
+        id = importText(await fs.promises.readFile(file, 'utf8'));
+    } catch (error) {
+      console.warn('[spaces] could not import:', error);
+    }
+    if (id === null) failed++;
+    else lastId = id;
   }
-  if (!id && !window.isDestroyed())
+  if (failed > 0 && !window.isDestroyed())
     void dialog.showMessageBox(window, {
       type: 'error',
       message: t('spaces.importFailed'),
       detail: t('spaces.importFailedDetail'),
     });
-  return id;
+  return lastId;
 }

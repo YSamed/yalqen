@@ -130,6 +130,9 @@
       "sign": "./scripts/sign-mac.mjs",
       "extendInfo": {
         "NSCameraUsageDescription": "Websites can use your camera when you allow it.",
+        "NSDesktopFolderUsageDescription": "Yalqen lists the screenshots you take in its downloads when you turn this on in Settings.",
+        "NSDocumentsFolderUsageDescription": "Yalqen saves files you download here and lists screenshots saved here when you turn this on in Settings.",
+        "NSDownloadsFolderUsageDescription": "Yalqen saves files you download here and lists screenshots saved here when you turn this on in Settings.",
         "NSMicrophoneUsageDescription": "Websites can use your microphone when you allow it.",
         "NSLocationUsageDescription": "Websites can see your location when you allow it.",
         "NSLocationWhenInUseUsageDescription": "Websites can see your location when you allow it."

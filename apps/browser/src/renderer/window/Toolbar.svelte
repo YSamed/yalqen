@@ -219,7 +219,8 @@
       tone={downloads.active > 0 ? 'accent' : 'default'}
       label={downloads.active > 0 ? t('toolbar.downloadsActive', { count: downloads.active }) : t('toolbar.downloads')}
       title={t('toolbar.downloads')}
-      onclick={() => send({ type: 'open-downloads' })}
+      onclick={(event) =>
+        send({ type: 'open-sidebar-menu', kind: 'downloads', anchor: anchorRect(event.currentTarget) })}
     >
       {#if downloads.active > 0}
         <svg class="ring" class:indeterminate={downloads.progress === null} viewBox="0 0 28 28" aria-hidden="true">

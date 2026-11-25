@@ -73,6 +73,7 @@ test('unknown or mistyped fields fall back', () => {
       autoUpdateExtensions: true,
       usageCounting: false,
       askBeforeDownload: true,
+      screenshotsInDownloads: false,
       downloadDirectory: null,
       welcomeCompleted: false,
       invitationSeen: false,
@@ -88,6 +89,7 @@ test('unknown or mistyped fields fall back', () => {
       agentTerminal: false,
       agentFloating: false,
       recentTabCycling: true,
+      pageSwipe: true,
       shortcuts: {},
     },
   );

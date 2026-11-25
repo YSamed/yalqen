@@ -129,6 +129,9 @@ window.addEventListener(
       event.shiftKey
     )
       return;
+    // A tilt wheel reports whole wheel notches; only touchpad swipes should navigate.
+    const notches = (event as WheelEvent & { wheelDeltaX?: number }).wheelDeltaX ?? 0;
+    if (process.platform !== 'darwin' && notches !== 0 && notches % 120 === 0) return;
     if (Math.abs(event.deltaX) < Math.abs(event.deltaY) * 1.25) {
       distance = 0;
       return;

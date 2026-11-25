@@ -69,6 +69,17 @@ test('a space file keeps pinned tabs, folders and the partition flag', () => {
   assert.notEqual(parsed.window.tabs[0].id, 'a');
 });
 
+test('only the default space file carries the default mark', () => {
+  assert.equal(
+    parseSpaceFile(spaceFileText({ name: 'Home', icon: null, isolated: false, window, isDefault: true })).isDefault,
+    true,
+  );
+  assert.equal(
+    parseSpaceFile(spaceFileText({ name: 'Work', icon: null, isolated: false, window })).isDefault,
+    undefined,
+  );
+});
+
 test('space files from outside are validated', () => {
   const valid = JSON.parse(spaceFileText({ name: 'Work', icon: null, isolated: false, window }));
   const parse = (value) => parseSpaceFile(typeof value === 'string' ? value : JSON.stringify(value));

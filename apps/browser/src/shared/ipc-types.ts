@@ -37,6 +37,7 @@ export type UiAction =
   | { type: 'switch-space'; id: string }
   | { type: 'create-space' }
   | { type: 'import-space' }
+  | { type: 'export-spaces' }
   | { type: 'open-space-menu'; id: string }
   | { type: 'open-sidebar-context-menu' }
   | { type: 'close-tab'; id: TabId }
@@ -90,7 +91,6 @@ export type UiAction =
   | { type: 'open-profile-menu' }
   | { type: 'open-sidebar-menu'; kind: SidebarMenuKind; anchor: AnchorRect; footer?: AnchorRect }
   | { type: 'set-sidebar-footer-items'; items: SidebarFooterItem[] }
-  | { type: 'open-downloads' }
   | { type: 'install-update' }
   | { type: 'open-extensions-menu'; anchor: AnchorRect }
   | { type: 'open-history' }

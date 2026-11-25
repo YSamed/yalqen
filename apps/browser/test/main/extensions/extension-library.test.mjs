@@ -217,6 +217,14 @@ test('extensions remove only completed download files and cannot accept dangerou
       ['bad.txt', 'blocked'],
     ])
       downloads.add({ ...base, id: name, filename: name, savePath: file(name), state });
+    downloads.add({
+      ...base,
+      id: 'shot',
+      filename: 'shot.png',
+      savePath: file('shot.png'),
+      state: 'completed',
+      screenshot: true,
+    });
     const events = [];
     const api = new ExtensionLibrary(
       {
@@ -230,6 +238,10 @@ test('extensions remove only completed download files and cannot accept dangerou
     );
     const items = await api.call('downloads', 'search', [{}], []);
     const id = (name) => items.find((item) => item.filename === file(name)).id;
+    assert.equal(
+      items.some((item) => item.filename === file('shot.png')),
+      false,
+    );
     const remove = (name) => api.call('downloads', 'removeFile', [id(name)], []);
     await assert.rejects(remove('run.txt'), /Download must be complete/);
     await assert.rejects(remove('bad.txt'), /Download must be complete/);

@@ -45,6 +45,8 @@ export const en = {
   'spaces.newProfile': 'New profile',
   'spaces.export': 'Export space…',
   'spaces.import': 'Import space…',
+  'spaces.exportAll': 'Export all spaces…',
+  'spaces.exportAllButton': 'Export Here',
   'spaces.chooseFile': 'Choose Space File',
   'spaces.exportFailed': "Couldn't export the space.",
   'spaces.importFailed': "Couldn't import the space.",
@@ -1058,6 +1060,9 @@ export const en = {
   'settings.blockThirdPartyCookiesHint':
     'Makes it harder for other sites to track you across the web through embedded content. Some embedded sign-in and comment fields may not work.',
   'settings.askBeforeDownload': 'Ask before downloading',
+  'settings.screenshotsInDownloads': 'Show screenshots in downloads',
+  'settings.screenshotsInDownloadsHint':
+    'Adds screenshots you take with the system to the downloads list, so you can drag them onto a page. macOS asks once for access to the screenshot folder.',
   'settings.downloadDirectory': 'Download location',
   'settings.chooseDownloadDirectory': 'Choose download folder',
   'settings.changeDownloadDirectory': 'Change…',
@@ -1093,6 +1098,8 @@ export const en = {
   'settings.recentTabCycling': 'Switch tabs in recently used order',
   'settings.recentTabCyclingHint':
     'Ctrl+Tab goes to the tab you used last. Press it again quickly to go further back. When off, it follows the tab list.',
+  'settings.pageSwipe': 'Swipe to go back and forward',
+  'settings.pageSwipeHint': 'Swipe left or right with two fingers on the page to go back or forward.',
   'settings.paneShortcuts': 'Shortcuts',
   'settings.shortcuts': 'Menu shortcuts',
   'settings.shortcutsHint':

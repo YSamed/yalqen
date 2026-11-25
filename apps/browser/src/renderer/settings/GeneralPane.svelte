@@ -7,6 +7,7 @@
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
   import SettingRow from './SettingRow.svelte';
+  import { IS_MAC } from '../platform';
   import { webPageUrl } from '../../shared/startup-pages';
 
   let {
@@ -171,6 +172,15 @@
       onchange={(checked) => update({ askBeforeDownload: checked })}
     />
   </SettingRow>
+  {#if IS_MAC}
+    <SettingRow title={t('settings.screenshotsInDownloads')} hint={t('settings.screenshotsInDownloadsHint')}>
+      <Switch
+        label={t('settings.screenshotsInDownloads')}
+        checked={values.screenshotsInDownloads}
+        onchange={(checked) => update({ screenshotsInDownloads: checked })}
+      />
+    </SettingRow>
+  {/if}
 
   <h2>{t('settings.importData')}</h2>
   <SettingRow title={t('settings.importBookmarks')} hint={t('settings.importBookmarksHint')}>

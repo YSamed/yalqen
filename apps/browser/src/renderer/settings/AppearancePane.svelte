@@ -133,6 +133,13 @@
       onchange={(checked) => update({ recentTabCycling: checked })}
     />
   </SettingRow>
+  <SettingRow title={t('settings.pageSwipe')} hint={t('settings.pageSwipeHint')}>
+    <Switch
+      label={t('settings.pageSwipe')}
+      checked={values.pageSwipe}
+      onchange={(checked) => update({ pageSwipe: checked })}
+    />
+  </SettingRow>
   <SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
     <Switch
       label={t('settings.tabCleanup')}
