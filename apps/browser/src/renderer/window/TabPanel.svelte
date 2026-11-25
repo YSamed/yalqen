@@ -106,7 +106,7 @@
     else send({ type: 'activate-tab', id, animate: event.detail > 0 });
   }
 
-  const pinned = $derived(tabs.filter((tab) => tab.pinned));
+  const pinned = $derived(tabs.filter((tab) => tab.pinned && !tab.group));
   const tabsById = $derived(new Map(tabs.map((tab) => [tab.id, tab])));
   const listed = $derived(
     listOrder.map((id) => tabsById.get(id)).filter((tab): tab is TabSnapshot => !!tab && !tab.pinned),
@@ -203,7 +203,6 @@
   const drag = new TabDrag({
     tabs: () => tabs,
     pinned: () => pinned,
-    listed: () => listed,
     orderKey: () => orderKey,
     activeTabId: () => activeTabId,
     groupOf: (id) => tabsById.get(id)?.group,
@@ -214,6 +213,7 @@
   });
   const draggingPinned = $derived(drag.group === 'pinned');
   const draggingListed = $derived(drag.group === 'listed');
+  const draggedTab = $derived(drag.dragId ? tabsById.get(drag.dragId) : undefined);
 
   const unreadHosts = $derived(
     new Set(tabs.flatMap((tab) => (tab.unread && !tab.isPrivate ? (hostOf(tab.url) ?? []) : []))),
@@ -334,6 +334,9 @@
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
     <span class="title">{tab.title}</span>
+    {#if tab.pinned && tab.group}
+      <span class="mark" title={t('tabPanel.statePinned')}><Icon name="pin" size={13} /></span>
+    {/if}
     {#if split.has(tab.id)}<span class="mark" title={t('tabPanel.splitTab')}><Icon name="split" size={13} /></span>{/if}
     {#if developer}<span class="mark" title={t('tabPanel.developerTab')}>
         <Icon name="gauge" size={13} />
@@ -539,6 +542,12 @@
         </ul>
       {/if}
 
+      {#if draggedTab?.pinned && draggedTab.group}
+        <div class="pin-root" class:drop-target={drag.dropPinRoot} data-pin-root>
+          {t('window.moveOutOfFolder')}
+        </div>
+      {/if}
+
       {#if tabCleanup && listed.length > 0}
         <div class="tab-cleanup">
           <span class="cleanup-line" aria-hidden="true"></span>
@@ -661,6 +670,7 @@
     margin: 6px 0 3px;
   }
   .group-heading.drop-target,
+  .pin-root.drop-target,
   .split-drop,
   .group-rename:focus {
     outline: 2px solid var(--accent);
@@ -682,6 +692,17 @@
   }
   .group-heading small {
     font-size: 10px;
+  }
+
+  .pin-root {
+    flex: none;
+    margin: 2px 2px 8px;
+    padding: 6px;
+    border: 1px dashed var(--page-divider);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
   }
   .panel {
     position: relative;

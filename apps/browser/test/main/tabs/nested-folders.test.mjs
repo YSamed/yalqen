@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import workspaces from '../../../dist/main/library/workspaces.js';
 import persistence from '../../../dist/main/tabs/persistence.js';
 import shortcuts from '../../../dist/main/tabs/tab-shortcuts.js';
 import tabs from '../../../dist/main/tabs/tabs.js';
@@ -96,6 +97,65 @@ test('a folder with only subfolders stays, and an empty subfolder disappears', (
   m.setTabGroup('c', null);
   assert.deepEqual(view(m), []);
   assert.equal(m.groupParents.size, 0);
+});
+
+test('nested folders keep closed pins in sidebar order through session and Space transfer', () => {
+  const m = manager();
+  m.setTabGroup('b', 'Work');
+  m.setTabGroup('c', 'Docs');
+  m.setTabGroup('d', 'Docs');
+  m.moveGroup('Docs', 'Work');
+  m.setTabGroup('b', null);
+  m.togglePin('b');
+  m.togglePin('c');
+  m.togglePin('d');
+  m.openedPinned.clear();
+
+  assert.deepEqual(
+    m.listOrder().map(({ id }) => id),
+    ['a', 'c', 'd'],
+  );
+  m.moveRow('d', 'c', false);
+  assert.deepEqual(
+    m.listOrder().map(({ id }) => id),
+    ['a', 'd', 'c'],
+  );
+  m.toggleGroup('Work');
+
+  const saved = m.toSavedWindow();
+  const pins = persistence.pinnedOnly(saved);
+  assert.deepEqual(
+    pins.tabs.map(({ id, group }) => [id, group]),
+    [
+      ['b', undefined],
+      ['d', 'Docs'],
+      ['c', 'Docs'],
+    ],
+  );
+  assert.deepEqual(pins.groupParents, { Docs: 'Work' });
+
+  const file = workspaces.parseSpaceFile(
+    workspaces.spaceFileText({ name: 'Work', icon: null, isolated: false, window: saved }),
+  );
+  assert.deepEqual(file.window.groupParents, { Docs: 'Work' });
+  assert.deepEqual(file.window.collapsedGroups, ['Work']);
+  const target = manager();
+  target.importIntoSpace(file.window, target.space);
+  assert.deepEqual(
+    target.groupView().map(({ name, collapsed, count }) => [name, collapsed, count]),
+    [
+      ['Work', true, 0],
+      ['Docs', false, 2],
+    ],
+  );
+  const importedPins = target.here.filter(({ group }) => group === 'Docs');
+  assert.deepEqual(
+    importedPins.map(({ pinnedUrl }) => pinnedUrl),
+    ['https://d.example/', 'https://c.example/'],
+  );
+  assert.equal(target.setTabGroup(importedPins[0].id, null), true);
+  assert.equal(importedPins[0].pinnedUrl, 'https://d.example/');
+  assert.ok(!target.listOrder().includes(importedPins[0]));
 });
 
 test('nesting survives a session save and load, and old sessions without it still load', () => {

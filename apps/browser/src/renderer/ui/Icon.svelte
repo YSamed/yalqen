@@ -17,6 +17,7 @@
     plus: 'M8 3v10M3 8h10',
     'new-tab': 'M2.5 3.5h11v9h-11zM8 6v4M6 8h4',
     folder: 'M2.5 4h4l1.5 2h5.5v7h-11z',
+    pin: 'M5.5 2.5h5M6.5 2.5v4l-2 2v1h7v-1l-2-2v-4M8 9.5v4',
     stop: 'M4 4h8v8H4z',
     play: 'M5 3.5v9l7.5-4.5z',
     pause: 'M5.5 3.5v9M10.5 3.5v9',

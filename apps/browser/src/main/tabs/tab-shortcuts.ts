@@ -13,9 +13,9 @@ export function tabListOrder<T extends Listable>(
   opened: OpenedPinned,
   parents: GroupParents = new Map(),
 ): T[] {
-  const unpinned = tabs.filter((tab) => !tab.pinnedUrl);
-  const pinnedById = new Map(tabs.filter((tab) => tab.pinnedUrl).map((tab) => [tab.id, tab]));
-  const unpinnedIds = new Set(unpinned.map((tab) => tab.id));
+  const rows = tabs.filter((tab) => !tab.pinnedUrl || tab.group);
+  const pinnedById = new Map(tabs.filter((tab) => tab.pinnedUrl && !tab.group).map((tab) => [tab.id, tab]));
+  const unpinnedIds = new Set(rows.filter((tab) => !tab.pinnedUrl).map((tab) => tab.id));
   const byAnchor = new Map<string | null, T[]>();
   const orphans: T[] = [];
   for (const [id, anchor] of opened) {
@@ -31,7 +31,7 @@ export function tabListOrder<T extends Listable>(
   }
   const ordered = [
     ...(byAnchor.get(null) ?? []),
-    ...unpinned.flatMap((tab) => [tab, ...(byAnchor.get(tab.id) ?? [])]),
+    ...rows.flatMap((tab) => [tab, ...(byAnchor.get(tab.id) ?? [])]),
     ...orphans,
   ];
   const groups = groupOrder(

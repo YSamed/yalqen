@@ -6,7 +6,6 @@ export type SplitSide = 'left' | 'right';
 export interface TabDragHost {
   tabs(): TabSnapshot[];
   pinned(): TabSnapshot[];
-  listed(): TabSnapshot[];
   orderKey(): string;
   activeTabId(): TabId | null;
   groupOf(id: TabId): TabSnapshot['group'];
@@ -41,6 +40,7 @@ export class TabDrag {
   offset = $state({ x: 0, y: 0 });
   dropIndex: number | null = $state(null);
   dropFolder: string | null = $state(null);
+  dropPinRoot = $state(false);
   dropTab: TabId | null = $state(null);
   dropRow: number | null = $state(null);
   returningId: TabId | null = $state(null);
@@ -129,16 +129,6 @@ export class TabDrag {
       this.#captureRows(press);
     }
     this.#track();
-    this.#setSplitSide(this.#splitSideAt(), press.id);
-    this.dropTab = this.#splitSide ? null : this.#tabAt(press);
-    // An opened favorite shows as a row but belongs to no folder.
-    const listed = this.#groupTabs(press.group).some((tab) => tab.id === press.id);
-    const folder = listed && press.group === 'listed' && !this.#splitSide && !this.dropTab ? this.#folderAt() : null;
-    this.dropFolder = folder && folder !== this.#host.groupOf(press.id) ? folder : null;
-    if (this.#splitSide || this.dropFolder || this.dropTab) {
-      this.dropIndex = null;
-      this.dropRow = null;
-    }
     if (this.#scrollSpeed() !== 0 && !this.#scrollFrame) this.#scrollFrame = requestAnimationFrame(this.#autoScroll);
   }
 
@@ -163,7 +153,7 @@ export class TabDrag {
         this.end();
         return;
       }
-      if (!press.cancelled && this.dropFolder) {
+      if (!press.cancelled && (this.dropFolder || this.dropPinRoot)) {
         this.#host.send({ type: 'move-tab-to-group', id: press.id, name: this.dropFolder });
         this.end();
         return;
@@ -201,7 +191,7 @@ export class TabDrag {
     this.#pointer = { x: event.clientX, y: event.clientY };
     if (!press.dragging && Math.hypot(this.#pointer.x - press.x, this.#pointer.y - press.y) < DRAG_THRESHOLD) return;
     press.dragging = true;
-    const target = this.#folderAt();
+    const target = this.#folderDropAt()?.dataset.folder;
     this.dropFolder = target && this.#host.canNestFolder(press.name, target) ? target : null;
   }
 
@@ -219,12 +209,14 @@ export class TabDrag {
     this.dropFolder = null;
   }
 
-  #folderAt(): string | null {
-    for (const element of document.elementsFromPoint(this.#pointer.x, this.#pointer.y)) {
-      const name = (element as HTMLElement).dataset?.folder;
-      if (name) return name;
-    }
-    return null;
+  #folderDropAt(): HTMLElement | undefined {
+    return document
+      .elementsFromPoint(this.#pointer.x, this.#pointer.y)
+      .find(
+        (element): element is HTMLElement =>
+          element instanceof HTMLElement &&
+          (element.hasAttribute('data-folder') || element.hasAttribute('data-pin-root')),
+      );
   }
 
   // The middle half of a row (or a favorite tile) splits with that tab; its edges still reorder.
@@ -309,6 +301,16 @@ export class TabDrag {
     };
     if (horizontal) this.dropIndex = this.#slotAt(press);
     else this.dropRow = this.#rowSlotAt();
+    this.#setSplitSide(this.#splitSideAt(), press.id);
+    const folderTarget = this.#splitSide ? undefined : this.#folderDropAt();
+    const folder = folderTarget?.dataset.folder;
+    this.dropFolder = folder && folder !== this.#host.groupOf(press.id) ? folder : null;
+    this.dropPinRoot = folderTarget?.hasAttribute('data-pin-root') ?? false;
+    this.dropTab = this.#splitSide || folder || this.dropPinRoot ? null : this.#tabAt(press);
+    if (this.#splitSide || folder || this.dropPinRoot || this.dropTab) {
+      this.dropIndex = null;
+      this.dropRow = null;
+    }
   }
 
   #slotAt(press: Press): number | null {
@@ -333,7 +335,7 @@ export class TabDrag {
     const { index, rect } = nearest;
     const before = x < rect.left + rect.width / 2;
     const slot = before ? index : index + 1;
-    const from = this.#groupTabs(press.group).findIndex((tab) => tab.id === press.id);
+    const from = this.#host.pinned().findIndex((tab) => tab.id === press.id);
     return from < 0 || slot === from || slot === from + 1 ? null : slot;
   }
 
@@ -358,12 +360,8 @@ export class TabDrag {
     this.#scrollFrame = requestAnimationFrame(this.#autoScroll);
   };
 
-  #groupTabs(group: DragGroup): TabSnapshot[] {
-    return group === 'pinned' ? this.#host.pinned() : this.#host.listed();
-  }
-
   #commitMove(press: Press): boolean {
-    const group = this.#groupTabs(press.group);
+    const group = this.#host.pinned();
     if (this.dropIndex === null || !group.some((tab) => tab.id === press.id)) return false;
     const tabs = this.#host.tabs();
     const from = tabs.findIndex((tab) => tab.id === press.id);
@@ -396,6 +394,7 @@ export class TabDrag {
     this.dragId = null;
     this.group = null;
     this.dropFolder = null;
+    this.dropPinRoot = false;
     this.dropTab = null;
     this.dropIndex = null;
     this.dropRow = null;

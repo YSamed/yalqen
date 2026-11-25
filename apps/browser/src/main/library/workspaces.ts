@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { readingUrl } from '../../shared/reading-list.js';
-import { parseGroupParents, pruneGroupParents, tabGroupName } from '../../shared/tab-groups.js';
+import { groupOrder, parseGroupParents, pruneGroupParents, tabGroupName } from '../../shared/tab-groups.js';
 import { MAX_SPACES, workspaceIcon, type SpaceView, type WorkspaceSummary } from '../../shared/workspaces.js';
 import { spaceFrameTheme, type FrameTheme } from '../../shared/frame-theme.js';
 import type { SavedWindow, SavedTab } from '../tabs/persistence.js';
@@ -103,13 +103,15 @@ export function workspaceSnapshot(value: SavedWindow, allowEmpty = false): Saved
   if ((!tabs.length && !allowEmpty) || tabs.length > 200) return null;
   const groups = new Set(tabs.flatMap((tab) => (tab.group ? [tab.group] : [])));
   if (groups.size > 50) return null;
+  const parents = pruneGroupParents(parseGroupParents(value.groupParents), groups);
+  const folderNames = new Set(groupOrder(groups, parents));
   return {
     tabs,
     activeTabId: ids.get(value.activeTabId ?? '') ?? tabs[0]?.id ?? null,
     collapsedGroups: Array.isArray(value.collapsedGroups)
-      ? value.collapsedGroups.filter((name) => groups.has(name)).slice(0, 50)
+      ? value.collapsedGroups.filter((name) => folderNames.has(name)).slice(0, 50)
       : [],
-    groupParents: Object.fromEntries(pruneGroupParents(parseGroupParents(value.groupParents), groups)),
+    groupParents: Object.fromEntries(parents),
   };
 }
 export class WorkspaceStore {

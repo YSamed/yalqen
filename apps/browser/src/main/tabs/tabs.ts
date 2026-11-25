@@ -1166,14 +1166,15 @@ export class TabManager {
     const rest = order.filter((item) => !moving.has(item));
     rest.splice(rest.indexOf(target) + (after ? 1 : 0), 0, ...order.filter((item) => moving.has(item)));
     const rank = new Map(rest.map((item, index) => [item, index]));
-    const slots = this.tabs.flatMap((tab, index) => (!tab.pinnedUrl && rank.has(tab.id) ? [index] : []));
+    const slots = this.tabs.flatMap((tab, index) => ((!tab.pinnedUrl || tab.group) && rank.has(tab.id) ? [index] : []));
     const sorted = slots.map((slot) => this.tabs[slot]).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
     slots.forEach((slot, index) => (this.tabs[slot] = sorted[index]));
     const anchors: [TabId, TabId | null][] = [];
     let anchor: TabId | null = null;
     for (const item of rest) {
-      if (!this.find(item)?.pinnedUrl) anchor = item;
-      else if (this.openedPinned.has(item)) anchors.push([item, anchor]);
+      const tab = this.find(item);
+      if (!tab?.pinnedUrl) anchor = item;
+      else if (!tab.group && this.openedPinned.has(item)) anchors.push([item, anchor]);
     }
     for (const [item] of anchors) this.openedPinned.delete(item);
     for (const [item, value] of anchors) this.openedPinned.set(item, value);
@@ -2000,8 +2001,12 @@ export class TabManager {
   importIntoSpace(saved: SavedWindow, space: string): void {
     let state = this.groupStates.get(space);
     if (!state) this.groupStates.set(space, (state = { collapsed: new Set(), parents: new Map() }));
+    const existing = new Set(
+      groupOrder(this.usedGroups(this.tabs.filter((tab) => tab.space === space)), state.parents),
+    );
     for (const [name, parent] of parseGroupParents(saved.groupParents))
       if (!state.parents.has(name) && canNestGroup(state.parents, name, parent)) state.parents.set(name, parent);
+    for (const name of saved.collapsedGroups ?? []) if (!existing.has(name)) state.collapsed.add(name);
     this.tabs.push(...saved.tabs.map((tab) => this.createRecord({ ...tab, space })));
     this.changed(true);
   }
