@@ -5,7 +5,8 @@
   --border: light-dark(#dadade, #28282c);
   --text: light-dark(#1a1b1e, #f3f3f4);
   --text-muted: light-dark(#62646b, #9c9da3);
-  --accent: #f28c28;
+  --orange-accent: #f28c28;
+  --accent: var(--orange-accent);
   --warn: light-dark(#a34a06, #f0a35c);
   --success: light-dark(#1d7542, #63c98f);
   --page: light-dark(#ffffff, #111113);
