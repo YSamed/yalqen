@@ -39,7 +39,7 @@ test('unknown or mistyped fields fall back', () => {
       customSearchTemplate: null,
       theme: 'dark',
       darkSites: false,
-      frameTheme: { colors: ['#de5a92'], intensity: 50, texture: 'none', textureStrength: 40 },
+      frameTheme: { colors: ['#1d9a6c'], intensity: 50, texture: 'none', textureStrength: 40 },
       startupBehavior: 'restore',
       startupUrls: [],
       spaceRules: [],

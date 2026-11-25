@@ -34,7 +34,7 @@ export interface FrameTheme {
 
 export const MAX_FRAME_COLORS = 3;
 export const DEFAULT_FRAME_THEME: FrameTheme = {
-  colors: ['#de5a92'],
+  colors: ['#1d9a6c'],
   intensity: 50,
   texture: 'none',
   textureStrength: 40,
