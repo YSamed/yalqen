@@ -14,12 +14,14 @@
     view,
     update,
     makeDefault,
+    chooseDownloadDirectory,
     section,
   }: {
     section: 'general' | 'windows';
     view: SettingsView;
     update: (patch: Partial<SettingsValues>) => Promise<void>;
     makeDefault: () => Promise<void>;
+    chooseDownloadDirectory: () => Promise<void>;
   } = $props();
 
   const api = window.yalqenSettings;
@@ -76,10 +78,10 @@
     void update({ customSearchTemplate: templateDraft.trim() || null });
   }
 
-  async function chooseDownloadDirectory(): Promise<void> {
+  async function chooseDirectory(): Promise<void> {
     choosingDirectory = true;
     try {
-      await api.chooseDownloadDirectory();
+      await chooseDownloadDirectory();
     } finally {
       choosingDirectory = false;
     }
@@ -101,6 +103,7 @@
   <SettingRow title={t('settings.searchEngine')} hint={t('settings.searchEngineHint')} labelFor="engine">
     <Select
       id="engine"
+      controlled
       options={engineOptions}
       value={values.searchEngine}
       onchange={(value) => update({ searchEngine: value })}
@@ -130,6 +133,7 @@
   <SettingRow title={t('settings.whenBrowserOpens')} hint={t('settings.startupHint')}>
     <Select
       aria-label={t('settings.whenBrowserOpens')}
+      controlled
       options={startupOptions}
       value={values.startupBehavior}
       onchange={(value) => update({ startupBehavior: value })}
@@ -156,7 +160,7 @@
 
   <h2>{t('settings.downloads')}</h2>
   <SettingRow title={t('settings.downloadDirectory')} detail={view.downloadDirectory}>
-    <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDownloadDirectory}>
+    <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDirectory}>
       {t('settings.changeDownloadDirectory')}
     </Button>
     {#if values.downloadDirectory}
@@ -198,6 +202,7 @@
   >
     <Select
       id="interface-language"
+      controlled
       options={interfaceLanguageOptions}
       value={values.interfaceLanguage}
       onchange={(value) => update({ interfaceLanguage: value })}

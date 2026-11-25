@@ -51,14 +51,14 @@ export class JsonFile {
     }, wait);
   }
 
-  flush(data?: () => unknown): void {
+  flush(data?: () => unknown): boolean {
     if (data) {
       this.data = data;
       this.dirty = true;
     }
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
-    if (!this.dirty || !this.data) return;
+    if (!this.dirty || !this.data) return true;
     this.generation++;
     const temp = `${this.file}.tmp`;
     try {
@@ -66,8 +66,10 @@ export class JsonFile {
       fs.writeFileSync(temp, this.serialize(this.data));
       fs.renameSync(temp, this.file);
       this.dirty = false;
+      return true;
     } catch (error) {
       console.warn(`[${this.label}] could not save:`, error);
+      return false;
     }
   }
 

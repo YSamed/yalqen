@@ -176,6 +176,7 @@
 
   <SettingRow title={t('agentBridge.actions')} hint={t('agentBridge.actionsHint')} labelFor="agent-actions">
     <Select
+      controlled
       id="agent-actions"
       options={actionOptions}
       value={values.agentActions}

@@ -803,7 +803,7 @@ function startBrowser(): void {
   const updateSettings = (patch: unknown) => {
     const previous = settings.get();
     const next = settings.update(patch);
-    if (next === previous) return;
+    if (!next || next === previous) return next;
     if (JSON.stringify(next.shortcuts) !== JSON.stringify(previous.shortcuts)) refreshAppMenu();
     if (next.threatProtection && !previous.threatProtection) void threatLists.update();
     if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
@@ -824,6 +824,7 @@ function startBrowser(): void {
     applyCookieBlocking(sessions, next.blockThirdPartyCookies, cookiesAllowed);
     pushState();
     broadcastSettings(settingsView());
+    return next;
   };
 
   const usage = new UsageReporter({

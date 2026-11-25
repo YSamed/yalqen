@@ -943,6 +943,7 @@ export const tr: Record<MessageKey, string> = {
   'settings.panePasswordsAutofill': 'Şifreler',
   'settings.searchSettings': 'Ayarlarda ara',
   'settings.searchEmpty': 'Aramanızla eşleşen ayar yok.',
+  'settings.saveFailed': 'Ayar kaydedilemedi. Profil klasörüne yazma iznini kontrol edip tekrar deneyin.',
   'settings.off': 'Kapalı',
   'settings.history': 'Geçmiş',
   'settings.downloads': 'İndirilenler',

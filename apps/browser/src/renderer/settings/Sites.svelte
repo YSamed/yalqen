@@ -255,6 +255,7 @@
 {#each promptKinds as kind (kind)}
   <SettingRow title={t(`permissions.${kind}`)} hint={t('sites.defaultPermissionsHint')} labelFor={`default-${kind}`}>
     <Select
+      controlled
       id={`default-${kind}`}
       options={defaultChoices}
       value={values.blockedPermissionRequests.includes(kind) ? 'deny' : 'ask'}

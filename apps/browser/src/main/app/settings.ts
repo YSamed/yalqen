@@ -269,11 +269,11 @@ export class SettingsStore {
     return this.current;
   }
 
-  update(patch: unknown): Settings {
+  update(patch: unknown): Settings | null {
     const next = sanitizeSettings({ ...this.current, ...(patch as object) }, this.current);
     if (sameSettings(next, this.current)) return this.current;
+    if (!this.json.flush(() => next)) return null;
     this.current = next;
-    this.json.flush(() => next);
     return next;
   }
 

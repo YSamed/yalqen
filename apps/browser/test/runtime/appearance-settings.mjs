@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, dialog, session } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
@@ -69,7 +69,7 @@ app
       view: () => ({
         values: preferences.get(),
         version: 'test',
-        downloadDirectory: profile,
+        downloadDirectory: preferences.get().downloadDirectory ?? profile,
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
@@ -119,6 +119,42 @@ app
     await eventually(`${choice('Dark')}.getAttribute('aria-checked')==='true'`);
     assert.equal(preferences.get().theme, 'dark');
 
+    const saveError = `document.querySelector('.save-error[role=alert]')`;
+    const temp = `${preferences.file}.tmp`;
+    const engine = `document.getElementById('engine')`;
+    const customEngine = `Array.from(document.getElementById(${engine}.getAttribute('aria-controls')).querySelectorAll('[role=option]')).find(item=>item.textContent.trim()==='Custom')`;
+    const selectCustomEngine = () => run(`${engine}.click(); ${customEngine}.click()`);
+
+    fs.mkdirSync(temp);
+    await selectCustomEngine();
+    await eventually(`${saveError}?.checkVisibility()`);
+    assert.match(await run(`${saveError}.textContent`), /could not save/i);
+    assert.equal(await run(`${customEngine}.getAttribute('aria-selected')`), 'false');
+    assert.equal(preferences.get().searchEngine, 'google');
+    fs.rmdirSync(temp);
+    await selectCustomEngine();
+    await eventually(`${customEngine}.getAttribute('aria-selected')==='true' && !${saveError}`);
+    assert.equal(new settings.SettingsStore(profile).get().searchEngine, 'custom');
+
+    const downloadFolder = fs.mkdtempSync(path.join(profile, 'downloads-'));
+    const changeFolder = `Array.from(document.querySelectorAll('#pane button')).find(item=>item.textContent.trim()==='Change…')`;
+    const showOpenDialog = dialog.showOpenDialog;
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [downloadFolder] });
+    try {
+      fs.mkdirSync(temp);
+      await run(`${changeFolder}.click()`);
+      await eventually(`${saveError}?.checkVisibility() && !${changeFolder}.disabled`);
+      assert.equal(preferences.get().downloadDirectory, null);
+      fs.rmdirSync(temp);
+      await run(`${changeFolder}.click()`);
+      await eventually(
+        `document.querySelector('#pane').textContent.includes(${JSON.stringify(downloadFolder)}) && !${saveError}`,
+      );
+      assert.equal(new settings.SettingsStore(profile).get().downloadDirectory, downloadFolder);
+    } finally {
+      dialog.showOpenDialog = showOpenDialog;
+    }
+
     await window.loadURL('yalqen://settings/privacy');
     const clearButton = `Array.from(document.querySelectorAll('#pane button')).find(item=>item.textContent.trim()==='Clear…')`;
     await eventually(`!!${clearButton}`);
@@ -148,7 +184,7 @@ app
     await eventually(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`);
 
     console.log(
-      'PASS: appearance settings pick theme from cards, show advanced settings for matching searches, and clear browsing data from a dialog',
+      'PASS: appearance settings pick theme, report failed saves and allow retry, search advanced settings, and clear browsing data',
     );
   })
   .catch((error) => {

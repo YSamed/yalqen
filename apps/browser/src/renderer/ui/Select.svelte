@@ -5,6 +5,7 @@
     value = $bindable(),
     options,
     onchange,
+    controlled = false,
     id,
     variant = 'default',
     placement = 'down',
@@ -14,6 +15,7 @@
     value: T;
     options: readonly { value: T; label: string; short?: string }[];
     onchange?: (value: T) => void;
+    controlled?: boolean;
     id?: string;
     variant?: 'default' | 'ghost';
     placement?: 'down' | 'up';
@@ -35,7 +37,7 @@
     list.hidePopover();
     trigger.focus();
     if (next === value) return;
-    value = next;
+    if (!controlled) value = next;
     onchange?.(next);
   }
 

@@ -934,6 +934,7 @@ export const en = {
   'settings.panePasswordsAutofill': 'Passwords',
   'settings.searchSettings': 'Search settings',
   'settings.searchEmpty': 'No settings match your search.',
+  'settings.saveFailed': 'Could not save the setting. Check that the profile folder is writable and try again.',
   'settings.off': 'Off',
   'settings.history': 'History',
   'settings.downloads': 'Downloads',

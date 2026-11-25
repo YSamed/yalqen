@@ -5,6 +5,8 @@ import {
   SettingsChannel,
   SitePermissionsChannel,
   type ClearDataRequest,
+  type SettingsSaveResult,
+  type SettingsValues,
   type SettingsView,
   type SitePermissionsView,
 } from '../../shared/types.js';
@@ -20,7 +22,7 @@ import type { Updater } from './updater.js';
 
 export interface SettingsIpcHost {
   view(): SettingsView;
-  update(patch: unknown): void;
+  update(patch: unknown): SettingsValues | null;
   clearData(request: ClearDataRequest): Promise<void>;
   showImportMenu(kind: 'bookmarks' | 'history', contents: WebContents): void;
   updater: Updater;
@@ -43,16 +45,17 @@ function sitePermissionsView(store: PermissionStore | null): SitePermissionsView
 }
 
 export function registerSettingsIpc(host: SettingsIpcHost): void {
+  const save = (patch: unknown): SettingsSaveResult => {
+    const saved = host.update(patch) !== null;
+    return { view: host.view(), saved };
+  };
   handleSettingsCall(SettingsChannel.profiles, () => host.profiles.view());
   handleSettingsCall(SettingsChannel.profileAction, (_event, action, id, name) => host.profiles.run(action, id, name));
   handleSettingsCall(SettingsChannel.get, async () => {
     await refreshDefaultBrowser();
     return host.view();
   });
-  handleSettingsCall(SettingsChannel.update, (_event, patch) => {
-    host.update(patch);
-    return host.view();
-  });
+  handleSettingsCall(SettingsChannel.update, (_event, patch) => save(patch));
   handleSettingsCall(SettingsChannel.clearData, async (_event, value) => {
     const request = sanitizeClearRequest(value);
     if (request) await host.clearData(request);
@@ -80,8 +83,7 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
       properties: ['openDirectory', 'createDirectory'],
     };
     const { canceled, filePaths } = await dialog.showOpenDialog(options);
-    if (!canceled && filePaths[0]) host.update({ downloadDirectory: filePaths[0] });
-    return host.view();
+    return !canceled && filePaths[0] ? save({ downloadDirectory: filePaths[0] }) : null;
   });
   handleSettingsCall(SettingsChannel.setSpaceTheme, (_event, id, theme) => {
     if (typeof id === 'string') host.setSpaceTheme(id, theme);

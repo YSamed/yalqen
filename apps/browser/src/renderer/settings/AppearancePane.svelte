@@ -111,6 +111,7 @@
   </SettingRow>
   <SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
     <Select
+      controlled
       id="default-zoom"
       options={zoomOptions}
       value={values.defaultZoom}

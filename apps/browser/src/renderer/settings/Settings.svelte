@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import type { SettingsValues, SettingsView } from '../../shared/types';
+  import type { SettingsSaveResult, SettingsValues, SettingsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import { accentHex } from '../../shared/accent';
   import type { IconName } from '../ui/Icon.svelte';
@@ -74,6 +74,7 @@
     editedProfile === null ? (panes.find((item) => item.id === pane)?.label ?? '') : t('profiles.edit'),
   );
   let view = $state<SettingsView | null>(null);
+  let saveFailed = $state(false);
   let query = $state('');
   let results = $state<HTMLElement>();
   let anyMatch = $state(true);
@@ -150,8 +151,23 @@
     document.getElementById(`tab-${pane}`)?.focus();
   }
 
-  async function update(patch: Partial<SettingsValues>): Promise<void> {
-    view = await api.update(patch);
+  async function saveSettings(request: () => Promise<SettingsSaveResult | null>): Promise<void> {
+    try {
+      const result = await request();
+      if (!result) return;
+      view = result.view;
+      saveFailed = !result.saved;
+    } catch {
+      saveFailed = true;
+    }
+  }
+
+  function update(patch: Partial<SettingsValues>): Promise<void> {
+    return saveSettings(() => api.update(patch));
+  }
+
+  function chooseDownloadDirectory(): Promise<void> {
+    return saveSettings(() => api.chooseDownloadDirectory());
   }
 
   async function makeDefault(): Promise<void> {
@@ -171,11 +187,11 @@
 
 {#snippet content(id: PaneId, view: SettingsView)}
   {#if id === 'general'}
-    <GeneralPane section="general" {view} {update} {makeDefault} />
+    <GeneralPane section="general" {view} {update} {makeDefault} {chooseDownloadDirectory} />
     <AppearancePane section="look" values={view.values} spaces={view.spaces} {update} />
   {:else if id === 'tabs'}
     <AppearancePane section="tabs" values={view.values} {update} />
-    <GeneralPane section="windows" {view} {update} {makeDefault} />
+    <GeneralPane section="windows" {view} {update} {makeDefault} {chooseDownloadDirectory} />
     <PerformancePane values={view.values} {update} />
   {:else if id === 'privacy'}
     <PrivacyPane section="protection" values={view.values} threatLists={view.threatLists} {update} />
@@ -253,6 +269,9 @@
           />
         </div>
       </header>
+      {#if saveFailed}
+        <p class="save-error" role="alert">{t('settings.saveFailed')}</p>
+      {/if}
       <div class="scroll">
         {#if searching}
           <div id="pane" class="pane" role="region" aria-label={t('settings.searchSettings')} bind:this={results}>
@@ -445,6 +464,13 @@
 
   .search {
     width: min(170px, 35%);
+  }
+
+  .save-error {
+    flex: none;
+    margin: 0;
+    padding: 4px 20px 8px;
+    color: var(--warn);
   }
 
   .scroll {

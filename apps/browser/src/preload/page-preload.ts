@@ -19,6 +19,7 @@ import {
   type ProfilesResult,
   type RequestRule,
   type SettingsApi,
+  type SettingsSaveResult,
   type SettingsValues,
   type SettingsView,
   type SitePermissionsView,
@@ -176,14 +177,15 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
   const api: SettingsApi = {
     get: () => ipcRenderer.invoke(settingsChannel.get) as Promise<SettingsView>,
     update: (patch: Partial<SettingsValues>) =>
-      ipcRenderer.invoke(settingsChannel.update, patch) as Promise<SettingsView>,
+      ipcRenderer.invoke(settingsChannel.update, patch) as Promise<SettingsSaveResult>,
     clearData: (request: ClearDataRequest) => ipcRenderer.invoke(settingsChannel.clearData, request) as Promise<void>,
     makeDefault: () => ipcRenderer.invoke(settingsChannel.makeDefault) as Promise<SettingsView>,
     relaunch: () => ipcRenderer.invoke(settingsChannel.relaunch) as Promise<void>,
     processUsage: () => ipcRenderer.invoke(settingsChannel.processUsage) as Promise<ProcessUsage>,
     checkForUpdates: () => ipcRenderer.invoke(settingsChannel.checkForUpdates) as Promise<void>,
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
-    chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
+    chooseDownloadDirectory: () =>
+      ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsSaveResult | null>,
     setSpaceTheme: (id, theme) => ipcRenderer.invoke(settingsChannel.setSpaceTheme, id, theme) as Promise<SettingsView>,
     spaceAction: (action, id, value) =>
       ipcRenderer.invoke(settingsChannel.spaceAction, action, id, value) as Promise<string | null>,

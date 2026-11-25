@@ -113,6 +113,11 @@ export interface SettingsView {
   spaceShares: { id: string; spaceIds: string[] }[];
 }
 
+export interface SettingsSaveResult {
+  view: SettingsView;
+  saved: boolean;
+}
+
 export type SpaceAction = 'create' | 'rename' | 'remove' | 'share';
 
 export type ClearDataRange = 'hour' | 'day' | 'week' | 'month' | 'all';
@@ -285,7 +290,7 @@ export const AutofillChannel = {
 
 export interface SettingsApi {
   get(): Promise<SettingsView>;
-  update(patch: Partial<SettingsValues>): Promise<SettingsView>;
+  update(patch: Partial<SettingsValues>): Promise<SettingsSaveResult>;
   onChange(listener: (view: SettingsView) => void): () => void;
   clearData(request: ClearDataRequest): Promise<void>;
   makeDefault(): Promise<SettingsView>;
@@ -293,7 +298,7 @@ export interface SettingsApi {
   processUsage(): Promise<ProcessUsage>;
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;
-  chooseDownloadDirectory(): Promise<SettingsView>;
+  chooseDownloadDirectory(): Promise<SettingsSaveResult | null>;
   setSpaceTheme(id: string, theme: import('./frame-theme').FrameTheme | null): Promise<SettingsView>;
   spaceAction(action: SpaceAction, id?: string, value?: string | null): Promise<string | null>;
   showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;

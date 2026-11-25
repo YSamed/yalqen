@@ -254,6 +254,24 @@ test('an update that changes nothing keeps the same settings and skips the write
   }
 });
 
+test('a failed write keeps the last saved settings and allows the same change to be retried', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-settings-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  t.mock.method(console, 'warn', () => {});
+  const store = new SettingsStore(dir);
+  const saved = store.update({ theme: 'light' });
+  const temp = `${store.file}.tmp`;
+  fs.mkdirSync(temp);
+
+  assert.equal(store.update({ clearOnExit: true }), null);
+  assert.equal(store.get(), saved);
+  assert.deepEqual(new SettingsStore(dir).get(), saved);
+
+  fs.rmdirSync(temp);
+  assert.equal(store.update({ clearOnExit: true }).clearOnExit, true);
+  assert.deepEqual(new SettingsStore(dir).get(), store.get());
+});
+
 test('agent origins keep unique http and https origins only', () => {
   assert.deepEqual(
     sanitizeSettings({

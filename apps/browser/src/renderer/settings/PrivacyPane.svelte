@@ -167,6 +167,7 @@
   <h2>{t('settings.network')}</h2>
   <SettingRow title={t('settings.secureDns')} hint={t('settings.secureDnsHint')} labelFor="secure-dns">
     <Select
+      controlled
       id="secure-dns"
       options={dnsOptions}
       value={values.secureDns}
