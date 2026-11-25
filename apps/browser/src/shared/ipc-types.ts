@@ -99,6 +99,7 @@ export type UiAction =
   | { type: 'open-settings' };
 
 export const PageChannel = {
+  newTabMarkColor: 'yalqen:new-tab-mark-color',
   tabTransition: 'yalqen:tab-transition',
   swipe: 'yalqen:page-swipe',
   pointerDown: 'yalqen:page-pointer-down',

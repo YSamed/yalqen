@@ -127,6 +127,7 @@ interface TabManagerOptions {
   window: BaseWindow;
   pagePreload: string;
   pageTheme: string;
+  newTabMarkColor?: (space: string) => string;
   closed: SavedTab[];
   onClosedChanged?: () => void;
   openSettings: (pane?: string) => void;
@@ -333,6 +334,17 @@ export class TabManager {
     for (const id of this.seeded) if (!ids.includes(id)) this.seeded.delete(id);
     this.realignSessions();
     this.changed(true);
+  }
+
+  syncNewTabMarkColors(): void {
+    for (const tab of this.tabs) this.syncNewTabMarkColor(tab);
+  }
+
+  private syncNewTabMarkColor(tab: Tab): void {
+    const contents = liveContents(tab);
+    if (!contents || withoutHash(contents.getURL()) !== NEW_TAB_URL) return;
+    const color = this.options.newTabMarkColor?.(tab.space);
+    if (color) contents.send(PageChannel.newTabMarkColor, color);
   }
 
   private realignSessions(): void {
@@ -667,6 +679,7 @@ export class TabManager {
       this.freezer.unfreeze(tab);
       this.placement.place(tab, view);
       if (!this.shown.includes(tab)) {
+        this.syncNewTabMarkColor(tab);
         this.options.window.contentView.addChildView(view);
         if (tab.devToolsShown && tab.devTools) this.options.window.contentView.addChildView(tab.devTools);
       }
@@ -2421,6 +2434,7 @@ export class TabManager {
 
   private listenForPageChrome(tab: Tab, view: WebContentsView, listen: Listen): void {
     const contents = view.webContents;
+    listen('dom-ready', () => this.syncNewTabMarkColor(tab));
     listen('did-navigate', (_event, url) => {
       tab.edited = false;
       tab.interacted = false;

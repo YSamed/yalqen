@@ -463,6 +463,7 @@ export class YalqenWindow {
       window: this.window,
       pagePreload: preloadPath('page-preload'),
       pageTheme: app.pageTheme,
+      newTabMarkColor: (space) => this.accent(space),
       closed: app.closedTabs,
       onClosedChanged: () => app.onClosedTabsChange(),
       openSettings: (pane) => app.openSettings(pane),
@@ -2567,8 +2568,8 @@ export class YalqenWindow {
     return this.isPrivate || this.webApp ? [] : this.app.workspaces.spaces();
   }
 
-  private accent(): string {
-    const space = this.spaces().find(({ id }) => id === this.tabs.activeSpaceId);
+  private accent(spaceId = this.tabs.activeSpaceId): string {
+    const space = this.spaces().find(({ id }) => id === spaceId);
     return space?.theme?.colors[0] ?? accentHex(this.app.settings.get().accentColor);
   }
 
@@ -2600,6 +2601,7 @@ export class YalqenWindow {
 
   spacesChanged(): void {
     this.tabs.syncSpaces();
+    this.tabs.syncNewTabMarkColors();
   }
 
   private createSpace(): void {

@@ -810,7 +810,10 @@ function startBrowser(): void {
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
     nativeTheme.themeSource = next.theme;
     if (next.darkSites !== previous.darkSites) boosts.refreshAll();
-    if (next.accentColor !== previous.accentColor) setPageAccent(accentHex(next.accentColor));
+    if (next.accentColor !== previous.accentColor) {
+      setPageAccent(accentHex(next.accentColor));
+      eachWindow((window) => window.tabs.syncNewTabMarkColors());
+    }
     if (next.discardAfterMinutes > 0 !== previous.discardAfterMinutes > 0)
       eachWindow((window) => window.tabs.applyFreezeSetting());
     if (next.autoUpdate !== previous.autoUpdate) updater.schedule();

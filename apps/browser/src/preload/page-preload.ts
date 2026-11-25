@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
   AutofillChannel,
   ExtensionsChannel,
+  NEW_TAB_URL,
   PageChannel,
   PasswordsChannel,
   RequestRulesChannel,
@@ -48,6 +49,12 @@ import { WORKSPACES_URL, WorkspaceChannel, type WorkspaceApi } from '../shared/w
 
 setupAutofill();
 setupTabTransition();
+
+if (location.href.split('#')[0] === NEW_TAB_URL && window === window.top) {
+  ipcRenderer.on(PageChannel.newTabMarkColor, (_event, color: string) => {
+    document.documentElement?.style.setProperty('--mark-color', color);
+  });
+}
 
 if (location.href.startsWith(READING_LIST_URL) && window === window.top) {
   const api: ReadingListApi = {
