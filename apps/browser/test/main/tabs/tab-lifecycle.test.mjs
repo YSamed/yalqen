@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { test } from 'node:test';
 import tabs from '../../../dist/main/tabs/tabs.js';
+import closing from '../../../dist/main/window/close-windows.js';
 
 const { TabManager } = tabs;
+const { confirmWindowsClose } = closing;
 
 function fixture() {
   const changes = [];
@@ -13,6 +15,7 @@ function fixture() {
     onHtmlFullScreenChange: () => {},
     onChange: (persist) => changes.push(persist),
     onVisitTitle: () => {},
+    agentScope: () => false,
     freezeBackground: () => false,
     closed: [],
     confirmUnload: () => false,
@@ -35,6 +38,8 @@ function createView() {
     contents.pinchLimits.push([min, max]);
   };
   contents.getURL = () => 'https://example.com/';
+  contents.getUserAgent = () => '';
+  contents.session = { getUserAgent: () => '' };
   contents.navigationHistory = {
     getAllEntries: () => [{ url: 'https://example.com/', title: 'Example' }],
     getActiveIndex: () => 0,
@@ -62,6 +67,19 @@ function createView() {
 }
 
 const nextTurn = () => new Promise((resolve) => setImmediate(resolve));
+const reload = ({ tab, view }) => {
+  view.webContents.emit('did-start-navigation', { url: tab.url, isMainFrame: true, isSameDocument: false });
+};
+
+function closingWindow(tabs) {
+  return {
+    tabs,
+    approval: null,
+    setCloseApproval(approval) {
+      this.approval = approval;
+    },
+  };
+}
 
 test('cancelling tab close preserves its view, listeners and closed-tab history', async () => {
   const f = fixture();
@@ -88,13 +106,14 @@ test('cancelling window close preserves previously approved tabs too', async () 
   const second = f.manager.createRecord({ id: 'second', url: 'https://example.com/' });
   second.view = createView();
   f.manager.tabs.push(second);
-  assert.equal(await f.manager.confirmCloseAll(), false);
+  assert.equal(await f.manager.confirmCloseAll(), null);
   assert.equal(f.manager.count, 2);
   assert.equal(f.tab.view, f.view);
   assert.equal(f.view.webContents.isDestroyed(), false);
   assert.equal(second.view.webContents.isDestroyed(), false);
   second.view.webContents.allowUnload = true;
-  assert.equal(await f.manager.confirmCloseAll(), true);
+  const approved = await f.manager.confirmCloseAll();
+  assert.equal(approved(), true);
   assert.equal(f.manager.count, 2);
   assert.deepEqual(f.manager.options.closed, []);
   f.manager.destroyAll();
@@ -103,17 +122,13 @@ test('cancelling window close preserves previously approved tabs too', async () 
 test('a same-address reload during group consent cancels closing even without a URL change', async () => {
   const f = fixture();
   f.view.webContents.allowUnload = true;
-  f.view.webContents.getUserAgent = () => '';
-  f.view.webContents.session = { getUserAgent: () => '' };
-  f.manager.options.agentScope = () => false;
   const source = f.manager.createRecord({ id: 'source', url: 'https://source.example/' });
   const last = f.manager.createRecord({ id: 'last', url: 'https://last.example/' });
   f.manager.tabs.push(source, last);
   f.manager.activeId = source.id;
   const confirm = f.manager.confirmClose.bind(f.manager);
   f.manager.confirmClose = async (tab) => {
-    if (tab === last)
-      f.view.webContents.emit('did-start-navigation', { url: f.tab.url, isMainFrame: true, isSameDocument: false });
+    if (tab === last) reload(f);
     return confirm(tab);
   };
   assert.equal(await f.manager.closeRelated(source.id, 'others'), false);
@@ -122,6 +137,78 @@ test('a same-address reload during group consent cancels closing even without a 
   assert.deepEqual(f.manager.options.closed, []);
   assert.equal(f.manager.closing.size, 0);
   f.manager.destroyAll();
+});
+
+test('window close rejects an earlier tab approval after a same-address reload', async () => {
+  const f = fixture();
+  f.view.webContents.allowUnload = true;
+  const second = f.manager.createRecord({ id: 'second', url: 'https://second.example/' });
+  f.manager.tabs.push(second);
+  const confirm = f.manager.confirmClose.bind(f.manager);
+  f.manager.confirmClose = async (tab) => {
+    if (tab === second) reload(f);
+    return confirm(tab);
+  };
+  assert.equal(await f.manager.confirmCloseAll(), null);
+  assert.equal(f.manager.count, 2);
+  assert.equal(f.view.webContents.isDestroyed(), false);
+  f.manager.destroyAll();
+});
+
+test('application quit rechecks earlier windows after later consent and after preparation', async () => {
+  const first = fixture();
+  const second = fixture();
+  first.view.webContents.allowUnload = true;
+  second.view.webContents.allowUnload = true;
+  const windows = [closingWindow(first.manager), closingWindow(second.manager)];
+  const confirm = second.manager.confirmClose.bind(second.manager);
+  second.manager.confirmClose = (tab) => {
+    reload(first);
+    return confirm(tab);
+  };
+  const unexpected = () => assert.fail('quit should be cancelled before any window can close');
+  assert.equal(await confirmWindowsClose(windows, unexpected, unexpected), false);
+  second.manager.confirmClose = confirm;
+  assert.equal(await confirmWindowsClose(windows, async () => reload(first), unexpected), false);
+  assert.deepEqual(
+    windows.map((window) => window.approval),
+    [null, null],
+  );
+  assert.equal(first.view.webContents.isDestroyed(), false);
+  assert.equal(second.view.webContents.isDestroyed(), false);
+  first.manager.destroyAll();
+  second.manager.destroyAll();
+});
+
+test('application quit rejects stale approvals at the first close and can be retried', async () => {
+  const first = fixture();
+  const second = fixture();
+  first.view.webContents.allowUnload = true;
+  second.view.webContents.allowUnload = true;
+  const windows = [closingWindow(first.manager), closingWindow(second.manager)];
+  let invalidated = 0;
+  const prepare = () =>
+    confirmWindowsClose(
+      windows,
+      async () => {},
+      () => invalidated++,
+    );
+  assert.equal(await prepare(), true);
+  reload(second);
+  assert.equal(windows[0].approval(), false);
+  assert.equal(invalidated, 1);
+  assert.deepEqual(
+    windows.map((window) => window.approval),
+    [null, null],
+  );
+
+  assert.equal(await prepare(), true);
+  assert.equal(windows[0].approval(), true);
+  windows.shift();
+  assert.equal(windows[0].approval(), true);
+  assert.equal(invalidated, 1);
+  first.manager.destroyAll();
+  second.manager.destroyAll();
 });
 
 test('pinch zoom is allowed when a page is attached and released with its listeners', () => {

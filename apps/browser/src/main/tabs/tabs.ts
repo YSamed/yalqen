@@ -201,6 +201,7 @@ interface GroupState {
 
 export const MAX_SPLIT_PANES = 4;
 export type SplitSide = 'left' | 'right';
+export type CloseApproval = () => boolean;
 
 export type PageReader<T> = (contents: WebContents, backendNodeId: number, view: Rectangle) => Promise<T>;
 
@@ -946,26 +947,12 @@ export class TabManager {
   private async closeGroup(targets: Tab[], keepId: TabId | undefined, unchanged: () => boolean): Promise<boolean> {
     if ((keepId && this.closing.has(keepId)) || !targets.length || targets.some((tab) => this.closing.has(tab.id)))
       return false;
-    const pages = targets.map((tab) => ({
-      tab,
-      contents: liveContents(tab),
-      url: liveContents(tab)?.getURL() ?? tab.url,
-      navigation: this.navigations.get(tab) ?? 0,
-    }));
+    const pagesUnchanged = this.watchClosingPages(targets);
     if (keepId) this.closing.add(keepId);
     for (const tab of targets) this.closing.add(tab.id);
     try {
       for (const tab of targets) if (!(await this.confirmClose(tab))) return false;
-      if (
-        !unchanged() ||
-        pages.some(
-          ({ tab, contents, url, navigation }) =>
-            liveContents(tab) !== contents ||
-            (contents?.getURL() ?? tab.url) !== url ||
-            (this.navigations.get(tab) ?? 0) !== navigation,
-        )
-      )
-        return false;
+      if (!unchanged() || !pagesUnchanged()) return false;
       if (targets.some((tab) => tab.id === this.activeId)) {
         const retained = keepId ? this.find(keepId) : this.listOrder().find((tab) => !targets.includes(tab));
         if (retained) this.activate(retained.id);
@@ -980,12 +967,29 @@ export class TabManager {
     }
   }
 
-  async confirmCloseAll(): Promise<boolean> {
+  private watchClosingPages(tabs: readonly Tab[]): CloseApproval {
+    const pages = tabs.map((tab) => {
+      const contents = liveContents(tab);
+      return { tab, contents, url: contents?.getURL() ?? tab.url, navigation: this.navigations.get(tab) ?? 0 };
+    });
+    return () =>
+      pages.every(
+        ({ tab, contents, url, navigation }) =>
+          liveContents(tab) === contents &&
+          (contents?.getURL() ?? tab.url) === url &&
+          (this.navigations.get(tab) ?? 0) === navigation,
+      );
+  }
+
+  async confirmCloseAll(): Promise<CloseApproval | null> {
     const tabs = [...this.tabs];
+    const pagesUnchanged = this.watchClosingPages(tabs);
+    const approved = () =>
+      tabs.length === this.tabs.length && tabs.every((tab, index) => this.tabs[index] === tab) && pagesUnchanged();
     for (const tab of tabs) {
-      if (!(await this.confirmClose(tab))) return false;
+      if (!(await this.confirmClose(tab))) return null;
     }
-    return tabs.length === this.tabs.length && tabs.every((tab, index) => this.tabs[index] === tab);
+    return approved() ? approved : null;
   }
 
   private async confirmClose(tab: Tab): Promise<boolean> {

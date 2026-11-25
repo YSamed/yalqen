@@ -126,7 +126,7 @@ import type { SettingsStore } from '../app/settings.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
 import { EMPTY_HISTORY_INDEX, suggest } from '../address-bar/suggestions.js';
-import { MAX_SPLIT_PANES, TabManager, type DetachedTab, type PageReader } from '../tabs/tabs.js';
+import { MAX_SPLIT_PANES, TabManager, type CloseApproval, type DetachedTab, type PageReader } from '../tabs/tabs.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
@@ -280,7 +280,7 @@ export interface WindowOptions {
 
 export class YalqenWindow {
   readonly webApp: WebAppInfo | null;
-  private closeApproved = false;
+  private closeApproval: CloseApproval | null = null;
   private menuBarHeight = 0;
   private sidebarMenuAnchor: AnchorRect = { x: 0, y: 0, width: 0, height: 0 };
   private menuBarSlide = RESTING_SLIDE;
@@ -683,18 +683,24 @@ export class YalqenWindow {
     });
 
     this.window.on('close', (event) => {
-      if (!this.closeApproved) {
+      const approve = this.closeApproval;
+      this.closeApproval = null;
+      if (!approve) {
         event.preventDefault();
         if (!this.closePending) {
           this.closePending = true;
-          void this.tabs.confirmCloseAll().then((allowed) => {
+          void this.tabs.confirmCloseAll().then((approval) => {
             this.closePending = false;
-            if (allowed && !this.window.isDestroyed()) {
-              this.approveClose();
+            if (approval && !this.window.isDestroyed()) {
+              this.closeApproval ??= approval;
               this.window.close();
             }
           });
         }
+        return;
+      }
+      if (!approve()) {
+        event.preventDefault();
         return;
       }
       app.onWindowClosing(this);
@@ -1922,8 +1928,8 @@ export class YalqenWindow {
     if (!this.window.isDestroyed()) this.window.close();
   }
 
-  approveClose(): void {
-    this.closeApproved = true;
+  setCloseApproval(approval: CloseApproval | null): void {
+    this.closeApproval = approval;
   }
 
   handleAction(action: UiAction): void {

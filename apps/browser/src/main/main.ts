@@ -158,6 +158,7 @@ import { Updater, loadAutoUpdater } from './app/updater.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window/window.js';
+import { confirmWindowsClose } from './window/close-windows.js';
 import { createPageView } from './tabs/tabs.js';
 import { createOverlayView } from './window/overlay-view.js';
 import { openMiniWindow } from './window/mini-window.js';
@@ -382,15 +383,6 @@ function startBrowser(): void {
   let current: YalqenWindow | null = null;
   let quitting = false;
   let quitPending = false;
-  const confirmQuit = async (): Promise<boolean> => {
-    const open = [...windows];
-    for (const window of open) {
-      if (!(await window.tabs.confirmCloseAll())) return false;
-    }
-    if (open.length !== windows.length || open.some((window, index) => windows[index] !== window)) return false;
-    for (const window of open) window.approveClose();
-    return true;
-  };
   let started = false;
   const eachWindow = (run: (window: YalqenWindow) => void) => {
     for (const window of [...windows]) run(window);
@@ -791,13 +783,7 @@ function startBrowser(): void {
       broadcastSettings(settingsView());
       pushState();
     },
-    beforeInstall: async () => {
-      if (!(await confirmQuit())) return false;
-      quitting = true;
-      store.saveNow({ version: 2, windows: windowsToSave(), resume: true });
-      await forgetOnExit();
-      return true;
-    },
+    beforeInstall: () => prepareQuit(true),
   });
   let refreshAppMenu = () => {};
   const updateSettings = (patch: unknown) => {
@@ -1280,6 +1266,21 @@ function startBrowser(): void {
       regularSessions().flatMap((browsing) => [browsing.clearStorageData(), browsing.clearCache()]),
     );
   };
+  const prepareQuit = async (resume = false): Promise<boolean> => {
+    if (quitting || quitPending) return false;
+    quitPending = true;
+    try {
+      const approved = await confirmWindowsClose(windows, forgetOnExit, () => {
+        quitting = false;
+      });
+      if (!approved) return false;
+      quitting = true;
+      store.saveNow(resume ? { version: 2, windows: windowsToSave(), resume: true } : sessionSnapshot());
+      return true;
+    } finally {
+      quitPending = false;
+    }
+  };
   const showImportMenu = (kind: 'bookmarks' | 'history', contents: WebContents) => {
     const window = settingsParent(contents) ?? windowOf(contents)?.window;
     if (!window) return;
@@ -1305,11 +1306,8 @@ function startBrowser(): void {
     showImportMenu,
     updater,
     relaunch: () => {
-      void confirmQuit().then(async (allowed) => {
+      void prepareQuit().then((allowed) => {
         if (!allowed) return;
-        quitting = true;
-        store.saveNow(sessionSnapshot());
-        await forgetOnExit();
         app.releaseSingleInstanceLock();
         app.relaunch({ args: profileArguments(process.argv.slice(1), persistentProfiles.id) });
         app.quit();
@@ -1342,15 +1340,8 @@ function startBrowser(): void {
   app.on('before-quit', (event) => {
     if (quitting) return;
     event.preventDefault();
-    if (quitPending) return;
-    quitPending = true;
-    void confirmQuit().then(async (allowed) => {
-      quitPending = false;
-      if (!allowed) return;
-      quitting = true;
-      store.saveNow(sessionSnapshot());
-      await forgetOnExit();
-      app.quit();
+    void prepareQuit().then((allowed) => {
+      if (allowed) app.quit();
     });
   });
   app.on('will-quit', () => {
