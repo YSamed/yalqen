@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.1](https://github.com/YSamed/yalqen/compare/v0.5.0...v0.5.1) (2026-11-25)
+
+
+### Features
+
+* allow pinned tabs inside sidebar folders ([db8c364](https://github.com/YSamed/yalqen/commit/db8c364efe31a0d9299008d0daff16b371da4429))
+
+
+### Bug Fixes
+
+* tolerate parallel flakes before stopping runtime tests ([#498](https://github.com/YSamed/yalqen/issues/498)) ([6963be4](https://github.com/YSamed/yalqen/commit/6963be40f136f3615a9015636c9c2d2e36d820f2))
+
 ## [0.5.0](https://github.com/YSamed/yalqen/compare/v0.5.0...v0.5.0) (2026-11-25)
 
 
