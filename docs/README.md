@@ -44,6 +44,33 @@ npm run package:linux
 
 The AppImage is written to `apps/browser/build/release/`. Make it executable before opening it. Ready-made Linux downloads are not yet published by the release workflow. Chromium sandboxing requires working unprivileged user namespaces; Yalqen refuses to run with `--no-sandbox`.
 
+## Chrome Web Store compatibility
+
+These workflows passed in an isolated macOS Apple silicon profile on November 26, 2026, using the Yalqen 0.5.0 app bundle code with castLabs Electron 45.2.1+wvcus (Chromium 156.0.8078.75). The test used the original Chrome Web Store packages and Yalqen’s store installer.
+
+| Extension                                                                                               | Version        | Verified workflow                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [Bitwarden Password Manager](https://chromewebstore.google.com/detail/nngceckbapebfimnlniiiahkandclblb) | 2026.11.0      | Opened the extension popup, selected **Fill** for a saved login and verified that both empty form fields received the expected username and password. The encrypted test vault ran on a local HTTPS fixture with dummy credentials.        |
+| [uBlock Origin Lite](https://chromewebstore.google.com/detail/ddkjiahejlhfcafbddmgiahcphecmpfh)         | 2026.1124.1811 | With Yalqen’s built-in blocker off, a script served at `ad.doubleclick.net` reached the local test server before installation. With the extension enabled, the browser blocked the same request and the server received no second request. |
+| [Dark Reader](https://chromewebstore.google.com/detail/eimadpbcbfnmbkopoojfekhnkhdbieeh)                | 4.9.135        | The extension inserted its stylesheet into a light test page and changed the computed background color from `rgb(255, 255, 255)` to `rgb(24, 26, 27)`.                                                                                     |
+
+The test used the default browser session. This run covered macOS. Windows and Linux were untested.
+
+## DRM playback
+
+Yalqen uses castLabs Electron 45.2.1+wvcus, which downloads the Widevine CDM (software, L3) on first launch. Releases after 0.5.0 are VMP-signed for production through a castLabs EVS account; 0.5.0 and earlier carry only the castLabs development signature, which production streaming services reject.
+
+On November 26, 2026, a production VMP-signed copy of the 0.5.0 macOS Apple silicon app bundle passed these checks in an isolated profile:
+
+| Check                         | Result                                                                                                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `castlabs_evs.vmp verify-pkg` | `Signature is valid: streaming, 1330 days left`                                                                                                                                                                                                  |
+| Widevine CDM                  | Version 4.10.3112.0 downloaded on first launch. `navigator.requestMediaKeySystemAccess('com.widevine.alpha', …)` resolved.                                                                                                                       |
+| Encrypted playback            | Shaka Player 4 played the Widevine-encrypted [Angel One](https://storage.googleapis.com/shaka-demo-assets/angel-one-widevine/dash.mpd) DASH stream with a license from Shaka's test proxy: 12 s of playback, 303 decoded frames, no media error. |
+| Spotify                       | A Spotify Free account played a track in the [Spotify web player](https://open.spotify.com/). The `widevine-license/v1/application-certificate` and `widevine-license/v1/audio/license` requests both returned HTTP 200.                         |
+
+Netflix and Disney+ were not tested. Services that reserve HD or 4K for hardware DRM cap the resolution. Windows and Linux were untested.
+
 ## Updates
 
 Linux automatic updates are not yet verified. Update your checkout and rebuild the AppImage to update the preview.
@@ -78,13 +105,13 @@ npm ci
 npm start
 ```
 
-| Command               | What it does                            |
-| --------------------- | --------------------------------------- |
-| `npm run check`       | Lint, format check, typecheck and tests |
-| `npm test`            | Tests only                              |
-| `npm run bench`       | Startup, page load and idle benchmarks  |
-| `npm run package:mac` | Build the macOS app bundle              |
-| `npm run package:linux` | Build the experimental Linux AppImage |
+| Command                 | What it does                            |
+| ----------------------- | --------------------------------------- |
+| `npm run check`         | Lint, format check, typecheck and tests |
+| `npm test`              | Tests only                              |
+| `npm run bench`         | Startup, page load and idle benchmarks  |
+| `npm run package:mac`   | Build the macOS app bundle              |
+| `npm run package:linux` | Build the experimental Linux AppImage   |
 
 Read [CONTRIBUTING.md](../.github/CONTRIBUTING.md) for Git hooks, commit messages and pull requests.
 
