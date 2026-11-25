@@ -7,8 +7,11 @@ import { app } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import profiles from '../../dist/main/app/profiles.js';
 
-// shortcut: Electron launched from an Electron test process crashes its zygote on the Linux CI runner, so nested runs skip the sandbox; drop this once nested sandboxed launches work there.
-const nestedSwitches = process.platform === 'linux' ? ['--no-sandbox'] : [];
+// shortcut: since the castLabs ECS 45.2.1 switch, an Electron started from another Electron crashes its zygote on Linux CI, so Linux skips these restarts; re-enable after the next ECS release.
+if (process.platform === 'linux') {
+  console.log('SKIP: nested Electron launches are not supported by the Linux ECS build');
+  process.exit(0);
+}
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-persistent-profiles-'));
 fs.mkdirSync(path.join(profile, 'test-parent'));
 app.setPath('userData', path.join(profile, 'test-parent'));
@@ -19,14 +22,7 @@ const deadline = setTimeout(() => app.exit(1), 35_000);
 function launch(id, mode, value) {
   const child = spawn(
     process.execPath,
-    [
-      worker,
-      ...nestedSwitches,
-      `--yalqen-profile=${id}`,
-      `--test-root=${profile}`,
-      `--test-mode=${mode}`,
-      `--test-value=${value}`,
-    ],
+    [worker, `--yalqen-profile=${id}`, `--test-root=${profile}`, `--test-mode=${mode}`, `--test-value=${value}`],
     { stdio: 'inherit', env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined } },
   );
   children.add(child);
