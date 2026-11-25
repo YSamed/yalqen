@@ -6,6 +6,7 @@
       "package-name": "yalqen",
       "include-component-in-tag": false,
       "versioning": "always-bump-patch",
+      "release-as": "0.5.0",
       "draft": true,
       "force-tag-creation": true,
       "changelog-sections": [
