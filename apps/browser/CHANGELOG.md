@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.5.0](https://github.com/YSamed/yalqen/compare/v0.4.20...v0.5.0) (2026-11-25)
+
+
+### Features
+
+* add a deeper accent palette and a theme color intensity setting ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* add chrome.action, sidePanel, history, bookmarks and downloads extension apis ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* add declarativeNetRequest with header rules for extensions ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* add export of all spaces, download drag and screenshots in downloads ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* add identity web auth flow, extension commands and subframe navigation events ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* add page swipe navigation on windows and linux ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* add smooth space swipes, tab hover cards and a customizable sidebar footer ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* add widevine drm through castlabs ecs ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* make the toolbar page color follow scroll ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* match the command bar, find bar and confirm dialog to the sidebar menus ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* open settings in their own window with eight panes ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* redesign the browser chrome with one card-style window ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* rework the address bar, page actions and split tabs ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* turn spaces into profiles with separate passwords, cards and permissions ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+
+
+### Bug Fixes
+
+* persist extension network rules on quit ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* preserve chat drafts across panel modes ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* report settings save failures ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* revalidate window and app close approvals ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+
+
+### Performance
+
+* cut renderer work per browser state push ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+* render streamed agent markdown block by block ([6f103cb](https://github.com/YSamed/yalqen/commit/6f103cbecf508ce41ed11a244e8f450e29b8d9cb))
+
 ## [0.4.20](https://github.com/YSamed/yalqen/compare/v0.4.19...v0.4.20) (2026-11-23)
 
 
