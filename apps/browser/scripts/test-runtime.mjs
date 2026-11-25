@@ -40,7 +40,7 @@ const queue = [...tests];
 const failedFirst = () => [...results.values()].filter((result) => !result.ok).length;
 async function worker() {
   // A broken build fails every file; stop early so it does not burn macOS CI minutes.
-  while (queue.length && failedFirst() < 3) {
+  while (queue.length && failedFirst() < 6) {
     const test = queue.shift();
     results.set(test, await run(test));
   }
@@ -69,7 +69,7 @@ for (const { test, seconds, status } of summary.toSorted((a, b) => b.seconds - a
 }
 const failures = summary.filter(({ status }) => status === 'FAIL ').map(({ test }) => test);
 if (summary.some(({ status }) => status === 'SKIP ')) {
-  console.error('Stopped after 3 failed files; the SKIP files did not run.');
+  console.error('Stopped after 6 failed files; the SKIP files did not run.');
   process.exitCode = 1;
 }
 if (failures.length) {
