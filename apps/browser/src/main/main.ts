@@ -1367,6 +1367,7 @@ function startBrowser(): void {
     extensionPopup.close();
     extensions.stopUpdates();
     extensions.saveNow();
+    netRequest.saveNow();
     history.saveNow();
     storageOrigins.saveNow();
     repoPrompt.saveNow();

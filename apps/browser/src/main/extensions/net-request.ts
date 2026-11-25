@@ -172,6 +172,10 @@ export class NetRequestRules {
     this.store.schedule(() => this.saved);
   }
 
+  saveNow(): void {
+    this.store.flush();
+  }
+
   decide(session: Session, details: OnBeforeRequestListenerDetails): NetRequestVerdict | null {
     if (session !== this.session || this.rules.size === 0) return null;
     const context = this.requestOf(details);

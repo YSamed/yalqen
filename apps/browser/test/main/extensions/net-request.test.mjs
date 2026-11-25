@@ -191,7 +191,7 @@ test('static rulesets, dynamic rules and frame allow rules decide requests', asy
   assert.equal(rules.decide(session, details('https://extra.test/a.js', { frame: null })), null);
 });
 
-test('redirects need host access and the state survives a restart', async () => {
+test('redirects need host access and pending rule changes survive an immediate restart', async () => {
   const manifest = {
     permissions: ['declarativeNetRequest'],
     host_permissions: ['https://*.allowed.test/*'],
@@ -223,12 +223,12 @@ test('redirects need host access and the state survives a restart', async () => 
   });
   await rules.call(ID, 'updateSessionRules', [{ addRules: [rule(2, { urlFilter: 'gone' })] }]);
 
-  await new Promise((resolve) => setTimeout(resolve, 700));
+  rules.saveNow();
   const restarted = new NetRequestRules(session, state);
   assert.equal((await restarted.call(ID, 'getDynamicRules', [])).length, 2);
   assert.deepEqual(await restarted.call(ID, 'getSessionRules', []), []);
   restarted.forget(ID);
-  await new Promise((resolve) => setTimeout(resolve, 700));
+  restarted.saveNow();
   const reinstalled = new NetRequestRules(session, state);
   assert.deepEqual(await reinstalled.call(ID, 'getDynamicRules', []), []);
   assert.deepEqual(await restarted.call(ID, 'isRegexSupported', [{ regex: '[' }]), {
