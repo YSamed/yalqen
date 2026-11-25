@@ -155,10 +155,10 @@ import { isDefaultBrowser, refreshDefaultBrowser } from './app/default-browser.j
 import { EMPTY_HISTORY_INDEX, suggest } from './address-bar/suggestions.js';
 import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
+import { QuitController } from './app/quit.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window/window.js';
-import { confirmWindowsClose } from './window/close-windows.js';
 import { createPageView } from './tabs/tabs.js';
 import { createOverlayView } from './window/overlay-view.js';
 import { openMiniWindow } from './window/mini-window.js';
@@ -381,8 +381,6 @@ function startBrowser(): void {
         : windows.find((window) => window.tabs.hasContents(contents))?.window,
   });
   let current: YalqenWindow | null = null;
-  let quitting = false;
-  let quitPending = false;
   let started = false;
   const eachWindow = (run: (window: YalqenWindow) => void) => {
     for (const window of [...windows]) run(window);
@@ -534,6 +532,19 @@ function startBrowser(): void {
           : saved.map(pinnedOnly).filter((window) => window.tabs.length > 0),
     };
   };
+  const quit = new QuitController({
+    windows,
+    beforeClose: async () => {
+      if (!settings.get().clearOnExit) return;
+      storageOrigins.clear();
+      await Promise.allSettled(
+        regularSessions().flatMap((browsing) => [browsing.clearStorageData(), browsing.clearCache()]),
+      );
+    },
+    saveSession: (resume) =>
+      store.saveNow(resume ? { version: 2, windows: windowsToSave(), resume: true } : sessionSnapshot()),
+    quit: () => app.quit(),
+  });
 
   applyPageLanguage(sessions, getLocale());
   applyCookieBlocking(sessions, settings.get().blockThirdPartyCookies, cookiesAllowed);
@@ -783,7 +794,7 @@ function startBrowser(): void {
       broadcastSettings(settingsView());
       pushState();
     },
-    beforeInstall: () => prepareQuit(true),
+    beforeInstall: () => quit.prepareUpdate(),
   });
   let refreshAppMenu = () => {};
   const updateSettings = (patch: unknown) => {
@@ -909,7 +920,7 @@ function startBrowser(): void {
       else openWindow({ developer: profile === 'developer', isPrivate: profile === 'private', from });
     },
     onWindowChange: (persist) => {
-      if (persist && !quitting)
+      if (persist && !quit.isQuitting)
         store.scheduleSave(sessionSnapshot, persist === 'lazy' ? LAZY_SAVE_DELAY_MS : undefined);
     },
     onPrivateTabsClosed: () => {
@@ -930,10 +941,9 @@ function startBrowser(): void {
       if (process.platform === 'win32') void refreshDefaultBrowser().then(() => broadcastSettings(settingsView()));
     },
     onWindowClosing: (window) => {
-      if (quitting) return;
+      if (quit.isQuitting) return;
       if (windows.length === 1) {
-        quitting = true;
-        store.saveNow(sessionSnapshot());
+        quit.lastWindowClosing();
         return;
       }
       const index = windows.indexOf(window);
@@ -1259,28 +1269,6 @@ function startBrowser(): void {
     }
     if (request.cache) await Promise.all(regular.map((browsing) => browsing.clearCache()));
   };
-  const forgetOnExit = async () => {
-    if (!settings.get().clearOnExit) return;
-    storageOrigins.clear();
-    await Promise.allSettled(
-      regularSessions().flatMap((browsing) => [browsing.clearStorageData(), browsing.clearCache()]),
-    );
-  };
-  const prepareQuit = async (resume = false): Promise<boolean> => {
-    if (quitting || quitPending) return false;
-    quitPending = true;
-    try {
-      const approved = await confirmWindowsClose(windows, forgetOnExit, () => {
-        quitting = false;
-      });
-      if (!approved) return false;
-      quitting = true;
-      store.saveNow(resume ? { version: 2, windows: windowsToSave(), resume: true } : sessionSnapshot());
-      return true;
-    } finally {
-      quitPending = false;
-    }
-  };
   const showImportMenu = (kind: 'bookmarks' | 'history', contents: WebContents) => {
     const window = settingsParent(contents) ?? windowOf(contents)?.window;
     if (!window) return;
@@ -1305,14 +1293,11 @@ function startBrowser(): void {
     clearData,
     showImportMenu,
     updater,
-    relaunch: () => {
-      void prepareQuit().then((allowed) => {
-        if (!allowed) return;
+    relaunch: () =>
+      quit.relaunch(() => {
         app.releaseSingleInstanceLock();
         app.relaunch({ args: profileArguments(process.argv.slice(1), persistentProfiles.id) });
-        app.quit();
-      });
-    },
+      }),
     requestRules,
     permissionsFor: (contents) => dataFor(contents)?.permissions ?? null,
     siteIcons: (domains) => siteIcons(history.list(), domains),
@@ -1337,13 +1322,7 @@ function startBrowser(): void {
     afterHours: () => settings.get().autoArchiveHours,
   });
 
-  app.on('before-quit', (event) => {
-    if (quitting) return;
-    event.preventDefault();
-    void prepareQuit().then((allowed) => {
-      if (allowed) app.quit();
-    });
-  });
+  app.on('before-quit', (event) => quit.beforeQuit(event));
   app.on('will-quit', () => {
     persistentProfiles.stop();
     stopMemorySaver();
@@ -1376,10 +1355,10 @@ function startBrowser(): void {
     requestRules.saveNow();
   });
   app.on('activate', () => {
-    if (started && windows.length === 0 && !quitting) openWindow({});
+    if (started && windows.length === 0 && !quit.isQuitting) openWindow({});
   });
   app.on('second-instance', () => {
-    if (!started || quitting) return;
+    if (!started || quit.isQuitting) return;
     (current ?? openWindow({})).focus();
   });
 

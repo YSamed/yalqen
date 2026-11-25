@@ -1,8 +1,40 @@
+import type { BaseWindow, Event } from 'electron';
 import type { CloseApproval, TabManager } from '../tabs/tabs.js';
 
-interface ClosingWindow {
+export interface ClosingWindow {
   tabs: Pick<TabManager, 'confirmCloseAll'>;
   setCloseApproval(approval: CloseApproval | null): void;
+}
+
+export class WindowClose {
+  private approval: CloseApproval | null = null;
+  private pending = false;
+
+  constructor(
+    private readonly window: Pick<BaseWindow, 'close' | 'isDestroyed'>,
+    private readonly tabs: ClosingWindow['tabs'],
+  ) {}
+
+  setApproval(approval: CloseApproval | null): void {
+    this.approval = approval;
+  }
+
+  handle(event: Pick<Event, 'preventDefault'>): boolean {
+    const approval = this.approval;
+    this.approval = null;
+    if (approval?.()) return true;
+
+    event.preventDefault();
+    if (approval || this.pending) return false;
+    this.pending = true;
+    void this.tabs.confirmCloseAll().then((approved) => {
+      this.pending = false;
+      if (!approved || this.window.isDestroyed()) return;
+      this.approval ??= approved;
+      this.window.close();
+    });
+    return false;
+  }
 }
 
 export async function confirmWindowsClose(

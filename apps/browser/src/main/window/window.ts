@@ -126,6 +126,7 @@ import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
 import { EMPTY_HISTORY_INDEX, suggest } from '../address-bar/suggestions.js';
 import { MAX_SPLIT_PANES, TabManager, type CloseApproval, type DetachedTab, type PageReader } from '../tabs/tabs.js';
+import { WindowClose } from './close-windows.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
@@ -279,13 +280,12 @@ export interface WindowOptions {
 
 export class YalqenWindow {
   readonly webApp: WebAppInfo | null;
-  private closeApproval: CloseApproval | null = null;
+  private readonly windowClose: WindowClose;
   private menuBarHeight = 0;
   private sidebarMenuAnchor: AnchorRect = { x: 0, y: 0, width: 0, height: 0 };
   private menuBarSlide = RESTING_SLIDE;
   private menuBarInset = 0;
   private menuBarTimer: NodeJS.Timeout | null = null;
-  private closePending = false;
   readonly window: BaseWindow;
   readonly tabs: TabManager;
   readonly isPrivate: boolean;
@@ -681,27 +681,9 @@ export class YalqenWindow {
       this.pushState();
     });
 
+    this.windowClose = new WindowClose(this.window, this.tabs);
     this.window.on('close', (event) => {
-      const approve = this.closeApproval;
-      this.closeApproval = null;
-      if (!approve) {
-        event.preventDefault();
-        if (!this.closePending) {
-          this.closePending = true;
-          void this.tabs.confirmCloseAll().then((approval) => {
-            this.closePending = false;
-            if (approval && !this.window.isDestroyed()) {
-              this.closeApproval ??= approval;
-              this.window.close();
-            }
-          });
-        }
-        return;
-      }
-      if (!approve()) {
-        event.preventDefault();
-        return;
-      }
+      if (!this.windowClose.handle(event)) return;
       app.onWindowClosing(this);
       nativeTheme.off('updated', syncTheme);
       this.preconnector.cancel();
@@ -816,7 +798,7 @@ export class YalqenWindow {
       liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
       sidebarVisible: !this.webApp,
       media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
-      toolbarButtons: this.webApp ? ['settings', 'downloads'] : [],
+      toolbarButtons: [],
       sidebarFooterItems: this.app.settings.get().sidebarFooterItems,
       material: this.material(),
       frameTheme: this.app.settings.get().frameTheme,
@@ -1928,7 +1910,7 @@ export class YalqenWindow {
   }
 
   setCloseApproval(approval: CloseApproval | null): void {
-    this.closeApproval = approval;
+    this.windowClose.setApproval(approval);
   }
 
   handleAction(action: UiAction): void {
