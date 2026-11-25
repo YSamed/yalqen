@@ -42,6 +42,7 @@ app
             ELECTRON_RUN_AS_NODE: undefined,
             YALQEN_CLOSED_TEST_ROOT: profile,
             YALQEN_CLOSED_TEST_PHASE: phase,
+            ELECTRON_ENABLE_LOGGING: '1',
           },
           timeout: 10_000,
           killSignal: 'SIGKILL',

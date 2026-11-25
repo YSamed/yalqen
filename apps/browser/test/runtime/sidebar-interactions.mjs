@@ -110,6 +110,9 @@ finish(
     console.log('PASS: page actions bookmark the page and split it with a new tab');
 
     const sidebar = await ui.center(row('a'));
+    const page = (script) => ui.window.webContents.executeJavaScript(script);
+    await page(`window.__wheels = []; addEventListener('wheel', (e) => __wheels.push({
+      dx: e.deltaX, dy: e.deltaY, mode: e.deltaMode, t: Math.round(e.timeStamp), target: e.target?.className ?? '' }), true)`);
     for (let step = 0; step < 4; step++) {
       ui.window.webContents.sendInputEvent({
         type: 'mouseWheel',
@@ -121,7 +124,9 @@ finish(
       await ui.settle(30);
     }
     await ui.settle(250);
-    assert.deepEqual(taken('switch-space'), [{ type: 'switch-space', id: 'side' }]);
+    const switched = taken('switch-space');
+    if (switched.length !== 1) console.error('space swipe wheel events:', JSON.stringify(await page('__wheels')));
+    assert.deepEqual(switched, [{ type: 'switch-space', id: 'side' }]);
     console.log('PASS: a horizontal swipe over the sidebar switches space once');
   })(),
 );
