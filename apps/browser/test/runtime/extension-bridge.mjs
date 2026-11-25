@@ -16,7 +16,10 @@ const deadline = setTimeout(() => app.exit(1), 30000);
 let consentShown = false;
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  const redirect = url.searchParams.get('redirect');
+  const requested = url.searchParams.get('redirect') ?? '';
+  const redirect = /^https:\/\/[a-p]{32}\.chromiumapp\.org$/.test(requested)
+    ? requested
+    : 'https://invalid.chromiumapp.org';
   if (url.pathname === '/auth' || (url.pathname === '/consent' && consentShown)) {
     res.writeHead(302, { Location: `${redirect}/cb?code=abc` });
     res.end();
@@ -25,8 +28,10 @@ const server = http.createServer((req, res) => {
   res.setHeader('Content-Type', 'text/html');
   if (url.pathname === '/consent') consentShown = true;
   if (url.pathname === '/late') {
-    const target = JSON.stringify(`${redirect}/cb?code=late`);
-    res.end(`<script>addEventListener('load', () => setTimeout(() => (location.href = ${target}), 50));</script>`);
+    res.end(
+      `<script>const target = new URLSearchParams(location.search).get('redirect') + '/cb?code=late';
+addEventListener('load', () => setTimeout(() => (location.href = target), 50));</script>`,
+    );
     return;
   }
   res.end('<title>Sign in</title>');
