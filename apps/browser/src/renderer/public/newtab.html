@@ -136,6 +136,11 @@
         flood-color: var(--mark-color, var(--accent));
       }
 
+      /* The orange accent shows the logo's own red-to-amber gradient; a tint would flatten it to one hue. */
+      :root[data-mark-tint] .mark image {
+        filter: url(#mark-tint);
+      }
+
       .search {
         --query-height: 52px;
         position: relative;
@@ -411,7 +416,7 @@
             <feComposite in2="SourceAlpha" operator="in" />
           </filter>
         </defs>
-        <image href="yalqen://newtab/mark.png" width="72" height="72" filter="url(#mark-tint)" />
+        <image href="yalqen://newtab/mark.png" width="72" height="72" />
       </svg>
       <div class="search">
         <form id="search-form" class="search-field lg" action="yalqen://newtab/search" method="get" role="search">

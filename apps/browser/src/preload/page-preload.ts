@@ -46,6 +46,7 @@ import { READING_LIST_URL, ReadingListChannel, type ReadingListApi } from '../sh
 import { BOOSTS_URL, BoostChannel, type BoostApi } from '../shared/boosts.js';
 import { EASELS_URL, EaselChannel, type EaselApi } from '../shared/easels.js';
 import { WORKSPACES_URL, WorkspaceChannel, type WorkspaceApi } from '../shared/workspaces.js';
+import { accentHex } from '../shared/accent.js';
 
 setupAutofill();
 setupTabTransition();
@@ -53,6 +54,7 @@ setupTabTransition();
 if (location.href.split('#')[0] === NEW_TAB_URL && window === window.top) {
   ipcRenderer.on(PageChannel.newTabMarkColor, (_event, color: string) => {
     document.documentElement?.style.setProperty('--mark-color', color);
+    document.documentElement?.toggleAttribute('data-mark-tint', color.toLowerCase() !== accentHex('orange'));
   });
 }
 
