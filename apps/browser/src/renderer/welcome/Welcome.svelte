@@ -244,13 +244,16 @@
                     type="button"
                     role="radio"
                     aria-checked={theme === option.value}
-                    onclick={() => pickTheme(option.value)}>{option.label}</button
+                    onclick={() => pickTheme(option.value)}
                   >
+                    {option.label}
+                  </button>
                 {/each}
               </div>
               <div class="actions">
-                <button type="button" class="primary wide" data-autofocus onclick={next}>{t('welcome.continue')}</button
-                >
+                <button type="button" class="primary wide" data-autofocus onclick={next}>
+                  {t('welcome.continue')}
+                </button>
               </div>
             {:else}
               <h1 id="welcome-title" class="display">

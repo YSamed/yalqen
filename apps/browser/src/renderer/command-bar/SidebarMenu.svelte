@@ -175,9 +175,9 @@
           onclick={() => onaction({ type: 'sidebar-command', command: flyout!.kind })}
         >
           <span class="icon"><Icon name={flyout.kind === 'history' ? 'history' : 'bookmarks'} /></span>
-          <span class="label"
-            >{flyout.kind === 'history' ? t('sidebarMenu.showAllHistory') : t('sidebarMenu.showAllBookmarks')}</span
-          >
+          <span class="label">
+            {flyout.kind === 'history' ? t('sidebarMenu.showAllHistory') : t('sidebarMenu.showAllBookmarks')}
+          </span>
         </button>
       </div>
     </div>

@@ -49,8 +49,10 @@
     <Button
       variant="tonal"
       disabled={view.update.state === 'checking' || view.update.state === 'downloading'}
-      onclick={() => api.checkForUpdates()}>{t('settings.checkNow')}</Button
+      onclick={() => api.checkForUpdates()}
     >
+      {t('settings.checkNow')}
+    </Button>
   {/if}
 </div>
 <SettingRow title={t('settings.autoUpdate')} hint={t('settings.autoUpdateHint')}>

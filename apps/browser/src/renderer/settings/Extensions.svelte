@@ -91,22 +91,22 @@
     </span>
     <div class="details">
       <span class="name" title={extension.path}>{extension.name} <span class="hint">{extension.version}</span></span>
-      {#if extension.description}<span class="hint description" title={extension.description}
-          >{extension.description}</span
-        >{/if}
-      {#if extension.error}<span class="error" role="alert"
-          >{t('extensionsPanel.loadFailed', { error: extension.error })}</span
-        >{/if}
-      {#if extension.updateError}<span class="error" role="status"
-          >{t('extensionsPanel.updateFailed', { error: extension.updateError })}</span
-        >{/if}
+      {#if extension.description}<span class="hint description" title={extension.description}>
+          {extension.description}
+        </span>{/if}
+      {#if extension.error}<span class="error" role="alert">
+          {t('extensionsPanel.loadFailed', { error: extension.error })}
+        </span>{/if}
+      {#if extension.updateError}<span class="error" role="status">
+          {t('extensionsPanel.updateFailed', { error: extension.updateError })}
+        </span>{/if}
       <ExtensionAccessEditor {extension} />
     </div>
     <div class="controls">
       {#if extension.hasOptions}
-        <Button size="sm" variant="tonal" onclick={() => api.openExtensionOptions(extension.path)}
-          >{t('extensionsPanel.options')}</Button
-        >
+        <Button size="sm" variant="tonal" onclick={() => api.openExtensionOptions(extension.path)}>
+          {t('extensionsPanel.options')}
+        </Button>
       {/if}
       <Switch
         label={t('extensionsPanel.enabledLabel', { name: extension.name })}
@@ -142,14 +142,15 @@
 </form>
 
 <div class="actions">
-  <Button variant="tonal" icon="extensions" onclick={() => api.openExtensionStore()}
-    >{t('extensionsPanel.openStore')}</Button
-  >
-  <Button variant="tonal" icon="plus" disabled={installing} onclick={install}
-    >{t('extensionsPanel.loadFromFolder')}</Button
-  >
-  {#if installError}<span class="error" role="alert">{t('extensionsPanel.loadFailed', { error: installError })}</span
-    >{/if}
+  <Button variant="tonal" icon="extensions" onclick={() => api.openExtensionStore()}>
+    {t('extensionsPanel.openStore')}
+  </Button>
+  <Button variant="tonal" icon="plus" disabled={installing} onclick={install}>
+    {t('extensionsPanel.loadFromFolder')}
+  </Button>
+  {#if installError}<span class="error" role="alert">
+      {t('extensionsPanel.loadFailed', { error: installError })}
+    </span>{/if}
 </div>
 
 <style>

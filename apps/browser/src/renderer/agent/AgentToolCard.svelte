@@ -51,24 +51,25 @@
       <span class="name" title={change?.path}>{label}</span>
       {#if running && part.steps.length}<span class="step">{part.steps.at(-1)}</span>{/if}
     </span>
-    {#if change}<span class="counts"
-        ><span class="added">+{change.added}</span> <span class="removed">−{change.removed}</span></span
-      >{/if}
+    {#if change}<span class="counts">
+        <span class="added">+{change.added}</span> <span class="removed">−{change.removed}</span>
+      </span>{/if}
     {#if part.task?.toolUses}<span class="counts">{t('agentChat.toolUses', { count: part.task.toolUses })}</span>{/if}
     <span class="status">{t(status)}</span>
     <Icon name="down" size={12} />
   </summary>
   {#if change}
     <div class="file-bar">
-      <button type="button" class="file" title={t('agentChat.openFile', { file: file ?? '' })} onclick={open}
-        >{file}</button
-      >
+      <button type="button" class="file" title={t('agentChat.openFile', { file: file ?? '' })} onclick={open}>
+        {file}
+      </button>
     </div>
     <div class="diff" role="table" aria-label={file}>
       {#each change.lines as line, index (index)}
         <div class="line {line.kind}" role="row">
-          <span class="sign" aria-hidden="true">{line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' '}</span
-          >{line.text}
+          <span class="sign" aria-hidden="true">
+            {line.kind === 'add' ? '+' : line.kind === 'remove' ? '−' : ' '}
+          </span>{line.text}
         </div>
       {/each}
       {#if change.truncated}<div class="line more">{t('agentChat.diffTruncated')}</div>{/if}
@@ -82,14 +83,14 @@
             <Icon name={assertion.passed ? 'check' : 'warning'} size={14} />
             <div>
               <strong>{assertion.summary}</strong>
-              {#if assertion.expected !== undefined}<span
-                  >{t('browserChecks.expectedValue', { value: String(assertion.expected) })}</span
-                >{/if}
-              <span
-                >{t('browserChecks.actual', {
+              {#if assertion.expected !== undefined}<span>
+                  {t('browserChecks.expectedValue', { value: String(assertion.expected) })}
+                </span>{/if}
+              <span>
+                {t('browserChecks.actual', {
                   value: assertion.actual === null ? '—' : String(assertion.actual),
-                })}</span
-              >
+                })}
+              </span>
               {#if assertion.error}<span>{assertion.error}</span>{/if}
             </div>
           </li>

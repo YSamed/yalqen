@@ -129,9 +129,9 @@
   {#if dirty}
     <Button variant="tonal" onclick={() => load(JSON.parse(saved))}>{t('requestRulesPanel.cancel')}</Button>
   {/if}
-  <Button variant="primary" disabled={!dirty || saving} onclick={save}
-    >{saving ? t('requestRulesPanel.saving') : t('requestRulesPanel.save')}</Button
-  >
+  <Button variant="primary" disabled={!dirty || saving} onclick={save}>
+    {saving ? t('requestRulesPanel.saving') : t('requestRulesPanel.save')}
+  </Button>
 </div>
 
 <style>

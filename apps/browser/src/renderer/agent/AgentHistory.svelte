@@ -70,19 +70,19 @@
           <button class="open" disabled={opening} onclick={() => open(session, false)} title={t('agentChat.resume')}>
             <span class="title">{session.title}</span>
             <span class="meta">
-              {ago(session.updatedAt)}{#if session.branch}<span class="branch"
-                  ><Icon name="code" size={11} />{session.branch}</span
-                >{/if}
+              {ago(session.updatedAt)}{#if session.branch}<span class="branch">
+                  <Icon name="code" size={11} />{session.branch}
+                </span>{/if}
             </span>
           </button>
           {#if confirming === session.id}
-            <Button variant="danger" disabled={opening} onclick={() => remove(session)}
-              >{t('agentChat.deleteConfirm')}</Button
-            >
+            <Button variant="danger" disabled={opening} onclick={() => remove(session)}>
+              {t('agentChat.deleteConfirm')}
+            </Button>
           {:else}
-            <Button disabled={opening} title={t('agentChat.forkTitle')} onclick={() => open(session, true)}
-              >{t('agentChat.fork')}</Button
-            >
+            <Button disabled={opening} title={t('agentChat.forkTitle')} onclick={() => open(session, true)}>
+              {t('agentChat.fork')}
+            </Button>
           {/if}
           <IconButton
             icon={confirming === session.id ? 'close' : 'trash'}

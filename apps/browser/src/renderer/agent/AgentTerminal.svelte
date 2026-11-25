@@ -209,9 +209,9 @@
 <div class="terminal-view">
   {#if activeTab?.agentObserved}
     <button class="tab-context" disabled={session.status !== 'running'} title={activeTab.url} onclick={addCurrentTab}>
-      <Icon name="globe" size={14} /><span>{activeTab.title}</span><span class="tab-action"
-        >{t('agentPanel.addTab')}</span
-      >
+      <Icon name="globe" size={14} /><span>{activeTab.title}</span><span class="tab-action">
+        {t('agentPanel.addTab')}
+      </span>
     </button>
   {/if}
   <div class="terminal-area">
@@ -223,9 +223,9 @@
         {#if session.directory}
           <Button variant="primary" disabled={requesting} onclick={start}>{t('agentPanel.start')}</Button>
         {:else}
-          <Button variant="primary" icon="folder" disabled={requesting} onclick={choose}
-            >{t('agentPanel.chooseProject')}</Button
-          >
+          <Button variant="primary" icon="folder" disabled={requesting} onclick={choose}>
+            {t('agentPanel.chooseProject')}
+          </Button>
         {/if}
         <p class="note">{t('agentPanel.connectionHint')}</p>
       </div>
@@ -244,9 +244,9 @@
       </p>
       <div class="footer-actions">
         {#if session.error === 'claude-not-found'}
-          <Button onclick={() => window.yalqen.send({ type: 'new-tab', url: 'https://code.claude.com/docs/en/setup' })}
-            >{t('agentPanel.installGuide')}</Button
-          >
+          <Button onclick={() => window.yalqen.send({ type: 'new-tab', url: 'https://code.claude.com/docs/en/setup' })}>
+            {t('agentPanel.installGuide')}
+          </Button>
         {/if}
         {#if failed && active}
           <Button onclick={hydrate}>{t('agentPanel.retry')}</Button>

@@ -123,8 +123,9 @@
         variant="tonal"
         icon="play"
         disabled={!local || disabled || flowDisabled || pending || !scenario.trim() || !expected.trim()}
-        >{pending ? t('visualComparison.reviewing') : t('browserChecks.runFlow')}</Button
       >
+        {pending ? t('visualComparison.reviewing') : t('browserChecks.runFlow')}
+      </Button>
       {#if sent}<p class="hint" role="status">{t('browserChecks.flowSent')}</p>{/if}
       {#if error}<p class="error" role="alert">{error}</p>{/if}
     </form>

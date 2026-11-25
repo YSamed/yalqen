@@ -59,14 +59,14 @@
         <li>
           <div class="identity">
             <strong>{profile.name}</strong>
-            <span class="hint"
-              >{[
+            <span class="hint">
+              {[
                 profile.active ? t('profiles.current') : profile.running ? t('profiles.running') : '',
                 profile.default ? t('profiles.default') : '',
               ]
                 .filter(Boolean)
-                .join(' · ')}</span
-            >
+                .join(' · ')}
+            </span>
           </div>
           <div class="actions">
             <Button
@@ -74,27 +74,34 @@
               size="sm"
               disabled={busy || profile.active}
               onclick={() => perform('open', profile.id)}
-              >{profile.running ? t('profiles.switch') : t('profiles.open')}</Button
             >
+              {profile.running ? t('profiles.switch') : t('profiles.open')}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
               disabled={busy}
-              onclick={() => (editing = { id: profile.id, name: profile.name })}>{t('profiles.rename')}</Button
+              onclick={() => (editing = { id: profile.id, name: profile.name })}
             >
+              {t('profiles.rename')}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
               disabled={busy || profile.default}
-              onclick={() => perform('default', profile.id)}>{t('profiles.makeDefault')}</Button
+              onclick={() => perform('default', profile.id)}
             >
+              {t('profiles.makeDefault')}
+            </Button>
             <Button
               variant="ghost"
               size="sm"
               disabled={busy || profile.active || profile.running || profile.id === 'default'}
               title={profile.id === 'default' ? t('profiles.originalHint') : t('profiles.closeHint')}
-              onclick={() => perform('remove', profile.id)}>{t('profiles.remove')}</Button
+              onclick={() => perform('remove', profile.id)}
             >
+              {t('profiles.remove')}
+            </Button>
           </div>
           {#if editing?.id === profile.id}
             <form
@@ -110,8 +117,9 @@
                 autocomplete="off"
                 required
               />
-              <Button variant="tonal" type="submit" disabled={busy || !editing.name.trim()}>{t('profiles.save')}</Button
-              >
+              <Button variant="tonal" type="submit" disabled={busy || !editing.name.trim()}>
+                {t('profiles.save')}
+              </Button>
               <Button variant="ghost" disabled={busy} onclick={() => (editing = null)}>{t('profiles.cancel')}</Button>
             </form>
           {/if}
@@ -132,9 +140,9 @@
         autocomplete="off"
         required
       />
-      <Button variant="tonal" type="submit" disabled={busy || !name.trim() || view.profiles.length >= 50}
-        >{t('profiles.create')}</Button
-      >
+      <Button variant="tonal" type="submit" disabled={busy || !name.trim() || view.profiles.length >= 50}>
+        {t('profiles.create')}
+      </Button>
     </form>
   {/if}
 </section>

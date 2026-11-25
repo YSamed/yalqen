@@ -307,9 +307,9 @@
               <span class="name">
                 <strong>{site.domain}</strong>
                 {#if site.storage}
-                  <span class="hint"
-                    >{t('siteStorage.counts', { cookies: site.storage.cookies, origins: site.storage.origins })}</span
-                  >
+                  <span class="hint">
+                    {t('siteStorage.counts', { cookies: site.storage.cookies, origins: site.storage.origins })}
+                  </span>
                 {/if}
               </span>
               <span class="chips">
@@ -377,8 +377,10 @@
                   variant="tonal"
                   data-action="clear-data"
                   disabled={busy}
-                  onclick={() => clear(site.domain)}>{t('siteStorage.clear')}</Button
+                  onclick={() => clear(site.domain)}
                 >
+                  {t('siteStorage.clear')}
+                </Button>
               </div>
             </div>
           </details>
@@ -394,11 +396,13 @@
       <Button
         size="sm"
         disabled={busy || storage.offset === 0}
-        onclick={() => loadStorage(Math.max(0, storage!.offset - 20))}>{t('siteStorage.previous')}</Button
+        onclick={() => loadStorage(Math.max(0, storage!.offset - 20))}
       >
-      <Button size="sm" disabled={busy || !storage.more} onclick={() => loadStorage(storage!.offset + 20)}
-        >{t('siteStorage.next')}</Button
-      >
+        {t('siteStorage.previous')}
+      </Button>
+      <Button size="sm" disabled={busy || !storage.more} onclick={() => loadStorage(storage!.offset + 20)}>
+        {t('siteStorage.next')}
+      </Button>
     </div>
   {/if}
   <p class="hint footnote">{t('sites.footnote')}</p>

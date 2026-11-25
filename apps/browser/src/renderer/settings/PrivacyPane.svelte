@@ -182,8 +182,9 @@
         variant="tonal"
         disabled={!values.threatProtection || threatLists.updating}
         onclick={() => api.updateThreatLists()}
-        >{threatLists.updating ? t('threats.updating') : t('threats.update')}</Button
       >
+        {threatLists.updating ? t('threats.updating') : t('threats.update')}
+      </Button>
     </SettingRow>
     <p class="hint sources" aria-live="polite">
       {t('threats.updated', {
@@ -192,13 +193,17 @@
       {#if threatLists.failed}<br /><span class="error">{t('threats.updateFailed')}</span>{/if}
       <br />{t('threats.coverage')}
       <a href="https://cert.pl/lista-ostrzezen/" target="_blank" rel="noreferrer">CERT Polska</a> ·
-      <a href="https://github.com/Neo23x0/signature-base" target="_blank" rel="noreferrer"
-        >Signature-Base · Florian Roth / Nextron Systems</a
-      >
+      <a href="https://github.com/Neo23x0/signature-base" target="_blank" rel="noreferrer">
+        Signature-Base · Florian Roth / Nextron Systems
+      </a>
       ·
-      <a href="https://raw.githubusercontent.com/Neo23x0/signature-base/master/LICENSE" target="_blank" rel="noreferrer"
-        >DRL 1.1</a
+      <a
+        href="https://raw.githubusercontent.com/Neo23x0/signature-base/master/LICENSE"
+        target="_blank"
+        rel="noreferrer"
       >
+        DRL 1.1
+      </a>
     </p>
   {/if}
 {/if}

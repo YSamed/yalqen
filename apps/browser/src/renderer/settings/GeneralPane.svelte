@@ -159,9 +159,9 @@
       {t('settings.changeDownloadDirectory')}
     </Button>
     {#if values.downloadDirectory}
-      <Button variant="ghost" onclick={() => update({ downloadDirectory: null })}
-        >{t('settings.resetDownloadDirectory')}</Button
-      >
+      <Button variant="ghost" onclick={() => update({ downloadDirectory: null })}>
+        {t('settings.resetDownloadDirectory')}
+      </Button>
     {/if}
   </SettingRow>
   <SettingRow title={t('settings.askBeforeDownload')} hint={t('settings.askBeforeDownloadHint')}>

@@ -159,14 +159,16 @@
 
   <div class="actions">
     <Button disabled={busy || !view.available} onclick={() => edit()}>{t('passwordTools.add')}</Button>
-    <Button variant="tonal" disabled={busy || !view.available} onclick={() => transfer('import')}
-      >{t('passwordTools.import')}</Button
-    >
+    <Button variant="tonal" disabled={busy || !view.available} onclick={() => transfer('import')}>
+      {t('passwordTools.import')}
+    </Button>
     <Button
       variant="tonal"
       disabled={busy || !view.available || !view.passwords.length}
-      onclick={() => transfer('export')}>{t('passwordTools.export')}</Button
+      onclick={() => transfer('export')}
     >
+      {t('passwordTools.export')}
+    </Button>
   </div>
   {#if message}<p class:error={failed} class="hint" role="status">{message}</p>{/if}
   {#if editing}
@@ -235,42 +237,40 @@
   {#each groups as group (group.name)}
     <section class="group">
       <h3 class="site">
-        <span class="monogram" aria-hidden="true"
-          >{group.name
+        <span class="monogram" aria-hidden="true">
+          {group.name
             .replace(/^www\./, '')
             .charAt(0)
-            .toUpperCase()}</span
-        >
+            .toUpperCase()}
+        </span>
         {group.name}
       </h3>
       {#each group.entries as entry (entry.id)}
         <div class="entry">
           <div class="details">
             <span class="name">{entry.username || t('passwordsPanel.noUsername')}</span>
-            <span class="hint"
-              >{t('passwordsPanel.changed', { date: new Date(entry.updatedAt).toLocaleDateString() })}</span
-            >
+            <span class="hint">
+              {t('passwordsPanel.changed', { date: new Date(entry.updatedAt).toLocaleDateString() })}
+            </span>
           </div>
           {#each entry.issues as issue (issue)}
             <span class="pill" class:warn={issue !== 'old'}>{t(`passwordsPanel.${issue}`)}</span>
           {/each}
           <code class="secret" aria-label={t('passwordsPanel.password')}>{revealed[entry.id] ?? '••••••••'}</code>
           <div class="controls">
-            <Button size="sm" variant="tonal" disabled={busy} onclick={() => edit(entry)}
-              >{t('passwordTools.edit')}</Button
-            >
-            <Button size="sm" variant="tonal" onclick={() => toggleReveal(entry.id)}
-              >{entry.id in revealed ? t('passwordsPanel.hide') : t('passwordsPanel.show')}</Button
-            >
-            <Button size="sm" variant="tonal" onclick={() => copy(entry.id, 'password')}
-              >{copiedId === `password:${entry.id}` ? t('passwordsPanel.copied') : t('passwordsPanel.copy')}</Button
-            >
+            <Button size="sm" variant="tonal" disabled={busy} onclick={() => edit(entry)}>
+              {t('passwordTools.edit')}
+            </Button>
+            <Button size="sm" variant="tonal" onclick={() => toggleReveal(entry.id)}>
+              {entry.id in revealed ? t('passwordsPanel.hide') : t('passwordsPanel.show')}
+            </Button>
+            <Button size="sm" variant="tonal" onclick={() => copy(entry.id, 'password')}>
+              {copiedId === `password:${entry.id}` ? t('passwordsPanel.copied') : t('passwordsPanel.copy')}
+            </Button>
             {#if entry.username}
-              <Button size="sm" variant="tonal" onclick={() => copy(entry.id, 'username')}
-                >{copiedId === `username:${entry.id}`
-                  ? t('passwordsPanel.copied')
-                  : t('passwordsPanel.copyUsername')}</Button
-              >
+              <Button size="sm" variant="tonal" onclick={() => copy(entry.id, 'username')}>
+                {copiedId === `username:${entry.id}` ? t('passwordsPanel.copied') : t('passwordsPanel.copyUsername')}
+              </Button>
             {/if}
             <IconButton
               icon="close"

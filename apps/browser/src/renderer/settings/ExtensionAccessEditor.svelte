@@ -88,9 +88,9 @@
       {/if}
     {/if}
     {#if changed || clearsSession}
-      <Button type="submit" size="sm" variant="tonal"
-        >{clearsSession ? t('extensionsPanel.accessClearSession') : t('extensionsPanel.accessSave')}</Button
-      >
+      <Button type="submit" size="sm" variant="tonal">
+        {clearsSession ? t('extensionsPanel.accessClearSession') : t('extensionsPanel.accessSave')}
+      </Button>
     {/if}
     {#if status}<p class:error role={error ? 'alert' : 'status'}>{status}</p>{/if}
   </fieldset>

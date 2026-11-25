@@ -206,8 +206,9 @@
       {running ? `${t('responsiveScan.running')} ${scan?.frames.length ?? 0}/3` : t('responsiveScan.run')}
     </Button>
     {#if running}
-      <Button icon="stop" disabled={Boolean(pending)} onclick={() => void cancel()}>{t('responsiveScan.cancel')}</Button
-      >
+      <Button icon="stop" disabled={Boolean(pending)} onclick={() => void cancel()}>
+        {t('responsiveScan.cancel')}
+      </Button>
     {:else if scan}
       <IconButton icon="trash" label={t('responsiveScan.clear')} disabled={!ready} onclick={() => void clear()} />
     {/if}
@@ -249,9 +250,9 @@
         <ul>
           {#each frame.measurements.findings as finding, index (index)}
             <li>
-              <span>{findingLabel(finding)}</span><code>{finding.selector}</code>{#if finding.label}<span class="hint"
-                  >{finding.label}</span
-                >{/if}
+              <span>{findingLabel(finding)}</span><code>{finding.selector}</code>{#if finding.label}<span class="hint">
+                  {finding.label}
+                </span>{/if}
             </li>
           {/each}
         </ul>

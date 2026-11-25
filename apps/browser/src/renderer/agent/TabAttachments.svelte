@@ -87,9 +87,9 @@
         onclick={() => ontoggle(tab)}
       >
         <span class="indicator"><Icon name={attached ? 'check' : 'globe'} size={14} /></span>
-        <span class="tab-copy"
-          ><span class="tab-title">{tab.title || tab.url}</span><span class="tab-url">{tab.url}</span></span
-        >
+        <span class="tab-copy">
+          <span class="tab-title">{tab.title || tab.url}</span><span class="tab-url">{tab.url}</span>
+        </span>
       </button>
     {:else}
       <p class="empty">{t('agentChat.noMatchingTabs')}</p>

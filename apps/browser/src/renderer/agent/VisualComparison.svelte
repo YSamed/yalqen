@@ -186,20 +186,22 @@
       icon="image"
       disabled={!ready || !captureAllowed}
       onclick={() => void capture('before')}
-      >{pending === 'before'
+    >
+      {pending === 'before'
         ? t('visualComparison.capturing')
         : comparison
           ? t('visualComparison.replaceBefore')
-          : t('visualComparison.saveBefore')}</Button
-    >
+          : t('visualComparison.saveBefore')}
+    </Button>
     <Button
       class="capture-after"
       variant="tonal"
       icon="image"
       disabled={!ready || !captureAllowed || !baselineMatches}
       onclick={() => void capture('after')}
-      >{pending === 'after' ? t('visualComparison.capturing') : t('visualComparison.captureAfter')}</Button
     >
+      {pending === 'after' ? t('visualComparison.capturing') : t('visualComparison.captureAfter')}
+    </Button>
   </div>
   {#if !captureAllowed}
     <p class="hint status" role="status">{t('visualComparison.localHint')}</p>
@@ -210,8 +212,9 @@
         size="sm"
         icon="globe"
         onclick={() => window.yalqen.send({ type: 'activate-tab', id: comparison!.before.tabId })}
-        >{t('visualComparison.returnTab')}</Button
       >
+        {t('visualComparison.returnTab')}
+      </Button>
     </div>
   {/if}
   {#if comparison}
@@ -270,8 +273,9 @@
         variant="primary"
         disabled={!ready || disabled || !baselineMatches || !captureAllowed}
         onclick={() => void review()}
-        >{pending === 'review' ? t('visualComparison.reviewing') : t('visualComparison.askReview')}</Button
       >
+        {pending === 'review' ? t('visualComparison.reviewing') : t('visualComparison.askReview')}
+      </Button>
     {/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}

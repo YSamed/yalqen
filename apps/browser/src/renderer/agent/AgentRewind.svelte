@@ -45,9 +45,9 @@
       </p>
       <div class="actions">
         <Button size="sm" onclick={() => (preview = null)}>{t('agentChat.cancel')}</Button>
-        <Button size="sm" variant="primary" disabled={busy || disabled} onclick={() => rewind(false)}
-          >{t('agentChat.revert')}</Button
-        >
+        <Button size="sm" variant="primary" disabled={busy || disabled} onclick={() => rewind(false)}>
+          {t('agentChat.revert')}
+        </Button>
       </div>
     </div>
   {:else}
@@ -57,8 +57,10 @@
       icon="reload"
       title={t('agentChat.revertTitle')}
       disabled={busy || disabled}
-      onclick={() => rewind(true)}>{t('agentChat.revert')}</Button
+      onclick={() => rewind(true)}
     >
+      {t('agentChat.revert')}
+    </Button>
     {#if nothing}<span class="note">{preview?.error ?? t('agentChat.revertNothing')}</span>{/if}
     {#if failed}<span class="note warn">{t('agentChat.revertFailed')}</span>{/if}
   {/if}
