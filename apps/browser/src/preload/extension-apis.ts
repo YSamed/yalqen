@@ -16,6 +16,15 @@ interface Bridge {
   windows(): Promise<ExtensionWindows>;
   contextMenus(method: string, args: unknown[]): Promise<void>;
   notifications(method: string, args: unknown[]): Promise<unknown>;
+  library(namespace: string, method: string, args: unknown[]): Promise<unknown>;
+  sidePanel(method: string, args: unknown[]): Promise<unknown>;
+  action(method: string, args: unknown[]): Promise<unknown>;
+  netRequest(method: string, args: unknown[]): Promise<unknown>;
+  frames(tabId: unknown): Promise<{ frameId: number }[] | null>;
+  queryTabs(query: unknown): Promise<unknown[]>;
+  contexts(filter: unknown): Promise<unknown[]>;
+  windowCall(method: string, args: unknown[]): Promise<unknown>;
+  silentWebAuthFlow(details: unknown): Promise<string>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
 }
@@ -33,6 +42,18 @@ const bridge: Bridge = {
   windows: () => ipcRenderer.invoke(ExtensionBridgeChannel.windows),
   contextMenus: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.contextMenus, method, args),
   notifications: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.notifications, method, args),
+  library: (namespace, method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.library, namespace, method, args),
+  sidePanel: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.sidePanel, method, args),
+  action: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.action, method, args),
+  netRequest: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.netRequest, method, args),
+  frames: (tabId) => ipcRenderer.invoke(ExtensionBridgeChannel.frames, tabId),
+  queryTabs: (query) => ipcRenderer.invoke(ExtensionBridgeChannel.queryTabs, query),
+  contexts: (filter) => ipcRenderer.invoke(ExtensionBridgeChannel.contexts, filter),
+  windowCall: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.windowCall, method, args),
+  silentWebAuthFlow: (details) =>
+    ipcRenderer.invoke(ExtensionBridgeChannel.webAuthFlow, details).catch((error: Error) => {
+      throw new Error(error.message.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, ''));
+    }),
   shortcut: (suggested) => suggestedShortcut(suggested, globalThis.process?.platform ?? ''),
   subscribe: (event, dispatch) => {
     dispatchers.set(event, dispatch);
@@ -47,7 +68,9 @@ function installExtensionApis(api: Bridge): void {
   const runtime = chromeApi?.runtime as
     | {
         id: string;
+        dynamicId?: string;
         getManifest(): {
+          update_url?: string;
           permissions?: string[];
           commands?: Record<string, { description?: string; suggested_key?: unknown }>;
         };
@@ -107,9 +130,16 @@ function installExtensionApis(api: Bridge): void {
     settle(api.createTab(properties ?? {}), callback),
   );
   define(tabs, 'remove', (ids: unknown, callback: Callback) => settle(api.removeTabs(ids), callback));
+  define(tabs, 'query', (query: unknown, callback: Callback) => settle(api.queryTabs(query), callback));
   define(tabs, 'getCurrent', (callback: Callback) => settle(api.currentTab(), callback));
-  define(tabs, 'onUpdated', event('tabs.onUpdated'));
-  define(tabs, 'onRemoved', event('tabs.onRemoved'));
+  const tabUpdated = event('tabs.onUpdated');
+  const tabRemoved = event('tabs.onRemoved');
+  define(tabs, 'onUpdated', tabUpdated);
+  define(tabs, 'onRemoved', tabRemoved);
+  define(runtime as unknown as Record<string, unknown>, 'onInstalled', event('runtime.onInstalled'));
+  define(runtime as unknown as Record<string, unknown>, 'getContexts', (filter: unknown, callback: Callback) =>
+    settle(api.contexts(filter), callback),
+  );
 
   if (!chromeApi.cookies && permissions.includes('cookies')) {
     const call = (method: string) => (details: unknown, callback: Callback) =>
@@ -125,8 +155,47 @@ function installExtensionApis(api: Bridge): void {
   }
 
   if (!chromeApi.identity && permissions.includes('identity')) {
+    const redirectUrl = (path = '') => `https://${runtime.id}.chromiumapp.org/${String(path).replace(/^\//, '')}`;
+    const webAuthFlow = (details: unknown): Promise<string> => {
+      const { url, interactive, abortOnLoadForNonInteractive, timeoutMsForNonInteractive } = (
+        typeof details === 'object' && details !== null ? details : {}
+      ) as Record<string, unknown>;
+      if (typeof url !== 'string') return Promise.reject(new Error('Authorization url is required'));
+      if (interactive !== true)
+        return api.silentWebAuthFlow({ url, abortOnLoadForNonInteractive, timeoutMsForNonInteractive });
+      return api.createTab({ url, active: true }).then(
+        (tab) =>
+          new Promise((resolve, reject) => {
+            const { id } = tab as { id: number };
+            const stop = () => {
+              tabUpdated.removeListener(updated);
+              tabRemoved.removeListener(removed);
+            };
+            const updated: Listener = (tabId, change) => {
+              const next = (change as { url?: unknown } | undefined)?.url;
+              if (tabId !== id || typeof next !== 'string' || !next.startsWith(redirectUrl())) return;
+              stop();
+              resolve(next);
+              api.removeTabs(id).catch(() => {});
+            };
+            const removed: Listener = (tabId) => {
+              if (tabId !== id) return;
+              stop();
+              reject(new Error('The user did not approve access.'));
+            };
+            tabUpdated.addListener(updated);
+            tabRemoved.addListener(removed);
+          }),
+      );
+    };
     define(chromeApi, 'identity', {
-      getRedirectURL: (path = '') => `https://${runtime.id}.chromiumapp.org/${String(path).replace(/^\//, '')}`,
+      getRedirectURL: redirectUrl,
+      launchWebAuthFlow: (details: unknown, callback: Callback) => settle(webAuthFlow(details), callback),
+      getAuthToken: (...args: unknown[]) =>
+        settle(
+          Promise.reject(new Error('getAuthToken needs a Chrome Google account; use launchWebAuthFlow')),
+          lastArgument(args),
+        ),
     });
   }
 
@@ -193,10 +262,277 @@ function installExtensionApis(api: Bridge): void {
       onCompleted: event('webNavigation.onCompleted'),
       onErrorOccurred: event('webNavigation.onErrorOccurred'),
       onHistoryStateUpdated: event('webNavigation.onHistoryStateUpdated'),
-      onReferenceFragmentUpdated: event(),
+      onReferenceFragmentUpdated: event('webNavigation.onReferenceFragmentUpdated'),
       onCreatedNavigationTarget: event(),
       onTabReplaced: event(),
+      getAllFrames: (details: { tabId?: unknown } | undefined, callback: Callback) =>
+        settle(api.frames(details?.tabId), callback),
+      getFrame: (details: { tabId?: unknown; frameId?: unknown } | undefined, callback: Callback) =>
+        settle(
+          api
+            .frames(details?.tabId)
+            .then((frames) => frames?.find(({ frameId }) => frameId === details?.frameId) ?? null),
+          callback,
+        ),
     });
+  }
+
+  // Store extensions load unpacked, so Electron reports them as "development"; Chrome says "normal" for store installs.
+  const management = chromeApi.management as Record<string, unknown> | undefined;
+  if (management) {
+    type Info = { id?: string; installType?: string; updateUrl?: string };
+    const fromStore = (info: Info) =>
+      info.installType === 'development' &&
+      (info.updateUrl ?? (info.id === runtime.id ? runtime.getManifest().update_url : undefined))
+        ? { ...info, installType: 'normal' }
+        : info;
+    for (const name of ['getSelf', 'get', 'getAll']) {
+      const original = management[name] as ((...args: unknown[]) => Promise<Info | Info[]>) | undefined;
+      if (typeof original !== 'function') continue;
+      define(management, name, (...args: unknown[]) =>
+        settle(
+          original
+            .apply(
+              management,
+              args.filter((arg) => typeof arg !== 'function'),
+            )
+            .then((result) => (Array.isArray(result) ? result.map(fromStore) : fromStore(result))),
+          lastArgument(args),
+        ),
+      );
+    }
+  }
+
+  const extensionNamespace = chromeApi.extension as Record<string, unknown> | undefined;
+  for (const name of ['isAllowedFileSchemeAccess', 'isAllowedIncognitoAccess']) {
+    if (extensionNamespace && typeof extensionNamespace[name] !== 'function')
+      define(extensionNamespace, name, (callback: Callback) => settle(Promise.resolve(false), callback));
+  }
+
+  const library = (namespace: string, methods: string[], events: Record<string, ExtensionBridgeEvent | undefined>) => {
+    if (chromeApi[namespace] || !permissions.includes(namespace)) return;
+    const members: Record<string, unknown> = Object.fromEntries(
+      methods.map((method) => [
+        method,
+        (...args: unknown[]) =>
+          settle(
+            api.library(
+              namespace,
+              method,
+              args.filter((arg) => typeof arg !== 'function'),
+            ),
+            lastArgument(args),
+          ),
+      ]),
+    );
+    for (const [name, bridged] of Object.entries(events)) {
+      const registered = event(bridged);
+      members[name] =
+        namespace === 'history'
+          ? {
+              ...registered,
+              addListener: (listener: Listener) => {
+                registered.addListener(listener);
+                api.library('history', 'listen', []).catch(() => {});
+              },
+            }
+          : registered;
+    }
+    define(chromeApi, namespace, members);
+  };
+  library('history', ['search', 'getVisits', 'addUrl', 'deleteUrl', 'deleteRange', 'deleteAll'], {
+    onVisited: 'history.onVisited',
+    onVisitRemoved: 'history.onVisitRemoved',
+  });
+  library(
+    'bookmarks',
+    [
+      'get',
+      'getChildren',
+      'getRecent',
+      'getTree',
+      'getSubTree',
+      'search',
+      'create',
+      'move',
+      'update',
+      'remove',
+      'removeTree',
+    ],
+    {
+      onCreated: 'bookmarks.onCreated',
+      onRemoved: 'bookmarks.onRemoved',
+      onChanged: 'bookmarks.onChanged',
+      onMoved: 'bookmarks.onMoved',
+      onChildrenReordered: undefined,
+      onImportBegan: undefined,
+      onImportEnded: undefined,
+    },
+  );
+  library(
+    'downloads',
+    [
+      'download',
+      'search',
+      'pause',
+      'resume',
+      'cancel',
+      'show',
+      'showDefaultFolder',
+      'erase',
+      'getFileIcon',
+      'removeFile',
+      'acceptDanger',
+      'setShelfEnabled',
+      'setUiOptions',
+    ],
+    {
+      onCreated: 'downloads.onCreated',
+      onChanged: 'downloads.onChanged',
+      onErased: 'downloads.onErased',
+    },
+  );
+  const sidePanelCall =
+    (method: string) =>
+    (...args: unknown[]) =>
+      settle(
+        api.sidePanel(
+          method,
+          args.filter((arg) => typeof arg !== 'function'),
+        ),
+        lastArgument(args),
+      );
+  if (!chromeApi.sidePanel && permissions.includes('sidePanel')) {
+    define(chromeApi, 'sidePanel', {
+      setOptions: sidePanelCall('setOptions'),
+      getOptions: sidePanelCall('getOptions'),
+      setPanelBehavior: sidePanelCall('setPanelBehavior'),
+      getPanelBehavior: sidePanelCall('getPanelBehavior'),
+      open: sidePanelCall('open'),
+      close: sidePanelCall('close'),
+      onOpened: event('sidePanel.onOpened'),
+      onClosed: event('sidePanel.onClosed'),
+    });
+  }
+  // Electron's own chrome.action is a stub that drops every value, so it is replaced, not only filled in.
+  {
+    type Pixels = { width: number; height: number; data: Uint8ClampedArray<ArrayBuffer> };
+    const isPixels = (value: unknown): value is Pixels =>
+      typeof value === 'object' && value !== null && 'data' in value && typeof (value as Pixels).width === 'number';
+    // ImageData does not survive IPC, so it crosses as a PNG data url.
+    const pngUrl = async (pixels: Pixels): Promise<string> => {
+      const canvas = new OffscreenCanvas(pixels.width, pixels.height);
+      canvas.getContext('2d')!.putImageData(new ImageData(pixels.data, pixels.width, pixels.height), 0, 0);
+      const bytes = new Uint8Array(await (await canvas.convertToBlob()).arrayBuffer());
+      let binary = '';
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return `data:image/png;base64,${btoa(binary)}`;
+    };
+    const imageData = async (value: unknown): Promise<unknown> => {
+      if (isPixels(value)) return pngUrl(value);
+      if (typeof value !== 'object' || value === null) return value;
+      const entries = await Promise.all(
+        Object.entries(value).map(async ([size, pixels]) => [size, isPixels(pixels) ? await pngUrl(pixels) : pixels]),
+      );
+      return Object.fromEntries(entries);
+    };
+    const call =
+      (method: string) =>
+      (...args: unknown[]) =>
+        settle(
+          api.action(
+            method,
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        );
+    const clicked = event('action.onClicked');
+    const actionApi = {
+      ...Object.fromEntries(
+        [
+          'setBadgeText',
+          'getBadgeText',
+          'setBadgeBackgroundColor',
+          'getBadgeBackgroundColor',
+          'setBadgeTextColor',
+          'getBadgeTextColor',
+          'setTitle',
+          'getTitle',
+          'setPopup',
+          'getPopup',
+          'enable',
+          'disable',
+          'isEnabled',
+          'openPopup',
+        ].map((method) => [method, call(method)]),
+      ),
+      setIcon: (details: unknown, callback: Callback) => {
+        const { imageData: raw, ...rest } = (typeof details === 'object' && details !== null ? details : {}) as {
+          imageData?: unknown;
+        };
+        return settle(
+          imageData(raw).then((converted) =>
+            api.action('setIcon', [converted === undefined ? rest : { ...rest, imageData: converted }]),
+          ),
+          callback,
+        );
+      },
+      getUserSettings: (callback: Callback) => settle(Promise.resolve({ isOnToolbar: true }), callback),
+      onClicked: {
+        ...clicked,
+        addListener: (listener: Listener) => {
+          clicked.addListener(listener);
+          api.action('listen', []).catch(() => {});
+        },
+      },
+    };
+    define(chromeApi, 'action', actionApi);
+    define(chromeApi, 'browserAction', actionApi);
+  }
+
+  const downloads = chromeApi.downloads as Record<string, unknown> | undefined;
+  if (downloads && !downloads.onDeterminingFilename) {
+    type Naming = (item: unknown, suggest: (suggestion?: unknown) => void) => unknown;
+    const naming = new Set<Naming>();
+    // A context without listeners stays silent, so it cannot end a request that the worker still answers.
+    api.subscribe('downloads.onDeterminingFilename', (item, requestId) => {
+      if (naming.size === 0) return;
+      let answered = false;
+      let later = false;
+      const suggest = (suggestion?: unknown) => {
+        if (answered) return;
+        answered = true;
+        api.library('downloads', 'suggest', [requestId, suggestion ?? null]).catch(() => {});
+      };
+      for (const listener of [...naming]) {
+        try {
+          if (listener(item, suggest) === true) later = true;
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      if (!later) suggest();
+    });
+    define(downloads, 'onDeterminingFilename', {
+      addListener: (listener: Naming) => {
+        naming.add(listener);
+        api.library('downloads', 'listen', []).catch(() => {});
+      },
+      removeListener: (listener: Naming) => void naming.delete(listener),
+      hasListener: (listener: Naming) => naming.has(listener),
+      hasListeners: () => naming.size > 0,
+    });
+  }
+  if (downloads && permissions.includes('downloads.open') && !downloads.open) {
+    // Chrome opens a downloaded file only in response to a user gesture.
+    define(downloads, 'open', (id: unknown, callback: Callback) =>
+      settle(
+        (globalThis as { navigator?: { userActivation?: { isActive: boolean } } }).navigator?.userActivation?.isActive
+          ? api.library('downloads', 'open', [id])
+          : Promise.reject(new Error('downloads.open requires a user gesture')),
+        callback,
+      ),
+    );
   }
 
   if (!chromeApi.windows) {
@@ -227,13 +563,101 @@ function installExtensionApis(api: Bridge): void {
           api.windows().then(({ windows }) => windows),
           lastArgument(args),
         ),
+      create: (...args: unknown[]) =>
+        settle(
+          api.windowCall(
+            'create',
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        ),
+      update: (...args: unknown[]) =>
+        settle(
+          api.windowCall(
+            'update',
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        ),
+      remove: (...args: unknown[]) =>
+        settle(
+          api.windowCall(
+            'remove',
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        ),
       onCreated: event('windows.onCreated'),
       onRemoved: event('windows.onRemoved'),
       onFocusChanged: event('windows.onFocusChanged'),
     });
   }
 
-  const bridged = ['cookies', 'identity'].filter((name) => permissions.includes(name));
+  const netRequestPermissions = ['declarativeNetRequest', 'declarativeNetRequestWithHostAccess'];
+  if (netRequestPermissions.some((name) => permissions.includes(name))) {
+    const netRequestCall =
+      (method: string) =>
+      (...args: unknown[]) =>
+        settle(
+          api.netRequest(
+            method,
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        );
+    define(chromeApi, 'declarativeNetRequest', {
+      ...Object.fromEntries(
+        [
+          'getAvailableStaticRuleCount',
+          'getDisabledRuleIds',
+          'getDynamicRules',
+          'getEnabledRulesets',
+          'getMatchedRules',
+          'getSessionRules',
+          'isRegexSupported',
+          'setExtensionActionOptions',
+          'updateDynamicRules',
+          'updateEnabledRulesets',
+          'updateSessionRules',
+          'updateStaticRules',
+        ].map((method) => [method, netRequestCall(method)]),
+      ),
+      DYNAMIC_RULESET_ID: '_dynamic',
+      SESSION_RULESET_ID: '_session',
+      GUARANTEED_MINIMUM_STATIC_RULES: 30000,
+      MAX_NUMBER_OF_DYNAMIC_RULES: 30000,
+      MAX_NUMBER_OF_UNSAFE_DYNAMIC_RULES: 5000,
+      MAX_NUMBER_OF_SESSION_RULES: 5000,
+      MAX_NUMBER_OF_UNSAFE_SESSION_RULES: 5000,
+      MAX_NUMBER_OF_REGEX_RULES: 1000,
+      MAX_NUMBER_OF_STATIC_RULESETS: 100,
+      MAX_NUMBER_OF_ENABLED_STATIC_RULESETS: 50,
+      MAX_GETMATCHEDRULES_CALLS_PER_INTERVAL: 20,
+      GETMATCHEDRULES_QUOTA_INTERVAL: 10,
+      RuleActionType: {
+        BLOCK: 'block',
+        REDIRECT: 'redirect',
+        ALLOW: 'allow',
+        UPGRADE_SCHEME: 'upgradeScheme',
+        MODIFY_HEADERS: 'modifyHeaders',
+        ALLOW_ALL_REQUESTS: 'allowAllRequests',
+      },
+      onRuleMatchedDebug: event(),
+    });
+    if (runtime.dynamicId) api.netRequest('useDynamicId', [runtime.dynamicId]).catch(() => undefined);
+  }
+
+  const bridged = [
+    'cookies',
+    'identity',
+    'history',
+    'bookmarks',
+    'downloads',
+    'downloads.open',
+    'sidePanel',
+    ...netRequestPermissions,
+    'declarativeNetRequestFeedback',
+  ].filter((name) => permissions.includes(name));
   const native = chromeApi.permissions as
     | {
         contains(query: unknown): Promise<boolean>;

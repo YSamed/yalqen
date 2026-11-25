@@ -3,10 +3,10 @@ import {
   AUTO_RELOAD_SECONDS,
   NETWORK_PRESETS,
   USER_AGENT_PRESETS,
-  type AgentEpisodePreview,
   type DevCommandId,
   type PageOverrides,
 } from '../../shared/types.js';
+import { type AgentEpisodePreview } from '../../shared/agent.js';
 import { NETWORK_CONDITIONS, USER_AGENTS, hasOverrides } from './page-overrides.js';
 import { t } from '../../shared/i18n.js';
 

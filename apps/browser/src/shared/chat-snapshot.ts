@@ -1,4 +1,4 @@
-import type { AgentChatSnapshot } from './types';
+import type { AgentChatSnapshot } from './agent';
 
 function reuse<T>(previous: unknown, next: T): T {
   if (typeof next !== 'object' || next === null || typeof previous !== 'object' || previous === null) return next;

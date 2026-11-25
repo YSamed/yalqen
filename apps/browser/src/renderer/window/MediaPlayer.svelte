@@ -3,12 +3,12 @@
   import { t } from '../../shared/i18n';
   import IconButton from '../ui/IconButton.svelte';
   import { cubicOut } from 'svelte/easing';
+  import { prefersReducedMotion } from 'svelte/motion';
   import { fly } from 'svelte/transition';
 
-  let { media, compact = false }: { media: MediaInfo; compact?: boolean } = $props();
+  let { media }: { media: MediaInfo } = $props();
 
   const send = window.yalqen.send;
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const DRAG_THRESHOLD = 4;
 
@@ -114,79 +114,76 @@
   }
 
   function appear(node: Element) {
-    return fly(node, { y: 6, duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
+    return fly(node, { y: 6, duration: prefersReducedMotion.current ? 0 : 200, easing: cubicOut });
   }
 </script>
 
-<section class="player" class:compact aria-label={t('widgets.media')} in:appear>
+<section class="player" aria-label={t('widgets.media')} in:appear>
   <IconButton
     size="lg"
     variant="surface"
     class="play"
     icon={playing ? 'pause' : 'play'}
     label={playing ? t('widgets.pause') : t('widgets.play')}
-    title={compact ? media.title : undefined}
     onclick={toggle}
   />
-  {#if !compact}
-    <div
-      class="pill"
-      class:scrubbing={scrubbed !== null}
-      class:skippable={media.canPrevious || media.canNext}
-      bind:this={pill}
-    >
-      {#if position !== null && media.duration !== null}
-        <span class="fill" style:width="{progress * 100}%"></span>
-        <div
-          class="track"
-          role="slider"
-          tabindex="0"
-          title={t('widgets.showTab', { title: media.title })}
-          aria-label={media.title}
-          aria-valuemin={0}
-          aria-valuemax={Math.round(media.duration)}
-          aria-valuenow={Math.round(shown ?? position)}
-          aria-valuetext={t('widgets.elapsed', { elapsed: clock(shown ?? position), duration: clock(media.duration) })}
-          onpointerdown={pointerDown}
-          onpointermove={pointerMove}
-          onpointerup={pointerUp}
-          onpointercancel={() => (scrub = null)}
-          onkeydown={seekByKey}
-        >
-          <span class="title">{media.title}</span>
-          <span class="time">
-            {scrubbed !== null ? `${clock(scrubbed)} / ${clock(media.duration)}` : clock(shown ?? position)}
-          </span>
-        </div>
-      {:else}
-        <button class="track" aria-label={t('widgets.showTab', { title: media.title })} onclick={showTab}>
-          <span class="title">{media.title}</span>
-        </button>
-      {/if}
-      {#if media.canPrevious || media.canNext}
-        <span class="actions">
-          {#if media.canPrevious}
-            <IconButton
-              size="sm"
-              tone="muted"
-              icon="skip-back"
-              label={t('widgets.previous')}
-              onclick={() => skip('previous')}
-            />
-          {/if}
-          {#if media.canNext}
-            <IconButton
-              size="sm"
-              tone="muted"
-              icon="skip-forward"
-              label={t('widgets.next')}
-              onclick={() => skip('next')}
-            />
-          {/if}
+  <div
+    class="pill"
+    class:scrubbing={scrubbed !== null}
+    class:skippable={media.canPrevious || media.canNext}
+    bind:this={pill}
+  >
+    {#if position !== null && media.duration !== null}
+      <span class="fill" style:width="{progress * 100}%"></span>
+      <div
+        class="track"
+        role="slider"
+        tabindex="0"
+        title={t('widgets.showTab', { title: media.title })}
+        aria-label={media.title}
+        aria-valuemin={0}
+        aria-valuemax={Math.round(media.duration)}
+        aria-valuenow={Math.round(shown ?? position)}
+        aria-valuetext={t('widgets.elapsed', { elapsed: clock(shown ?? position), duration: clock(media.duration) })}
+        onpointerdown={pointerDown}
+        onpointermove={pointerMove}
+        onpointerup={pointerUp}
+        onpointercancel={() => (scrub = null)}
+        onkeydown={seekByKey}
+      >
+        <span class="title">{media.title}</span>
+        <span class="time">
+          {scrubbed !== null ? `${clock(scrubbed)} / ${clock(media.duration)}` : clock(shown ?? position)}
         </span>
-      {/if}
-    </div>
-  {/if}
+      </div>
+    {:else}
+      <button class="track" aria-label={t('widgets.showTab', { title: media.title })} onclick={showTab}>
+        <span class="title">{media.title}</span>
+      </button>
+    {/if}
+    {#if media.canPrevious || media.canNext}
+      <span class="actions">
+        {#if media.canPrevious}
+          <IconButton
+            size="sm"
+            tone="muted"
+            icon="skip-back"
+            label={t('widgets.previous')}
+            onclick={() => skip('previous')}
+          />
+        {/if}
+        {#if media.canNext}
+          <IconButton
+            size="sm"
+            tone="muted"
+            icon="skip-forward"
+            label={t('widgets.next')}
+            onclick={() => skip('next')}
+          />
+        {/if}
+      </span>
+    {/if}
+  </div>
 </section>
 
 <style>

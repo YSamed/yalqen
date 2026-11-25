@@ -116,7 +116,7 @@ function seedSession(urls) {
 
 function writeProfile(profile, { adBlocking, history, sessionUrls }) {
   const write = (name, data) => fs.writeFileSync(path.join(profile, name), JSON.stringify(data));
-  write('settings.json', { version: 1, adBlocking, welcomeCompleted: true, startupBehavior: 'restore' });
+  write('settings.json', { version: 1, adBlocking, startupBehavior: 'restore' });
   write('history.json', seedHistory(history));
   if (sessionUrls.length > 0) write('tabs.json', seedSession(sessionUrls));
   if (adBlocking && fs.existsSync(engineCache)) fs.copyFileSync(engineCache, path.join(profile, 'adblock-engine.bin'));

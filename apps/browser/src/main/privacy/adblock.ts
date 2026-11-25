@@ -1,5 +1,7 @@
 import type { ElectronBlocker } from '@ghostery/adblocker-electron';
 import { ipcMain, powerMonitor, type OnBeforeRequestListenerDetails, type Session } from 'electron';
+import type { NetRequestVerdict } from '../extensions/net-request.js';
+import { HEADER_STAGE, setReceiveStage } from './header-stages.js';
 import { applyAdBlockExceptions } from './adblock-exceptions.js';
 
 const CACHE_REFRESH_DELAY_MS = 30_000;
@@ -26,6 +28,10 @@ export class AdBlocker {
     private readonly cacheFile: string,
     private readonly allowed: (session: Session, url: string) => boolean = () => false,
     private readonly blocked: (details: OnBeforeRequestListenerDetails) => boolean = () => false,
+    private readonly extensionRules: (
+      session: Session,
+      details: OnBeforeRequestListenerDetails,
+    ) => NetRequestVerdict | null = () => null,
   ) {}
 
   setEnabled(enabled: boolean): void {
@@ -130,10 +136,18 @@ export class AdBlocker {
   private applyRequestGate(): void {
     for (const session of this.sessions) {
       session.webRequest.onBeforeRequest((details, callback) => {
-        if (this.blocked(details)) callback({ cancel: true });
+        const verdict = this.blocked(details) ? { cancel: true } : this.extensionRules(session, details);
+        if (verdict) callback(verdict);
         else if (this.wanted && this.blocker) this.blocker.onBeforeRequest(details, callback);
         else callback({});
       });
+      // Ghostery registers its own onHeadersReceived for CSP; run it as one stage beside the others.
+      const blocker = this.wanted ? this.blocker : null;
+      setReceiveStage(
+        session,
+        HEADER_STAGE.adBlock,
+        blocker ? (details) => new Promise((resolve) => blocker.onHeadersReceived(details, resolve)) : null,
+      );
     }
   }
 }

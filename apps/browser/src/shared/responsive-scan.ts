@@ -1,4 +1,5 @@
-import type { AgentChatImage, TabId } from './types.js';
+import type { TabId } from './types.js';
+import type { AgentChatImage } from './agent.js';
 
 export const RESPONSIVE_SCAN_VIEWPORTS = [
   { id: 'mobile', width: 390, height: 844 },

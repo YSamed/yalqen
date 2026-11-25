@@ -6,17 +6,11 @@ import type { RepoPromptAction } from '../app/repo-prompt.js';
 
 const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
 const NEW_TAB_REPO_URL = `${NEW_TAB_URL}repo`;
-const NEW_TAB_FEEDBACK_URL = `${NEW_TAB_URL}feedback`;
-const FEEDBACK_ACTIONS = new Set<string>(['open', 'close'] satisfies FeedbackAction[]);
 const NEW_TAB_UPDATE_URL = `${NEW_TAB_URL}update`;
 const UPDATE_ACTIONS = new Set<string>(['install', 'close'] satisfies UpdateCardAction[]);
-const NEW_TAB_ANNOUNCEMENT_URL = `${NEW_TAB_URL}announcement`;
-const ANNOUNCEMENT_ACTIONS = new Set<string>(['try', 'close'] satisfies AnnouncementAction[]);
 const REPO_ACTIONS = new Set<string>(['star', 'later', 'close'] satisfies RepoPromptAction[]);
 const COMMAND_PAGES = new Set<string>(['downloads', 'bookmarks'] satisfies CommandPage[]);
 
-export type AnnouncementAction = 'try' | 'close';
-export type FeedbackAction = 'open' | 'close';
 export type UpdateCardAction = 'install' | 'close';
 
 export type InternalNavigation =
@@ -29,8 +23,6 @@ export type InternalNavigation =
   | { type: 'archive-restore'; id: string }
   | { type: 'new-tab-search'; query: string }
   | { type: 'new-tab-repo'; action: RepoPromptAction }
-  | { type: 'new-tab-announcement'; action: AnnouncementAction }
-  | { type: 'new-tab-feedback'; action: FeedbackAction }
   | { type: 'new-tab-update'; action: UpdateCardAction };
 
 function pageCommand(url: string): InternalNavigation | null {
@@ -66,19 +58,9 @@ export function internalNavigation(url: string): InternalNavigation | null {
     const action = param(url, 'action');
     return REPO_ACTIONS.has(action) ? { type: 'new-tab-repo', action: action as RepoPromptAction } : null;
   }
-  if (url.startsWith(`${NEW_TAB_ANNOUNCEMENT_URL}?`)) {
-    const action = param(url, 'action');
-    return ANNOUNCEMENT_ACTIONS.has(action)
-      ? { type: 'new-tab-announcement', action: action as AnnouncementAction }
-      : null;
-  }
   if (url.startsWith(`${NEW_TAB_UPDATE_URL}?`)) {
     const action = param(url, 'action');
     return UPDATE_ACTIONS.has(action) ? { type: 'new-tab-update', action: action as UpdateCardAction } : null;
-  }
-  if (url.startsWith(`${NEW_TAB_FEEDBACK_URL}?`)) {
-    const action = param(url, 'action');
-    return FEEDBACK_ACTIONS.has(action) ? { type: 'new-tab-feedback', action: action as FeedbackAction } : null;
   }
   return pageCommand(url);
 }
@@ -98,8 +80,6 @@ export function isAllowedFrom(navigation: InternalNavigation, currentUrl: string
       return currentUrl.startsWith(ARCHIVE_URL);
     case 'new-tab-search':
     case 'new-tab-repo':
-    case 'new-tab-announcement':
-    case 'new-tab-feedback':
     case 'new-tab-update':
       return currentUrl === NEW_TAB_URL;
   }

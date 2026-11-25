@@ -1,4 +1,4 @@
-import type { AgentClientId, AgentConnections, AgentConnectionState, AgentSetupResult } from '../../shared/types.js';
+import type { AgentClientId, AgentConnections, AgentConnectionState, AgentSetupResult } from '../../shared/agent.js';
 import { addToClaudeCode, claudeConnection, removeFromClaudeCode } from './claude-setup.js';
 import { addToCodex, codexConnection, removeFromCodex } from './codex-setup.js';
 

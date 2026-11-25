@@ -27,7 +27,7 @@ export const safeStorageCipher: Cipher = {
 };
 
 interface PasswordHandlerOptions {
-  store: PasswordStore;
+  storeFor: (contents: WebContents) => PasswordStore | null;
   savesPasswords: (contents: WebContents) => boolean;
   parentOf: (contents: WebContents) => BaseWindow | undefined;
   isSettingsFrame: (event: IpcMainInvokeEvent) => boolean;
@@ -79,7 +79,7 @@ function promptOptions(offer: SaveOffer, { origin, credential }: Submission): Me
 }
 
 export function installPasswordHandlers({
-  store,
+  storeFor,
   savesPasswords,
   parentOf,
   isSettingsFrame,
@@ -95,7 +95,9 @@ export function installPasswordHandlers({
   const offerToSave = (contents: WebContents, submission: Submission) => {
     prompts = prompts
       .then(async () => {
-        const offer = store.offer(submission.origin, submission.credential);
+        const store = storeFor(contents);
+        const offer = store?.offer(submission.origin, submission.credential);
+        if (!store) return;
         if (!offer || contents.isDestroyed()) return;
         const parent = parentOf(contents);
         const options = promptOptions(offer, submission);
@@ -142,7 +144,7 @@ export function installPasswordHandlers({
   ipcMain.on(PageChannel.credentialSubmitted, (event, value: unknown) => {
     const origin = mainFrameOrigin(event);
     const credential = sanitizeCredential(value);
-    if (!origin || !credential || !store.offer(origin, credential)) return;
+    if (!origin || !credential || !storeFor(event.sender)?.offer(origin, credential)) return;
     waitForSuccess(event.sender, { origin, credential });
   });
   ipcMain.on(PageChannel.credentialAccepted, (event) => {
@@ -154,14 +156,14 @@ export function installPasswordHandlers({
   ipcMain.handle(PageChannel.savedLogins, (event) => {
     const origin = mainFrameOrigin(event);
     return {
-      choices: origin ? store.choices(origin) : [],
+      choices: origin ? (storeFor(event.sender)?.choices(origin) ?? []) : [],
       chooseLabel: t('passwordHandlers.chooseAccount'),
       generateLabel: origin ? t('passwordTools.generate') : null,
     };
   });
   ipcMain.handle(PageChannel.fillSavedLogin, (event, id: unknown) => {
     const origin = mainFrameOrigin(event);
-    return origin && typeof id === 'string' ? store.login(origin, id) : null;
+    return origin && typeof id === 'string' ? (storeFor(event.sender)?.login(origin, id) ?? null) : null;
   });
   const choosing = new WeakSet<WebContents>();
   ipcMain.handle(PageChannel.chooseSavedLogin, async (event) => {
@@ -170,8 +172,9 @@ export function installPasswordHandlers({
     const contents = event.sender;
     const parent = parentOf(contents);
     if (!origin || !parent || choosing.has(contents)) return null;
-    const choices = store.choices(origin);
-    if (choices.length === 0) return null;
+    const store = storeFor(contents);
+    const choices = store?.choices(origin) ?? [];
+    if (!store || choices.length === 0) return null;
     choosing.add(contents);
     try {
       const id = await chooseAccount(parent, choices);
@@ -194,7 +197,7 @@ export function installPasswordHandlers({
     if (!isSettingsFrame(event) || !(await authenticate(t('passwordTools.ownerReason'))) || !isSettingsFrame(event))
       return false;
     try {
-      const saved = store.saveManual(value);
+      const saved = storeFor(event.sender)?.saveManual(value) ?? false;
       if (saved) onChange();
       return saved;
     } catch {
@@ -202,8 +205,8 @@ export function installPasswordHandlers({
     }
   });
   ipcMain.handle(PasswordsChannel.transfer, async (event, mode: unknown) => {
-    if (!isSettingsFrame(event) || (mode !== 'import' && mode !== 'export'))
-      return { status: 'cancelled', added: 0, skipped: 0 };
+    const store = isSettingsFrame(event) ? storeFor(event.sender) : null;
+    if (!store || (mode !== 'import' && mode !== 'export')) return { status: 'cancelled', added: 0, skipped: 0 };
     const result = await transferPasswords(
       mode,
       store,
@@ -215,16 +218,21 @@ export function installPasswordHandlers({
     if (mode === 'import' && result.status === 'success') onChange();
     return result;
   });
-  ipcMain.handle(PasswordsChannel.list, (event) => (isSettingsFrame(event) ? store.view() : null));
+  ipcMain.handle(PasswordsChannel.list, (event) =>
+    isSettingsFrame(event) ? (storeFor(event.sender)?.view() ?? null) : null,
+  );
   ipcMain.handle(PasswordsChannel.reveal, async (event, id: unknown) => {
     if (!isSettingsFrame(event) || typeof id !== 'string') return null;
-    return (await authenticate(t('passwordHandlers.revealReason'))) && isSettingsFrame(event) ? store.reveal(id) : null;
+    return (await authenticate(t('passwordHandlers.revealReason'))) && isSettingsFrame(event)
+      ? (storeFor(event.sender)?.reveal(id) ?? null)
+      : null;
   });
   ipcMain.handle(PasswordsChannel.copy, async (event, id: unknown) => {
     if (!isSettingsFrame(event) || typeof id !== 'string') return false;
     if (!(await authenticate(t('passwordHandlers.copyReason'))) || !isSettingsFrame(event)) return false;
-    const password = store.reveal(id);
-    if (password === null) return false;
+    const store = storeFor(event.sender);
+    const password = store?.reveal(id) ?? null;
+    if (!store || password === null) return false;
     clipboard.writeText(password);
     clearTimeout(clipboardTimer);
     clipboardTimer = setTimeout(() => {
@@ -238,19 +246,19 @@ export function installPasswordHandlers({
     return true;
   });
   ipcMain.handle(PasswordsChannel.copyUsername, (event, id: unknown) => {
-    const username = isSettingsFrame(event) && typeof id === 'string' ? store.username(id) : null;
+    const username = isSettingsFrame(event) && typeof id === 'string' ? storeFor(event.sender)?.username(id) : null;
     if (!username) return false;
     clipboard.writeText(username);
     return true;
   });
   ipcMain.handle(PasswordsChannel.remove, (event, id: unknown) => {
     if (!isSettingsFrame(event) || typeof id !== 'string') return;
-    store.remove(id);
+    storeFor(event.sender)?.remove(id);
     onChange();
   });
   ipcMain.handle(PasswordsChannel.allowSaving, (event, origin: unknown) => {
     if (!isSettingsFrame(event) || typeof origin !== 'string') return;
-    store.allowSaving(origin);
+    storeFor(event.sender)?.allowSaving(origin);
     onChange();
   });
 }

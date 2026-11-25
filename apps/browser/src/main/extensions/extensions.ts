@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { nativeImage, net, type MenuItemConstructorOptions, type NativeImage, type Session } from 'electron';
 import { t } from '../../shared/i18n.js';
-import type { ExtensionInfo, ExtensionSiteAccess, ToolbarExtension } from '../../shared/types.js';
+import type { ExtensionInfo, ExtensionSiteAccess } from '../../shared/types.js';
 import { extensionSite, parseExtensionAccess } from '../../shared/extension-sites.js';
 import {
   extensionIdentity,
@@ -38,7 +38,6 @@ import {
 } from './extension-updates.js';
 
 const MENU_ICON_SIZE = 16;
-const TOOLBAR_ICON_SIZE = 32;
 const LIST_ICON_SIZE = 64;
 const STORE_DIRECTORY = 'store-extensions';
 
@@ -47,6 +46,7 @@ type StoreExtensionStatus = 'available' | 'installing' | 'installed';
 interface ExtensionUpdateOptions {
   fetch?: (url: string, init: RequestInit) => Promise<Response>;
   automatic?: () => boolean;
+  removed?: (extensionId: string) => void;
 }
 type ConfirmUpdatePermissions = (name: string, permissions: string[]) => Promise<boolean>;
 
@@ -58,15 +58,45 @@ interface ExtensionAction {
   icon: NativeImage | null;
   popupUrl: string | null;
   optionsUrl: string | null;
+  sidePanel?: string | null;
+  sidePanelOnAction?: boolean;
+  badge?: string;
+  enabled?: boolean;
+  listens?: boolean;
 }
 
 interface ExtensionsMenuHandlers {
   openPopup(url: string): void;
   openOptions(url: string): void;
+  clickAction?(extensionId: string): void;
   openStore(): void;
   manage(): void;
   requestAccess?(directory: string): void;
   canRequestAccess?: boolean;
+  toggleSidePanel?(extensionId: string): void;
+  sidePanelOpen?: string | null;
+}
+
+const panelOnAction = (action: ExtensionAction) => Boolean(action.sidePanel && action.sidePanelOnAction);
+
+type ActionTarget = 'popup' | 'clicked' | 'panel' | 'options' | null;
+
+export function actionTarget(action: ExtensionAction): ActionTarget {
+  if (action.enabled === false) return null;
+  if (action.popupUrl) return 'popup';
+  if (panelOnAction(action)) return 'panel';
+  if (action.listens && action.id) return 'clicked';
+  return action.optionsUrl ? 'options' : null;
+}
+
+type ActionHandlers = Pick<ExtensionsMenuHandlers, 'openPopup' | 'openOptions' | 'clickAction' | 'toggleSidePanel'>;
+
+export function runAction(action: ExtensionAction, handlers: ActionHandlers): void {
+  const target = actionTarget(action);
+  if (target === 'popup') handlers.openPopup(action.popupUrl!);
+  else if (target === 'clicked') handlers.clickAction?.(action.id!);
+  else if (target === 'panel') handlers.toggleSidePanel?.(action.sidePanel!);
+  else if (target === 'options') handlers.openOptions(action.optionsUrl!);
 }
 
 export function extensionsMenuTemplate(
@@ -77,14 +107,24 @@ export function extensionsMenuTemplate(
     .sort((a, b) => a.title.localeCompare(b.title, 'tr'))
     .flatMap((action): MenuItemConstructorOptions[] => [
       {
-        label: action.title,
+        label: action.badge ? `${action.title} (${action.badge})` : action.title,
         icon: action.icon ?? undefined,
-        enabled: action.popupUrl !== null || action.optionsUrl !== null,
-        click: () => {
-          if (action.popupUrl) handlers.openPopup(action.popupUrl);
-          else if (action.optionsUrl) handlers.openOptions(action.optionsUrl);
-        },
+        enabled: actionTarget(action) !== null,
+        click: () => runAction(action, handlers),
       },
+      ...(action.sidePanel && handlers.toggleSidePanel
+        ? [
+            {
+              label: t(
+                handlers.sidePanelOpen === action.sidePanel ? 'extensions.hideSidePanel' : 'extensions.showSidePanel',
+                {
+                  name: action.title,
+                },
+              ),
+              click: () => handlers.toggleSidePanel!(action.sidePanel!),
+            },
+          ]
+        : []),
       ...(action.requestAccess && action.path && handlers.requestAccess
         ? [
             {
@@ -130,7 +170,6 @@ export class ExtensionManager {
   private stopped = false;
   private readonly updateRequests = new Set<AbortController>();
   private readonly changingAccess = new Set<string>();
-  private readonly toolbarIcons = new Map<string, { version: string; icon: string | null }>();
   private readonly sessionSites = new Map<string, Set<string>>();
   private readonly loadingIds = new Set<string>();
 
@@ -168,23 +207,6 @@ export class ExtensionManager {
           optionsUrl: extensionPage(extension.url, optionsPage(manifest)),
         },
       ];
-    });
-  }
-
-  toolbarExtensions(): ToolbarExtension[] {
-    return this.entries.flatMap((entry) => {
-      const extension = this.loadedAt(entry.path);
-      if (!extension) return [];
-      const manifest = extension.manifest as Manifest;
-      let cached = this.toolbarIcons.get(entry.path);
-      if (cached?.version !== extension.version) {
-        cached = {
-          version: extension.version,
-          icon: this.icon(entry.path, manifest, TOOLBAR_ICON_SIZE)?.toDataURL() ?? null,
-        };
-        this.toolbarIcons.set(entry.path, cached);
-      }
-      return [{ id: extension.id, title: actionTitle(manifest, extension.name), icon: cached.icon }];
     });
   }
 
@@ -310,7 +332,9 @@ export class ExtensionManager {
       !this.entries.some((entry) => entry.path === directory)
     )
       return;
+    const id = this.ids.get(directory);
     this.unload(directory);
+    if (id) this.updateOptions.removed?.(id);
     this.errors.delete(directory);
     this.updateErrors.delete(directory);
     this.entries = this.entries.filter((entry) => entry.path !== directory);

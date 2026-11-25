@@ -52,17 +52,12 @@ const state = {
   splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
-  addressPlaceholder: 'Search',
   panelCollapsed: false,
-  panelSide: 'left',
-  pinnedDisplay: 'always',
   favorites: [],
   spaces: [],
   activeSpaceId: '',
   sidebarVisible: true,
   media: null,
-  toolbarVisible: true,
-  toolbarTabs: true,
   toolbarButtons: ['settings'],
   ...windowAppearance,
   device: null,
@@ -134,7 +129,7 @@ app
       'Close tab (⌘W)',
     ]);
 
-    const toggle = '.footer button[aria-expanded]';
+    const toggle = 'header .panel-toggle';
     const title = await run(`document.querySelector('${toggle}').title`);
     assert.equal(title, 'Collapse sidebar (⇧⌘P)');
     await hover(toggle);

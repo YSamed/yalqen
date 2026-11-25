@@ -6,7 +6,7 @@ import {
   type AgentConnections,
   type AgentSetupKind,
   type AgentSetupResult,
-} from '../../shared/types.js';
+} from '../../shared/agent.js';
 import { handleSettingsCall } from '../app/settings-page.js';
 import { isAgentClient } from './agent-connections.js';
 

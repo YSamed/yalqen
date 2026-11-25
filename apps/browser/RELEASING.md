@@ -56,7 +56,9 @@ or with an API key (created under App Store Connect > Users and Access > Integra
 | `APPLE_API_KEY_ID` | Key ID                        |
 | `APPLE_API_ISSUER` | Issuer ID                     |
 
-Developer ID signing uses hardened runtime with `build/entitlements.mac.plist` (JIT, camera, microphone, location).
+Developer ID signing uses hardened runtime with `build/entitlements.mac.plist` (JIT, camera, microphone, location, and disabled library validation so the Google-signed Widevine CDM can load).
+
+Widevine needs a production VMP signature. `scripts/sign-mac.mjs` and `scripts/sign-win.mjs` run `castlabs_evs.vmp sign-pkg` when `EVS_ACCOUNT_NAME` is set; without it the hook only logs a warning, and the packaged app has no valid VMP signature because flipping the fuses invalidates castLabs' development one. CI signs in with the `EVS_ACCOUNT_NAME` and `EVS_PASSWD` secrets. Create the account once with `python3 -m castlabs_evs.account signup`.
 
 ## Without the signing secrets
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
 
-function gesturePage() {
+function gesturePage(platform = 'darwin') {
   const sent = [];
   let onWheel;
   let now = 0;
@@ -37,6 +37,7 @@ function gesturePage() {
       return { overflowX: element.overflowX };
     },
     performance: { now: () => now },
+    process: { platform },
   };
   const code = readFileSync(path.join(import.meta.dirname, '../../dist/preload/page-preload.js'), 'utf8');
   vm.runInNewContext(code, context);
@@ -44,10 +45,11 @@ function gesturePage() {
     sent,
     Element,
     styleReads: () => styleReads,
-    wheel(deltaX, at, target = new Element(), isTrusted = true) {
+    wheel(deltaX, at, target = new Element(), isTrusted = true, wheelDeltaX = -deltaX * 1.2) {
       now = at;
       onWheel({
         deltaX,
+        wheelDeltaX,
         deltaY: 0,
         deltaMode: 0,
         isTrusted,
@@ -93,5 +95,17 @@ test('a gesture checks for horizontal scrollers once, not on every event', () =>
   page.wheel(-35, 1600);
   page.wheel(-100, 1620);
   assert.equal(page.styleReads(), 2);
+  assert.deepEqual(page.sent, [['yalqen:page-swipe', 'back']]);
+});
+
+test('off macOS a tilt wheel never navigates but a touchpad swipe does', () => {
+  const page = gesturePage('win32');
+  for (let at = 1000; at <= 1100; at += 20) page.wheel(-100, at, undefined, true, 120);
+  assert.deepEqual(page.sent, []);
+
+  page.wheel(-35, 1800);
+  page.wheel(-35, 1820);
+  page.wheel(-35, 1840);
+  page.wheel(-100, 1860);
   assert.deepEqual(page.sent, [['yalqen:page-swipe', 'back']]);
 });

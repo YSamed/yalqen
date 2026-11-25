@@ -7,16 +7,21 @@
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
   import SettingRow from './SettingRow.svelte';
+  import { IS_MAC } from '../platform';
   import { webPageUrl } from '../../shared/startup-pages';
 
   let {
     view,
     update,
     makeDefault,
+    chooseDownloadDirectory,
+    section,
   }: {
+    section: 'general' | 'windows';
     view: SettingsView;
     update: (patch: Partial<SettingsValues>) => Promise<void>;
     makeDefault: () => Promise<void>;
+    chooseDownloadDirectory: () => Promise<void>;
   } = $props();
 
   const api = window.yalqenSettings;
@@ -73,149 +78,163 @@
     void update({ customSearchTemplate: templateDraft.trim() || null });
   }
 
-  async function chooseDownloadDirectory(): Promise<void> {
+  async function chooseDirectory(): Promise<void> {
     choosingDirectory = true;
     try {
-      await api.chooseDownloadDirectory();
+      await chooseDownloadDirectory();
     } finally {
       choosingDirectory = false;
     }
   }
 </script>
 
-{#if !view.defaultBrowser}
-  <div class="banner" role="note">
-    <span class="label">
-      <span>{t('settings.defaultBrowserNo')}</span>
-      <span class="hint">{t('settings.defaultBrowserHint')}</span>
-    </span>
-    <Button variant="primary" onclick={makeDefault}>{t('settings.makeDefault')}</Button>
-  </div>
-{/if}
+{#if section === 'general'}
+  {#if !view.defaultBrowser}
+    <div class="banner" role="note">
+      <span class="label">
+        <span>{t('settings.defaultBrowserNo')}</span>
+        <span class="hint">{t('settings.defaultBrowserHint')}</span>
+      </span>
+      <Button variant="primary" onclick={makeDefault}>{t('settings.makeDefault')}</Button>
+    </div>
+  {/if}
 
-<h2>{t('settings.search')}</h2>
-<SettingRow title={t('settings.searchEngine')} hint={t('settings.searchEngineHint')} labelFor="engine">
-  <Select
-    id="engine"
-    options={engineOptions}
-    value={values.searchEngine}
-    onchange={(value) => update({ searchEngine: value })}
-  />
-</SettingRow>
-{#if isCustom}
-  <SettingRow title={t('settings.searchUrl')} hint={t('settings.searchUrlHint')} labelFor="engine-url" stacked>
-    <TextField
-      id="engine-url"
-      type="url"
-      spellcheck="false"
-      autocomplete="off"
-      placeholder={t('settings.searchUrlPlaceholder')}
-      invalid={templateInvalid}
-      bind:value={templateDraft}
-      onfocus={() => (editingTemplate = true)}
-      onchange={commitTemplate}
-      onblur={() => (editingTemplate = false)}
+  <h2>{t('settings.search')}</h2>
+  <SettingRow title={t('settings.searchEngine')} hint={t('settings.searchEngineHint')} labelFor="engine">
+    <Select
+      id="engine"
+      controlled
+      options={engineOptions}
+      value={values.searchEngine}
+      onchange={(value) => update({ searchEngine: value })}
     />
-    {#if templateInvalid}
-      <span class="error" role="alert">{t('settings.searchUrlError')}</span>
+  </SettingRow>
+  {#if isCustom}
+    <SettingRow title={t('settings.searchUrl')} hint={t('settings.searchUrlHint')} labelFor="engine-url" stacked>
+      <TextField
+        id="engine-url"
+        type="url"
+        spellcheck="false"
+        autocomplete="off"
+        placeholder={t('settings.searchUrlPlaceholder')}
+        invalid={templateInvalid}
+        bind:value={templateDraft}
+        onfocus={() => (editingTemplate = true)}
+        onchange={commitTemplate}
+        onblur={() => (editingTemplate = false)}
+      />
+      {#if templateInvalid}
+        <span class="error" role="alert">{t('settings.searchUrlError')}</span>
+      {/if}
+    </SettingRow>
+  {/if}
+
+  <h2>{t('settings.startup')}</h2>
+  <SettingRow title={t('settings.whenBrowserOpens')} hint={t('settings.startupHint')}>
+    <Select
+      aria-label={t('settings.whenBrowserOpens')}
+      controlled
+      options={startupOptions}
+      value={values.startupBehavior}
+      onchange={(value) => update({ startupBehavior: value })}
+    />
+  </SettingRow>
+
+  {#if values.startupBehavior === 'pages'}
+    <SettingRow title={t('settings.startupUrls')} hint={t('settings.startupUrlsHint')} labelFor="startup-urls" stacked>
+      <textarea
+        id="startup-urls"
+        class="field md"
+        rows="4"
+        maxlength="164000"
+        bind:value={pagesDraft}
+        aria-invalid={pagesInvalid}
+        class:invalid={pagesInvalid}
+        onfocus={() => (editingPages = true)}
+        onchange={savePages}
+        spellcheck="false"
+        autocomplete="off"></textarea>
+      {#if pagesInvalid}<span class="error" role="alert">{t('settings.pageUrlError')}</span>{/if}
+    </SettingRow>
+  {/if}
+
+  <h2>{t('settings.downloads')}</h2>
+  <SettingRow title={t('settings.downloadDirectory')} detail={view.downloadDirectory}>
+    <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDirectory}>
+      {t('settings.changeDownloadDirectory')}
+    </Button>
+    {#if values.downloadDirectory}
+      <Button variant="ghost" onclick={() => update({ downloadDirectory: null })}>
+        {t('settings.resetDownloadDirectory')}
+      </Button>
     {/if}
   </SettingRow>
-{/if}
+  <SettingRow title={t('settings.askBeforeDownload')} hint={t('settings.askBeforeDownloadHint')}>
+    <Switch
+      label={t('settings.askBeforeDownload')}
+      checked={values.askBeforeDownload}
+      onchange={(checked) => update({ askBeforeDownload: checked })}
+    />
+  </SettingRow>
+  {#if IS_MAC}
+    <SettingRow title={t('settings.screenshotsInDownloads')} hint={t('settings.screenshotsInDownloadsHint')}>
+      <Switch
+        label={t('settings.screenshotsInDownloads')}
+        checked={values.screenshotsInDownloads}
+        onchange={(checked) => update({ screenshotsInDownloads: checked })}
+      />
+    </SettingRow>
+  {/if}
 
-<h2>{t('settings.startup')}</h2>
-<SettingRow title={t('settings.whenBrowserOpens')} hint={t('settings.startupHint')}>
-  <Select
-    aria-label={t('settings.whenBrowserOpens')}
-    options={startupOptions}
-    value={values.startupBehavior}
-    onchange={(value) => update({ startupBehavior: value })}
-  />
-</SettingRow>
+  <h2>{t('settings.importData')}</h2>
+  <SettingRow title={t('settings.importBookmarks')} hint={t('settings.importBookmarksHint')}>
+    <Button variant="tonal" onclick={() => api.showImportMenu('bookmarks')}>{t('settings.importEllipsis')}</Button>
+  </SettingRow>
+  <SettingRow title={t('settings.importHistory')} hint={t('settings.importHistoryHint')}>
+    <Button variant="tonal" onclick={() => api.showImportMenu('history')}>{t('settings.importEllipsis')}</Button>
+  </SettingRow>
 
-{#if values.startupBehavior === 'pages'}
-  <SettingRow title={t('settings.startupUrls')} hint={t('settings.startupUrlsHint')} labelFor="startup-urls" stacked>
-    <textarea
-      id="startup-urls"
-      class="field md"
-      rows="4"
-      maxlength="164000"
-      bind:value={pagesDraft}
-      aria-invalid={pagesInvalid}
-      class:invalid={pagesInvalid}
-      onfocus={() => (editingPages = true)}
-      onchange={savePages}
-      spellcheck="false"
-      autocomplete="off"></textarea>
-    {#if pagesInvalid}<span class="error" role="alert">{t('settings.pageUrlError')}</span>{/if}
+  <h2>{t('settings.language')}</h2>
+  <SettingRow
+    title={t('settings.interfaceLanguage')}
+    hint={t('settings.interfaceLanguageHint')}
+    labelFor="interface-language"
+  >
+    <Select
+      id="interface-language"
+      controlled
+      options={interfaceLanguageOptions}
+      value={values.interfaceLanguage}
+      onchange={(value) => update({ interfaceLanguage: value })}
+    />
+    {#if languageChanged}
+      <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
+    {/if}
+  </SettingRow>
+  <SettingRow title={t('settings.pageTranslation')} hint={t('settings.pageTranslationHint')}>
+    <Switch
+      label={t('settings.pageTranslation')}
+      checked={values.pageTranslation}
+      onchange={(checked) => update({ pageTranslation: checked })}
+    />
+  </SettingRow>
+{:else}
+  <h2>{t('settings.miniSection')}</h2>
+  <SettingRow title={t('settings.miniWindow')} hint={t('settings.miniWindowHint')}>
+    <Switch
+      label={t('settings.miniWindow')}
+      checked={values.miniWindow}
+      onchange={(checked) => update({ miniWindow: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.pictureInPicture')} hint={t('settings.pictureInPictureHint')}>
+    <Switch
+      label={t('settings.pictureInPicture')}
+      checked={values.pictureInPicture}
+      onchange={(checked) => update({ pictureInPicture: checked })}
+    />
   </SettingRow>
 {/if}
-
-<h2>{t('settings.downloads')}</h2>
-<SettingRow title={t('settings.downloadDirectory')} detail={view.downloadDirectory}>
-  <Button variant="tonal" disabled={choosingDirectory} onclick={chooseDownloadDirectory}>
-    {t('settings.changeDownloadDirectory')}
-  </Button>
-  {#if values.downloadDirectory}
-    <Button variant="ghost" onclick={() => update({ downloadDirectory: null })}
-      >{t('settings.resetDownloadDirectory')}</Button
-    >
-  {/if}
-</SettingRow>
-<SettingRow title={t('settings.askBeforeDownload')} hint={t('settings.askBeforeDownloadHint')}>
-  <Switch
-    label={t('settings.askBeforeDownload')}
-    checked={values.askBeforeDownload}
-    onchange={(checked) => update({ askBeforeDownload: checked })}
-  />
-</SettingRow>
-
-<h2>{t('settings.importData')}</h2>
-<SettingRow title={t('settings.importBookmarks')} hint={t('settings.importBookmarksHint')}>
-  <Button variant="tonal" onclick={() => api.showImportMenu('bookmarks')}>{t('settings.importEllipsis')}</Button>
-</SettingRow>
-<SettingRow title={t('settings.importHistory')} hint={t('settings.importHistoryHint')}>
-  <Button variant="tonal" onclick={() => api.showImportMenu('history')}>{t('settings.importEllipsis')}</Button>
-</SettingRow>
-
-<h2>{t('settings.language')}</h2>
-<SettingRow
-  title={t('settings.interfaceLanguage')}
-  hint={t('settings.interfaceLanguageHint')}
-  labelFor="interface-language"
->
-  <Select
-    id="interface-language"
-    options={interfaceLanguageOptions}
-    value={values.interfaceLanguage}
-    onchange={(value) => update({ interfaceLanguage: value })}
-  />
-  {#if languageChanged}
-    <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
-  {/if}
-</SettingRow>
-<SettingRow title={t('settings.pageTranslation')} hint={t('settings.pageTranslationHint')}>
-  <Switch
-    label={t('settings.pageTranslation')}
-    checked={values.pageTranslation}
-    onchange={(checked) => update({ pageTranslation: checked })}
-  />
-</SettingRow>
-
-<h2>{t('settings.miniSection')}</h2>
-<SettingRow title={t('settings.miniWindow')} hint={t('settings.miniWindowHint')}>
-  <Switch
-    label={t('settings.miniWindow')}
-    checked={values.miniWindow}
-    onchange={(checked) => update({ miniWindow: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.pictureInPicture')} hint={t('settings.pictureInPictureHint')}>
-  <Switch
-    label={t('settings.pictureInPicture')}
-    checked={values.pictureInPicture}
-    onchange={(checked) => update({ pictureInPicture: checked })}
-  />
-</SettingRow>
 
 <style>
   .banner {

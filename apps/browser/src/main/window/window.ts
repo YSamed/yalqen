@@ -9,6 +9,7 @@ import {
   clipboard,
   dialog,
   nativeTheme,
+  screen,
   type Rectangle,
   type Session,
   type TitleBarOverlay,
@@ -21,18 +22,22 @@ import { preloadPath, rendererPath } from '../app/paths.js';
 import {
   NEW_TAB_URL,
   IpcChannel,
+  placeSidebarFooterItem,
+  sanitizeSidebarFooterItems,
   type AnchorRect,
   type BrowserState,
-  type AgentElementRef,
-  type AgentProviderId,
   type ChromeLayout,
   type DevCommandId,
   type DeviceId,
   type ProfileKind,
   type TabId,
+  type SidebarMenu,
+  type SidebarMenuCommand,
+  type SidebarMenuKind,
   type UiAction,
   type WindowMaterial,
 } from '../../shared/types.js';
+import { type AgentElementRef, type AgentProviderId } from '../../shared/agent.js';
 import { isTabMode, modeFlags } from '../../shared/tab-modes.js';
 import { canBookmark, type BookmarkStore } from '../library/bookmarks.js';
 import { siteIcons } from '../library/site-icons.js';
@@ -40,13 +45,14 @@ import { storageDomain } from '../privacy/site-storage.js';
 import type { BookmarksPanelView } from '../../shared/bookmarks-panel.js';
 import type { FavoriteStore } from '../library/favorites.js';
 import type { LiveFolderRefresher, LiveFolderStore } from '../library/live-folders.js';
-import { isLiveFolderKind, liveFolderSource } from '../../shared/live-folders.js';
-import type { WorkspaceStore } from '../library/workspaces.js';
+import { isLiveFolderKind, LIVE_FOLDER_KINDS, liveFolderSource } from '../../shared/live-folders.js';
+import { colorSwatch } from './menu-swatch.js';
+import { shortcutAccelerator, type ShortcutId } from '../../shared/shortcuts.js';
+import { parseSpaceFile, spaceFileText, type WorkspaceStore } from '../library/workspaces.js';
 import { DEFAULT_SPACE_ID, SPACE_ICONS, type SpaceView } from '../../shared/workspaces.js';
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
 import type { CommandBar, CommandBarHost } from '../address-bar/command-bar.js';
-import type { WelcomeCard } from './welcome-card.js';
 import type { ConfirmDialog } from './confirm-dialog.js';
 import { contextMenuTemplate } from './context-menu.js';
 import {
@@ -57,10 +63,12 @@ import {
   overridePatch,
 } from '../devtools/dev-commands.js';
 import { devMenuTemplate } from '../devtools/dev-menu.js';
-import { downloadsMenuTemplate, type DownloadActions, type DownloadStore } from '../library/downloads.js';
+import { downloadCommands, downloadStatus, type DownloadActions, type DownloadStore } from '../library/downloads.js';
 import { sanitizeAnchor, type ExtensionPopup } from '../extensions/extension-popup.js';
 import { STORE_HOME } from '../extensions/chrome-web-store.js';
-import { extensionsMenuTemplate, type ExtensionManager } from '../extensions/extensions.js';
+import { extensionsMenuTemplate, runAction, type ExtensionManager } from '../extensions/extensions.js';
+import { withBadgeDot } from '../extensions/action-api.js';
+import { ExtensionSidePanel } from '../extensions/extension-side-panel.js';
 import type { FindBar, FindBarHost } from './find-bar.js';
 import { applyGlass, glassAvailable } from './glass.js';
 import type { HistoryStore } from '../library/history.js';
@@ -69,13 +77,20 @@ import { canViewSource, formatAddress, type AddressFormat } from '../devtools/pa
 import { NavigationHint, type HistoryDirection } from './navigation-hint.js';
 import { TooltipOverlay } from './tooltip-overlay.js';
 import { HoverPreview, type PreviewChoice } from './hover-preview.js';
-import { previewView, validPreviewRequest, type PreviewContent } from '../../shared/previews.js';
+import { hostOf } from '../../shared/hosts.js';
+import {
+  previewView,
+  validPreviewRequest,
+  type PreviewContent,
+  type TabAction,
+  type TabCard,
+} from '../../shared/previews.js';
 import { readPreview, CALENDAR_OPEN_SCRIPT, type PreviewTab } from '../tabs/previews.js';
 import { LinkPeek, type PeekOwner } from './link-peek.js';
 import { createOverlayView } from './overlay-view.js';
 import { validTooltip } from '../../shared/tooltip.js';
 import { PageNotice } from './page-notice.js';
-import { AgentControl } from './agent-control.js';
+import { AgentControl } from '../agent-bridge/agent-control.js';
 import type { ActionWindow } from '../agent-bridge/action-runner.js';
 import type { Verification } from '../agent-bridge/verification.js';
 import { formatLocation } from '../agent-bridge/component-source.js';
@@ -89,6 +104,7 @@ import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
 import {
   exportBookmarksWithDialog,
   exportSpaceWithDialog,
+  exportSpacesWithDialog,
   importBookmarksWithDialog,
   importHistoryWithDialog,
   importSpaceWithDialog,
@@ -109,7 +125,8 @@ import type { SettingsStore } from '../app/settings.js';
 import type { SiteProtections } from '../privacy/site-protections.js';
 import { clearSiteData } from '../privacy/site-data.js';
 import { EMPTY_HISTORY_INDEX, suggest } from '../address-bar/suggestions.js';
-import { MAX_SPLIT_PANES, TabManager, type DetachedTab, type PageReader } from '../tabs/tabs.js';
+import { MAX_SPLIT_PANES, TabManager, type CloseApproval, type DetachedTab, type PageReader } from '../tabs/tabs.js';
+import { WindowClose } from './close-windows.js';
 import { resolveInput, withoutHash } from '../address-bar/url.js';
 import type { RequestRuleStore } from '../devtools/request-rules.js';
 import type { ZoomStore } from '../tabs/zoom.js';
@@ -123,22 +140,42 @@ import type { ProjectRunner } from '../agent-bridge/project-runner.js';
 import { projectIncludes } from '../agent-bridge/tab-scope.js';
 import { signIn, signOut } from '../agent-bridge/agent-login.js';
 import { chatDigest } from '../agent-bridge/chat-digest.js';
-import { AgentProject } from './agent-project.js';
-import { AgentProjectTabs } from './agent-project-tabs.js';
+import { AgentProject } from '../agent-bridge/agent-project.js';
+import { AgentProjectTabs } from '../agent-bridge/agent-project-tabs.js';
 import { selectionRef, type ElementSelection } from '../agent-bridge/selection.js';
 import { MAX_REFERENCES, referenceRef, type ReferenceCapture } from '../agent-bridge/reference.js';
-import { VisualComparisonManager, VisualComparisonError, type VisualComparisonTab } from './visual-comparison.js';
-import { captureVisualPage } from './visual-capture.js';
-import { ResponsiveScanManager, ResponsiveScanError, createResponsiveScanSession } from './responsive-scan.js';
+import {
+  VisualComparisonManager,
+  VisualComparisonError,
+  type VisualComparisonTab,
+} from '../agent-bridge/visual-comparison.js';
+import { captureVisualPage } from '../agent-bridge/visual-capture.js';
+import {
+  ResponsiveScanManager,
+  ResponsiveScanError,
+  createResponsiveScanSession,
+} from '../agent-bridge/responsive-scan.js';
 import { acquirePageWork, pageWorkBusy } from '../tabs/page-work.js';
 import { readingUrl } from '../../shared/reading-list.js';
 import { startupPages } from '../../shared/startup-pages.js';
 import type { WebAppInfo } from '../../shared/web-apps.js';
-import { accentHex } from '../../shared/accent.js';
-import { windowColorHex } from '../../shared/window-color.js';
+import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent.js';
 import { IS_MAC, openAsText } from '../platform.js';
+import { FloatingChat } from '../agent-bridge/floating-chat.js';
+import { hideFullScreenTitlebar, menuBarEdge } from './fullscreen-titlebar.js';
+import { RESTING_SLIDE, slideMenuBar } from './menu-bar-slide.js';
 
-const WINDOW_CONTROLS_INSET = { x: 16, y: 15 };
+// The card toolbar is 41px tall inside a card inset 6px from the top; center the lights on it.
+const WINDOW_CONTROLS_INSET = { x: 18, y: 20 };
+const SIDEBAR_MENU_LINKS = 8;
+const LIVE_FOLDER_LABELS = {
+  feed: 'liveFolders.kindFeed',
+  releases: 'liveFolders.kindReleases',
+  commits: 'liveFolders.kindCommits',
+  tags: 'liveFolders.kindTags',
+} as const;
+// Polled at frame rate so the content follows the menu bar while it slides.
+const MENU_BAR_POLL_MS = 16;
 const TITLEBAR_SYMBOL_COLORS = { light: '#1a1b1e', dark: '#f4f4f7' };
 const TITLEBAR_OVERLAY_HEIGHT = 44;
 const CASCADE_OFFSET = 24;
@@ -163,15 +200,9 @@ function titleBarOverlayOptions(): TitleBarOverlay {
   };
 }
 
-let startupTransparency: boolean | null = null;
-
-export function glassAtLaunch(settings: SettingsStore): boolean {
-  startupTransparency ??= settings.get().transparency;
-  return glassAvailable && startupTransparency;
-}
-
 export interface AppContext {
   icon: string;
+  openSettings(pane?: string): void;
   daily: Session;
   privateBrowsing: Session;
   developer: Session;
@@ -180,14 +211,12 @@ export interface AppContext {
   siteProtections: SiteProtections;
   commandBar: CommandBar;
   findBar: FindBar;
-  welcome: WelcomeCard;
   confirmDialog: ConfirmDialog;
   history: HistoryStore;
   repoPrompt: RepoPrompt;
-  dismissAnnouncement: () => void;
-  dismissFeedback: () => void;
   dismissUpdate: () => void;
   installUpdate: () => void;
+  updateReady: () => boolean;
   chatPreferences: ChatPreferenceStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
@@ -211,13 +240,14 @@ export interface AppContext {
   onClosedTabsChange(): void;
   clearClosedTabs(): void;
   pageTheme: string;
-  permissionsFor(isPrivate: boolean): PermissionStore;
+  permissionsFor(browsing: Session, isPrivate: boolean): PermissionStore | null;
   openAppLink(contents: WebContents, url: string, isPrivate: boolean): void;
   zoomFor(isPrivate: boolean): ZoomStore;
   searchEngine(): SearchEngine;
   downloadActions(window: YalqenWindow): DownloadActions;
   downloadsChanged(): void;
   toggleBookmark(url: string, title: string): void;
+  bookmarkTabs(tabs: { url: string; title: string }[]): void;
   runBookmarksCommand(command: string, params: URLSearchParams): void;
   importBookmarks(file: string): Promise<BookmarkImportResult>;
   importHistory(file: string): Promise<HistoryImportResult>;
@@ -250,8 +280,12 @@ export interface WindowOptions {
 
 export class YalqenWindow {
   readonly webApp: WebAppInfo | null;
-  private closeApproved = false;
-  private closePending = false;
+  private readonly windowClose: WindowClose;
+  private menuBarHeight = 0;
+  private sidebarMenuAnchor: AnchorRect = { x: 0, y: 0, width: 0, height: 0 };
+  private menuBarSlide = RESTING_SLIDE;
+  private menuBarInset = 0;
+  private menuBarTimer: NodeJS.Timeout | null = null;
   readonly window: BaseWindow;
   readonly tabs: TabManager;
   readonly isPrivate: boolean;
@@ -273,18 +307,18 @@ export class YalqenWindow {
   private selectingAgentDirectory = false;
   private readonly ui: WebContentsView;
   readonly uiContents: Electron.WebContents;
+  readonly floatingChat: FloatingChat;
   private readonly commandHost: CommandBarHost;
   private readonly findHost: FindBarHost;
   private pageArea: Rectangle = { x: 0, y: 0, width: 0, height: 0 };
+  private sidePanel: ExtensionSidePanel | null = null;
   private readonly preconnector: Preconnector;
   private layout: ChromeLayout = {
     panelWidth: 170,
     panelSlide: 0,
-    panelSide: 'left',
     chromeHeight: 44,
     pageInset: 8,
     pageRadius: 16,
-    newTabCenterOffset: 0,
   };
   private glassApplied: boolean;
   private revealed = false;
@@ -296,7 +330,7 @@ export class YalqenWindow {
   private readonly navigationHint: NavigationHint;
   private readonly tooltip: TooltipOverlay;
   private readonly preview: HoverPreview;
-  private previewShown: { tab: PreviewTab; content: PreviewContent } | null = null;
+  private previewShown: { tab: PreviewTab; content: PreviewContent | null } | null = null;
   private readonly notice: PageNotice;
   private capturingArea = false;
   private readonly agentControl: AgentControl;
@@ -307,7 +341,7 @@ export class YalqenWindow {
     private readonly app: AppContext,
     options: WindowOptions,
   ) {
-    this.glassApplied = glassAtLaunch(app.settings);
+    this.glassApplied = glassAvailable;
     this.isDeveloper = options.developer ?? false;
     this.isPrivate = this.isDeveloper || (options.isPrivate ?? false);
     this.webApp = this.isPrivate ? null : (options.webApp ?? null);
@@ -324,6 +358,9 @@ export class YalqenWindow {
     this.uiContents.on('will-navigate', (event) => event.preventDefault());
     this.uiContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     watchInterfaceBridge(this.uiContents);
+    this.uiContents.on('before-input-event', (event, input) => {
+      if (!this.isPrivate && app.extensionBridge.shortcut(input, this.tabs.activeContents())) event.preventDefault();
+    });
     void loadRenderer(this.uiContents, rendererPath('index.html'), { lang: getLocale() });
 
     const from = options.from?.window.getBounds();
@@ -343,6 +380,7 @@ export class YalqenWindow {
     });
     this.activeProjectId = this.addProject().id;
     this.window.contentView.addChildView(this.ui);
+    this.floatingChat = new FloatingChat(this.window);
 
     this.preconnector = new Preconnector((origin) => this.tabs.activeSession().preconnect({ url: origin }));
 
@@ -388,11 +426,30 @@ export class YalqenWindow {
       },
       onSwitchTab: (id) => this.tabs.activate(id),
       onRunCommand: (id) => this.runDevCommand(id),
+      onDragDownload: (id, contents) => app.runDownloadsCommand('drag', new URLSearchParams({ id }), contents),
+      onSidebarMenu: (action) => {
+        if (action.type === 'switch-tab') this.tabs.activate(action.id);
+        else if (action.type === 'switch-space' || action.type === 'open-space-menu') this.handleAction(action);
+        else if (action.type === 'open-link') this.tabs.open(action.url);
+        else if (action.type === 'download-action') this.runDownloadAction(action.id);
+        else if (action.type === 'place-footer-item')
+          this.app.updateSettings({
+            sidebarFooterItems: placeSidebarFooterItem(
+              this.app.settings.get().sidebarFooterItems,
+              action.item,
+              action.index,
+            ),
+          });
+        else if (action.type === 'open-chat')
+          void this.agentChat.open(action.id, false).finally(() => this.openAgentPanel());
+        else if (action.type === 'sidebar-command') this.runSidebarCommand(action.command);
+      },
     };
 
     this.findHost = {
       window: this.window,
       area: () => this.pageArea,
+      tint: () => this.menuTint(),
       onFind: (text, forward, next) => this.tabs.findInPage(text, forward, next),
       onClose: () => {
         if (this.findTarget) this.tabs.stopFind(this.findTarget.tabId);
@@ -405,8 +462,10 @@ export class YalqenWindow {
       window: this.window,
       pagePreload: preloadPath('page-preload'),
       pageTheme: app.pageTheme,
+      newTabMarkColor: (space) => this.accent(space),
       closed: app.closedTabs,
       onClosedChanged: () => app.onClosedTabsChange(),
+      openSettings: (pane) => app.openSettings(pane),
       privateWindow: this.isPrivate,
       webAppScope: this.webApp?.scope,
       onAppExternal: (url) => {
@@ -447,6 +506,7 @@ export class YalqenWindow {
       spaceSession: (id) => app.spaceSession(id),
       onChange: (persist) => {
         this.syncAgentProjectWithTab();
+        this.syncExtensionSidePanel();
         if (this.htmlFullScreenTabId && this.htmlFullScreenTabId !== this.tabs.activeTabId) {
           this.htmlFullScreenTabId = null;
           this.syncPageFullScreen();
@@ -456,10 +516,10 @@ export class YalqenWindow {
           this.endFind();
         }
         this.peek.closeUnless(this.peekOwner());
+        this.floatingChat.keepOnTop();
         this.peek.keepOnTop();
         this.findBar.keepOnTop(this.window);
         this.commandBar.keepOnTop(this.window);
-        app.welcome.keepOnTop(this.window);
         app.confirmDialog.keepOnTop(this.window);
         this.pushState();
         app.onWindowChange(persist);
@@ -470,14 +530,9 @@ export class YalqenWindow {
         else this.tabs.navigate(resolveInput(query, app.searchEngine()));
       },
       onRepoPrompt: (action) => app.repoPrompt.respond(action),
-      onFeedback: () => app.dismissFeedback(),
       onUpdateCard: (action) => {
         if (action === 'install') app.installUpdate();
         else app.dismissUpdate();
-      },
-      onAnnouncement: (action) => {
-        app.dismissAnnouncement();
-        if (action === 'try') this.openAgentPanel();
       },
       onHtmlFullScreenChange: (tabId, fullScreen) => {
         if (fullScreen) {
@@ -513,9 +568,9 @@ export class YalqenWindow {
       hasCertificateException: (url) => app.certificates.hasException(url),
       certificateToken: (url) => app.certificates.tokenFor(url),
       onCertificateProceed: (token, url) => app.certificates.proceed(token, url),
-      popupsAllowed: (url, isPrivate) => {
+      popupsAllowed: (url, isPrivate, browsing) => {
         const origin = permissionOrigin(url);
-        return origin !== null && app.permissionsFor(isPrivate).get(origin, 'popups') === 'allow';
+        return origin !== null && app.permissionsFor(browsing, isPrivate)?.get(origin, 'popups') === 'allow';
       },
       upgradeHttp: (url) => app.httpsOnly.upgrade(url),
       httpsOnlyWarning: (https, http) => app.httpsOnly.warn(https, http),
@@ -543,6 +598,17 @@ export class YalqenWindow {
       }),
       agentScope: (tab) => app.agentScope(tab.url, tab.isPrivate && !this.isDeveloper),
       agentTracing: () => app.settings.get().agentBridge && app.settings.get().agentTracing,
+    });
+
+    this.sidePanel = new ExtensionSidePanel({
+      window: this.window,
+      session: app.daily,
+      onOpenUrl: (url) => this.tabs.open(url, { isPrivate: false }),
+      onResize: () => {
+        if (this.window.isDestroyed()) return;
+        const { width, height } = this.window.getContentBounds();
+        this.placePage(width, height);
+      },
     });
 
     this.peek = new LinkPeek({
@@ -575,7 +641,11 @@ export class YalqenWindow {
       });
     }
     let fullScreen = this.window.isFullScreen();
+    hideFullScreenTitlebar();
+    this.rememberMenuBarHeight();
     const syncFullScreen = () => {
+      this.rememberMenuBarHeight();
+      this.watchMenuBar();
       this.applyLayout();
       if (this.window.isFullScreen() === fullScreen) return;
       fullScreen = !fullScreen;
@@ -595,6 +665,9 @@ export class YalqenWindow {
     });
     this.window.on('enter-full-screen', syncFullScreen);
     this.window.on('leave-full-screen', syncFullScreen);
+    this.window.on('minimize', () => this.watchMenuBar());
+    this.window.on('restore', () => this.watchMenuBar());
+    this.window.on('closed', () => this.stopMenuBarWatch());
     this.applyLayout();
     setTimeout(this.reveal, REVEAL_FALLBACK_MS);
 
@@ -608,21 +681,9 @@ export class YalqenWindow {
       this.pushState();
     });
 
+    this.windowClose = new WindowClose(this.window, this.tabs);
     this.window.on('close', (event) => {
-      if (!this.closeApproved) {
-        event.preventDefault();
-        if (!this.closePending) {
-          this.closePending = true;
-          void this.tabs.confirmCloseAll().then((allowed) => {
-            this.closePending = false;
-            if (allowed && !this.window.isDestroyed()) {
-              this.approveClose();
-              this.window.close();
-            }
-          });
-        }
-        return;
-      }
+      if (!this.windowClose.handle(event)) return;
       app.onWindowClosing(this);
       nativeTheme.off('updated', syncTheme);
       this.preconnector.cancel();
@@ -636,9 +697,11 @@ export class YalqenWindow {
       this.responsiveScans.clear();
       const hadPrivate = this.tabs.hasPrivateTabs;
       const hadDeveloper = this.tabs.hasDeveloperTabs;
+      this.sidePanel?.close();
       this.peek.close();
       this.tabs.destroyAll();
       this.commandBar.release(this.window);
+      this.floatingChat.destroy();
       this.findBar.release(this.window);
       this.navigationHint.destroy();
       this.tooltip.destroy();
@@ -670,7 +733,7 @@ export class YalqenWindow {
   }
 
   private navigateByGesture(direction: 'back' | 'forward', source: 'native' | 'page'): void {
-    if (process.platform !== 'darwin') return;
+    if (!this.app.settings.get().pageSwipe) return;
     const now = Date.now();
     const last = this.lastNavigationGesture;
     if (last && last.source !== source && last.direction === direction && now - last.at < 650) return;
@@ -701,10 +764,12 @@ export class YalqenWindow {
     setImmediate(() => {
       this.pushQueued = false;
       if (this.window.isDestroyed() || this.uiContents.isDestroyed()) return;
+      this.placeFloatingChat();
       const serialized = JSON.stringify(this.state());
       if (serialized === this.lastPushedState) return;
       this.lastPushedState = serialized;
       this.uiContents.send(IpcChannel.state, serialized);
+      this.floatingChat.contents?.send(IpcChannel.state, serialized);
     });
   };
 
@@ -724,32 +789,26 @@ export class YalqenWindow {
       pageFullScreen: this.isPageFullScreen(),
       windowFullScreen: this.window.isFullScreen(),
       windowMenu: !IS_MAC,
-      addressPlaceholder: this.app.searchEngine().placeholder,
       panelCollapsed: this.app.settings.get().panelCollapsed,
-      panelSide: this.app.settings.get().panelSide,
-      pinnedDisplay: this.app.settings.get().pinnedDisplay,
       tabModes: this.app.settings.get().tabModes,
       bookmarksPanel: this.bookmarksPanelVisible ? this.bookmarksPanelView() : null,
       modeSwitch: this.tabs.canSwitchMode,
       tabCleanup: !this.webApp && this.app.settings.get().manualTabCleanup,
       favorites: this.webApp ? [] : this.app.favorites.list(),
       liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
-      sidebarVisible: this.webApp ? false : this.app.settings.get().sidebarVisible,
+      sidebarVisible: !this.webApp,
       media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
-      toolbarVisible: this.webApp ? true : this.app.settings.get().toolbarVisible,
-      toolbarTabs: this.webApp ? false : !this.app.settings.get().sidebarVisible,
-      toolbarButtons: this.webApp ? ['settings', 'downloads'] : this.app.settings.get().toolbarButtons,
-      toolbarExtensions: this.isPrivate || this.webApp ? [] : this.app.extensions.toolbarExtensions(),
+      toolbarButtons: [],
+      sidebarFooterItems: this.app.settings.get().sidebarFooterItems,
       material: this.material(),
-      glassTint: this.app.settings.get().glassTint,
-      accent: accentHex(this.app.settings.get().accentColor),
-      windowColor: windowColorHex(this.app.settings.get().windowColor, this.app.settings.get().accentColor),
+      frameTheme: this.app.settings.get().frameTheme,
+      accent: this.accent(),
       defaultZoom: this.app.settings.get().defaultZoom,
       downloads: this.app.downloads.summary(),
       extensions: !this.isPrivate,
       profile: this.profile,
-      profileName: this.app.persistentProfiles.currentName(),
       agentPanelOpen: this.agentPanelOpen,
+      agentFloating: this.app.settings.get().agentFloating,
       agentSession: this.agentSession.state(),
       agentChat: this.agentChat.state(),
       agentProviders: this.agentProviders,
@@ -760,6 +819,7 @@ export class YalqenWindow {
       agentProjectId: this.activeProjectId,
       agentConversationId: this.agentProject.conversationId,
       agentBackgroundChats: this.agentProject.backgroundChats(),
+      updateReady: this.app.updateReady(),
     };
   }
 
@@ -804,14 +864,78 @@ export class YalqenWindow {
     return view;
   }
 
+  toggleFullScreen(): void {
+    this.window.setFullScreen(!this.window.isFullScreen());
+  }
+
+  // Full screen hides the menu bar and drops it from the work area, so measure it beforehand.
+  private rememberMenuBarHeight(): void {
+    if (!IS_MAC || this.window.isDestroyed() || this.window.isFullScreen()) return;
+    const display = screen.getDisplayMatching(this.window.getBounds());
+    const height = display.workArea.y - display.bounds.y;
+    if (height > 0) this.menuBarHeight = height;
+  }
+
+  // How far the window slides when the menu bar is down; a notched display already keeps it above the window.
+  private menuBarGoal(edge: number | null): number {
+    const bounds = this.window.getBounds();
+    const covered = bounds.y - screen.getDisplayMatching(bounds).bounds.y;
+    return Math.max(0, this.menuBarHeight - covered, edge ?? 0);
+  }
+
+  private watchMenuBar(): void {
+    // Not gated on focus: the screenshot tool takes focus while the menu bar is still down.
+    if (!IS_MAC || this.window.isDestroyed() || !this.window.isFullScreen() || this.window.isMinimized()) {
+      this.stopMenuBarWatch();
+      return;
+    }
+    this.menuBarTimer ??= setInterval(() => {
+      if (this.window.isDestroyed()) return this.stopMenuBarWatch();
+      const edge = menuBarEdge(this.window);
+      this.menuBarSlide = slideMenuBar(this.menuBarSlide, edge, this.menuBarGoal(edge));
+      const inset = Math.round(this.menuBarSlide.inset);
+      if (inset === this.menuBarInset) return;
+      this.menuBarInset = inset;
+      this.applyLayout();
+    }, MENU_BAR_POLL_MS);
+  }
+
+  private stopMenuBarWatch(): void {
+    if (this.menuBarTimer) clearInterval(this.menuBarTimer);
+    this.menuBarTimer = null;
+    this.menuBarSlide = RESTING_SLIDE;
+    if (this.menuBarInset === 0) return;
+    this.menuBarInset = 0;
+    if (!this.window.isDestroyed()) this.applyLayout();
+  }
+
+  // The agent panel lives in the window UI, or in its own view while it floats over the page.
+  private agentPanelContents(): Electron.WebContents | null {
+    if (this.floatingChat.contents) return this.floatingChat.contents;
+    return this.uiContents.isDestroyed() ? null : this.uiContents;
+  }
+
+  ownsAgentPanel(contents: Electron.WebContents): boolean {
+    return contents === this.uiContents || this.floatingChat.owns(contents);
+  }
+
+  private placeFloatingChat(): void {
+    if (this.window.isDestroyed()) return;
+    const floating = this.agentPanelOpen && this.app.settings.get().agentFloating && !this.isPageFullScreen();
+    if (floating) this.floatingChat.show(this.pageArea);
+    else if (this.app.settings.get().agentFloating) this.floatingChat.hide();
+    else this.floatingChat.destroy();
+  }
+
   toggleAgentPanel(): void {
-    if (this.isPrivate && !this.isDeveloper) return;
+    if (!this.isDeveloper) return;
     this.agentPanelOpen = !this.agentPanelOpen;
     if (this.agentPanelOpen) {
       this.bookmarksPanelOpen = false;
       if (this.agentProject.directory)
         this.projectTabs.bind(this.tabs.snapshotFor(), this.activeProjectId, this.isDeveloper);
-      this.uiContents.focus();
+      this.placeFloatingChat();
+      this.agentPanelContents()?.focus();
       void this.agentProject.chat.refreshModels();
       void availableProviders().then((providers) => {
         if (providers.length === this.agentProviders.length) return;
@@ -914,8 +1038,12 @@ export class YalqenWindow {
     return this.projectRunner.start();
   }
 
+  projectById(id: string): AgentProject | undefined {
+    return this.agentProjects.find((project) => project.id === id);
+  }
+
   get agentProject(): AgentProject {
-    return this.agentProjects.find((project) => project.id === this.activeProjectId) ?? this.agentProjects[0];
+    return this.projectById(this.activeProjectId) ?? this.agentProjects[0];
   }
 
   get agentSession(): AgentSession {
@@ -942,11 +1070,10 @@ export class YalqenWindow {
       preferences: this.app.chatPreferences,
       onState: this.pushState,
       onOutput: (target, output) => {
-        if (isActive(target) && !this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.agentOutput, output);
+        if (isActive(target)) this.agentPanelContents()?.send(IpcChannel.agentOutput, output);
       },
       onChatUpdate: (target, serialized) => {
-        if (isActive(target) && !this.uiContents.isDestroyed())
-          this.uiContents.send(IpcChannel.agentChatUpdate, serialized);
+        if (isActive(target)) this.agentPanelContents()?.send(IpcChannel.agentChatUpdate, serialized);
       },
       onUrl: (target, url) => {
         const id = this.tabs.open(url, { activate: false });
@@ -1059,8 +1186,7 @@ export class YalqenWindow {
   }
 
   private showAgentChat(): void {
-    if (!this.uiContents.isDestroyed())
-      this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
+    this.agentPanelContents()?.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
     this.pushState();
   }
 
@@ -1104,8 +1230,7 @@ export class YalqenWindow {
       !this.agentProject.selectProvider(provider)
     )
       return false;
-    if (!this.uiContents.isDestroyed())
-      this.uiContents.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
+    this.agentPanelContents()?.send(IpcChannel.agentChatUpdate, JSON.stringify(this.agentChat.snapshot()));
     this.pushState();
     return true;
   }
@@ -1437,9 +1562,115 @@ export class YalqenWindow {
       value: url === NEW_TAB_URL || url === 'about:blank' ? '' : url,
       engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
       material: this.material(),
-      accent: accentHex(this.app.settings.get().accentColor),
+      accent: this.accent(),
+      tint: this.menuTint(),
+      area: this.pageArea,
     });
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
+  }
+
+  menuTint(): string | null {
+    const state = this.state();
+    const theme = state.spaces.find((space) => space.id === state.activeSpaceId)?.theme ?? state.frameTheme;
+    return theme?.colors[0] ?? null;
+  }
+
+  async openSidebarMenu(kind: SidebarMenuKind, anchor: AnchorRect, footer: AnchorRect | null = null): Promise<void> {
+    const state = this.state();
+    const persistent = this.profile !== 'private';
+    this.sidebarMenuAnchor = anchor;
+    const chats = kind === 'chats' ? await this.agentChat.history().catch(() => []) : [];
+    this.commandBar.open(this.commandHost, {
+      placeholder: t('sidebarMenu.search'),
+      mode: 'sidebar-menu',
+      engines: [],
+      material: this.material(),
+      accent: this.accent(),
+      menu: {
+        kind,
+        anchor,
+        tint: this.menuTint(),
+        // Pinned tabs already sit in the tiles above the list.
+        tabs: state.tabs
+          .filter((tab) => !tab.pinned)
+          .map(({ id, title, url, faviconUrl }) => ({ id, title, url, faviconUrl })),
+        spaces: state.spaces.map(({ id, name, icon }) => ({ id, name, icon, active: id === state.activeSpaceId })),
+        chats,
+        commands: [
+          'history',
+          'bookmarks',
+          'downloads',
+          'extensions',
+          ...(state.activeTabId ? (['screenshot'] as const) : []),
+          'settings',
+          'profile',
+          ...(state.spaces.length > 0 ? (['create-space', 'edit-space'] as const) : []),
+          ...(persistent ? (['import-space', 'export-spaces', 'add-live-folder'] as const) : []),
+          ...(kind === 'downloads' ? (['downloads-all', 'downloads-folder'] as const) : []),
+        ],
+        downloadsActive: state.downloads.active,
+        ...(kind === 'tabs' ? this.sidebarMenuLinks() : { history: [], bookmarks: [] }),
+        footer: footer ? { rect: footer, items: this.app.settings.get().sidebarFooterItems } : null,
+        downloads:
+          kind === 'downloads'
+            ? this.app.downloads
+                .list()
+                .slice(0, SIDEBAR_MENU_LINKS)
+                .map((entry) => ({ id: entry.id, filename: entry.filename, status: downloadStatus(entry) }))
+            : [],
+      },
+    });
+  }
+
+  private sidebarMenuLinks(): Pick<SidebarMenu, 'history' | 'bookmarks'> {
+    const visits = this.profile === 'private' ? [] : this.app.history.list();
+    const favicons = new Map(visits.map((visit) => [visit.url, visit.faviconUrl ?? null]));
+    const seen = new Set<string>();
+    const history = visits
+      .filter(({ url }) => !seen.has(url) && seen.add(url))
+      .slice(0, SIDEBAR_MENU_LINKS)
+      .map(({ url, title, faviconUrl }) => ({ url, title, faviconUrl: faviconUrl ?? null }));
+    const bookmarks = this.app.bookmarks
+      .bookmarks()
+      .slice(0, SIDEBAR_MENU_LINKS)
+      .map(({ url, title }) => ({ url, title, faviconUrl: favicons.get(url) ?? null }));
+    return { history, bookmarks };
+  }
+
+  private runSidebarCommand(command: SidebarMenuCommand): void {
+    if (command === 'downloads' || command === 'downloads-all' || command === 'downloads-folder') {
+      const actions = this.app.downloadActions(this);
+      if (command === 'downloads-all') actions.showAll();
+      else if (command === 'downloads-folder') actions.openFolder();
+      else void this.openSidebarMenu('downloads', this.sidebarMenuAnchor);
+      return;
+    }
+    if (command === 'add-live-folder') {
+      if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.addLiveFolder);
+      return;
+    }
+    const actions: Record<
+      Exclude<SidebarMenuCommand, 'add-live-folder' | 'downloads' | 'downloads-all' | 'downloads-folder'>,
+      UiAction
+    > = {
+      history: { type: 'open-history' },
+      bookmarks: { type: 'toggle-bookmarks-panel' },
+      extensions: { type: 'open-extensions-menu', anchor: this.sidebarMenuAnchor },
+      screenshot: { type: 'dev-command', id: 'full-page-screenshot' },
+      settings: { type: 'open-settings' },
+      profile: { type: 'open-profile-menu' },
+      'create-space': { type: 'create-space' },
+      'edit-space': { type: 'open-space-menu', id: this.tabs.activeSpaceId },
+      'import-space': { type: 'import-space' },
+      'export-spaces': { type: 'export-spaces' },
+    };
+    this.handleAction(actions[command]);
+  }
+
+  private runDownloadAction(id: string): void {
+    const entry = this.app.downloads.list().find((candidate) => candidate.id === id);
+    const command = entry && downloadCommands(entry)[0];
+    if (command) (this.app.downloadActions(this)[command[0]] as (id: string) => void)(id);
   }
 
   runDevCommand(id: DevCommandId): void {
@@ -1678,12 +1909,12 @@ export class YalqenWindow {
     if (!this.window.isDestroyed()) this.window.close();
   }
 
-  approveClose(): void {
-    this.closeApproved = true;
+  setCloseApproval(approval: CloseApproval | null): void {
+    this.windowClose.setApproval(approval);
   }
 
   handleAction(action: UiAction): void {
-    if (this.webApp && ['new-tab', 'open-settings', 'open-history', 'open-downloads'].includes(action.type)) {
+    if (this.webApp && ['new-tab', 'open-settings', 'open-history'].includes(action.type)) {
       this.app.openWindow({ from: this }).handleAction(action);
       return;
     }
@@ -1708,18 +1939,25 @@ export class YalqenWindow {
       case 'import-space':
         if (this.isPrivate || this.webApp) break;
         void importSpaceWithDialog(this.window, (text) => {
+          const file = parseSpaceFile(text);
+          if (file?.isDefault) {
+            this.tabs.importIntoSpace(file.window, DEFAULT_SPACE_ID);
+            return DEFAULT_SPACE_ID;
+          }
           const id = app.workspaces.importText(text);
           if (id) app.spacesChanged();
           return id;
-        }).then((id) => id && !this.window.isDestroyed() && this.tabs.switchSpace(id));
+        }).then((id) => id !== null && !this.window.isDestroyed() && this.tabs.switchSpace(id));
         break;
-      case 'rename-space':
-        if (action.id === DEFAULT_SPACE_ID || !app.workspaces.rename(action.id, action.name)) {
-          this.notice.show([t('spaces.failed')]);
-        } else app.spacesChanged();
+      case 'export-spaces':
+        if (this.isPrivate || this.webApp) break;
+        void exportSpacesWithDialog(this.window, this.spaceFiles());
         break;
       case 'open-space-menu':
         this.openSpaceMenu(action.id);
+        break;
+      case 'open-sidebar-context-menu':
+        this.openSidebarContextMenu();
         break;
       case 'select-tab':
         tabs.selectTab(action.id, action.mode);
@@ -1733,17 +1971,11 @@ export class YalqenWindow {
       case 'clean-tabs':
         void tabs.closeIdle();
         break;
-      case 'set-tab-group':
-        if (!tabs.setSelectedGroup(action.name)) this.notice.show([t('tabGroups.failed')]);
-        break;
       case 'rename-tab-group':
         if (!tabs.renameGroup(action.name, action.next)) this.notice.show([t('tabGroups.failed')]);
         break;
       case 'toggle-tab-group':
         tabs.toggleGroup(action.name);
-        break;
-      case 'remove-tab-group':
-        tabs.removeGroup(action.name);
         break;
       case 'move-tab-to-group':
         tabs.setTabGroup(action.id, action.name);
@@ -1776,12 +2008,6 @@ export class YalqenWindow {
       }
       case 'close-tab':
         tabs.close(action.id);
-        break;
-      case 'discard-tab':
-        tabs.discard(action.id);
-        break;
-      case 'toggle-pin':
-        tabs.togglePin(action.id);
         break;
       case 'toggle-mute':
         tabs.toggleMute(action.id);
@@ -1825,11 +2051,20 @@ export class YalqenWindow {
       case 'move-tab':
         tabs.move(action.id, action.toIndex);
         break;
+      case 'move-row':
+        tabs.moveRow(action.id, action.target, action.after === true);
+        break;
       case 'preview-split':
         tabs.previewSplit(action.id, action.side);
         break;
       case 'split-tab':
         tabs.splitWithActive(action.id, action.side);
+        break;
+      case 'split-new-tab':
+        tabs.splitWithNewTab();
+        break;
+      case 'split-into':
+        tabs.splitInto(action.id, action.target);
         break;
       case 'navigate':
         tabs.navigate(resolveInput(action.input, app.searchEngine()));
@@ -1846,11 +2081,8 @@ export class YalqenWindow {
       case 'reload':
         tabs.reload();
         break;
-      case 'open-devtools':
-        tabs.openDevTools();
-        break;
-      case 'toggle-devtools':
-        tabs.toggleDevTools();
+      case 'resize-split':
+        tabs.resizeSplit(action.index, action.x);
         break;
       case 'resize-devtools':
         tabs.resizeDevTools(action.x);
@@ -1893,7 +2125,7 @@ export class YalqenWindow {
         const template = blockedPopupsTemplate(new URL(origin).host, blocked, {
           open: (url) => tabs.openBlockedPopup(url),
           allowSite: () => {
-            app.permissionsFor(tabs.activeIsPrivate).set(origin, ['popups'], 'allow');
+            app.permissionsFor(tabs.activeSession(), tabs.activeIsPrivate)?.set(origin, ['popups'], 'allow');
             tabs.clearBlockedPopups();
           },
         });
@@ -1906,14 +2138,32 @@ export class YalqenWindow {
       case 'toggle-panel':
         app.updateSettings({ panelCollapsed: !app.settings.get().panelCollapsed });
         break;
-      case 'toggle-sidebar':
-        app.updateSettings({ sidebarVisible: !app.settings.get().sidebarVisible });
-        break;
       case 'toggle-agent-panel':
         this.toggleAgentPanel();
         break;
+      case 'set-agent-floating':
+        if (typeof action.floating === 'boolean') app.updateSettings({ agentFloating: action.floating });
+        break;
+      case 'move-floating-chat':
+        if (Number.isFinite(action.dx) && Number.isFinite(action.dy)) this.floatingChat.moveBy(action.dx, action.dy);
+        break;
+      case 'window-control':
+        if (action.control === 'close') this.window.close();
+        else if (action.control === 'exit-full-screen' && this.window.isFullScreen()) this.toggleFullScreen();
+        break;
       case 'open-address':
         this.openAddress();
+        break;
+      case 'open-sidebar-menu':
+        if (['tabs', 'chats', 'spaces', 'downloads'].includes(action.kind))
+          void this.openSidebarMenu(
+            action.kind,
+            sanitizeAnchor(action.anchor),
+            action.footer ? sanitizeAnchor(action.footer) : null,
+          );
+        break;
+      case 'set-sidebar-footer-items':
+        app.updateSettings({ sidebarFooterItems: sanitizeSidebarFooterItems(action.items, []) });
         break;
       case 'open-profile-menu':
         this.popup(
@@ -1934,7 +2184,7 @@ export class YalqenWindow {
                     void dialog.showMessageBox(this.window, { type: 'error', message: t(`profiles.${error}`) });
                 });
               },
-              manage: () => tabs.openSettings('profiles'),
+              manage: () => tabs.openSettings('advanced#profiles'),
             },
             {
               current: this.profile,
@@ -1985,17 +2235,11 @@ export class YalqenWindow {
           }),
         );
         break;
-      case 'open-downloads':
-        this.popup(downloadsMenuTemplate(app.downloads.list(), app.downloadActions(this)));
+      case 'install-update':
+        app.installUpdate();
         break;
       case 'open-extensions-menu':
         this.openExtensionsMenu(sanitizeAnchor(action.anchor));
-        break;
-      case 'open-extension-action':
-        if (typeof action.id === 'string') this.openExtensionAction(action.id, sanitizeAnchor(action.anchor));
-        break;
-      case 'open-extension-store':
-        tabs.open(STORE_HOME, { isPrivate: false });
         break;
       case 'open-history':
         tabs.openHistory();
@@ -2018,7 +2262,7 @@ export class YalqenWindow {
   private async openSiteInfo(): Promise<void> {
     const template = await siteInfoMenu({
       tabs: this.tabs,
-      permissions: (isPrivate) => this.app.permissionsFor(isPrivate),
+      permissions: (browsing, isPrivate) => this.app.permissionsFor(browsing, isPrivate),
       session: () => this.tabs.activeSession(),
       certificates: this.app.certificates,
       protections:
@@ -2039,44 +2283,81 @@ export class YalqenWindow {
     if (template && !this.window.isDestroyed()) this.popup(template);
   }
 
-  private openExtensionAction(id: string, anchor: AnchorRect): void {
-    if (this.isPrivate) return;
-    const action = this.app.extensions.actions().find((candidate) => candidate.id === id);
-    if (action?.popupUrl) {
-      this.app.extensionPopup.open({
-        window: this.window,
-        session: this.app.daily,
-        url: action.popupUrl,
-        anchor,
-        onOpenUrl: (url) => this.tabs.open(url, { isPrivate: false }),
-      });
-    } else if (action?.optionsUrl) {
-      this.tabs.open(action.optionsUrl, { isPrivate: false });
-    }
-  }
-
   private showPreview(value: unknown): void {
     const request = validPreviewRequest(value);
-    if (!request || this.isPrivate || this.isDeveloper) return;
+    if (!request || this.isPrivate) return;
     const key = `${request.tabId ?? ''} ${request.url}`;
     if (this.preview.isShowing(key)) {
       this.preview.keep();
       return;
     }
     const tab = this.tabs.previewTab(request.tabId, request.url);
-    const read = tab
-      ? readPreview(tab, {
-          session: (tab.id && this.tabs.tabSession(tab.id)) || this.app.daily,
-          readInTab: (contents, code) => this.tabs.readForPreview(contents, code),
-        })
-      : null;
-    if (!tab || !read) return;
+    if (!tab) return;
+    const read =
+      this.isDeveloper || (tab.id && this.tabs.splitOf(tab.id))
+        ? null
+        : readPreview(tab, {
+            session: (tab.id && this.tabs.tabSession(tab.id)) || this.app.daily,
+            readInTab: (contents, code) => this.tabs.readForPreview(contents, code),
+          });
+    const card = tab.id ? this.tabCard(tab.id) : null;
+    if (!read && !card) return;
     const ticket = this.preview.begin();
-    void read.then((content) => {
+    void (read ?? Promise.resolve(null)).then((content) => {
       if (!this.preview.isCurrent(ticket)) return;
       this.previewShown = { tab, content };
-      this.preview.show(ticket, key, previewView(content, Date.now(), getLocale(), t), request.anchor, request.theme);
+      const view = content
+        ? previewView(content, Date.now(), getLocale(), t)
+        : { heading: null, items: [], message: null, footer: null };
+      this.preview.show(ticket, key, card ? { ...view, tab: card } : view, request.anchor, request.theme);
     });
+  }
+
+  private tabCard(id: TabId): TabCard | null {
+    const tab = this.tabs.snapshotFor(id);
+    if (!tab) return null;
+    const bookmarked = this.app.bookmarks.has(tab.url);
+    const split = this.tabs.splitOf(id);
+    const actions: TabCard['actions'] = [
+      { id: 'pin', label: t(tab.pinned ? 'window.unpinTab' : 'window.pinTab'), on: tab.pinned, enabled: true },
+      {
+        id: 'bookmark',
+        label: t(bookmarked ? 'toolbar.removeBookmarkTitle' : 'toolbar.addBookmarkTitle'),
+        on: bookmarked,
+        enabled: true,
+      },
+      {
+        id: 'split',
+        label: t(split ? 'window.exitSplitView' : 'window.openInSplitView'),
+        on: !!split,
+        enabled: !!split || this.tabs.canSplitWithActive(id),
+      },
+      { id: 'copy', label: t('devCommands.copyAddress'), on: false, enabled: canViewSource(tab.url) },
+    ];
+    const card: TabCard = { title: tab.title || tab.url, host: hostOf(tab.url) ?? tab.url, actions };
+    if (!split) return card;
+    if (this.isDeveloper) actions.push({ id: 'chat', label: t('newTab.chat'), on: false, enabled: true });
+    const members = split.flatMap((member) => {
+      const snapshot = this.tabs.snapshotFor(member);
+      return snapshot ? [{ title: snapshot.title || snapshot.url, host: hostOf(snapshot.url) ?? snapshot.url }] : [];
+    });
+    return { ...card, members };
+  }
+
+  private runTabAction(id: TabId, action: TabAction): void {
+    const tab = this.tabs.snapshotFor(id);
+    if (!tab) return;
+    const split = this.tabs.splitOf(id);
+    if (action === 'pin' && split) {
+      for (const member of [...split])
+        if (this.tabs.snapshotFor(member)?.pinned === tab.pinned) this.tabs.togglePin(member);
+    } else if (action === 'pin') this.tabs.togglePin(id);
+    else if (action === 'chat') this.openAgentPanel();
+    else if (action === 'bookmark') this.app.toggleBookmark(tab.url, tab.title);
+    else if (action === 'split') {
+      if (this.tabs.splitTabIds.includes(id)) this.tabs.unsplit(id);
+      else this.tabs.splitWithActive(id);
+    } else this.copyAddress('url', tab);
   }
 
   private openFromPreview(choice: PreviewChoice): void {
@@ -2084,6 +2365,10 @@ export class YalqenWindow {
     this.previewShown = null;
     if (!shown) return;
     const { tab, content } = shown;
+    if (typeof choice === 'string' && choice !== 'tab') {
+      if (tab.id) this.runTabAction(tab.id, choice);
+      return;
+    }
     const open = (url: string) => {
       if (tab.id) {
         this.tabs.activate(tab.id);
@@ -2092,9 +2377,9 @@ export class YalqenWindow {
         this.tabs.open(url, { isPrivate: false });
       }
     };
-    if (content.kind === 'mail' && typeof choice === 'number') {
+    if (content?.kind === 'mail' && typeof choice === 'number') {
       open(content.messages[choice]?.link ?? tab.url);
-    } else if (content.kind === 'calendar' && typeof choice === 'number' && tab.id && tab.contents) {
+    } else if (content?.kind === 'calendar' && typeof choice === 'number' && tab.id && tab.contents) {
       const event = content.events[choice];
       this.tabs.activate(tab.id);
       if (event) void this.tabs.readForPreview(tab.contents, CALENDAR_OPEN_SCRIPT(event.id)).catch(() => {});
@@ -2103,9 +2388,90 @@ export class YalqenWindow {
     }
   }
 
+  get sidePanelExtension(): string | null {
+    return this.sidePanel?.extensionId ?? null;
+  }
+
+  ownsExtensionSidePanel(contents: WebContents): boolean {
+    return this.sidePanel?.owns(contents) ?? false;
+  }
+
+  openExtensionSidePanel(extensionId: string, url: string): WebContents | null {
+    return this.isPrivate || !this.sidePanel ? null : this.sidePanel.open(extensionId, url);
+  }
+
+  closeExtensionSidePanel(extensionId: string): void {
+    if (this.sidePanel?.extensionId === extensionId) this.sidePanel.close();
+  }
+
+  syncExtensionSidePanel(): void {
+    const panel = this.sidePanel;
+    const extensionId = panel?.extensionId;
+    if (!panel || !extensionId) return;
+    const tab = this.tabs.activeContents();
+    const url = this.app.extensionBridge.sidePanelUrl(extensionId, tab);
+    if (url) panel.open(extensionId, url);
+    else panel.hide();
+    this.app.extensionBridge.sidePanelTabSwitched(extensionId, this.window.id, tab, url);
+  }
+
+  private toggleExtensionSidePanel(extensionId: string): void {
+    this.app.extensionBridge.toggleSidePanel(extensionId, this.window.id, this.tabs.activeContents());
+  }
+
+  openExtensionAction(extensionId: string): void {
+    const action = this.extensionActions().find((candidate) => candidate.id === extensionId);
+    if (this.isPrivate || !action) return;
+    runAction(action, this.extensionActionHandlers(this.extensionActionAnchor()));
+  }
+
+  openExtensionActionPopup(url: string): void {
+    if (!this.isPrivate) this.openExtensionPopup(url, this.extensionActionAnchor());
+  }
+
+  private extensionActionAnchor(): AnchorRect {
+    const { width } = this.window.getContentBounds();
+    return this.sidebarMenuAnchor.width > 0 ? this.sidebarMenuAnchor : { x: width, y: 0, width: 0, height: 0 };
+  }
+
+  private extensionActions() {
+    const tab = this.tabs.activeContents();
+    const bridge = this.app.extensionBridge;
+    return this.app.extensions.actions().map((action) => {
+      const state = action.id ? bridge.actionState(action.id, tab) : null;
+      return {
+        ...action,
+        ...(state && { ...state, icon: withBadgeDot(state.icon ?? action.icon, state.badge, state.badgeColor) }),
+        sidePanel: action.id && bridge.sidePanelUrl(action.id, tab) ? action.id : null,
+        sidePanelOnAction: action.id ? bridge.opensSidePanelOnAction(action.id) : false,
+      };
+    });
+  }
+
+  private extensionActionHandlers(anchor: AnchorRect) {
+    return {
+      openPopup: (url: string) => this.openExtensionPopup(url, anchor),
+      openOptions: (url: string) => this.tabs.open(url, { isPrivate: false }),
+      clickAction: (id: string) => this.app.extensionBridge.actionClicked(id, this.tabs.activeContents()),
+      toggleSidePanel: (id: string) => this.toggleExtensionSidePanel(id),
+    };
+  }
+
+  private openExtensionPopup(url: string, anchor: AnchorRect): void {
+    this.app.extensionPopup.open({
+      window: this.window,
+      session: this.app.daily,
+      url,
+      anchor,
+      onOpenUrl: (target) => this.tabs.open(target, { isPrivate: false }),
+    });
+  }
+
   private openExtensionsMenu(anchor: AnchorRect): void {
     const openTab = (url: string) => this.tabs.open(url, { isPrivate: false });
-    const template = extensionsMenuTemplate(this.app.extensions.actions(), {
+    const template = extensionsMenuTemplate(this.extensionActions(), {
+      ...this.extensionActionHandlers(anchor),
+      sidePanelOpen: this.sidePanel?.extensionId ?? null,
       canRequestAccess: !this.isPrivate && !this.isDeveloper && /^https?:/.test(this.tabs.activeUrl),
       requestAccess: (directory) => {
         const contents = this.tabs.activeContents();
@@ -2127,15 +2493,6 @@ export class YalqenWindow {
               void dialog.showMessageBox(this.window, { type: 'info', message: error });
           });
       },
-      openPopup: (url) =>
-        this.app.extensionPopup.open({
-          window: this.window,
-          session: this.app.daily,
-          url,
-          anchor,
-          onOpenUrl: openTab,
-        }),
-      openOptions: openTab,
       openStore: () => openTab(STORE_HOME),
       manage: () => this.tabs.openSettings('extensions'),
     });
@@ -2198,12 +2555,40 @@ export class YalqenWindow {
     return this.isPrivate || this.webApp ? [] : this.app.workspaces.spaces();
   }
 
+  private accent(spaceId = this.tabs.activeSpaceId): string {
+    const space = this.spaces().find(({ id }) => id === spaceId);
+    return space?.theme?.colors[0] ?? accentHex(this.app.settings.get().accentColor);
+  }
+
+  private spaceFileText(id: string): string | null {
+    const live = this.tabs.toSavedWindow(id);
+    return this.app.workspaces.exportText(id, live.tabs.length ? live : null);
+  }
+
+  private spaceFiles(): { name: string; text: string | null }[] {
+    const main = this.defaultSpace();
+    return [
+      {
+        name: main.name,
+        text: spaceFileText({
+          name: main.name,
+          icon: null,
+          isolated: false,
+          isDefault: true,
+          window: this.tabs.toSavedWindow(main.id),
+        }),
+      },
+      ...this.spaces().map(({ id, name }) => ({ name, text: this.spaceFileText(id) })),
+    ];
+  }
+
   private defaultSpace(): SpaceView {
     return { id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null };
   }
 
   spacesChanged(): void {
     this.tabs.syncSpaces();
+    this.tabs.syncNewTabMarkColors();
   }
 
   private createSpace(): void {
@@ -2242,6 +2627,120 @@ export class YalqenWindow {
     };
   }
 
+  private spaceIconMenu(space: SpaceView): Electron.MenuItemConstructorOptions {
+    return {
+      label: t('spaces.icon'),
+      submenu: SPACE_ICONS.map((icon) => ({
+        label: icon,
+        type: 'radio',
+        checked: icon === space.icon,
+        click: () => {
+          if (this.app.workspaces.setIcon(space.id, icon)) this.app.spacesChanged();
+        },
+      })),
+    };
+  }
+
+  private setSpaceColor(space: SpaceView, color: AccentColorId): void {
+    const { frameTheme } = this.app.settings.get();
+    const theme = { ...(space.theme ?? frameTheme), colors: [accentHex(color)], texture: 'none' as const };
+    if (space.id === DEFAULT_SPACE_ID) this.app.updateSettings({ accentColor: color, frameTheme: theme });
+    else if (this.app.workspaces.setTheme(space.id, theme)) this.app.spacesChanged();
+  }
+
+  private spaceEditMenu(space: SpaceView): Electron.MenuItemConstructorOptions[] {
+    const color = space.theme?.colors[0] ?? accentHex(this.app.settings.get().accentColor);
+    const openProfile = () => this.tabs.openSettings(`profiles#profile=${encodeURIComponent(space.id)}`);
+    const own = space.id !== DEFAULT_SPACE_ID;
+    return [
+      ...ACCENT_COLORS.map(({ id, hex }): Electron.MenuItemConstructorOptions => ({
+        label: t(`accent.${id}`),
+        type: 'radio',
+        checked: hex === color,
+        icon: colorSwatch(hex),
+        click: () => this.setSpaceColor(space, id),
+      })),
+      { type: 'separator' },
+      ...(own ? [this.spaceIconMenu(space)] : []),
+      { label: t('sidebarContext.rename'), enabled: own, click: openProfile },
+      { label: t('sidebarContext.profileSettings'), click: openProfile },
+    ];
+  }
+
+  private openSidebarContextMenu(): void {
+    const tabs = this.tabs;
+    const { shortcuts, panelCollapsed } = this.app.settings.get();
+    const shortcut = (id: ShortcutId) => ({
+      accelerator: shortcutAccelerator(id, shortcuts),
+      registerAccelerator: false,
+    });
+    const persistent = !this.isPrivate && !this.webApp;
+    const space = persistent
+      ? [this.defaultSpace(), ...this.spaces()].find(({ id }) => id === tabs.activeSpaceId)
+      : undefined;
+    const open = tabs.state().tabs.filter((tab) => !tab.pinned);
+    const separator = { type: 'separator' } as const;
+    this.popup([
+      { label: t('menu.newTab'), ...shortcut('newTab'), click: () => this.handleAction({ type: 'new-tab' }) },
+      {
+        label: t('menu.reopenClosedTab'),
+        ...shortcut('reopenClosedTab'),
+        enabled: persistent && this.app.closedTabs.length > 0,
+        click: () => tabs.reopenClosed(),
+      },
+      separator,
+      {
+        label: t('sidebarContext.newGroup'),
+        enabled: tabs.activeTabId !== null,
+        click: () => {
+          if (tabs.activeTabId) tabs.setTabGroup(tabs.activeTabId, tabs.newGroupName(t('window.newFolderName')));
+        },
+      },
+      ...(persistent
+        ? [
+            {
+              label: t('sidebarContext.newLiveGroup'),
+              submenu: LIVE_FOLDER_KINDS.map((kind) => ({
+                label: t(LIVE_FOLDER_LABELS[kind]),
+                click: () => {
+                  if (!this.uiContents.isDestroyed()) this.uiContents.send(IpcChannel.addLiveFolder, kind);
+                },
+              })),
+            },
+          ]
+        : []),
+      separator,
+      ...(space
+        ? [
+            { label: t('spaces.theme'), submenu: this.spaceEditMenu(space) },
+            { label: t('sidebarContext.newProfile'), click: () => this.createSpace() },
+            separator,
+          ]
+        : []),
+      {
+        label: t('sidebarContext.bookmarkAll'),
+        enabled: persistent && open.length > 0,
+        click: () => this.app.bookmarkTabs(open.map(({ url, title }) => ({ url, title }))),
+      },
+      separator,
+      {
+        label: t('sidebarContext.showTabs'),
+        type: 'checkbox',
+        checked: !panelCollapsed,
+        ...shortcut('togglePanel'),
+        click: () => this.handleAction({ type: 'toggle-panel' }),
+      },
+      separator,
+      {
+        label: t('sidebarContext.closeAll'),
+        enabled: open.length > 0,
+        click: () => {
+          for (const tab of open) tabs.close(tab.id);
+        },
+      },
+    ]);
+  }
+
   private openSpaceMenu(id: string): void {
     if (id === DEFAULT_SPACE_ID) {
       if (this.spaces().length > 0) this.popup([this.profileMenu(id)]);
@@ -2250,24 +2749,16 @@ export class YalqenWindow {
     const space = this.spaces().find((item) => item.id === id);
     if (!space) return;
     this.popup([
+      this.spaceIconMenu(space),
       {
-        label: t('spaces.icon'),
-        submenu: SPACE_ICONS.map((icon) => ({
-          label: icon,
-          type: 'radio',
-          checked: icon === space.icon,
-          click: () => {
-            if (this.app.workspaces.setIcon(id, icon)) this.app.spacesChanged();
-          },
-        })),
+        label: t('spaces.theme'),
+        click: () => this.tabs.openSettings(`profiles#profile=${encodeURIComponent(id)}`),
       },
       this.profileMenu(id),
       {
         label: t('spaces.export'),
         click: () => {
-          const live = this.tabs.toSavedWindow(id);
-          const text = this.app.workspaces.exportText(id, live.tabs.length ? live : null);
-          void exportSpaceWithDialog(this.window, space.name, text);
+          void exportSpaceWithDialog(this.window, space.name, this.spaceFileText(id));
         },
       },
       {
@@ -2414,8 +2905,11 @@ export class YalqenWindow {
 
   private showWindowControls(): void {
     if (process.platform !== 'darwin') return;
-    this.window.setWindowButtonVisibility(this.app.settings.get().toolbarVisible || this.window.isFullScreen());
-    if (!this.window.isFullScreen()) this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
+    const fullScreen = this.window.isFullScreen();
+    // In full screen the renderer draws the buttons beside the toolbar, so native ones would double up.
+    this.window.setWindowButtonVisibility(!fullScreen);
+    if (fullScreen) return;
+    this.window.setWindowButtonPosition(WINDOW_CONTROLS_INSET);
   }
 
   private applyTitleBarTheme(): void {
@@ -2425,7 +2919,8 @@ export class YalqenWindow {
 
   private applyLayout(): void {
     const { width, height } = this.window.getContentBounds();
-    this.ui.setBounds({ x: 0, y: 0, width, height });
+    // A revealed menu bar slides the whole chrome down without resizing it, so nothing reflows per frame.
+    this.ui.setBounds({ x: 0, y: this.menuBarInset, width, height });
     this.commandBar.fitWindow(this.window);
     this.tabs.setPageRadius(this.placePage(width, height));
     if (process.platform === 'darwin') {
@@ -2434,9 +2929,18 @@ export class YalqenWindow {
   }
 
   private placePage(width: number, height: number): number {
-    const { radius, ...bounds } = pageFrame(width, height, this.layout, this.isPageFullScreen());
-    this.tabs.setPageLayout(bounds, this.isPageFullScreen() ? 0 : this.layout.newTabCenterOffset);
+    const fullScreen = this.isPageFullScreen();
+    const reserved = fullScreen ? 0 : (this.sidePanel?.reserved ?? 0);
+    const layout = reserved
+      ? { ...this.layout, agentPanelWidth: (this.layout.agentPanelWidth ?? 0) + reserved }
+      : this.layout;
+    const { radius, ...frame } = pageFrame(width, height, layout, fullScreen, this.tabs.showsOnlyNewTab);
+    const bounds = { ...frame, y: frame.y + this.menuBarInset };
+    this.tabs.setPageLayout(bounds);
+    this.sidePanel?.place(reserved ? bounds : null);
     this.pageArea = bounds;
+    this.commandBar.updateArea(this.window, bounds);
+    this.placeFloatingChat();
     this.findBar.relayout(this.window);
     this.peek.relayout();
     this.agentControl.layout();

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { EMPTY_PROJECT_RUN } from '../../shared/agent-panel.js';
 import { IS_WIN, defaultShell } from '../platform.js';
-import type { ProjectRunState } from '../../shared/types.js';
+import type { ProjectRunState } from '../../shared/agent.js';
 
 const SCRIPT_NAMES = ['dev', 'start', 'serve', 'preview'];
 const SCRIPT_NAME_PATTERN = /^[\w:.-]+$/;

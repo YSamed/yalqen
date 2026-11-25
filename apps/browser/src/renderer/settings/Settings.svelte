@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import type { SettingsValues, SettingsView } from '../../shared/types';
+  import type { SettingsSaveResult, SettingsValues, SettingsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
-  import { accentHex } from '../../shared/accent';
+  import { accentCss, accentHex } from '../../shared/accent';
   import type { IconName } from '../ui/Icon.svelte';
-  import Button from '../ui/Button.svelte';
+  import Icon from '../ui/Icon.svelte';
   import SearchField from '../ui/SearchField.svelte';
   import AboutPane from './AboutPane.svelte';
   import AgentBridge from './AgentBridge.svelte';
@@ -13,8 +13,10 @@
   import GeneralPane from './GeneralPane.svelte';
   import Passwords from './Passwords.svelte';
   import Autofill from './Autofill.svelte';
+  import DataScope from './DataScope.svelte';
   import PerformancePane from './PerformancePane.svelte';
   import PrivacyPane from './PrivacyPane.svelte';
+  import Profiles from './Profiles.svelte';
   import ProfilesPane from './ProfilesPane.svelte';
   import RequestRules from './RequestRules.svelte';
   import Sites from './Sites.svelte';
@@ -22,47 +24,69 @@
 
   const api = window.yalqenSettings;
 
-  type PaneId =
-    | 'general'
-    | 'appearance'
-    | 'profiles'
-    | 'privacy'
-    | 'sites'
-    | 'passwords'
-    | 'performance'
-    | 'shortcuts'
-    | 'extensions'
-    | 'developer'
-    | 'about';
+  type PaneId = 'general' | 'tabs' | 'privacy' | 'profiles' | 'passwords' | 'extensions' | 'shortcuts' | 'advanced';
   const panes: { id: PaneId; label: string; icon: IconName }[] = [
     { id: 'general', label: t('settings.paneGeneral'), icon: 'settings' },
-    { id: 'appearance', label: t('settings.paneAppearance'), icon: 'appearance' },
-    { id: 'profiles', label: t('settings.paneProfiles'), icon: 'profile' },
+    { id: 'tabs', label: t('settings.paneTabs'), icon: 'sidebar' },
     { id: 'privacy', label: t('settings.panePrivacy'), icon: 'lock' },
-    { id: 'sites', label: t('settings.paneSites'), icon: 'globe' },
+    { id: 'profiles', label: t('settings.paneProfiles'), icon: 'profile' },
     { id: 'passwords', label: t('settings.panePasswordsAutofill'), icon: 'key' },
-    { id: 'performance', label: t('settings.panePerformance'), icon: 'gauge' },
-    { id: 'shortcuts', label: t('settings.paneShortcuts'), icon: 'menu' },
     { id: 'extensions', label: t('settings.paneExtensions'), icon: 'extensions' },
-    { id: 'developer', label: t('settings.paneDeveloper'), icon: 'sparkle' },
-    { id: 'about', label: t('settings.paneAbout'), icon: 'info' },
+    { id: 'shortcuts', label: t('settings.paneShortcuts'), icon: 'menu' },
+    { id: 'advanced', label: t('settings.paneAdvanced'), icon: 'code' },
   ];
-  const aliases: Record<string, PaneId> = { '/autofill': 'passwords' };
+  const aliases: Record<string, PaneId> = {
+    '/autofill': 'passwords',
+    '/appearance': 'general',
+    '/performance': 'tabs',
+    '/sites': 'privacy',
+    '/developer': 'advanced',
+    '/about': 'advanced',
+  };
   const paneFromPath = panes.find((item) => `/${item.id}` === location.pathname)?.id ?? aliases[location.pathname];
-  let pane = $state<PaneId>(paneFromPath ?? 'general');
+  type Page = PaneId | `profile:${string}`;
+  let dataSpace = $state(new URLSearchParams(location.search).get('space') ?? '');
+  // The main process reads ?space= from this page's URL to pick whose passwords, cards and permissions to serve.
+  function setDataSpace(id: string): void {
+    const url = new URL(location.href);
+    if (id) url.searchParams.set('space', id);
+    else url.searchParams.delete('space');
+    history.replaceState(null, '', url);
+    dataSpace = id;
+  }
+
+  function showData(page: 'privacy' | 'passwords', space: string): void {
+    setDataSpace(space);
+    showPane(page);
+  }
+
+  const profileFromHash = new URLSearchParams(location.hash.slice(1)).get('profile');
+  let trail = $state<Page[]>([
+    paneFromPath === 'profiles' && profileFromHash !== null
+      ? `profile:${profileFromHash}`
+      : (paneFromPath ?? 'general'),
+  ]);
+  let at = $state(0);
+  const page = $derived(trail[at]);
+  const editedProfile = $derived(page.startsWith('profile:') ? page.slice('profile:'.length) : null);
+  const pane = $derived<PaneId>(editedProfile === null ? (page as PaneId) : 'profiles');
+  const paneLabel = $derived(
+    editedProfile === null ? (panes.find((item) => item.id === pane)?.label ?? '') : t('profiles.edit'),
+  );
   let view = $state<SettingsView | null>(null);
+  let saveFailed = $state(false);
   let query = $state('');
   let results = $state<HTMLElement>();
   let anyMatch = $state(true);
   const searching = $derived(query.trim() !== '');
 
   $effect(() => {
-    if (view) document.documentElement.style.setProperty('--accent', accentHex(view.values.accentColor));
+    if (view) document.documentElement.style.setProperty('--accent', accentCss(accentHex(view.values.accentColor)));
   });
 
   $effect(() => {
     const path = pane === 'general' ? '/' : `/${pane}`;
-    if (location.pathname !== path) history.replaceState(null, '', `${path}${location.hash}`);
+    if (location.pathname !== path) history.replaceState(null, '', `${path}${location.search}${location.hash}`);
   });
 
   function filterResults(): void {
@@ -106,22 +130,44 @@
     return () => observer.disconnect();
   });
 
-  function showPane(id: PaneId): void {
+  function showPane(id: Page): void {
     query = '';
-    pane = id;
+    if (id === page) return;
+    trail = [...trail.slice(0, at + 1), id];
+    at = trail.length - 1;
+  }
+
+  function step(offset: -1 | 1): void {
+    query = '';
+    at = Math.min(Math.max(at + offset, 0), trail.length - 1);
   }
 
   function movePane(event: KeyboardEvent): void {
-    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
-    if (!step) return;
+    const offset = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+    if (!offset) return;
     event.preventDefault();
     const index = panes.findIndex((item) => item.id === pane);
-    showPane(panes[(index + step + panes.length) % panes.length].id);
+    showPane(panes[(index + offset + panes.length) % panes.length].id);
     document.getElementById(`tab-${pane}`)?.focus();
   }
 
-  async function update(patch: Partial<SettingsValues>): Promise<void> {
-    view = await api.update(patch);
+  async function saveSettings(request: () => Promise<SettingsSaveResult | null>): Promise<void> {
+    try {
+      const result = await request();
+      if (!result) return;
+      view = result.view;
+      saveFailed = !result.saved;
+    } catch {
+      saveFailed = true;
+    }
+  }
+
+  function update(patch: Partial<SettingsValues>): Promise<void> {
+    return saveSettings(() => api.update(patch));
+  }
+
+  function chooseDownloadDirectory(): Promise<void> {
+    return saveSettings(() => api.chooseDownloadDirectory());
   }
 
   async function makeDefault(): Promise<void> {
@@ -129,6 +175,7 @@
   }
 
   onMount(() => {
+    if (new URLSearchParams(location.search).has('window')) document.documentElement.classList.add('window');
     void api.get().then((next) => {
       view = next;
     });
@@ -140,53 +187,46 @@
 
 {#snippet content(id: PaneId, view: SettingsView)}
   {#if id === 'general'}
-    <GeneralPane {view} {update} {makeDefault} />
-  {:else if id === 'profiles'}
-    <ProfilesPane {view} {update} />
-  {:else if id === 'about'}
-    <AboutPane {view} {update} />
-  {:else if id === 'appearance'}
-    <AppearancePane values={view.values} {update} />
+    <GeneralPane section="general" {view} {update} {makeDefault} {chooseDownloadDirectory} />
+    <AppearancePane section="look" values={view.values} spaces={view.spaces} {update} />
+  {:else if id === 'tabs'}
+    <AppearancePane section="tabs" values={view.values} {update} />
+    <GeneralPane section="windows" {view} {update} {makeDefault} {chooseDownloadDirectory} />
+    <PerformancePane values={view.values} {update} />
   {:else if id === 'privacy'}
-    <PrivacyPane values={view.values} threatLists={view.threatLists} {update} />
-  {:else if id === 'sites'}
-    <Sites values={view.values} {update} />
+    <PrivacyPane section="protection" values={view.values} threatLists={view.threatLists} {update} />
+    {#key dataSpace}
+      <DataScope spaces={view.spaces} value={dataSpace} onchange={setDataSpace} />
+      <Sites values={view.values} {update} />
+    {/key}
+  {:else if id === 'profiles'}
+    <ProfilesPane {view} {update} profile={searching ? null : editedProfile} open={showPane} {showData} />
   {:else if id === 'passwords'}
-    <Passwords />
-    <Autofill />
+    {#key dataSpace}
+      <DataScope spaces={view.spaces} value={dataSpace} onchange={setDataSpace} />
+      <Passwords />
+      <Autofill />
+    {/key}
   {:else if id === 'extensions'}
     <Extensions values={view.values} {update} />
   {:else if id === 'shortcuts'}
     <ShortcutsPane values={view.values} {update} />
-  {:else if id === 'developer'}
+  {:else}
+    <AboutPane {view} {update} />
+    <Profiles />
+    <PrivacyPane section="advanced" values={view.values} threatLists={view.threatLists} {update} />
     <AgentBridge values={view.values} {update} />
     <RequestRules />
-  {:else}
-    <PerformancePane values={view.values} {update} />
   {/if}
 {/snippet}
 
 {#if view}
   <div class="settings">
-    <div class="heading">
-      <h1>{t('settings.pageTitle')}</h1>
-      <div class="search">
-        <SearchField
-          bind:value={query}
-          aria-label={t('settings.searchSettings')}
-          placeholder={t('settings.searchSettings')}
-          onkeydown={(event) => {
-            if (event.key === 'Escape') query = '';
-          }}
-        />
-      </div>
-    </div>
-    <div class="layout">
-      <div class="panes" role="tablist" aria-orientation="vertical" aria-label={t('settings.sections')}>
+    <nav class="sidebar" aria-label={t('settings.sections')}>
+      <div class="panes" role="tablist" aria-orientation="vertical">
         {#each panes as item (item.id)}
-          <Button
-            size="lg"
-            icon={item.icon}
+          <button
+            type="button"
             role="tab"
             id="tab-{item.id}"
             class="pane-tab"
@@ -196,101 +236,254 @@
             onclick={() => showPane(item.id)}
             onkeydown={movePane}
           >
-            {item.label}
-          </Button>
+            <Icon name={item.icon} size={18} />
+            <span>{item.label}</span>
+          </button>
         {/each}
       </div>
-      {#if searching}
-        <div id="pane" class="pane" role="region" aria-label={t('settings.searchSettings')} bind:this={results}>
-          {#each panes as item (item.id)}
-            <section class="result" aria-label={item.label}>
-              <p class="result-title">{item.label}</p>
-              <div class="result-body">{@render content(item.id, view)}</div>
-            </section>
-          {/each}
-          {#if !anyMatch}<p class="hint" role="status">{t('settings.searchEmpty')}</p>{/if}
+    </nav>
+    <main class="main">
+      <header class="header">
+        <div class="history">
+          <button type="button" aria-label={t('toolbar.back')} disabled={at === 0} onclick={() => step(-1)}>
+            <Icon name="back" size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label={t('toolbar.forward')}
+            disabled={at === trail.length - 1}
+            onclick={() => step(1)}
+          >
+            <Icon name="forward" size={16} />
+          </button>
         </div>
-      {:else}
-        <div id="pane" class="pane" role="tabpanel" aria-labelledby="tab-{pane}">
-          {@render content(pane, view)}
+        <h1>{searching ? t('settings.searchSettings') : paneLabel}</h1>
+        <div class="search">
+          <SearchField
+            bind:value={query}
+            aria-label={t('settings.searchSettings')}
+            placeholder={t('settings.searchSettings')}
+            onkeydown={(event) => {
+              if (event.key === 'Escape') query = '';
+            }}
+          />
         </div>
+      </header>
+      {#if saveFailed}
+        <p class="save-error" role="alert">{t('settings.saveFailed')}</p>
       {/if}
-    </div>
+      <div class="scroll">
+        {#if searching}
+          <div id="pane" class="pane" role="region" aria-label={t('settings.searchSettings')} bind:this={results}>
+            {#each panes as item (item.id)}
+              <section class="result" aria-label={item.label}>
+                <p class="result-title">{item.label}</p>
+                <div class="result-body">{@render content(item.id, view)}</div>
+              </section>
+            {/each}
+            {#if !anyMatch}<p class="hint" role="status">{t('settings.searchEmpty')}</p>{/if}
+          </div>
+        {:else}
+          <div id="pane" class="pane" role="tabpanel" aria-labelledby="tab-{pane}">
+            {@render content(pane, view)}
+          </div>
+        {/if}
+      </div>
+    </main>
   </div>
 {/if}
 
 <style>
   :global(:root) {
-    --font-size: 14px;
-    --font-size-small: 12px;
+    --font-size: 13px;
+    --font-size-small: 11px;
+    --settings-sidebar: color-mix(in srgb, var(--surface) 70%, transparent);
+    --settings-group: var(--surface);
+  }
+
+  :global(html),
+  :global(body) {
+    height: 100%;
+    overflow: hidden;
   }
 
   :global(body) {
-    overflow-y: auto;
     background: var(--bg);
-    line-height: 1.45;
+    line-height: 1.4;
+  }
+
+  :global(html.window),
+  :global(html.window body) {
+    background: transparent;
   }
 
   .settings {
-    width: min(1000px, 100%);
-    margin: 0 auto;
-    padding: 42px 24px 80px;
-  }
-
-  .heading {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    margin: 0 0 24px;
+    height: 100vh;
   }
 
-  .search {
-    width: min(320px, 50%);
+  .sidebar {
+    flex: none;
+    width: 196px;
+    padding: 64px 10px 12px;
+    border-right: 1px solid var(--border);
+    background: var(--settings-sidebar);
   }
 
-  h1 {
-    margin: 0;
-    font-size: 30px;
-    letter-spacing: -0.03em;
+  :global(html.window) {
+    --settings-group: light-dark(#ffffff, #27282b);
   }
 
-  .layout {
-    display: flex;
-    align-items: flex-start;
-    gap: 40px;
+  :global(html.window) .sidebar {
+    background: light-dark(#ebebef, #232729);
+  }
+
+  :global(html.window) .main {
+    background: light-dark(#f5f5f7, #1e1f21);
+  }
+
+  :global(html.window) .sidebar,
+  :global(html.window) .header {
+    -webkit-app-region: drag;
+  }
+
+  :global(html.window) .panes,
+  :global(html.window) .history,
+  :global(html.window) .search {
+    -webkit-app-region: no-drag;
   }
 
   .panes {
-    position: sticky;
-    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pane-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    text-align: start;
+    cursor: default;
+  }
+
+  .pane-tab span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pane-tab :global(svg) {
+    flex: none;
+    color: rgb(from var(--text) r g b / 0.85);
+    stroke-width: 1.2;
+  }
+
+  .pane-tab:hover {
+    background: var(--surface-hover);
+  }
+
+  .pane-tab[aria-selected='true'] {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .pane-tab[aria-selected='true'] :global(svg) {
+    color: currentColor;
+  }
+
+  .pane-tab:focus-visible {
+    outline: 2px solid var(--focus, var(--accent));
+    outline-offset: 1px;
+  }
+
+  .main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bg);
+  }
+
+  .header {
     display: flex;
     flex: none;
-    flex-direction: column;
-    gap: 4px;
-    width: 180px;
+    align-items: center;
+    gap: 12px;
+    height: 52px;
+    padding: 0 16px 0 9px;
   }
 
-  .panes :global(.pane-tab) {
-    justify-content: flex-start;
-    width: 100%;
-    height: auto;
-    min-height: var(--control-lg);
-    padding-block: 6px;
-    white-space: normal;
-    text-align: start;
+  .history {
+    display: flex;
+    padding: 2px;
+    border-radius: 999px;
+    background: rgb(from var(--text) r g b / 0.1);
   }
 
-  .panes :global(.pane-tab > span) {
-    overflow: visible;
-    text-overflow: clip;
+  .history button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 31px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--text);
+  }
+
+  .history button:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+
+  .history button:disabled {
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+
+  h1 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .search {
+    width: min(170px, 35%);
+  }
+
+  .save-error {
+    flex: none;
+    margin: 0;
+    padding: 4px 20px 8px;
+    color: var(--warn);
+  }
+
+  .scroll {
+    flex: 1;
+    overflow-y: auto;
   }
 
   .pane {
-    flex: 1;
-    min-width: 0;
     display: flex;
     flex-direction: column;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 8px 20px 32px;
   }
 
   .pane :global([hidden]) {
@@ -310,31 +503,40 @@
     margin: 6px 0 0;
     padding-bottom: 6px;
     border-bottom: 1px solid var(--border);
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 600;
   }
 
   .pane :global(h2) {
-    margin: 28px 0 8px;
-    padding-inline: 4px;
-    color: var(--text-muted);
+    margin: 26px 0 6px;
+    padding-inline: 10px;
+    color: var(--text);
     font-size: 13px;
     font-weight: 600;
   }
 
   .pane :global(h2:first-child) {
-    margin-top: 6px;
+    margin-top: 8px;
   }
 
   .pane :global(.row) {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
-    min-height: 48px;
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    gap: 20px;
+    min-height: 42px;
+    padding: 7px 10px;
+    background: var(--settings-group);
+  }
+
+  .pane :global(.row + .row)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 10px;
+    left: 10px;
+    border-top: 1px solid var(--border);
   }
 
   .pane :global(.row:not(.row + .row)) {
@@ -343,7 +545,6 @@
   }
 
   .pane :global(.row:not(:has(+ .row))) {
-    border-bottom: none;
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
   }
@@ -368,5 +569,15 @@
   .pane :global(.error) {
     color: var(--warn);
     font-size: var(--font-size-small);
+  }
+
+  @media (max-width: 560px) {
+    .sidebar {
+      width: 56px;
+    }
+
+    .pane-tab span {
+      display: none;
+    }
   }
 </style>

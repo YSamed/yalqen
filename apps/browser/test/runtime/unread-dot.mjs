@@ -57,17 +57,12 @@ let state = {
   splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
-  addressPlaceholder: 'Search',
   panelCollapsed: false,
-  panelSide: 'left',
-  pinnedDisplay: 'always',
   favorites: [],
   spaces: [],
   activeSpaceId: '',
   sidebarVisible: true,
   media: null,
-  toolbarVisible: true,
-  toolbarTabs: true,
   toolbarButtons: ['settings'],
   ...windowAppearance,
   accent: '#e8590c',
@@ -124,30 +119,13 @@ app
     assert.equal(await dots('aside'), 1);
     assert.match(await run("document.querySelector('aside .unread-dot').closest('.row').textContent"), /Inbox \(3\)/);
     assert.match(
-      await run("document.querySelector('aside .unread-dot').closest('button').getAttribute('aria-label')"),
+      await run(
+        "document.querySelector('aside .unread-dot').closest('.row').querySelector('.select').getAttribute('aria-label')",
+      ),
       /unread messages/,
     );
-
-    const dot = await run(`(() => {
-      const dot = document.querySelector('aside .unread-dot').getBoundingClientRect();
-      const icon = document.querySelector('aside .unread-dot').parentElement.getBoundingClientRect();
-      return {
-        color: getComputedStyle(document.querySelector('aside .unread-dot')).backgroundColor,
-        accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
-        right: dot.right - icon.right,
-        top: dot.top - icon.top,
-      };
-    })()`);
-    assert.ok(dot.right > 0 && dot.top < 0, JSON.stringify(dot));
-    assert.equal(dot.accent, '#e8590c');
-    assert.equal(dot.color, 'rgb(232, 89, 12)');
-
-    push({ panelCollapsed: true });
-    await eventually("document.querySelector('aside')?.classList.contains('collapsed')");
-    await eventually("document.querySelectorAll('aside .unread-dot').length === 1");
-
-    push({ panelCollapsed: false, sidebarVisible: false, toolbarTabs: true });
-    await eventually("document.querySelectorAll('header .unread-dot').length === 1");
+    // The wide card sidebar shows the dot after the title instead of on the icon.
+    assert.equal(await run("document.querySelector('aside .unread-dot').classList.contains('trailing')"), true);
 
     push({ tabs: state.tabs.map((entry) => ({ ...entry, unread: false })) });
     await eventually("document.querySelectorAll('.unread-dot').length === 0");

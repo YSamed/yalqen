@@ -100,11 +100,12 @@
 <p class="hint">{t('autofill.cardHint')}</p>
 {#if !view.available}<p role="status">{t('autofill.unavailable')}</p>{/if}
 <div class="actions">
-  <Button variant="tonal" disabled={!view.available || busy} onclick={() => add('address')}
-    >{t('autofill.addAddress')}</Button
-  >
-  <Button variant="tonal" disabled={!view.available || busy} onclick={() => add('card')}>{t('autofill.addCard')}</Button
-  >
+  <Button variant="tonal" disabled={!view.available || busy} onclick={() => add('address')}>
+    {t('autofill.addAddress')}
+  </Button>
+  <Button variant="tonal" disabled={!view.available || busy} onclick={() => add('card')}>
+    {t('autofill.addCard')}
+  </Button>
 </div>
 {#if data}
   <form onsubmit={save}>
@@ -149,8 +150,10 @@
           onclick={() => {
             data = null;
             error = false;
-          }}>{t('autofill.cancel')}</Button
+          }}
         >
+          {t('autofill.cancel')}
+        </Button>
       </div>
     </fieldset>
   </form>
@@ -160,9 +163,9 @@
   {#each view.records as record (record.id)}
     <li>
       <div><strong>{record.label}</strong><span class="hint">{record.detail}</span></div>
-      <Button size="sm" variant="tonal" disabled={busy || !view.available} onclick={() => edit(record)}
-        >{t('autofill.edit')}</Button
-      >
+      <Button size="sm" variant="tonal" disabled={busy || !view.available} onclick={() => edit(record)}>
+        {t('autofill.edit')}
+      </Button>
       <Button size="sm" disabled={busy} onclick={() => remove(record)}>{t('autofill.remove')}</Button>
     </li>
   {:else}<li class="hint">{t('autofill.empty')}</li>{/each}

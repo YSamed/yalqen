@@ -21,9 +21,12 @@
         --chip: rgb(255 255 255 / 0.5);
         --well: rgb(16 18 24 / 0.06);
         --hover: rgb(0 0 0 / 0.04);
+        --pick: rgb(16 18 24 / 0.07);
+        --box: rgb(255 255 255 / 0.96);
+        --box-edge: 0 0 0 0.5px rgb(16 18 24 / 0.12), 0 16px 40px rgb(16 18 24 / 0.12);
         --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.6);
         --shadow: 0 0 0 0.5px rgb(16 18 24 / 0.12), 0 5px 18px rgb(16 18 24 / 0.1);
-        --mark-shadow: drop-shadow(0 10px 18px rgb(214 92 34 / 0.28));
+        --mark-shadow: drop-shadow(0 10px 18px color-mix(in srgb, var(--mark-color, var(--accent)) 28%, transparent));
         --text-muted: var(--muted);
         --surface-hover: var(--hover);
         color-scheme: light;
@@ -42,6 +45,9 @@
           --chip: rgb(255 255 255 / 0.07);
           --well: rgb(255 255 255 / 0.08);
           --hover: rgb(255 255 255 / 0.05);
+          --pick: rgb(255 255 255 / 0.16);
+          --box: #2c2c2e;
+          --box-edge: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 16px 40px rgb(0 0 0 / 0.3);
           --rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.1);
           --shadow: 0 0 0 0.5px rgb(255 255 255 / 0.18), 0 6px 18px rgb(0 0 0 / 0.24);
           --mark-shadow: drop-shadow(0 10px 20px rgb(0 0 0 / 0.4));
@@ -74,25 +80,6 @@
         }
       }
 
-      :root[data-opaque] {
-        --page: light-dark(#eeeef0, #0a0a0b);
-        --surface: light-dark(#fff, #1b1b1e);
-        --glass: light-dark(#fff, #232327);
-        --chip: light-dark(#f6f6f7, #232327);
-        --well: light-dark(#e2e2e6, #141416);
-        --muted: light-dark(#4a4e54, #c2c3c9);
-        --faint: light-dark(#5d6168, #a4a7ad);
-      }
-
-      :root[data-background] body {
-        background: var(--page) url('yalqen://newtab/background') center / cover no-repeat;
-      }
-
-      :root[data-background] .pinned .name {
-        color: #fff;
-        text-shadow: 0 1px 3px rgb(0 0 0 / 0.65);
-      }
-
       * {
         box-sizing: border-box;
       }
@@ -105,7 +92,7 @@
 
       body {
         display: grid;
-        place-items: center;
+        place-items: start center;
         background: var(--page);
         color: var(--text);
         font:
@@ -134,81 +121,86 @@
         flex-direction: column;
         align-items: center;
         width: min(720px, 100%);
-        padding: 0 24px 10vh;
-        transform: translateX(
-          clamp(min(0px, calc(360px - 50vw)), var(--newtab-center-offset, 0px), max(0px, calc(50vw - 360px)))
-        );
+        /* Dia keeps the mark and the search box in the upper third, so the list can grow downwards. */
+        padding: 24vh 24px 0;
       }
 
       .mark {
         width: 72px;
         height: 72px;
-        margin-bottom: 28px;
+        margin-bottom: 26px;
         filter: var(--mark-shadow);
       }
 
-      .welcome {
-        margin: -8px 0 28px;
-        text-align: center;
+      .mark feFlood {
+        flood-color: var(--mark-color, var(--accent));
       }
 
-      .welcome h1 {
-        margin: 0;
-        font-size: clamp(26px, 3.6vw, 36px);
-        font-weight: 600;
-        letter-spacing: -0.03em;
-        line-height: 1.1;
-      }
-
-      .welcome p {
-        max-width: 400px;
-        margin: 10px auto 0;
-        color: var(--muted);
-        font-size: 14px;
+      /* The orange accent shows the logo's own red-to-amber gradient; a tint would flatten it to one hue. */
+      :root[data-mark-tint] .mark image {
+        filter: url(#mark-tint);
       }
 
       .search {
+        --query-height: 52px;
         position: relative;
-        width: min(640px, 100%);
+        width: min(652px, 100%);
+        height: var(--query-height);
       }
 
       #search-form {
-        --search-field-bg: var(--glass);
-        --search-field-shadow: var(--glass-edge), var(--lift);
-        --search-field-icon: var(--faint);
+        --search-field-bg: var(--box);
+        --search-field-shadow: var(--box-edge);
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        right: 0;
+        left: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        height: auto;
+        padding: 0;
+        border-radius: 22px;
       }
 
-      .submit {
-        transition:
-          background-color 150ms ease-out,
-          color 150ms ease-out,
-          transform 120ms ease-out;
+      .query-row {
+        display: flex;
+        align-items: center;
+        gap: 7.5px;
+        height: var(--query-height);
+        margin-bottom: 10px;
+        padding: 0 22px;
+        color: var(--muted);
       }
 
-      .submit:active {
-        transform: scale(0.94);
+      .query-row .search-icon {
+        display: grid;
       }
 
-      #search-form:has(input:placeholder-shown) .submit {
-        background: var(--well);
+      .query-row input {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        padding: 0;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: 17px;
+        user-select: text;
+      }
+
+      .query-row input::placeholder {
         color: var(--faint);
-        pointer-events: none;
+        opacity: 1;
       }
 
       .suggestions {
-        position: absolute;
-        z-index: 1;
-        top: calc(100% + 8px);
-        left: 0;
-        right: 0;
-        margin: 0;
-        padding: 6px;
-        border-radius: 20px;
-        background: var(--surface);
-        box-shadow:
-          var(--rim),
-          var(--shadow),
-          0 12px 40px rgb(0 0 0 / 0.16);
+        margin: 0 8px 4px;
+        padding: 0;
         list-style: none;
       }
 
@@ -217,151 +209,135 @@
       }
 
       .suggestions li {
-        border-radius: 14px;
+        border-radius: 12px;
       }
 
-      .suggestions li:hover,
-      .suggestions li.selected {
+      .suggestions li:hover {
         background: var(--hover);
+      }
+
+      .suggestions li.selected {
+        background: var(--pick);
       }
 
       .suggestions a {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 14px;
         height: 40px;
-        padding: 0 12px;
         min-width: 0;
+        padding: 0 14px;
+        font-size: 15px;
       }
 
       .suggestions .kind {
         display: grid;
         flex: none;
         place-items: center;
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         color: var(--muted);
-        font-size: 13px;
+      }
+
+      .suggestions .kind svg {
+        width: 18px;
+        height: 18px;
       }
 
       .suggestions .kind img {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         border-radius: 4px;
       }
 
+      .suggestions a {
+        gap: 0;
+      }
+
+      .suggestions .kind {
+        margin-right: 14px;
+      }
+
       .suggestions .title {
+        flex: 0 1 auto;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      .suggestions .host {
-        flex: none;
-        max-width: 40%;
-        margin-left: auto;
+      .suggestions .title.site {
+        font-weight: 600;
+      }
+
+      .suggestions .detail {
+        flex: 0 1 auto;
+        min-width: 4em;
+        max-width: 45%;
+        margin-left: 0.3em;
         overflow: hidden;
         color: var(--muted);
-        font-size: 12px;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      .pinned ul {
+      .search-actions {
         display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px 14px;
-        max-width: min(640px, 100%);
-        margin: 26px 0 0;
-        padding: 0;
-        list-style: none;
+        justify-content: flex-end;
+        padding: 6px 14px 14px;
       }
 
-      .pinned a {
-        display: flex;
-        flex-direction: column;
+      .engine-submit {
+        display: inline-flex;
         align-items: center;
-        gap: 7px;
-        width: 72px;
+        gap: 8px;
+        height: 32px;
+        padding: 0 12px 0 16px;
+        border: 0;
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--accent) 32%, #fff);
+        color: #1b1d1c;
+        font: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        transition: transform 120ms ease-out;
       }
 
-      .pinned .tile {
-        display: grid;
-        place-items: center;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: var(--glass);
-        box-shadow: var(--glass-edge);
-        transition:
-          transform 150ms ease-out,
-          background-color 150ms ease-out;
-      }
-
-      .pinned a:hover .tile {
-        background: var(--surface);
-      }
-
-      .pinned a:active .tile {
+      .engine-submit:active {
         transform: scale(0.96);
       }
 
-      .pinned img {
-        width: 24px;
-        height: 24px;
-        border-radius: 6px;
+      .engine-submit .arrow,
+      #search-form:has(input:placeholder-shown) .engine-submit :is(.engine-name, .return) {
+        display: none;
       }
 
-      .pinned .letter {
-        color: var(--muted);
-        font-size: 20px;
-        font-weight: 600;
+      /* Empty, the box is a single line with the arrow beside the field; typing opens the list and the engine button below. */
+      #search-form:has(input:placeholder-shown) .search-actions {
+        position: absolute;
+        top: 0;
+        right: 0;
+        align-items: center;
+        height: var(--query-height);
+        padding: 0 14px;
       }
 
-      .pinned .name {
-        max-width: 100%;
-        overflow: hidden;
-        color: var(--muted);
-        font-size: 11px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+      #search-form:has(input:placeholder-shown) .query-row {
+        margin-bottom: 0;
+        padding-right: 64px;
       }
 
-      .tips {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-        width: min(640px, 100%);
-        margin: 18px 0 0;
+      #search-form:has(input:placeholder-shown) .engine-submit {
+        justify-content: center;
+        width: 32px;
         padding: 0;
-        list-style: none;
+        background: var(--well);
+        color: var(--faint);
+        pointer-events: none;
       }
 
-      .tips li {
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: var(--chip);
-        box-shadow:
-          var(--rim),
-          0 0 0 0.5px rgb(16 18 24 / 0.08);
-      }
-
-      .tips strong,
-      .tips small {
+      #search-form:has(input:placeholder-shown) .engine-submit .arrow {
         display: block;
-      }
-
-      .tips strong {
-        margin-bottom: 3px;
-        font-size: 12px;
-        font-weight: 600;
-      }
-
-      .tips small {
-        color: var(--muted);
-        font-size: 11px;
-        line-height: 1.4;
       }
 
       .cards {
@@ -428,50 +404,71 @@
           width: auto;
         }
       }
-
-      @media (max-width: 560px) {
-        .tips {
-          grid-template-columns: 1fr;
-        }
-      }
     </style>
   </head>
   <body>
     <main>
-      <img class="mark" src="yalqen://newtab/mark.png" alt="" width="72" height="72" />
-      __YALQEN_WELCOME_SLOT__
+      <svg class="mark" viewBox="0 0 72 72" aria-hidden="true">
+        <defs>
+          <filter id="mark-tint" color-interpolation-filters="sRGB">
+            <feFlood result="tint" />
+            <feBlend in="SourceGraphic" in2="tint" mode="luminosity" />
+            <feComposite in2="SourceAlpha" operator="in" />
+          </filter>
+        </defs>
+        <image href="yalqen://newtab/mark.png" width="72" height="72" />
+      </svg>
       <div class="search">
         <form id="search-form" class="search-field lg" action="yalqen://newtab/search" method="get" role="search">
-          <span class="search-icon" aria-hidden="true">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.7"
-              stroke-linecap="round"
-            >
-              <circle cx="8.8" cy="8.8" r="5.8" />
-              <path d="m13.2 13.2 4 4" />
-            </svg>
-          </span>
-          <input
-            id="q"
-            name="q"
-            type="text"
-            placeholder="{{newTab.searchPlaceholder}}"
-            aria-label="{{newTab.searchLabel}}"
-            autocomplete="off"
-            spellcheck="false"
-            autofocus
-            role="combobox"
-            aria-expanded="false"
-            aria-controls="suggestions"
-          />
-          <span class="search-actions">
-            <button class="icon-btn lg accent submit" type="submit" aria-label="{{newTab.go}}">
+          <div class="query-row">
+            <span class="search-icon" aria-hidden="true">
               <svg
+                width="18"
+                height="18"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+              >
+                <circle cx="8.8" cy="8.8" r="5.8" />
+                <path d="m13.2 13.2 4 4" />
+              </svg>
+            </span>
+            <input
+              id="q"
+              name="q"
+              type="text"
+              placeholder="{{newTab.searchPlaceholder}}"
+              aria-label="{{newTab.searchLabel}}"
+              autocomplete="off"
+              spellcheck="false"
+              autofocus
+              role="combobox"
+              aria-expanded="false"
+              aria-controls="suggestions"
+            />
+          </div>
+          <ul id="suggestions" class="suggestions" role="listbox" aria-label="{{newTab.suggestions}}" hidden></ul>
+          <div class="search-actions">
+            <button class="engine-submit" type="submit" aria-label="{{newTab.go}}">
+              <span class="engine-name">__YALQEN_ENGINE_SLOT__</span>
+              <svg
+                class="return"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M13 3.5v4A2.5 2.5 0 0 1 10.5 10H3.5M6.5 7 3.5 10l3 3" />
+              </svg>
+              <svg
+                class="arrow"
                 width="16"
                 height="16"
                 viewBox="0 0 16 16"
@@ -485,15 +482,11 @@
                 <path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2" />
               </svg>
             </button>
-          </span>
+          </div>
         </form>
-        <ul id="suggestions" class="suggestions" role="listbox" aria-label="{{newTab.suggestions}}" hidden></ul>
       </div>
-      __YALQEN_PINNED_SLOT__ __YALQEN_TIPS_SLOT__
     </main>
-    <div class="cards">
-      __YALQEN_UPDATE_SLOT__ __YALQEN_ANNOUNCEMENT_SLOT__ __YALQEN_FEEDBACK_SLOT__ __YALQEN_REPO_PROMPT_SLOT__
-    </div>
+    <div class="cards">__YALQEN_UPDATE_SLOT__ __YALQEN_REPO_PROMPT_SLOT__</div>
     <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>
 </html>

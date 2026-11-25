@@ -30,6 +30,7 @@ The main process pushes a complete `BrowserState` to each window interface as a 
 | `library/`     | History, bookmarks, downloads, browser import and data clearing                                            |
 | `privacy/`     | Ad blocking, HTTPS-only, certificate exceptions, third-party cookies, permissions and passwords            |
 | `extensions/`  | Unpacked and Chrome Web Store extensions, their popup, IPC and ZIP extraction                              |
+| `agent-bridge/` | Agent connections, projects, conversations, terminal sessions, floating chat and page inspection tools |
 | `devtools/`    | Developer commands, device emulation, page overrides through the DevTools protocol and request rules       |
 | `storage/`     | Debounced, atomic JSON files used by every store                                                           |
 | `bench/`       | Instrumentation enabled only by the benchmark harness                                                      |
@@ -41,21 +42,23 @@ Modules depend on interfaces they are handed rather than on `main.ts`, for examp
 | Folder         | Contents                                                                      |
 | -------------- | ----------------------------------------------------------------------------- |
 | `ui/`          | Primitives shared by every page: buttons, fields, selects, switches and icons |
+| `chrome/`      | State subscription and root theme shared by the window interface and the floating chat |
 | `window/`      | The window interface: `App`, `TabPanel`, `Toolbar` and device controls        |
+| `agent/` | Chat, terminal, project controls and the floating panel |
 | `settings/`    | The settings shell, one component per pane and `SettingRow`                   |
 | `command-bar/` | Address bar overlay                                                           |
 | `find-bar/`    | Find-in-page overlay                                                          |
 | `public/`      | Templates and scripts for the internal pages served by the main process       |
 
-`index.html`, `settings.html`, `command.html` and `find.html` are the Vite entry points.
+Vite builds eight renderer entry points: `index.html`, `settings.html`, `command.html`, `chat.html`, `find.html`, `welcome.html`, `confirm.html` and `peek.html`. Docked and floating chat views share each conversation’s in-memory draft through the main process.
 
 ## Tests and benchmarks
 
-Tests in `apps/browser/test` mirror the source tree (`test/main/library/history.test.mjs` covers `src/main/library/history.ts`) and import the compiled modules from `dist/`, so `npm test` builds the main process and preloads first. Benchmarks in `apps/browser/scripts` read their page list from `apps/browser/bench/pages.txt`, write results to the ignored `bench/results/`, and accept `--module-dir` or `--renderer-dir` to compare a preserved baseline build; `scripts/main-module.mjs` also resolves builds from before the domain folders existed.
+Tests in `apps/browser/test` mirror the source tree (`test/main/library/history.test.mjs` covers `src/main/library/history.ts`) and import the compiled modules from `dist/`, so `npm test` builds the main process and preloads first. `npm run test:runtime` runs each file in `test/runtime` in its own Electron process; `test/helpers/interface-harness.mjs` opens the built window interface in a hidden window with a fixed state, answers its IPC requests, records the actions it sends and drives it with real mouse and keyboard events. Benchmarks in `apps/browser/scripts` read their page list from `apps/browser/bench/pages.txt`, write results to the ignored `bench/results/`, and accept `--module-dir` or `--renderer-dir` to compare a preserved baseline build; `scripts/main-module.mjs` also resolves builds from before the domain folders existed.
 
 ## Shared styles
 
-`src/renderer/public/tokens.css` holds the colors shared by the window interface, the settings page, the internal `yalqen://` pages and error pages, with `light-dark()` choosing the light or dark value. `app.css` imports it, the main process inlines it with `controls.css` into internal pages through the `__YALQEN_STYLES_SLOT__` marker (their CSP allows only inline styles), and error pages receive it as their `theme`. A page keeps a local value only where it differs on purpose, such as the stronger dark border on the history, bookmarks and downloads pages, or the new tab's glass palette. On a glass window the interface sets `--glass-tint` from the Glass tint setting, and `--chrome-base` takes its alpha from it.
+`src/renderer/public/tokens.css` holds the colors shared by the window interface, the settings page, the internal `yalqen://` pages and error pages, with `light-dark()` choosing the light or dark value. `app.css` imports it, the main process inlines it with `controls.css` into internal pages through the `__YALQEN_STYLES_SLOT__` marker (their CSP allows only inline styles), and error pages receive it as their `theme`. A page keeps a local value only where it differs on purpose, such as the stronger dark border on the history, bookmarks and downloads pages, or the new tab's glass palette. The glass window uses 22% opacity in light mode and 32% in dark mode for its standard chrome background.
 
 After a styling change, `node scripts/capture-ui.mjs --out <dir>` records the computed colors, borders and shadows of every element on each surface in light and dark, and `--compare <before> <after>` lists what changed.
 

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { formatLocation, type ComponentInfo } from './component-source.js';
-import type { AgentElementRef } from '../../shared/types.js';
+import type { AgentElementRef } from '../../shared/agent.js';
 import type { Truncated } from './redact.js';
 
 export const SELECTION_LIMIT = 10;

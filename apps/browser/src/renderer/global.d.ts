@@ -1,12 +1,4 @@
-import type {
-  CommandBarApi,
-  ConfirmApi,
-  FindBarApi,
-  PeekApi,
-  SettingsApi,
-  WelcomeApi,
-  YalqenApi,
-} from '../shared/types';
+import type { CommandBarApi, ConfirmApi, FindBarApi, PeekApi, SettingsApi, YalqenApi } from '../shared/types';
 
 interface WindowControlsOverlay extends EventTarget {
   readonly visible: boolean;
@@ -22,7 +14,6 @@ declare global {
     yalqenCommand: CommandBarApi;
     yalqenFind: FindBarApi;
     yalqenPeek: PeekApi;
-    yalqenWelcome: WelcomeApi;
     yalqenConfirm: ConfirmApi;
   }
 

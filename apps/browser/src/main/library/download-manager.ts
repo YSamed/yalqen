@@ -20,6 +20,8 @@ import { t } from '../../shared/i18n.js';
 
 const STATE_PUSH_MS = 250;
 const PAGE_PUSH_MS = 500;
+const DOWNLOAD_START_TIMEOUT_MS = 30_000;
+export const CHOOSE_NAME_TIMEOUT_MS = 5_000;
 const ITEM_COMMANDS = new Set<string>(['open', 'show', 'pause', 'resume', 'cancel', 'retry', 'remove']);
 
 interface DownloadManagerOptions {
@@ -30,15 +32,21 @@ interface DownloadManagerOptions {
   directory: () => string;
   askBeforeDownload: () => boolean;
   parentOf: (contents: WebContents) => BaseWindow | undefined;
+  ignore?: (contents: WebContents) => boolean;
   onStateChange: () => void;
   checkFile?: (file: string) => Promise<string | null>;
+  // Returns null synchronously when nobody wants to name the file, so the download never pauses for nothing.
+  chooseName?: (entry: DownloadEntry) => Promise<string | null> | null;
 }
 
 export class DownloadManager {
+  onChange: (() => void) | null = null;
   readonly changes = new ChangeFeed();
   private readonly items = new Map<string, DownloadItem>();
   private readonly reservedPaths = new Set<string>();
   private readonly approvedUrls = new Map<string, string>();
+  private readonly waiters = new Map<string, (id: string | null) => void>();
+  private readonly suggestedNames = new Map<string, string>();
   private prompts: Promise<unknown> = Promise.resolve();
   private stateTimer: NodeJS.Timeout | null = null;
   private pageTimer: NodeJS.Timeout | null = null;
@@ -60,6 +68,7 @@ export class DownloadManager {
     this.stateTimer ??= setTimeout(() => {
       this.stateTimer = null;
       this.options.onStateChange();
+      this.onChange?.();
     }, STATE_PUSH_MS);
     this.pageTimer ??= setTimeout(() => {
       this.pageTimer = null;
@@ -113,6 +122,26 @@ export class DownloadManager {
         });
       },
     };
+  }
+
+  // Extension downloads still follow the ask-before-download setting; a filename only names the file.
+  download(url: string, filename: string | null, headers?: Record<string, string>): Promise<string | null> {
+    return new Promise((resolve) => {
+      this.waiters.get(url)?.(null);
+      const timer = setTimeout(() => {
+        if (this.waiters.get(url) !== settle) return;
+        this.waiters.delete(url);
+        this.suggestedNames.delete(url);
+        resolve(null);
+      }, DOWNLOAD_START_TIMEOUT_MS);
+      const settle = (id: string | null) => {
+        clearTimeout(timer);
+        resolve(id);
+      };
+      this.waiters.set(url, settle);
+      if (filename) this.suggestedNames.set(url, path.basename(filename));
+      this.options.daily.downloadURL(url, headers ? { headers } : undefined);
+    });
   }
 
   runCommand(command: string, params: URLSearchParams, contents?: WebContents): void {
@@ -185,35 +214,83 @@ export class DownloadManager {
 
   private onWillDownload(isPrivate: boolean) {
     return (_event: Event, item: DownloadItem, contents?: WebContents): void => {
+      if (contents && this.options.ignore?.(contents)) {
+        item.cancel();
+        return;
+      }
       const chain = item.getURLChain();
       const retryUrl = chain.find((url) => this.approvedUrls.has(url));
       const retryPath = retryUrl ? this.approvedUrls.get(retryUrl) : undefined;
       if (retryUrl) this.approvedUrls.delete(retryUrl);
-      const savePath = uniquePath(
-        retryPath ? path.dirname(retryPath) : this.options.directory(),
-        retryPath ? path.basename(retryPath) : item.getFilename(),
-        (file) => this.reservedPaths.has(file) || fs.existsSync(file),
-      );
-      item.setSavePath(savePath);
-      this.reservedPaths.add(savePath);
-      if (retryPath || !this.options.askBeforeDownload()) {
-        this.track(item, savePath, isPrivate);
+      const waited = isPrivate ? undefined : chain.find((url) => this.waiters.has(url));
+      const waiter = waited ? this.waiters.get(waited) : undefined;
+      if (waited) this.waiters.delete(waited);
+      const named = isPrivate ? undefined : chain.find((url) => this.suggestedNames.has(url));
+      const suggested = named ? this.suggestedNames.get(named) : undefined;
+      if (named) this.suggestedNames.delete(named);
+      const reserve = (name: string) => {
+        const directory = retryPath ? path.dirname(retryPath) : this.options.directory();
+        const file = uniquePath(directory, name, (taken) => this.reservedPaths.has(taken) || fs.existsSync(taken));
+        item.setSavePath(file);
+        this.reservedPaths.add(file);
+        return file;
+      };
+      const id = randomUUID();
+      const place = (savePath: string, paused: boolean) => {
+        if (retryPath || !this.options.askBeforeDownload()) {
+          this.track(item, savePath, isPrivate, id);
+          waiter?.(id);
+          if (paused) item.resume();
+          return;
+        }
+        item.pause();
+        void this.confirm(item, savePath, contents).then((chosen) => {
+          this.reservedPaths.delete(savePath);
+          if (chosen && item.getState() === 'progressing') {
+            item.setSavePath(chosen);
+            this.reservedPaths.add(chosen);
+            this.track(item, chosen, isPrivate, id);
+            waiter?.(id);
+            item.resume();
+            return;
+          }
+          waiter?.(null);
+          if (chosen) this.reservedPaths.delete(chosen);
+          if (item.getState() === 'progressing') item.cancel();
+        });
+      };
+      const savePath = reserve(retryPath ? path.basename(retryPath) : (suggested ?? item.getFilename()));
+      const naming =
+        retryPath || isPrivate ? null : this.options.chooseName?.(this.entry(id, item, savePath, isPrivate));
+      if (!naming) {
+        place(savePath, false);
         return;
       }
       item.pause();
-      void this.confirm(item, savePath, contents).then((chosen) => {
-        this.reservedPaths.delete(savePath);
-        if (chosen && item.getState() === 'progressing') {
-          item.setSavePath(chosen);
-          this.reservedPaths.add(chosen);
-          this.track(item, chosen, isPrivate);
-          item.resume();
+      void this.nameWithin(naming).then((name) => {
+        if (item.getState() !== 'progressing') {
+          this.reservedPaths.delete(savePath);
+          waiter?.(null);
           return;
         }
-        if (chosen) this.reservedPaths.delete(chosen);
-        if (item.getState() === 'progressing') item.cancel();
+        if (name) this.reservedPaths.delete(savePath);
+        place(name ? reserve(name) : savePath, true);
       });
     };
+  }
+
+  private nameWithin(naming: Promise<string | null>): Promise<string | null> {
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), CHOOSE_NAME_TIMEOUT_MS);
+    });
+    return Promise.race([
+      naming.then(
+        (name) => name && path.basename(name),
+        () => null,
+      ),
+      timeout,
+    ]).finally(() => clearTimeout(timer));
   }
 
   private confirm(item: DownloadItem, savePath: string, contents?: WebContents): Promise<string | null> {
@@ -276,11 +353,8 @@ export class DownloadManager {
     return null;
   }
 
-  private track(item: DownloadItem, savePath: string, isPrivate: boolean): void {
-    const { store } = this.options;
-    const id = randomUUID();
-    this.items.set(id, item);
-    store.add({
+  private entry(id: string, item: DownloadItem, savePath: string, isPrivate: boolean): DownloadEntry {
+    return {
       id,
       url: item.getURL(),
       filename: path.basename(savePath),
@@ -290,7 +364,13 @@ export class DownloadManager {
       totalBytes: item.getTotalBytes(),
       startedAt: Date.now(),
       ...(isPrivate ? { private: true } : {}),
-    });
+    };
+  }
+
+  private track(item: DownloadItem, savePath: string, isPrivate: boolean, id: string): void {
+    const { store } = this.options;
+    this.items.set(id, item);
+    store.add(this.entry(id, item, savePath, isPrivate));
     item.on('updated', (_updated, state) => {
       store.update(id, {
         state: state === 'interrupted' ? 'interrupted' : item.isPaused() ? 'paused' : 'progressing',

@@ -71,8 +71,6 @@ app
         onPageSwipe: noop,
         onNewTabSearch: noop,
         onRepoPrompt: noop,
-        onAnnouncement: noop,
-        onFeedback: noop,
         onUpdateCard: noop,
         onHtmlFullScreenChange: noop,
         onVisit: () => null,
@@ -113,7 +111,7 @@ app
     await contents.executeJavaScript(
       "draft.value='Unsaved form secret';window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};true",
     );
-    original.setSelectedGroup('Work');
+    original.setTabGroup(originalId, 'Work');
     original.togglePin(originalId);
     original.open(url + '/private', { activate: false, isPrivate: true });
     const store = new stores.WorkspaceStore(profile);

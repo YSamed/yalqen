@@ -53,6 +53,7 @@ app
       engines: [{ id: 'google', label: 'Google' }],
       customTemplateValid: true,
       spaces: [],
+      spaceShares: [],
       update: { state: 'unavailable' },
     });
     controller = new controllers.ProfileController(
@@ -74,7 +75,7 @@ app
       clearData: async () => {},
       updater: { check() {}, install() {} },
       relaunch() {},
-      permissions: {},
+      permissionsFor: () => ({}),
       requestRules: {},
       onRequestRulesSaved() {},
     });
@@ -117,7 +118,11 @@ app
     await eventually('(async () => (await window.yalqenSettings.get()).values.startupUrls.length === 2)()');
     assert.equal(store.get().startupBehavior, 'pages');
     assert.deepEqual(store.get().startupUrls, ['https://first.example/', 'https://second.example/']);
-    await window.loadURL('yalqen://settings/profiles');
+    await window.webContents.executeJavaScript(
+      `history.replaceState(null, '', '/passwords?window=&space=${'11111111-1111-4111-8111-111111111111'}')`,
+    );
+    assert.equal(settingsPage.settingsSpace(window.webContents), '11111111-1111-4111-8111-111111111111');
+    await window.loadURL('yalqen://settings/advanced');
     await eventually("document.querySelectorAll('section li').length === 1");
     await window.webContents.executeJavaScript(`(() => {
     const form = document.getElementById('persistent-profiles-title').closest('section').querySelector('form');

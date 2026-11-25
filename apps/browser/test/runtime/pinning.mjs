@@ -16,8 +16,6 @@ app.setPath('userData', profile);
 const deadline = setTimeout(() => app.exit(1), 30_000);
 let window;
 let manager;
-let collapsed = false;
-let pinnedDisplay = 'always';
 const { IpcChannel } = types;
 const { EMPTY_AGENT_SESSION, EMPTY_AGENT_CHAT, EMPTY_PROJECT_RUN } = agentPanel;
 async function eventually(predicate) {
@@ -48,17 +46,12 @@ app
       developer: false,
       pageFullScreen: false,
       windowFullScreen: false,
-      addressPlaceholder: 'Search',
-      panelCollapsed: collapsed,
-      panelSide: 'left',
-      pinnedDisplay,
+      panelCollapsed: false,
       favorites: [],
       spaces: [],
       activeSpaceId: '',
       sidebarVisible: true,
       media: null,
-      toolbarVisible: true,
-      toolbarTabs: true,
       toolbarButtons: ['settings'],
       ...windowAppearance,
       defaultZoom: 1,
@@ -120,10 +113,8 @@ app
       } else if (action.type === 'select-tab') manager.selectTab(action.id, action.mode);
       else if (action.type === 'clear-tab-selection') manager.clearSelection();
       else if (action.type === 'close-selected-tabs') void manager.closeSelected();
-      else if (action.type === 'set-tab-group') manager.setSelectedGroup(action.name);
       else if (action.type === 'rename-tab-group') manager.renameGroup(action.name, action.next);
       else if (action.type === 'toggle-tab-group') manager.toggleGroup(action.name);
-      else if (action.type === 'remove-tab-group') manager.removeGroup(action.name);
     });
     await window.loadFile(path.resolve('dist/renderer/index.html'));
     await eventually("document.querySelectorAll('aside button.select').length === 8");
@@ -153,32 +144,18 @@ app
       ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => `https://${id}.example/`),
     );
     assert.equal(manager.options.closed.length, 0);
-    for (const tab of manager.tabs) manager.togglePin(tab.id);
-    collapsed = true;
-    pinnedDisplay = 'expanded';
-    changed();
-    await eventually(
-      "document.querySelectorAll('aside .row').length === 8 && document.querySelector('aside').classList.contains('collapsed')",
-    );
-    for (const id of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
-      await window.webContents.executeJavaScript(
-        `document.querySelector('aside .row button[aria-label^="Tab ${id}"]').dispatchEvent(new MouseEvent('contextmenu', {bubbles:true,cancelable:true}))`,
-      );
-      await eventually("document.querySelectorAll('aside .row').length === 8");
-      assert.equal(manager.tabs.find((tab) => tab.id === id).pinnedUrl, `https://${id}.example/`);
-    }
-    assert.equal(await window.webContents.executeJavaScript("document.querySelectorAll('aside .favorite').length"), 0);
     const persisted = new persistence.SessionStore(profile);
-    persisted.saveNow({ version: 2, windows: [manager.toSavedWindow()] });
+    persisted.saveNow({ version: 2, windows: [saved] });
     const restored = new persistence.SessionStore(profile).load();
     assert.equal(restored.windows[0].tabs.filter((tab) => tab.pinnedUrl).length, 8);
-    collapsed = false;
+    for (const tab of manager.tabs) manager.togglePin(tab.id);
     changed();
-    await eventually("!document.querySelector('aside').classList.contains('collapsed')");
-    assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, 8);
+    await eventually("document.querySelectorAll('aside .row').length === 8");
+    assert.equal(await window.webContents.executeJavaScript("document.querySelectorAll('aside .favorite').length"), 0);
+    assert.equal(manager.tabs.filter((tab) => tab.pinnedUrl).length, 0);
     assert.equal(manager.count, 8);
     console.log(
-      'PASS: eight successive production sidebar pin actions remain visible in expanded and collapsed/expanded-only modes, including background tabs, and persist without a two-pin limit',
+      'PASS: eight successive production sidebar pin actions remain visible in the expanded sidebar, including background tabs, persist without a two-pin limit and unpin back into rows',
     );
   })
   .then(() => app.quit())

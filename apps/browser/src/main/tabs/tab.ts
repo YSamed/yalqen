@@ -15,6 +15,7 @@ export interface Tab {
   url: string;
   title: string;
   faviconUrl: string | null;
+  pageColor: string | null;
   pinnedUrl: string | null;
   group: string | null;
   space: string;
@@ -51,12 +52,6 @@ export interface Tab {
   unread: number | null;
 }
 
-export interface RecentPage {
-  url: string;
-  title: string;
-  faviconUrl: string | null;
-}
-
 function restoredInactiveSince(saved: unknown): number {
   const now = Date.now();
   return typeof saved === 'number' && Number.isFinite(saved) && saved > 0 && saved <= now ? saved : now;
@@ -69,6 +64,7 @@ export function createTab(saved: Partial<SavedTab> & { url: string }, isPrivate 
     url: saved.url,
     title: saved.title ?? t('tabs.newTab'),
     faviconUrl: saved.faviconUrl ?? null,
+    pageColor: null,
     pinnedUrl: saved.pinnedUrl ?? (saved.keepAlive ? saved.url : null),
     group: tabGroupName(saved.group),
     space: typeof saved.space === 'string' ? saved.space : DEFAULT_SPACE_ID,

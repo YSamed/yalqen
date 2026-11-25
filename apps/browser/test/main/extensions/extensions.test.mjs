@@ -24,6 +24,7 @@ const {
   parseMessages,
   popupPage,
   resolveInside,
+  extensionFile,
   sanitizeSavedExtensions,
   withManifestKey,
 } = manifests;
@@ -116,6 +117,17 @@ test('extension files and pages cannot leave the extension', () => {
   assert.equal(extensionPage('chrome-extension://abc/', null), null);
 });
 
+test('notification icons resolve only to files inside their own extension', () => {
+  const root = path.resolve('/ext/a');
+  const id = 'a'.repeat(32);
+  assert.equal(extensionFile(root, id, 'icons/i.png'), path.join(root, 'icons', 'i.png'));
+  assert.equal(extensionFile(root, id, `chrome-extension://${id}/icon%20big.png`), path.join(root, 'icon big.png'));
+  assert.equal(extensionFile(root, id, `chrome-extension://${'b'.repeat(32)}/i.png`), null);
+  assert.equal(extensionFile(root, id, 'https://example.com/i.png'), null);
+  assert.equal(extensionFile(root, id, '%2F..%2F..%2Fsecret.png'), null);
+  assert.equal(extensionFile(root, id, '%E0%A4%A'), null);
+});
+
 test('manifest messages are localized case-insensitively', () => {
   const messages = parseMessages({ appName: { message: 'Karanlık Okuyucu' }, empty: { message: '' }, bad: 1 });
   assert.deepEqual(messages, { appname: 'Karanlık Okuyucu' });
@@ -123,7 +135,7 @@ test('manifest messages are localized case-insensitively', () => {
   assert.equal(localize('__MSG_missing__', messages), '__MSG_missing__');
 });
 
-test('popups open under the button and stay inside the window', () => {
+test('popups open under the button, or above it near the bottom, and stay inside the window', () => {
   const anchor = { x: 900, y: 8, width: 28, height: 28 };
   assert.deepEqual(popupBounds(anchor, { width: 300, height: 200 }, { width: 1280, height: 800 }), {
     x: 628,
@@ -145,6 +157,14 @@ test('popups open under the button and stay inside the window', () => {
       width: 25,
       height: 25,
     },
+  );
+  assert.deepEqual(
+    popupBounds({ x: 111, y: 777, width: 35, height: 35 }, { width: 380, height: 600 }, { width: 1249, height: 820 }),
+    { x: 8, y: 171, width: 380, height: 600 },
+  );
+  assert.deepEqual(
+    popupBounds({ x: 111, y: 300, width: 35, height: 35 }, { width: 380, height: 900 }, { width: 1249, height: 400 }),
+    { x: 8, y: 8, width: 380, height: 286 },
   );
 });
 
@@ -193,6 +213,37 @@ test('the extensions menu opens popups, falls back to options and links to manag
     extensionsMenuTemplate([], handlers).map((item) => item.label),
     ['Chrome Web Mağazası’nı aç', 'Uzantıları yönet…'],
   );
+});
+
+test('extensions with a side panel get a toggle, and the action opens the panel when asked to', () => {
+  const calls = [];
+  const handlers = {
+    openPopup: (url) => calls.push(['popup', url]),
+    openOptions: (url) => calls.push(['options', url]),
+    openStore: () => {},
+    manage: () => {},
+    toggleSidePanel: (id) => calls.push(['panel', id]),
+    sidePanelOpen: 'p',
+  };
+  const items = extensionsMenuTemplate(
+    [
+      { title: 'Panel', icon: null, popupUrl: null, optionsUrl: null, sidePanel: 'p', sidePanelOnAction: true },
+      { title: 'Quiet', icon: null, popupUrl: null, optionsUrl: 'chrome-extension://q/o.html', sidePanel: 'q' },
+    ],
+    handlers,
+  );
+  assert.deepEqual(
+    items.slice(0, 4).map((item) => item.label),
+    ['Panel', 'Panel yan panelini gizle', 'Quiet', 'Quiet yan panelini göster'],
+  );
+  assert.equal(items[0].enabled, true);
+  for (const item of items.slice(0, 4)) item.click();
+  assert.deepEqual(calls, [
+    ['panel', 'p'],
+    ['panel', 'p'],
+    ['options', 'chrome-extension://q/o.html'],
+    ['panel', 'q'],
+  ]);
 });
 
 test('load errors drop the folder prefix Electron adds', () => {

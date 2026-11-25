@@ -12,7 +12,8 @@
   "desktopName": "yalqen.desktop",
   "scripts": {
     "postinstall": "node scripts/prepare-terminal.mjs",
-    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer && npm run build:native",
+    "build:native": "node scripts/build-native.mjs",
     "build:main": "npm exec rimraf -- dist/main dist/shared && npm exec tsc -- -p tsconfig.main.json",
     "build:preload": "node scripts/build-preload.mjs",
     "build:renderer": "vite build",
@@ -33,7 +34,7 @@
     "bench:backend": "npm run build:main && node scripts/bench-backend.mjs",
     "bench:interface": "npm run build:renderer && node scripts/bench-interface.mjs",
     "start": "npm run build && node scripts/launch-branded.mjs",
-    "dev": "npm run build:main && npm run build:preload && node scripts/dev.mjs",
+    "dev": "npm run build:main && npm run build:preload && npm run build:native && node scripts/dev.mjs",
     "package:mac": "npm run build && npm exec electron-builder -- --mac",
     "package:win": "npm run build && npm exec electron-builder -- --win",
     "package:linux": "npm run build && npm exec electron-builder -- --linux"
@@ -47,7 +48,7 @@
     "@types/node": "^24.19.2",
     "@types/which": "^3.0.4",
     "bippy": "^0.7.3",
-    "electron": "^45.4.1",
+    "electron": "github:castlabs/electron-releases#v45.2.1+wvcus",
     "electron-builder": "^26.18.0",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
@@ -65,16 +66,21 @@
   "build": {
     "appId": "com.yalqen.browser",
     "npmRebuild": false,
+    "electronDownload": {
+      "mirror": "https://github.com/castlabs/electron-releases/releases/download/"
+    },
     "productName": "Yalqen",
     "directories": {
       "output": "build/release"
     },
     "asarUnpack": [
+      "dist/native/**/*",
       "node_modules/node-pty/prebuilds/**/*",
       "node_modules/node-pty/build/**/*"
     ],
     "files": [
       "dist/main/**/*",
+      "dist/native/**/*",
       "dist/preload/**/*",
       "dist/page-scripts/**/*",
       "dist/renderer/**/*",
@@ -124,6 +130,9 @@
       "sign": "./scripts/sign-mac.mjs",
       "extendInfo": {
         "NSCameraUsageDescription": "Websites can use your camera when you allow it.",
+        "NSDesktopFolderUsageDescription": "Yalqen lists the screenshots you take in its downloads when you turn this on in Settings.",
+        "NSDocumentsFolderUsageDescription": "Yalqen saves files you download here and lists screenshots saved here when you turn this on in Settings.",
+        "NSDownloadsFolderUsageDescription": "Yalqen saves files you download here and lists screenshots saved here when you turn this on in Settings.",
         "NSMicrophoneUsageDescription": "Websites can use your microphone when you allow it.",
         "NSLocationUsageDescription": "Websites can see your location when you allow it.",
         "NSLocationWhenInUseUsageDescription": "Websites can see your location when you allow it."
@@ -136,6 +145,9 @@
       ],
       "target": "nsis",
       "icon": "resources/icon-512.png",
+      "signtoolOptions": {
+        "sign": "./scripts/sign-win.mjs"
+      },
       "publish": [
         {
           "provider": "github",

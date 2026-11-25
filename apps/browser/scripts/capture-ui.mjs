@@ -127,6 +127,7 @@ async function capture() {
     defaultBrowser: false,
     engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
     customTemplateValid: true,
+    spaces: [{ id: '', name: 'Default', icon: null }],
     version: '0.0.0',
     update: { state: 'idle' },
   };
@@ -156,6 +157,7 @@ async function capture() {
       'OTEL_EXPORTER_OTLP_TRACES_HEADERS=Authorization=Bearer%20<token>',
     ].join('\n'),
     observedTabs: 2,
+    connectionsRevision: 0,
   };
   const preloads = {
     settings: `
@@ -175,11 +177,14 @@ const storage = [
 ];
 const icons = { 'github.com': 'https://github.githubassets.com/favicons/favicon.svg', 'wikipedia.org': 'https://www.wikipedia.org/static/favicon/wikipedia.ico' };
 contextBridge.exposeInMainWorld('yalqenSettings', {
-  get: async () => view, update: async () => view, onChange: none, clearData: async () => {}, makeDefault: async () => view,
+  get: async () => view, update: async () => ({ view, saved: true }), onChange: none, clearData: async () => {}, makeDefault: async () => view,
   processUsage: async () => ({ totalMB: 512, groups: [], pages: [] }), checkForUpdates: async () => {}, installUpdate: async () => {},
   requestRules: async () => [], saveRequestRules: async (rules) => rules, extensions: async () => [{ path: "/Extensions/example", id: "example", name: "Example extension", version: "1.0", description: "", enabled: true, error: null, icon: null, hasOptions: false, fromStore: true, updating: false, updateError: null }], checkExtensionUpdates: async () => null, installExtension: async () => null,
   installExtensionFromStore: async () => null, openExtensionStore: async () => {}, removeExtension: async () => {},
   setExtensionEnabled: async () => {}, openExtensionOptions: async () => {}, onExtensionsChange: none,
+  profiles: async () => ({ currentId: 'default', profiles: [{ id: 'default', name: 'Default', active: true, default: true, running: true }] }),
+  agentConnections: async () => ({ claude: 'missing', codex: 'missing' }),
+  autofill: async () => ({ available: true, records: [] }), onAutofillChange: none,
   passwords: async () => ({ available: true, passwords: [], neverSave: [] }), revealPassword: async () => null,
   copyPassword: async () => false, removePassword: async () => {}, allowSaving: async () => {}, onPasswordsChange: none,
   agentBridge: async () => agent, copyAgentSetup: async () => true, regenerateAgentToken: async () => agent,
@@ -191,7 +196,7 @@ contextBridge.exposeInMainWorld('yalqenSettings', {
   clearSiteStorage: async () => false,
   siteIcons: async (domains) => Object.fromEntries(domains.filter((domain) => icons[domain]).map((domain) => [domain, icons[domain]])),
 });`,
-    window: (material) => `
+    window: (material, extra = '') => `
 const { contextBridge } = require('electron');
 const tab = (index) => ({
   id: 'tab-' + index, title: 'Page ' + index, url: 'https://site' + index + '.example/', faviconUrl: null,
@@ -203,11 +208,12 @@ const tab = (index) => ({
 });
 const state = {
   tabs: [0, 1, 2, 3, 4].map(tab), listOrder: ['tab-0', 'tab-1', 'tab-2', 'tab-3', 'tab-4'], developer: false,
-  activeTabId: 'tab-0', selectedTabIds: [], pageFullScreen: false, windowFullScreen: false, addressPlaceholder: 'Search or type an address',
-  panelCollapsed: false, panelSide: 'left', pinnedDisplay: 'list', favorites: [], sidebarVisible: true, toolbarVisible: true, toolbarTabs: true,
+  activeTabId: 'tab-0', selectedTabIds: [], pageFullScreen: false, windowFullScreen: false,
+  panelCollapsed: false, favorites: [], sidebarVisible: true, splitTabIds: [],
+  activeSpaceId: '', spaces: [{ id: '', name: 'Default', icon: null }], sidebarFooterItems: ['downloads'],
   media: { tabId: 'tab-3', title: 'Page 3', duration: 200, position: 80, playing: false, canPrevious: true, canNext: true, updatedAt: 0 },
   toolbarButtons: ['bookmarks', 'history', 'settings', 'downloads'], material: ${JSON.stringify(material)}, device: null,
-  glassTint: 25, accent: '#f28c28',
+  accent: '#f28c28',
   zoom: 1, defaultZoom: 1, downloads: { active: 1, progress: 0.4, started: 1 }, extensions: false, profile: 'personal',
   agentPanelOpen: false, agentSession: { id: null, directory: null, status: 'idle', exitCode: null, error: null },
   agentChat: { id: null, directory: null, status: 'idle', model: null, error: null }, agentProviders: ['claude'],
@@ -216,14 +222,83 @@ const state = {
   agentTerminal: false,
   agentProjects: [], agentProjectId: '', agentConversationId: '', agentBackgroundChats: [],
 };
+const api = {};
+${extra}
 contextBridge.exposeInMainWorld('yalqen', {
-  getState: async () => state, onState: () => () => {}, setLayout: () => {}, send: () => {},
+  getState: async () => state, onState: () => () => {}, onAddLiveFolder: () => () => {}, setLayout: () => {}, send: () => {},
+  ...api,
 });`,
   };
+  // Sidebar parts the plain window leaves empty: favorites, nested and collapsed groups, spaces and footer tools.
+  const fullSidebar = `
+Object.assign(state, {
+  favorites: [{ url: 'https://site3.example/', title: 'Site 3', faviconUrl: null }, { url: 'https://docs.example/', title: 'Docs', faviconUrl: null }],
+  tabGroups: [{ name: 'Work', collapsed: false, count: 2, parent: null }, { name: 'Notes', collapsed: false, count: 1, parent: 'Work' }, { name: 'Later', collapsed: true, count: 1, parent: null }],
+  spaces: [{ id: '', name: 'Default', icon: null }, { id: 'side', name: 'Side', icon: '🌿' }],
+  sidebarFooterItems: ['history', 'bookmarks', 'spaces', 'downloads', 'settings'],
+  selectedTabIds: ['tab-3', 'tab-4'], tabCleanup: true, updateReady: true,
+  agentProjects: [{ id: 'p', directory: '/work/site', busy: true, waiting: true }],
+});
+state.tabs[2].group = 'Work'; state.tabs[3].group = 'Notes'; state.tabs[4].group = 'Later';
+state.tabs[3].unread = true; state.tabs[4].audible = true;
+`;
+  // A chat with every part the transcript renders: markdown, tool cards, a queued prompt and a permission request.
+  const agentChat = `
+Object.assign(state, {
+  profile: 'developer', agentPanelOpen: true, agentTerminal: true, agentProjectId: 'p', agentConversationId: 'c',
+  agentSession: { id: 's', directory: '/work/site', status: 'running', exitCode: null, error: null },
+  agentChat: { id: 'chat', directory: '/work/site', status: 'approval', model: 'claude-opus-5-5', error: null },
+  projectRun: { directory: '/work/site', command: 'npm run dev', status: 'running', url: 'http://localhost:5173', exitCode: null },
+  agentElements: [{ id: 'yk_1', tabId: 'tab-0', url: 'https://site0.example/', label: 'header.site-header', component: 'SiteHeader', source: 'src/Header.tsx:12' }],
+  agentBackgroundChats: [{ id: 'bg', title: 'Fix the footer', status: 'thinking' }],
+});
+const chatState = {
+  id: 'chat', provider: 'claude', workMode: 'normal', replyLength: 'short', directory: '/work/site', status: 'approval',
+  model: 'claude-opus-5-5', modelChoice: null, effort: null, permissionMode: 'acceptEdits',
+  models: [{ value: 'default', label: 'Default', efforts: ['low', 'high'] }, { value: 'claude-sonnet-5-5', label: 'Sonnet', efforts: [] }],
+  commands: [{ name: 'review', description: 'Review the diff', argumentHint: '' }],
+  usage: { cost: 0.42, contextTokens: 52000, contextLimit: 200000 }, error: null,
+};
+const message = (id, role, parts, extra = {}) => ({ id, role, parts, context: null, elements: [], episode: null, images: [], reverted: false, workMode: 'normal', ...extra });
+const tool = (id, name, input, output, status = 'done') => ({ type: 'tool', id, name, input: JSON.stringify(input), output, status, verification: null, task: null, steps: [] });
+const snapshot = {
+  state: chatState, revision: 3,
+  messages: [
+    message('m1', 'user', [{ type: 'text', text: 'Why does the header overlap the page?' }], { context: { id: 'tab-0', title: 'Page 0', url: 'https://site0.example/', local: false } }),
+    message('m2', 'assistant', [
+      { type: 'text', text: '## Cause\\n\\nThe header uses **position: fixed** and the page has no top padding.\\n\\n- Fix the \\\`padding-top\\\`\\n- Keep the height in one token\\n\\n| File | Change |\\n|---|---|\\n| Header.tsx | sticky |\\n\\n\\\`\\\`\\\`css\\n.page { padding-top: 64px; }\\n\\\`\\\`\\\`' },
+      tool('t1', 'Read', { file_path: '/work/site/src/Header.tsx' }, '12 lines'),
+      tool('t2', 'Edit', { file_path: '/work/site/src/Header.tsx', old_string: 'position: fixed;', new_string: 'position: sticky;' }, 'ok'),
+      tool('t3', 'Bash', { command: 'npm test' }, 'Tests failed', 'error'),
+    ]),
+  ],
+  queue: [message('q1', 'user', [{ type: 'text', text: 'Then update the footer too' }])],
+  permissions: [{
+    id: 'perm', tool: 'Bash', title: 'Run npm run build', input: JSON.stringify({ command: 'npm run build' }), plan: '1. Build\\n2. Check the output', canAlwaysAllow: true,
+    questions: [{ question: 'Which pages?', multiSelect: true, options: [{ label: 'Home', description: 'Landing page' }, { label: 'Docs', description: 'Guides' }] }],
+  }],
+};
+const none = () => () => {};
+const nothing = async () => null;
+for (const name of ['writeAgentTerminal', 'sendAgentChat', 'cancelResponsiveScan', 'stopProjectRun', 'stopAgentSession', 'startProjectRun',
+  'startAgentSession', 'signOutAgent', 'signInAgent', 'showBackgroundAgentChat', 'selectAgentProvider', 'selectAgentDirectory', 'runResponsiveScan',
+  'rewindAgentChat', 'respondAgentChat', 'resizeAgentTerminal', 'removeAgentElement', 'openBackgroundAgentChatInTab', 'openAgentFile', 'openAgentChat',
+  'interruptAgentChat', 'highlightAgentElement', 'getResponsiveScanReview', 'getResponsiveScan', 'getAgentTerminal', 'fixAgentEpisode',
+  'dismissBackgroundAgentChat', 'deleteAgentChat', 'continueAgentChatInProject', 'configureAgentChat', 'clearResponsiveScan', 'cancelQueuedAgentChat',
+  'newAgentChat', 'agentChatHistory', 'previewAgentRewind'])
+  api[name] = nothing;
+Object.assign(api, {
+  updateAgentDraft: () => {}, onAgentOutput: none, onAgentChat: none, searchAgentFiles: async () => [],
+  getAgentDraft: async () => ({ text: 'Check the footer', attachments: [], images: [] }),
+  getAgentChat: async () => snapshot,
+});
+`;
   for (const [name, source] of Object.entries({
     settings: preloads.settings,
     'window-opaque': preloads.window('opaque'),
     'window-glass': preloads.window('glass'),
+    'window-full': preloads.window('opaque', fullSidebar),
+    'window-agent': preloads.window('opaque', agentChat),
   })) {
     fs.writeFileSync(path.join(profile, `${name}.cjs`), source);
   }
@@ -278,12 +353,8 @@ contextBridge.exposeInMainWorld('yalqen', {
         { id: 'b2', url: 'https://example.com/', title: 'Example', folderId: 'f1', createdAt: 2 },
       ],
     }),
-    showWelcome: () => false,
     readyUpdate: () => null,
-    showAnnouncement: () => false,
-    showFeedback: () => false,
     showRepoPrompt: () => false,
-    opaque: () => false,
     suggestions: () => [],
   };
 
@@ -313,18 +384,18 @@ contextBridge.exposeInMainWorld('yalqen', {
     const surfaces = [
       { name: 'window-glass', file: path.join(rendererDir, 'index.html'), preload: 'window-glass.cjs' },
       { name: 'window-opaque', file: path.join(rendererDir, 'index.html'), preload: 'window-opaque.cjs' },
+      { name: 'window-full', file: path.join(rendererDir, 'index.html'), preload: 'window-full.cjs' },
+      { name: 'window-agent', file: path.join(rendererDir, 'index.html'), preload: 'window-agent.cjs' },
       { name: 'newtab', url: 'yalqen://newtab/' },
       { name: 'history', url: 'yalqen://history/' },
       { name: 'bookmarks', url: 'yalqen://bookmarks/' },
       { name: 'downloads', url: 'yalqen://downloads/' },
       { name: 'error', file: errorPage },
-      ...['general', 'appearance', 'privacy', 'sites', 'passwords', 'performance', 'extensions', 'developer'].map(
-        (pane) => ({
-          name: `settings-${pane}`,
-          url: pane === 'general' ? 'yalqen://settings/' : `yalqen://settings/${pane}`,
-          preload: 'settings.cjs',
-        }),
-      ),
+      ...['general', 'tabs', 'privacy', 'profiles', 'passwords', 'extensions', 'shortcuts', 'advanced'].map((pane) => ({
+        name: `settings-${pane}`,
+        url: pane === 'general' ? 'yalqen://settings/' : `yalqen://settings/${pane}`,
+        preload: 'settings.cjs',
+      })),
     ];
 
     for (const scheme of ['light', 'dark']) {

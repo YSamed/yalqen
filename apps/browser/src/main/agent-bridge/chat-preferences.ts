@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { AgentChatModel, AgentEffort } from '../../shared/types.js';
+import type { AgentChatModel, AgentEffort } from '../../shared/agent.js';
 import { JsonFile } from '../storage/json-file.js';
 
 export const EFFORTS: AgentEffort[] = ['low', 'medium', 'high', 'xhigh', 'max'];

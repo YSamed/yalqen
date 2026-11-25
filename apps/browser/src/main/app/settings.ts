@@ -1,36 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type {
-  AgentActionPolicy,
   InterfaceLanguage,
-  PanelSide,
   PromptPermission,
-  PinnedDisplay,
   SecureDnsSetting,
   SettingsValues,
   ThemeSource,
-  ToolbarItemId,
 } from '../../shared/types.js';
-import {
-  DEFAULT_GLASS_TINT,
-  DEFAULT_TOOLBAR_BUTTONS,
-  DEFAULT_ZOOM_FACTORS,
-  REQUIRED_TOOLBAR_BUTTON,
-  TOOLBAR_BUTTON_IDS,
-  toolbarExtensionId,
-} from '../../shared/types.js';
+import type { AgentActionPolicy } from '../../shared/agent.js';
+import { DEFAULT_SIDEBAR_FOOTER_ITEMS, sanitizeSidebarFooterItems, DEFAULT_ZOOM_FACTORS } from '../../shared/types.js';
 import { sanitizeStartupUrls } from '../../shared/startup-pages.js';
 import { sanitizeSpaceRules } from '../../shared/space-rules.js';
 import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
-import { DEFAULT_WINDOW_COLOR, isWindowColor } from '../../shared/window-color.js';
+import { DEFAULT_FRAME_THEME, sanitizeFrameTheme } from '../../shared/frame-theme.js';
 import { JsonFile } from '../storage/json-file.js';
 import { isAutoArchiveHours } from '../tabs/auto-archive.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
 import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
 import { DEFAULT_SEARCH_ENGINE, SEARCH_ENGINES } from '../address-bar/search.js';
 import { sanitizeProtectionExceptions } from '../privacy/site-protections.js';
-import { isBackgroundFileName } from '../pages/new-tab-background.js';
 import { sanitizeShortcuts } from '../../shared/shortcuts.js';
 
 export interface Settings extends SettingsValues {
@@ -41,26 +30,21 @@ const DEFAULTS: Settings = {
   version: 1,
   searchEngine: DEFAULT_SEARCH_ENGINE,
   customSearchTemplate: null,
-  theme: 'light',
-  transparency: true,
+  theme: 'dark',
   darkSites: false,
-  glassTint: DEFAULT_GLASS_TINT,
+  frameTheme: DEFAULT_FRAME_THEME,
   startupBehavior: 'restore',
   startupUrls: [],
   spaceRules: [],
   panelCollapsed: true,
-  panelSide: 'left',
-  pinnedDisplay: 'always',
   pinnedTabsStayHome: false,
   manualTabCleanup: false,
   tabModes: false,
   autoDeveloperMode: true,
   bookmarksPanel: false,
   touchIdPasskeys: false,
-  sidebarVisible: true,
   sidebarWidgets: ['media'],
-  toolbarVisible: true,
-  toolbarButtons: [...DEFAULT_TOOLBAR_BUTTONS],
+  sidebarFooterItems: [...DEFAULT_SIDEBAR_FOOTER_ITEMS],
   discardAfterMinutes: DEFAULT_DISCARD_AFTER_MINUTES,
   autoArchiveHours: 0,
   adBlocking: true,
@@ -82,29 +66,24 @@ const DEFAULTS: Settings = {
   autoUpdateExtensions: true,
   usageCounting: false,
   askBeforeDownload: true,
+  screenshotsInDownloads: false,
   downloadDirectory: null,
-  welcomeCompleted: false,
-  invitationSeen: false,
   displayName: '',
   accentColor: DEFAULT_ACCENT,
-  windowColor: DEFAULT_WINDOW_COLOR,
-  newTabBackground: '',
-  dismissedAnnouncement: '',
-  dismissedFeedback: '',
   dismissedUpdate: '',
   agentBridge: false,
   agentOrigins: [],
   agentActions: 'ask',
   agentTracing: false,
   agentTerminal: false,
+  agentFloating: false,
   recentTabCycling: true,
+  pageSwipe: true,
   shortcuts: {},
 };
 
 const ENGINE_IDS = new Set<string>([...SEARCH_ENGINES.map((engine) => engine.id), 'custom']);
 const THEMES = new Set<string>(['system', 'light', 'dark'] satisfies ThemeSource[]);
-const PINNED_DISPLAYS = new Set<string>(['always', 'expanded', 'never'] satisfies PinnedDisplay[]);
-const PANEL_SIDES = new Set<string>(['left', 'right'] satisfies PanelSide[]);
 const SECURE_DNS = new Set<string>(['off', 'automatic', 'cloudflare', 'google', 'quad9'] satisfies SecureDnsSetting[]);
 const STARTUP_BEHAVIORS = new Set<string>(['restore', 'new-tab', 'pages'] satisfies Settings['startupBehavior'][]);
 
@@ -115,16 +94,7 @@ function sanitizeBlockedPermissions(value: unknown, fallback: PromptPermission[]
   return PROMPT_PERMISSIONS.filter((kind) => value.includes(kind));
 }
 
-const TOOLBAR_BUTTONS = new Set<string>(TOOLBAR_BUTTON_IDS);
 const AGENT_ACTIONS = new Set<string>(['off', 'ask', 'allow'] satisfies AgentActionPolicy[]);
-
-function sanitizeToolbarButtons(value: unknown, fallback: ToolbarItemId[]): ToolbarItemId[] {
-  if (!Array.isArray(value)) return fallback;
-  const buttons = [...new Set(value)].filter(
-    (id): id is ToolbarItemId => typeof id === 'string' && (TOOLBAR_BUTTONS.has(id) || toolbarExtensionId(id) !== null),
-  );
-  return buttons.includes(REQUIRED_TOOLBAR_BUTTON) ? buttons : [...buttons, REQUIRED_TOOLBAR_BUTTON];
-}
 
 const MAX_DISPLAY_NAME = 40;
 
@@ -141,25 +111,20 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     searchEngine,
     customSearchTemplate,
     theme,
-    transparency,
     darkSites,
-    glassTint,
+    frameTheme,
     startupBehavior,
     startupUrls,
     spaceRules,
     panelCollapsed,
-    panelSide,
-    pinnedDisplay,
     pinnedTabsStayHome,
     manualTabCleanup,
     tabModes,
     autoDeveloperMode,
     bookmarksPanel,
     touchIdPasskeys,
-    sidebarVisible,
     sidebarWidgets,
-    toolbarVisible,
-    toolbarButtons,
+    sidebarFooterItems,
     discardAfterMinutes,
     autoArchiveHours,
     adBlocking,
@@ -181,23 +146,20 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     autoUpdateExtensions,
     usageCounting,
     askBeforeDownload,
+    screenshotsInDownloads,
     askDownloadLocation,
     downloadDirectory,
-    welcomeCompleted,
-    invitationSeen,
     displayName,
     accentColor,
-    windowColor,
-    newTabBackground,
-    dismissedAnnouncement,
-    dismissedFeedback,
     dismissedUpdate,
     agentBridge,
     agentOrigins,
     agentActions,
     agentTracing,
     agentTerminal,
+    agentFloating,
     recentTabCycling,
+    pageSwipe,
     shortcuts,
   } = input;
   return {
@@ -211,12 +173,8 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         ? customSearchTemplate?.trim() || null
         : base.customSearchTemplate,
     theme: typeof theme === 'string' && THEMES.has(theme) ? (theme as ThemeSource) : base.theme,
-    transparency: typeof transparency === 'boolean' ? transparency : base.transparency,
     darkSites: typeof darkSites === 'boolean' ? darkSites : base.darkSites,
-    glassTint:
-      typeof glassTint === 'number' && Number.isFinite(glassTint)
-        ? Math.round(Math.min(100, Math.max(0, glassTint)))
-        : base.glassTint,
+    frameTheme: sanitizeFrameTheme(frameTheme, base.frameTheme),
     startupBehavior:
       typeof startupBehavior === 'string' && STARTUP_BEHAVIORS.has(startupBehavior)
         ? (startupBehavior as Settings['startupBehavior'])
@@ -224,21 +182,14 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     startupUrls: Array.isArray(startupUrls) ? sanitizeStartupUrls(startupUrls) : base.startupUrls,
     spaceRules: Array.isArray(spaceRules) ? sanitizeSpaceRules(spaceRules) : base.spaceRules,
     panelCollapsed: typeof panelCollapsed === 'boolean' ? panelCollapsed : base.panelCollapsed,
-    panelSide: typeof panelSide === 'string' && PANEL_SIDES.has(panelSide) ? (panelSide as PanelSide) : base.panelSide,
-    pinnedDisplay:
-      typeof pinnedDisplay === 'string' && PINNED_DISPLAYS.has(pinnedDisplay)
-        ? (pinnedDisplay as PinnedDisplay)
-        : base.pinnedDisplay,
     pinnedTabsStayHome: typeof pinnedTabsStayHome === 'boolean' ? pinnedTabsStayHome : base.pinnedTabsStayHome,
     manualTabCleanup: typeof manualTabCleanup === 'boolean' ? manualTabCleanup : base.manualTabCleanup,
     tabModes: typeof tabModes === 'boolean' ? tabModes : base.tabModes,
     autoDeveloperMode: typeof autoDeveloperMode === 'boolean' ? autoDeveloperMode : base.autoDeveloperMode,
     bookmarksPanel: typeof bookmarksPanel === 'boolean' ? bookmarksPanel : base.bookmarksPanel,
     touchIdPasskeys: typeof touchIdPasskeys === 'boolean' ? touchIdPasskeys : base.touchIdPasskeys,
-    sidebarVisible: typeof sidebarVisible === 'boolean' ? sidebarVisible : base.sidebarVisible,
     sidebarWidgets: sanitizeSidebarWidgets(sidebarWidgets, base.sidebarWidgets),
-    toolbarVisible: typeof toolbarVisible === 'boolean' ? toolbarVisible : base.toolbarVisible,
-    toolbarButtons: sanitizeToolbarButtons(toolbarButtons, base.toolbarButtons),
+    sidebarFooterItems: sanitizeSidebarFooterItems(sidebarFooterItems, base.sidebarFooterItems),
     discardAfterMinutes: isDiscardAfterMinutes(discardAfterMinutes) ? discardAfterMinutes : base.discardAfterMinutes,
     autoArchiveHours: isAutoArchiveHours(autoArchiveHours) ? autoArchiveHours : base.autoArchiveHours,
     adBlocking: typeof adBlocking === 'boolean' ? adBlocking : base.adBlocking,
@@ -274,21 +225,15 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     askBeforeDownload:
       (typeof askBeforeDownload === 'boolean' ? askBeforeDownload : base.askBeforeDownload) ||
       askDownloadLocation === true,
+    screenshotsInDownloads:
+      typeof screenshotsInDownloads === 'boolean' ? screenshotsInDownloads : base.screenshotsInDownloads,
     downloadDirectory:
       downloadDirectory === null ||
       (typeof downloadDirectory === 'string' && path.isAbsolute(downloadDirectory) && !downloadDirectory.includes('\0'))
         ? downloadDirectory
         : base.downloadDirectory,
-    welcomeCompleted: typeof welcomeCompleted === 'boolean' ? welcomeCompleted : base.welcomeCompleted,
-    invitationSeen: typeof invitationSeen === 'boolean' ? invitationSeen : base.invitationSeen,
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
-    windowColor: isWindowColor(windowColor) ? windowColor : base.windowColor,
-    newTabBackground:
-      newTabBackground === '' || isBackgroundFileName(newTabBackground) ? newTabBackground : base.newTabBackground,
-    dismissedAnnouncement:
-      typeof dismissedAnnouncement === 'string' ? dismissedAnnouncement.slice(0, 64) : base.dismissedAnnouncement,
-    dismissedFeedback: typeof dismissedFeedback === 'string' ? dismissedFeedback.slice(0, 64) : base.dismissedFeedback,
     dismissedUpdate: typeof dismissedUpdate === 'string' ? dismissedUpdate.slice(0, 64) : base.dismissedUpdate,
     agentBridge: typeof agentBridge === 'boolean' ? agentBridge : base.agentBridge,
     agentOrigins: Array.isArray(agentOrigins) ? sanitizeAgentOrigins(agentOrigins) : base.agentOrigins,
@@ -298,7 +243,9 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
         : base.agentActions,
     agentTracing: typeof agentTracing === 'boolean' ? agentTracing : base.agentTracing,
     agentTerminal: typeof agentTerminal === 'boolean' ? agentTerminal : base.agentTerminal,
+    agentFloating: typeof agentFloating === 'boolean' ? agentFloating : base.agentFloating,
     recentTabCycling: typeof recentTabCycling === 'boolean' ? recentTabCycling : base.recentTabCycling,
+    pageSwipe: typeof pageSwipe === 'boolean' ? pageSwipe : base.pageSwipe,
     shortcuts: shortcuts === undefined ? base.shortcuts : sanitizeShortcuts(shortcuts),
   };
 }
@@ -322,11 +269,11 @@ export class SettingsStore {
     return this.current;
   }
 
-  update(patch: unknown): Settings {
+  update(patch: unknown): Settings | null {
     const next = sanitizeSettings({ ...this.current, ...(patch as object) }, this.current);
     if (sameSettings(next, this.current)) return this.current;
+    if (!this.json.flush(() => next)) return null;
     this.current = next;
-    this.json.flush(() => next);
     return next;
   }
 

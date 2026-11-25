@@ -1,4 +1,4 @@
-import { app, ipcMain, type BaseWindow, type IpcMainInvokeEvent, type Session, type WebContents } from 'electron';
+import { app, ipcMain, net, type BaseWindow, type IpcMainInvokeEvent, type Session, type WebContents } from 'electron';
 import { t } from '../../shared/i18n.js';
 import {
   WEB_STORE_CALL,
@@ -65,6 +65,37 @@ export function permissionSummary(manifest: Manifest): string[] {
     ...strings(manifest.host_permissions),
     ...contentScriptSites,
   ]);
+}
+
+const ICON_HOSTS = /(^|\.)(googleusercontent\.com|ggpht\.com|gstatic\.com)$/;
+const ICON_TYPE = /^image\/(png|jpeg|webp|gif)$/;
+const MAX_ICON_BYTES = 256 * 1024;
+const ICON_TIMEOUT_MS = 3000;
+
+// The store sends the icon it shows next to "Add to Chrome"; only Google's image hosts or an inline image are taken.
+export async function storeIcon(
+  raw: unknown,
+  fetchImage: (url: string, init: RequestInit) => Promise<Response> = (url, init) => net.fetch(url, init),
+): Promise<string | null> {
+  if (typeof raw !== 'string') return null;
+  const inline = /^data:(image\/[a-z]+);base64,[A-Za-z0-9+/=]+$/.exec(raw);
+  if (inline) return ICON_TYPE.test(inline[1]!) && raw.length <= (MAX_ICON_BYTES * 4) / 3 + 64 ? raw : null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || !ICON_HOSTS.test(url.hostname)) return null;
+  try {
+    const response = await fetchImage(url.href, { signal: AbortSignal.timeout(ICON_TIMEOUT_MS) });
+    const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim();
+    if (!response.ok || !ICON_TYPE.test(type)) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return bytes.length <= MAX_ICON_BYTES ? `data:${type};base64,${bytes.toString('base64')}` : null;
+  } catch {
+    return null;
+  }
 }
 
 export function installPrompt(
@@ -145,8 +176,10 @@ export function registerWebStoreApi(host: WebStoreHost): void {
     if (status === 'installed') return { result: WebStoreResult.ALREADY_INSTALLED };
 
     const { name, message, items } = installPrompt(details, manifest, id);
+    const image = await storeIcon(details.iconUrl);
     const confirmed = await ask(event.sender, {
       icon: 'extensions',
+      ...(image ? { image } : {}),
       title: t('webStoreApi.addPrompt', { name }),
       message,
       items,

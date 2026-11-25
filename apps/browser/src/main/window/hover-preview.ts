@@ -5,6 +5,7 @@ import {
   PREVIEW_SHADOW as SHADOW,
   type PreviewSize,
   type PreviewView,
+  type TabAction,
 } from '../../shared/previews.js';
 import type { AnchorRect } from '../../shared/types.js';
 import type { TooltipTheme } from '../../shared/tooltip.js';
@@ -14,6 +15,14 @@ const CARD_WIDTH = 300;
 const MAX_HEIGHT = 360;
 const LEAVE_ANCHOR_MS = 300;
 const LEAVE_CARD_MS = 250;
+
+const ACTION_ICONS: Record<TabAction, string> = {
+  pin: 'M6 2.5h4M6.5 2.5v4L4.5 9h7l-2-2.5v-4M8 9v4.5',
+  bookmark: 'M4.5 2.5h7v11L8 11l-3.5 2.5z',
+  split: 'M2.5 3.5h11v9h-11zM8 3.5v9',
+  chat: 'M4.5 3h7A1.5 1.5 0 0 1 13 4.5v5a1.5 1.5 0 0 1-1.5 1.5H7.5l-3 2.5V11A1.5 1.5 0 0 1 3 9.5v-5A1.5 1.5 0 0 1 4.5 3z',
+  copy: 'M7 9a2.5 2.5 0 0 0 3.5 0l2-2a2.5 2.5 0 0 0-3.5-3.5l-.8.8M9 7a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 7 12.5l.8-.8',
+};
 
 const PAGE = `<!doctype html>
 <html>
@@ -64,15 +73,45 @@ const PAGE = `<!doctype html>
   }
   .footer { padding: 4px 8px 4px; color: var(--accent); font-size: 11.5px; font-weight: 600; }
   .message:empty, .footer:empty, .items:empty { display: none; }
+  .card.tab-only { width: 170px; padding: 11px 9px 4px; }
+  .tab { padding: 0 5px; }
+  .card:not(.tab-only) .tab { padding: 6px 8px 4px; }
+  .tab[hidden], .actions:empty { display: none; }
+  .tab-title, .tab-host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 18px; font-size: 14px; }
+  .tab-title { font-weight: 600; }
+  .tab-host { margin-top: 3px; color: color-mix(in srgb, var(--text) 55%, transparent); }
+  .card.split { width: 210px; padding: 4px 6px; }
+  .members[hidden] { display: none; }
+  .member { padding: 9px 6px; }
+  .member + .member { border-top: 0.5px solid color-mix(in srgb, var(--text) 14%, transparent); }
+  .member-title {
+    display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    font-size: 14px; font-weight: 600; line-height: 18px;
+  }
+  .member-host { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: color-mix(in srgb, var(--text) 55%, transparent); }
+  .card.split .actions { margin-top: 2px; padding: 0 2px 2px; }
+  .actions { display: flex; justify-content: space-between; margin-top: 8px; }
+  .act {
+    display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px;
+    background: transparent; color: color-mix(in srgb, var(--text) 62%, transparent); cursor: pointer;
+  }
+  .act:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+  .act:disabled { opacity: 0.35; cursor: default; }
+  .act.on { color: var(--text); }
+  .act.on.fill svg { fill: currentColor; }
+  .act svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
   @media (prefers-reduced-motion: reduce) { .card, .card.on { transform: none; transition: none; } }
 </style>
 </head>
 <body>
 <div class="card" id="card">
+  <div class="tab" id="tab" hidden><div class="tab-title" id="tab-title"></div><div class="tab-host" id="tab-host"></div></div>
+  <div class="members" id="members" hidden></div>
   <div class="heading" id="heading"></div>
   <div class="items" id="items"></div>
   <div class="message" id="message"></div>
   <div class="footer" id="footer"></div>
+  <div class="actions" id="actions"></div>
 </div>
 <script>
   const root = document.documentElement;
@@ -82,7 +121,13 @@ const PAGE = `<!doctype html>
   const report = (event) => { document.title = event + ':' + count++; };
   card.addEventListener('mouseenter', () => report('enter'));
   card.addEventListener('mouseleave', () => report('leave'));
+  const icons = ${JSON.stringify(ACTION_ICONS)};
   card.addEventListener('click', (event) => {
+    const act = event.target.closest('[data-act]');
+    if (act) {
+      if (!act.disabled) report('act-' + act.dataset.act);
+      return;
+    }
     const item = event.target.closest('.item');
     report(item ? 'open-' + item.dataset.index : 'open-tab');
   });
@@ -92,6 +137,38 @@ const PAGE = `<!doctype html>
     for (const name of ['surface', 'text', 'accent', 'border']) {
       if (CSS.supports('color', theme[name])) root.style.setProperty('--' + name, theme[name]);
     }
+    const tab = view.tab;
+    const members = tab && tab.members ? tab.members : null;
+    card.classList.toggle('split', Boolean(members));
+    card.classList.toggle('tab-only', !members && Boolean(tab) && view.items.length === 0 && !view.message);
+    document.getElementById('tab').hidden = !tab || Boolean(members);
+    document.getElementById('members').hidden = !members;
+    document.getElementById('members').replaceChildren(
+      ...(members || []).map((member) => {
+        const row = node('div', 'member', '');
+        row.append(node('div', 'member-title', member.title), node('div', 'member-host', member.host));
+        return row;
+      }),
+    );
+    document.getElementById('tab-title').textContent = tab ? tab.title : '';
+    document.getElementById('tab-host').textContent = tab ? tab.host : '';
+    document.getElementById('actions').replaceChildren(
+      ...(tab ? tab.actions : []).map((action) => {
+        const button = node('button', 'act' + (action.on ? ' on' : '') + (action.id === 'pin' || action.id === 'bookmark' ? ' fill' : ''), '');
+        button.type = 'button';
+        button.dataset.act = action.id;
+        button.disabled = !action.enabled;
+        button.title = action.label;
+        button.setAttribute('aria-label', action.label);
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 16 16');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', icons[action.id]);
+        svg.append(path);
+        button.append(svg);
+        return button;
+      }),
+    );
     document.getElementById('heading').textContent = view.heading || '';
     document.getElementById('message').textContent = view.message || '';
     document.getElementById('footer').textContent = view.footer || '';
@@ -111,7 +188,7 @@ const PAGE = `<!doctype html>
 </body>
 </html>`;
 
-export type PreviewChoice = number | 'tab';
+export type PreviewChoice = number | 'tab' | TabAction;
 
 export class HoverPreview {
   private view: WebContentsView | null = null;
@@ -165,7 +242,7 @@ export class HoverPreview {
         )) as PreviewSize;
         if (ticket !== this.sequence || this.window.isDestroyed()) return;
         const inner = { width: size.width - PAD * 2, height: Math.min(size.height, MAX_HEIGHT) - PAD * 2 };
-        const { x, y } = placePreview(anchor, inner, area);
+        const { x, y } = placePreview(anchor, inner, area, view.tab !== undefined);
         overlay.setBounds({ x: x - PAD, y: y - PAD, width: size.width, height: Math.min(size.height, MAX_HEIGHT) });
         await overlay.webContents.executeJavaScript('window.reveal()');
       })
@@ -199,7 +276,7 @@ export class HoverPreview {
   }
 
   private report(title: string): void {
-    const event = /^([a-z]+)(?:-(\d+|tab))?:\d+$/.exec(title);
+    const event = /^([a-z]+)(?:-(\d+|tab|pin|bookmark|split|copy|chat))?:\d+$/.exec(title);
     if (!event || !this.shown) return;
     if (event[1] === 'enter') {
       this.onCard = true;
@@ -211,6 +288,9 @@ export class HoverPreview {
       const choice: PreviewChoice = event[2] === 'tab' ? 'tab' : Number(event[2]);
       this.hide();
       this.onChoose(choice);
+    } else if (event[1] === 'act' && event[2]) {
+      this.hide();
+      this.onChoose(event[2] as TabAction);
     }
   }
 

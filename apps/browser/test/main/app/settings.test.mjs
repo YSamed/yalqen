@@ -12,13 +12,10 @@ test('unknown or mistyped fields fall back', () => {
     sanitizeSettings({
       searchEngine: 'altavista',
       theme: 'blue',
+      windowColor: 'mint',
       startupBehavior: 'close-all',
       panelCollapsed: 'yes',
-      panelSide: 'top',
-      pinnedDisplay: 'sometimes',
-      sidebarVisible: 'no',
       sidebarWidgets: 'media',
-      toolbarVisible: 0,
       discardAfterMinutes: 45,
       autoArchiveHours: 5,
       adBlocking: 'no',
@@ -34,31 +31,27 @@ test('unknown or mistyped fields fall back', () => {
       agentActions: 'always',
       agentTracing: 'yes',
       agentTerminal: 'yes',
+      agentFloating: 'yes',
     }),
     {
       version: 1,
       searchEngine: 'google',
       customSearchTemplate: null,
-      theme: 'light',
-      transparency: true,
+      theme: 'dark',
       darkSites: false,
-      glassTint: 25,
+      frameTheme: { colors: ['#de5a92'], intensity: 50, texture: 'none', textureStrength: 40 },
       startupBehavior: 'restore',
       startupUrls: [],
       spaceRules: [],
       panelCollapsed: true,
-      panelSide: 'left',
-      pinnedDisplay: 'always',
       pinnedTabsStayHome: false,
       manualTabCleanup: false,
       tabModes: false,
       autoDeveloperMode: true,
       bookmarksPanel: false,
       touchIdPasskeys: false,
-      sidebarVisible: true,
       sidebarWidgets: ['media'],
-      toolbarVisible: true,
-      toolbarButtons: ['home', 'bookmarks', 'history', 'extensions', 'profile', 'settings', 'screenshot', 'downloads'],
+      sidebarFooterItems: ['spaces', 'downloads', 'screenshot'],
       discardAfterMinutes: 30,
       autoArchiveHours: 0,
       adBlocking: true,
@@ -80,54 +73,24 @@ test('unknown or mistyped fields fall back', () => {
       autoUpdateExtensions: true,
       usageCounting: false,
       askBeforeDownload: true,
+      screenshotsInDownloads: false,
       downloadDirectory: null,
-      welcomeCompleted: false,
-      invitationSeen: false,
       displayName: '',
       accentColor: 'orange',
-      windowColor: 'none',
-      newTabBackground: '',
-      dismissedAnnouncement: '',
-      dismissedFeedback: '',
       dismissedUpdate: '',
       agentBridge: false,
       agentOrigins: [],
       agentActions: 'ask',
       agentTracing: false,
       agentTerminal: false,
+      agentFloating: false,
       recentTabCycling: true,
+      pageSwipe: true,
       shortcuts: {},
     },
   );
   assert.equal(sanitizeSettings(null).searchEngine, 'google');
   assert.equal(sanitizeSettings({ customSearchTemplate: '  ' }).customSearchTemplate, null);
-});
-
-test('toolbar buttons are deduplicated, filtered and always keep settings', () => {
-  assert.deepEqual(
-    sanitizeSettings({ toolbarButtons: ['history', 'bogus', 'technologies', 'history', 'downloads'] }).toolbarButtons,
-    ['history', 'downloads', 'settings'],
-  );
-  assert.deepEqual(sanitizeSettings({ toolbarButtons: [] }).toolbarButtons, ['settings']);
-  assert.equal(sanitizeSettings({ toolbarButtons: 'nope' }).toolbarButtons.length, 8);
-});
-
-test('developer tools starts hidden but stays once added', () => {
-  assert.equal(sanitizeSettings(null).toolbarButtons.includes('devtools'), false);
-  assert.deepEqual(sanitizeSettings({ toolbarButtons: ['devtools', 'settings'] }).toolbarButtons, [
-    'devtools',
-    'settings',
-  ]);
-});
-
-test('pinned extensions are kept by id next to the built-in buttons', () => {
-  const id = 'abcdefghijklmnopabcdefghijklmnop';
-  assert.deepEqual(
-    sanitizeSettings({
-      toolbarButtons: [`extension:${id}`, 'extension:not-an-id', 'extension:', `extension:${id}`, 'settings', 42],
-    }).toolbarButtons,
-    [`extension:${id}`, 'settings'],
-  );
 });
 
 test('keeping pinned tabs on their site is off by default and kept once turned on', () => {
@@ -245,11 +208,6 @@ test('updates keep valid fields and persist', () => {
       theme: 'dark',
       startupBehavior: 'new-tab',
       panelCollapsed: true,
-      panelSide: 'right',
-      pinnedDisplay: 'expanded',
-      sidebarVisible: false,
-      toolbarVisible: false,
-      toolbarButtons: ['downloads', 'settings'],
       discardAfterMinutes: 0,
       autoArchiveHours: 24,
       adBlocking: false,
@@ -268,11 +226,6 @@ test('updates keep valid fields and persist', () => {
     assert.equal(reloaded.searchEngine, 'yandex');
     assert.equal(reloaded.startupBehavior, 'new-tab');
     assert.equal(reloaded.panelCollapsed, true);
-    assert.equal(reloaded.panelSide, 'right');
-    assert.equal(reloaded.sidebarVisible, false);
-    assert.equal(reloaded.toolbarVisible, false);
-    assert.equal(reloaded.pinnedDisplay, 'expanded');
-    assert.deepEqual(reloaded.toolbarButtons, ['downloads', 'settings']);
     assert.equal(reloaded.discardAfterMinutes, 0);
     assert.equal(reloaded.autoArchiveHours, 24);
     assert.equal(reloaded.adBlocking, false);
@@ -294,11 +247,29 @@ test('an update that changes nothing keeps the same settings and skips the write
     const before = store.get();
     assert.equal(store.update({ theme: before.theme, searchEngine: 'nope' }), before);
     assert.equal(fs.existsSync(store.file), false);
-    assert.notEqual(store.update({ theme: 'dark' }), before);
-    assert.equal(JSON.parse(fs.readFileSync(store.file, 'utf8')).theme, 'dark');
+    assert.notEqual(store.update({ theme: 'light' }), before);
+    assert.equal(JSON.parse(fs.readFileSync(store.file, 'utf8')).theme, 'light');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('a failed write keeps the last saved settings and allows the same change to be retried', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'yalqen-settings-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  t.mock.method(console, 'warn', () => {});
+  const store = new SettingsStore(dir);
+  const saved = store.update({ theme: 'light' });
+  const temp = `${store.file}.tmp`;
+  fs.mkdirSync(temp);
+
+  assert.equal(store.update({ clearOnExit: true }), null);
+  assert.equal(store.get(), saved);
+  assert.deepEqual(new SettingsStore(dir).get(), saved);
+
+  fs.rmdirSync(temp);
+  assert.equal(store.update({ clearOnExit: true }).clearOnExit, true);
+  assert.deepEqual(new SettingsStore(dir).get(), store.get());
 });
 
 test('agent origins keep unique http and https origins only', () => {
@@ -316,17 +287,14 @@ test('the invitation name is trimmed, single-spaced and capped, and the accent s
   assert.equal(values.accentColor, 'ocean');
   assert.equal(sanitizeSettings({ displayName: 'x'.repeat(80) }).displayName.length, 40);
   assert.equal(sanitizeSettings({ accentColor: '#ff0000' }).accentColor, 'orange');
-  assert.equal(sanitizeSettings({ invitationSeen: 'yes' }).invitationSeen, false);
-});
-
-test('the glass tint is a whole percentage between 0 and 100', () => {
-  assert.equal(sanitizeSettings({}).glassTint, 25);
-  assert.equal(sanitizeSettings({ glassTint: 0 }).glassTint, 0);
-  assert.equal(sanitizeSettings({ glassTint: 62.6 }).glassTint, 63);
-  assert.equal(sanitizeSettings({ glassTint: 180 }).glassTint, 100);
-  assert.equal(sanitizeSettings({ glassTint: -4 }).glassTint, 0);
-  for (const value of ['40', null, Number.NaN, Infinity])
-    assert.equal(sanitizeSettings({ glassTint: value }).glassTint, 25);
+  const legacy = sanitizeSettings({
+    invitationSeen: true,
+    welcomeCompleted: true,
+    dismissedAnnouncement: '1.0.0',
+    dismissedFeedback: '1.0.0',
+  });
+  for (const key of ['invitationSeen', 'welcomeCompleted', 'dismissedAnnouncement', 'dismissedFeedback'])
+    assert.equal(key in legacy, false);
 });
 
 test('space rules keep only valid, unique entries and cap at fifty', () => {
@@ -351,4 +319,29 @@ test('space rules keep only valid, unique entries and cap at fifty', () => {
   const many = Array.from({ length: 80 }, (_, i) => ({ host: `site${i}.test`, space: 'work' }));
   assert.equal(sanitizeSettings({ spaceRules: many }).spaceRules.length, 50);
   assert.deepEqual(sanitizeSettings({ spaceRules: 'x' }).spaceRules, []);
+});
+
+test('frame theme keeps valid colors and clamps its numbers', () => {
+  const theme = sanitizeSettings({
+    frameTheme: {
+      colors: ['#FF0000', 'red', 7, '#00ff00', '#0000ff', '#ffffff'],
+      intensity: 140,
+      texture: 'dots',
+      textureStrength: -5,
+    },
+  }).frameTheme;
+  assert.deepEqual(theme, {
+    colors: ['#ff0000', '#00ff00', '#0000ff'],
+    intensity: 100,
+    texture: 'dots',
+    textureStrength: 0,
+  });
+});
+
+test('frame theme falls back to defaults for unknown values', () => {
+  const theme = sanitizeSettings({
+    frameTheme: { colors: [], texture: 'stripes', intensity: 'x' },
+  }).frameTheme;
+  assert.deepEqual(theme, sanitizeSettings({}).frameTheme);
+  assert.deepEqual(sanitizeSettings({ frameTheme: null }).frameTheme, sanitizeSettings({}).frameTheme);
 });

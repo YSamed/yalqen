@@ -1,43 +1,29 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
-  import {
-    DEFAULT_ZOOM_FACTORS,
-    type ExtensionInfo,
-    type SettingsValues,
-    type ToolbarExtension,
-  } from '../../shared/types';
+  import { DEFAULT_ZOOM_FACTORS, type SettingsValues } from '../../shared/types';
   import { t } from '../../shared/i18n';
-  import { ACCENT_COLORS } from '../../shared/accent';
-  import type { WindowColor } from '../../shared/window-color';
+  import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent';
+  import type { FrameTheme } from '../../shared/frame-theme';
+  import { DEFAULT_SPACE_ID, type SpaceView } from '../../shared/workspaces';
   import AccentPicker from '../ui/AccentPicker.svelte';
   import Button from '../ui/Button.svelte';
-  import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import ChoiceCards from './ChoiceCards.svelte';
   import SettingRow from './SettingRow.svelte';
-  import ToolbarEditor from './ToolbarEditor.svelte';
 
-  let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
-    $props();
+  let {
+    values,
+    spaces = [],
+    update,
+    section,
+  }: {
+    values: SettingsValues;
+    spaces?: SpaceView[];
+    update: (patch: Partial<SettingsValues>) => Promise<void>;
+    section: 'look' | 'tabs';
+  } = $props();
 
   const api = window.yalqenSettings;
-
-  let installed = $state<ExtensionInfo[]>([]);
-  const toolbarExtensions = $derived<ToolbarExtension[]>(
-    installed.flatMap((extension) =>
-      extension.enabled && extension.id ? [{ id: extension.id, title: extension.name, icon: extension.icon }] : [],
-    ),
-  );
-  onMount(() => {
-    api
-      .extensions()
-      .then((next) => (installed = next))
-      .catch(() => {});
-    return api.onExtensionsChange((next) => (installed = next));
-  });
-  const startupTransparency = untrack(() => values.transparency);
-  const transparencyChanged = $derived(values.transparency !== startupTransparency);
 
   type Theme = SettingsValues['theme'];
   const themeOptions = [
@@ -46,52 +32,39 @@
     { value: 'dark', label: t('settings.themeDark') },
   ] as const;
 
-  const windowColors: { id: WindowColor; hex: string; label: string; ring?: boolean }[] = [
-    { id: 'none', hex: 'transparent', label: t('windowColor.none'), ring: true },
-    ...ACCENT_COLORS.map(({ id, hex }) => ({ id, hex, label: t(`accent.${id}`) })),
-  ];
-
-  type Layout = 'left-wide' | 'left-narrow' | 'right-wide' | 'right-narrow' | 'hidden';
-  const layoutOptions = [
-    { value: 'left-wide', label: t('settings.layoutLeftWide') },
-    { value: 'left-narrow', label: t('settings.layoutLeftNarrow') },
-    { value: 'right-wide', label: t('settings.layoutRightWide') },
-    { value: 'right-narrow', label: t('settings.layoutRightNarrow') },
-    { value: 'hidden', label: t('settings.layoutHidden') },
-  ] as const;
-  const layout = $derived<Layout>(
-    values.sidebarVisible ? `${values.panelSide}-${values.panelCollapsed ? 'narrow' : 'wide'}` : 'hidden',
-  );
-
-  function setLayout(next: Layout): void {
-    if (next === 'hidden') {
-      void update({ sidebarVisible: false });
-      return;
-    }
-    const [side, width] = next.split('-') as ['left' | 'right', 'wide' | 'narrow'];
-    void update({ sidebarVisible: true, panelSide: side, panelCollapsed: width === 'narrow' });
-  }
-
   const zoomOptions = DEFAULT_ZOOM_FACTORS.map((factor) => ({
     value: factor,
     label: t('settings.zoomPercent', { percent: Math.round(factor * 100) }),
   }));
-  let choosingBackground = $state(false);
 
-  async function chooseBackground(): Promise<void> {
-    choosingBackground = true;
-    try {
-      await api.chooseNewTabBackground();
-    } finally {
-      choosingBackground = false;
-    }
+  // The space menu opens this pane with #space=<id> to theme just that space.
+  let frameScope = $state(new URLSearchParams(location.hash.slice(1)).get('space') ?? DEFAULT_SPACE_ID);
+  $effect(() => {
+    const follow = () => {
+      const space = new URLSearchParams(location.hash.slice(1)).get('space');
+      if (space !== null) frameScope = space;
+    };
+    window.addEventListener('hashchange', follow);
+    return () => window.removeEventListener('hashchange', follow);
+  });
+  const scopedSpace = $derived(spaces.find((space) => space.id !== DEFAULT_SPACE_ID && space.id === frameScope));
+  const frame = $derived(scopedSpace?.theme ?? values.frameTheme);
+  const themeColor = $derived<AccentColorId>(
+    ACCENT_COLORS.find(({ hex }) => hex === frame.colors[0])?.id ?? values.accentColor,
+  );
+
+  // One color themes the card frame and the accent; the shared theme also stores it as the global accent.
+  function setThemeColor(id: AccentColorId): void {
+    const theme: FrameTheme = { ...frame, colors: [accentHex(id)], texture: 'none' };
+    if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
+    else void update({ frameTheme: theme, accentColor: id });
   }
 
-  const pinnedOptions = [
-    { value: 'always', label: t('settings.pinnedAlways') },
-    { value: 'expanded', label: t('settings.pinnedExpanded') },
-    { value: 'never', label: t('settings.pinnedNever') },
-  ] as const;
+  function setIntensity(intensity: number): void {
+    const theme: FrameTheme = { ...frame, intensity };
+    if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
+    else void update({ frameTheme: theme });
+  }
 </script>
 
 {#snippet mockWindow(scheme: 'light' | 'dark')}
@@ -117,201 +90,112 @@
   </svg>
 {/snippet}
 
-{#snippet layoutPreview(option: Layout)}
-  {@const right = option.startsWith('right')}
-  {@const narrow = option.endsWith('narrow')}
-  {@const width = narrow ? 16 : 42}
-  {@const panelX = right ? 156 - width : 4}
-  <svg viewBox="0 0 160 100">
-    <rect class="frame" width="160" height="100" rx="6" />
-    {#if option === 'hidden'}
-      <rect class="dot" x="8" y="7" width="30" height="8" rx="4" />
-      <rect class="tab" x="42" y="7" width="30" height="8" rx="4" />
-      <rect class="tab" x="76" y="7" width="30" height="8" rx="4" />
-      <rect class="page" x="6" y="20" width="148" height="74" rx="4" />
-    {:else}
-      <rect class="panel" x={panelX} y="4" {width} height="92" rx="4" />
-      {#each [0, 1, 2, 3] as row (row)}
-        {#if narrow}
-          <circle class={row === 0 ? 'dot' : 'tab'} cx={panelX + 8} cy={14 + row * 11} r="3.5" />
-        {:else}
-          <rect
-            class={row === 0 ? 'dot' : 'tab'}
-            x={panelX + 6}
-            y={11 + row * 11}
-            width={30 - (row % 2) * 6}
-            height="5"
-            rx="2.5"
-          />
-        {/if}
-      {/each}
-      <rect class="page" x={right ? 6 : panelX + width + 6} y="8" width={148 - width - 2} height="84" rx="4" />
+{#if section === 'look'}
+  <h2>{t('settings.theme')}</h2>
+  <ChoiceCards
+    label={t('settings.theme')}
+    options={themeOptions}
+    value={values.theme}
+    onchange={(value) => update({ theme: value })}
+    preview={themePreview}
+  />
+  <SettingRow title={scopedSpace ? t('settings.themeColorFor', { space: scopedSpace.name }) : t('settings.themeColor')}>
+    <AccentPicker label={t('settings.themeColor')} value={themeColor} onchange={setThemeColor} />
+    {#if scopedSpace?.theme}
+      <Button variant="ghost" onclick={() => api.setSpaceTheme(scopedSpace.id, null)}>
+        {t('settings.frameScopeReset')}
+      </Button>
     {/if}
-  </svg>
-{/snippet}
-
-<h2>{t('settings.theme')}</h2>
-<ChoiceCards
-  label={t('settings.theme')}
-  options={themeOptions}
-  value={values.theme}
-  onchange={(value) => update({ theme: value })}
-  preview={themePreview}
-/>
-<SettingRow title={t('settings.accent')} hint={t('settings.accentHint')}>
-  <AccentPicker
-    label={t('settings.accent')}
-    value={values.accentColor}
-    onchange={(value) => update({ accentColor: value })}
-  />
-</SettingRow>
-
-<SettingRow title={t('settings.windowColor')} hint={t('settings.windowColorHint')}>
-  <AccentPicker
-    label={t('settings.windowColor')}
-    value={values.windowColor === 'accent' ? values.accentColor : values.windowColor}
-    colors={windowColors}
-    onchange={(value) => update({ windowColor: value })}
-  />
-</SettingRow>
-
-<SettingRow title={t('settings.newTabBackground')} hint={t('settings.newTabBackgroundHint')}>
-  <Button variant="tonal" disabled={choosingBackground} onclick={chooseBackground}>
-    {t('settings.chooseNewTabBackground')}
-  </Button>
-  {#if values.newTabBackground}
-    <Button variant="ghost" onclick={() => api.removeNewTabBackground()}>{t('settings.removeNewTabBackground')}</Button>
-  {/if}
-</SettingRow>
-
-<h2>{t('settings.tabPanel')}</h2>
-<ChoiceCards
-  label={t('settings.tabPanel')}
-  options={layoutOptions}
-  value={layout}
-  onchange={setLayout}
-  preview={layoutPreview}
-/>
-
-<h2>{t('settings.toolbar')}</h2>
-<SettingRow title={t('settings.showToolbar')} hint={t('settings.showToolbarHint')}>
-  <Switch
-    label={t('settings.showToolbar')}
-    checked={values.toolbarVisible}
-    onchange={(checked) => update({ toolbarVisible: checked })}
-  />
-</SettingRow>
-<ToolbarEditor
-  shown={values.toolbarButtons}
-  extensions={toolbarExtensions}
-  onchange={(buttons) => update({ toolbarButtons: buttons })}
-/>
-
-<h2>{t('settings.advanced')}</h2>
-<SettingRow title={t('settings.pinnedTabs')}>
-  <SegmentedControl
-    label={t('settings.pinnedTabs')}
-    options={pinnedOptions}
-    value={values.pinnedDisplay}
-    onchange={(value) => update({ pinnedDisplay: value })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.pinnedTabsStayHome')} hint={t('settings.pinnedTabsStayHomeHint')}>
-  <Switch
-    label={t('settings.pinnedTabsStayHome')}
-    checked={values.pinnedTabsStayHome}
-    onchange={(checked) => update({ pinnedTabsStayHome: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.recentTabCycling')} hint={t('settings.recentTabCyclingHint')}>
-  <Switch
-    label={t('settings.recentTabCycling')}
-    checked={values.recentTabCycling}
-    onchange={(checked) => update({ recentTabCycling: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
-  <Switch
-    label={t('settings.tabCleanup')}
-    checked={values.manualTabCleanup}
-    onchange={(checked) => update({ manualTabCleanup: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.tabModes')} hint={t('settings.tabModesHint')}>
-  <Switch
-    label={t('settings.tabModes')}
-    checked={values.tabModes}
-    onchange={(checked) => update({ tabModes: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.autoDeveloperMode')} hint={t('settings.autoDeveloperModeHint')}>
-  <Switch
-    label={t('settings.autoDeveloperMode')}
-    checked={values.autoDeveloperMode}
-    disabled={!values.tabModes}
-    onchange={(checked) => update({ autoDeveloperMode: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.bookmarksPanel')} hint={t('settings.bookmarksPanelHint')}>
-  <Switch
-    label={t('settings.bookmarksPanel')}
-    checked={values.bookmarksPanel}
-    onchange={(checked) => update({ bookmarksPanel: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
-  <Switch
-    label={t('settings.mediaPlayer')}
-    checked={values.sidebarWidgets.includes('media')}
-    onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.transparency')} hint={t('settings.transparencyHint')}>
-  <Switch
-    label={t('settings.transparency')}
-    checked={values.transparency}
-    onchange={(checked) => update({ transparency: checked })}
-  />
-  {#if transparencyChanged}
-    <Button variant="primary" onclick={() => api.relaunch()}>{t('settings.restartNow')}</Button>
-  {/if}
-</SettingRow>
-{#if startupTransparency}
-  <SettingRow title={t('settings.glassTint')} hint={t('settings.glassTintHint')} labelFor="glass-tint">
+  </SettingRow>
+  <SettingRow title={t('settings.themeIntensity')} hint={t('settings.themeIntensityHint')} labelFor="theme-intensity">
     <input
-      id="glass-tint"
-      class="tint"
+      id="theme-intensity"
       type="range"
       min="0"
       max="100"
-      value={values.glassTint}
-      oninput={(event) => update({ glassTint: event.currentTarget.valueAsNumber })}
+      value={frame.intensity}
+      onchange={(event) => setIntensity(event.currentTarget.valueAsNumber)}
+    />
+  </SettingRow>
+
+  <SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
+    <Switch
+      label={t('settings.darkSites')}
+      checked={values.darkSites}
+      onchange={(checked) => update({ darkSites: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
+    <Select
+      controlled
+      id="default-zoom"
+      options={zoomOptions}
+      value={values.defaultZoom}
+      onchange={(value) => update({ defaultZoom: value })}
+    />
+  </SettingRow>
+{:else}
+  <h2>{t('settings.tabPanel')}</h2>
+  <SettingRow title={t('settings.pinnedTabsStayHome')} hint={t('settings.pinnedTabsStayHomeHint')}>
+    <Switch
+      label={t('settings.pinnedTabsStayHome')}
+      checked={values.pinnedTabsStayHome}
+      onchange={(checked) => update({ pinnedTabsStayHome: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.recentTabCycling')} hint={t('settings.recentTabCyclingHint')}>
+    <Switch
+      label={t('settings.recentTabCycling')}
+      checked={values.recentTabCycling}
+      onchange={(checked) => update({ recentTabCycling: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.pageSwipe')} hint={t('settings.pageSwipeHint')}>
+    <Switch
+      label={t('settings.pageSwipe')}
+      checked={values.pageSwipe}
+      onchange={(checked) => update({ pageSwipe: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.tabCleanup')} hint={t('settings.tabCleanupHint')}>
+    <Switch
+      label={t('settings.tabCleanup')}
+      checked={values.manualTabCleanup}
+      onchange={(checked) => update({ manualTabCleanup: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.tabModes')} hint={t('settings.tabModesHint')}>
+    <Switch
+      label={t('settings.tabModes')}
+      checked={values.tabModes}
+      onchange={(checked) => update({ tabModes: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.autoDeveloperMode')} hint={t('settings.autoDeveloperModeHint')}>
+    <Switch
+      label={t('settings.autoDeveloperMode')}
+      checked={values.autoDeveloperMode}
+      disabled={!values.tabModes}
+      onchange={(checked) => update({ autoDeveloperMode: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.bookmarksPanel')} hint={t('settings.bookmarksPanelHint')}>
+    <Switch
+      label={t('settings.bookmarksPanel')}
+      checked={values.bookmarksPanel}
+      onchange={(checked) => update({ bookmarksPanel: checked })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.mediaPlayer')} hint={t('settings.mediaPlayerHint')}>
+    <Switch
+      label={t('settings.mediaPlayer')}
+      checked={values.sidebarWidgets.includes('media')}
+      onchange={(checked) => update({ sidebarWidgets: checked ? ['media'] : [] })}
     />
   </SettingRow>
 {/if}
-<SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
-  <Switch
-    label={t('settings.darkSites')}
-    checked={values.darkSites}
-    onchange={(checked) => update({ darkSites: checked })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.pageZoom')} hint={t('settings.pageZoomHint')} labelFor="default-zoom">
-  <Select
-    id="default-zoom"
-    options={zoomOptions}
-    value={values.defaultZoom}
-    onchange={(value) => update({ defaultZoom: value })}
-  />
-</SettingRow>
 
 <style>
-  .tint {
-    flex: none;
-    width: 180px;
-    accent-color: var(--accent);
-  }
-
   svg {
     --mock-light: #ffffff;
     --mock-light-side: #f1f1f3;
@@ -347,22 +231,5 @@
 
   .dot {
     fill: var(--accent);
-  }
-
-  .frame {
-    fill: var(--bg);
-  }
-
-  .panel {
-    fill: var(--surface-hover);
-  }
-
-  .tab {
-    fill: var(--border);
-  }
-
-  .page {
-    fill: var(--surface);
-    stroke: var(--border);
   }
 </style>

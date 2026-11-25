@@ -8,6 +8,7 @@ interface ConfirmDialogOptions {
   preload: string;
   page: string;
   accent: () => string;
+  tint?: (window: BaseWindow) => string | null;
 }
 
 interface OpenDialog {
@@ -54,7 +55,11 @@ export class ConfirmDialog {
       void loadRenderer(contents, this.options.page, { lang: getLocale() })
         .then(() => {
           if (this.current?.view !== view || contents.isDestroyed()) return;
-          contents.send(ConfirmChannel.open, { ...request, accent: this.options.accent() });
+          contents.send(ConfirmChannel.open, {
+            ...request,
+            accent: this.options.accent(),
+            tint: this.options.tint?.(window) ?? null,
+          });
           contents.focus();
         })
         .catch(this.cancel);

@@ -147,14 +147,21 @@ export interface PreviewSize {
 export const PREVIEW_GAP = 8;
 const EDGE = 8;
 
-export function placePreview(anchor: AnchorRect, size: PreviewSize, area: PreviewSize): { x: number; y: number } {
+// A tab card centers on its row like Dia; content previews line up with the row's top.
+export function placePreview(
+  anchor: AnchorRect,
+  size: PreviewSize,
+  area: PreviewSize,
+  centered = false,
+): { x: number; y: number } {
+  const sideY = centered ? anchor.y + (anchor.height - size.height) / 2 : anchor.y;
   const clampY = (y: number) => Math.max(EDGE, Math.min(y, area.height - size.height - EDGE));
   const clampX = (x: number) => Math.max(EDGE, Math.min(x, area.width - size.width - EDGE));
   const right = anchor.x + anchor.width + PREVIEW_GAP;
   const left = anchor.x - PREVIEW_GAP - size.width;
   if (anchor.width < area.width / 2 && right + size.width <= area.width - EDGE)
-    return { x: Math.round(right), y: Math.round(clampY(anchor.y)) };
-  if (left >= EDGE) return { x: Math.round(left), y: Math.round(clampY(anchor.y)) };
+    return { x: Math.round(right), y: Math.round(clampY(sideY)) };
+  if (left >= EDGE) return { x: Math.round(left), y: Math.round(clampY(sideY)) };
   return { x: Math.round(clampX(anchor.x)), y: Math.round(clampY(anchor.y + anchor.height + PREVIEW_GAP)) };
 }
 
@@ -162,7 +169,7 @@ export function validPreviewRequest(value: unknown): PreviewRequest | null {
   if (typeof value !== 'object' || value === null) return null;
   const { tabId, url, anchor, theme } = value as Record<string, unknown>;
   if (tabId !== null && (typeof tabId !== 'string' || tabId.length > 100)) return null;
-  if (typeof url !== 'string' || url.length > 4096 || !previewKind(url)) return null;
+  if (typeof url !== 'string' || url.length > 4096 || (tabId === null && !previewKind(url))) return null;
   const rect = validAnchor(anchor);
   const colors = validTheme(theme);
   return rect && colors ? { tabId, url, anchor: rect, theme: colors } : null;
@@ -175,7 +182,17 @@ export interface PreviewItem {
   live: boolean;
 }
 
+export type TabAction = 'pin' | 'bookmark' | 'split' | 'copy' | 'chat';
+
+export interface TabCard {
+  title: string;
+  host: string;
+  members?: { title: string; host: string }[];
+  actions: { id: TabAction; label: string; on: boolean; enabled: boolean }[];
+}
+
 export interface PreviewView {
+  tab?: TabCard;
   heading: string | null;
   items: PreviewItem[];
   message: string | null;

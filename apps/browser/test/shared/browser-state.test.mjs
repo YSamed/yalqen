@@ -45,20 +45,14 @@ const fixture = () => ({
   splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
-  addressPlaceholder: 'Search',
   panelCollapsed: false,
-  panelSide: 'left',
-  pinnedDisplay: 'always',
   favorites: [],
   spaces: [],
   activeSpaceId: '',
   sidebarVisible: true,
   media: null,
-  toolbarVisible: true,
-  toolbarTabs: true,
   toolbarButtons: ['settings', 'downloads'],
   material: 'opaque',
-  glassTint: 25,
   accent: '#0a84ff',
   device: {
     label: 'Phone',
@@ -263,4 +257,49 @@ test('live folders keep their identity until their content changes', () => {
   const result = reuseBrowserState(previous, freeze(changed));
   assert.deepEqual(result.liveFolders, changed.liveFolders);
   assert.notEqual(result.liveFolders[0], previous.liveFolders[0]);
+});
+
+test('nested window fields and tab episodes keep their identity until they change', () => {
+  const nested = {
+    splitGroups: [['a', 'b']],
+    splitWeights: [[0.4, 0.6], null],
+    devToolsDivider: { x: 0, y: 0, width: 6, height: 400, value: 0.5 },
+    bookmarksPanel: {
+      folders: [{ id: 'f', title: 'Work', parentId: null }],
+      bookmarks: [{ id: 'b', title: 'Docs', url: 'https://example.com/', folderId: 'f', icon: null }],
+    },
+    sidebarFooterItems: ['history', 'downloads'],
+    frameTheme: { colors: ['#ff0000'], intensity: 50, texture: 'grain', textureStrength: 20 },
+    spaces: [
+      { id: 's', name: 'Home', icon: null, theme: { colors: [], intensity: 0, texture: 'none', textureStrength: 0 } },
+    ],
+  };
+  const previous = freeze({ ...fixture(), ...nested });
+  const withEpisode = structuredClone(previous);
+  withEpisode.tabs[0].agentEpisode = { id: 'e', lines: ['TypeError'] };
+  const base = reuseBrowserState(previous, freeze(withEpisode));
+  assert.equal(reuseBrowserState(base, freeze(structuredClone(withEpisode))), base);
+
+  const renamed = structuredClone(withEpisode);
+  renamed.bookmarksPanel.bookmarks[0].title = 'Guide';
+  renamed.tabs.reverse();
+  const result = reuseBrowserState(base, freeze(renamed));
+  assert.deepEqual(result, renamed);
+  assert.equal(result.bookmarksPanel.folders, base.bookmarksPanel.folders);
+  assert.notEqual(result.bookmarksPanel.bookmarks, base.bookmarksPanel.bookmarks);
+  for (const key of Object.keys(nested).filter((key) => key !== 'bookmarksPanel'))
+    assert.equal(result[key], base[key], key);
+  assert.equal(result.tabs[1], base.tabs[0]);
+  assert.equal(result.tabs[0], base.tabs[1]);
+});
+
+test('removed and replaced fields do not survive from the previous state', () => {
+  const previous = freeze({ ...fixture(), splitWeights: [[0.5, 0.5]], frameTheme: { colors: ['#fff'], intensity: 1 } });
+  const next = structuredClone(previous);
+  delete next.splitWeights;
+  next.frameTheme = { colors: ['#fff'], texture: 'dots' };
+  next.toolbarButtons.pop();
+  const result = reuseBrowserState(previous, freeze(next));
+  assert.deepEqual(result, next);
+  assert.equal(result.frameTheme.colors, previous.frameTheme.colors);
 });

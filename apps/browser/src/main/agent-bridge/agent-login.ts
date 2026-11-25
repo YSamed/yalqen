@@ -2,7 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { AgentProviderId } from '../../shared/types.js';
+import type { AgentProviderId } from '../../shared/agent.js';
 import { findCommand } from './shell-command.js';
 
 const LOGIN_COMMANDS: Partial<Record<AgentProviderId, { command: string; args: string[]; logout: string[] }>> = {

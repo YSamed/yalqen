@@ -53,10 +53,10 @@ app
   .then(async () => {
     const store = new stores.AutofillStore(profile, passwords.safeStorageCipher);
     handlers.installAutofillHandlers({
-      store,
+      storeFor: () => store,
       allowed: () => false,
       parentOf: (contents) => windows.find((w) => w.webContents === contents),
-      changed: () => settingsPage.broadcastAutofill(store.view()),
+      changed: () => settingsPage.broadcastAutofill(() => store.view()),
       authenticate: async () => {
         auths++;
         return authenticated;
@@ -64,11 +64,11 @@ app
     });
     const passwordStore = new passwordStores.PasswordStore(profile, passwords.safeStorageCipher);
     passwords.installPasswordHandlers({
-      store: passwordStore,
+      storeFor: () => passwordStore,
       savesPasswords: () => false,
       parentOf: (contents) => windows.find((w) => w.webContents === contents),
       isSettingsFrame: settingsPage.isSettingsFrame,
-      onChange: () => settingsPage.broadcastPasswords(passwordStore.view()),
+      onChange: () => settingsPage.broadcastPasswords(() => passwordStore.view()),
     });
     const preferences = new settings.SettingsStore(profile),
       view = () => ({
@@ -89,7 +89,7 @@ app
       clearData: async () => {},
       updater: {},
       relaunch() {},
-      permissions: {},
+      permissionsFor: () => ({}),
       requestRules: {},
       onRequestRulesSaved() {},
     });

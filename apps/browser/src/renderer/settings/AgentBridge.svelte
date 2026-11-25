@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t } from '../../shared/i18n';
+  import type { SettingsValues } from '../../shared/types';
   import type {
     AgentActionPolicy,
     AgentBridgeView,
@@ -9,8 +10,7 @@
     AgentConnections,
     AgentSetupKind,
     AgentSetupResult,
-    SettingsValues,
-  } from '../../shared/types';
+  } from '../../shared/agent';
   import Button from '../ui/Button.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
   import Select from '../ui/Select.svelte';
@@ -176,6 +176,7 @@
 
   <SettingRow title={t('agentBridge.actions')} hint={t('agentBridge.actionsHint')} labelFor="agent-actions">
     <Select
+      controlled
       id="agent-actions"
       options={actionOptions}
       value={values.agentActions}

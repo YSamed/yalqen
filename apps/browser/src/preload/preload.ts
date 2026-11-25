@@ -2,15 +2,18 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
   IpcChannel as channel,
   type BrowserState,
+  type ChromeLayout,
+  type UiAction,
+  type YalqenApi,
+} from '../shared/types.js';
+import {
   type AgentSessionState,
   type AgentTerminalSnapshot,
   type AgentChatSession,
   type AgentChatSnapshot,
   type AgentRewindPreview,
-  type ChromeLayout,
-  type UiAction,
-  type YalqenApi,
-} from '../shared/types.js';
+} from '../shared/agent.js';
+import { isLiveFolderKind } from '../shared/live-folders.js';
 import type { VisualComparisonPreview, VisualComparisonReview } from '../shared/visual-comparison.js';
 import type { ResponsiveScanPreview, ResponsiveScanReview } from '../shared/responsive-scan.js';
 
@@ -25,6 +28,8 @@ const api: YalqenApi = {
   onState: (listener) => subscribe<string>(channel.state, listener),
   setLayout: (layout: ChromeLayout) => ipcRenderer.send(channel.setLayout, layout),
   send: (action: UiAction) => ipcRenderer.send(channel.action, action),
+  getAgentDraft: (projectId, id) => ipcRenderer.invoke(channel.agentDraft, projectId, id),
+  updateAgentDraft: (projectId, id, patch) => ipcRenderer.send(channel.agentDraftUpdate, projectId, id, patch),
   getAgentTerminal: () => ipcRenderer.invoke(channel.agentSnapshot) as Promise<AgentTerminalSnapshot | null>,
   selectAgentDirectory: () => ipcRenderer.invoke(channel.agentSelectDirectory) as Promise<AgentSessionState | null>,
   startAgentSession: (size) => ipcRenderer.invoke(channel.agentStart, size) as Promise<AgentSessionState | null>,
@@ -79,6 +84,8 @@ const api: YalqenApi = {
     ipcRenderer.invoke(channel.agentChatCancelQueued, id, messageId) as Promise<void>,
   onAgentChat: (listener) => subscribe<string>(channel.agentChatUpdate, listener),
   onPagePress: (listener) => subscribe<void>(channel.pagePress, listener),
+  onAddLiveFolder: (listener) =>
+    subscribe<unknown>(channel.addLiveFolder, (kind) => listener(isLiveFolderKind(kind) ? kind : undefined)),
 };
 
 contextBridge.exposeInMainWorld('yalqen', api);

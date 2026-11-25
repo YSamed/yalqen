@@ -1,6 +1,7 @@
 import { previewKind } from '../../shared/previews';
 import type { UiAction } from '../../shared/types';
 import { interfaceTheme } from './tooltips';
+import { anchorRect } from './anchor';
 
 const DELAY_MS = 450;
 const RETURN_MS = 600;
@@ -12,17 +13,18 @@ export function createHoverPreviews(send: (action: UiAction) => void) {
 
   function request(element: HTMLElement, tabId: string | null, url: string): void {
     if (!element.isConnected) return;
-    const { x, y, width, height } = element.getBoundingClientRect();
-    if (width === 0 || height === 0) return;
+    const anchor = anchorRect(element);
+    if (anchor.width === 0 || anchor.height === 0) return;
     requested = element;
-    send({ type: 'show-preview', preview: { tabId, url, anchor: { x, y, width, height }, theme: interfaceTheme() } });
+    send({ type: 'show-preview', preview: { tabId, url, anchor, theme: interfaceTheme() } });
   }
 
   function enter(element: HTMLElement, tabId: string | null, url: string): void {
     window.clearTimeout(timer);
     timer = undefined;
-    if (!previewKind(url)) return;
-    if (element === requested && Date.now() - leftAt < RETURN_MS) request(element, tabId, url);
+    if (!tabId && !previewKind(url)) return;
+    // Moving straight from one card's row to the next shows it at once instead of waiting again.
+    if (requested && Date.now() - leftAt < RETURN_MS) request(element, tabId, url);
     else timer = window.setTimeout(() => request(element, tabId, url), DELAY_MS);
   }
 
@@ -42,6 +44,5 @@ export function createHoverPreviews(send: (action: UiAction) => void) {
     send({ type: 'hide-preview' });
   }
 
-  for (const name of ['pointerdown', 'wheel', 'keydown'] as const) window.addEventListener(name, dismiss, true);
-  return { enter, leave, has: (url: string) => previewKind(url) !== null };
+  return { enter, leave, dismiss, has: (url: string) => previewKind(url) !== null };
 }

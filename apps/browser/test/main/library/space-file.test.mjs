@@ -69,6 +69,17 @@ test('a space file keeps pinned tabs, folders and the partition flag', () => {
   assert.notEqual(parsed.window.tabs[0].id, 'a');
 });
 
+test('only the default space file carries the default mark', () => {
+  assert.equal(
+    parseSpaceFile(spaceFileText({ name: 'Home', icon: null, isolated: false, window, isDefault: true })).isDefault,
+    true,
+  );
+  assert.equal(
+    parseSpaceFile(spaceFileText({ name: 'Work', icon: null, isolated: false, window })).isDefault,
+    undefined,
+  );
+});
+
 test('space files from outside are validated', () => {
   const valid = JSON.parse(spaceFileText({ name: 'Work', icon: null, isolated: false, window }));
   const parse = (value) => parseSpaceFile(typeof value === 'string' ? value : JSON.stringify(value));
@@ -186,5 +197,26 @@ test('hand-edited profile ids that are not ids are ignored', () => {
     const reloaded = new WorkspaceStore(dir);
     assert.equal(reloaded.partition(''), null);
     assert.deepEqual(reloaded.storedPartitions(), [`persist:space-${ID}`]);
+  });
+});
+
+test('a space keeps its own frame theme across restarts, export and import', () => {
+  withStore((store, _forgotten, dir) => {
+    const id = store.create('Design');
+    const theme = {
+      colors: ['#ff66aa', '#6644ff'],
+      intensity: 70,
+      texture: 'dots',
+      textureStrength: 30,
+    };
+    assert.equal(store.setTheme(id, { ...theme, colors: [...theme.colors, 'nope'] }), true);
+    assert.equal(store.setTheme('missing', theme), false);
+    assert.deepEqual(new WorkspaceStore(dir).spaces()[0].theme, theme);
+
+    const imported = store.importText(store.exportText(id, null));
+    assert.deepEqual(store.spaces().find((space) => space.id === imported).theme, theme);
+
+    assert.equal(store.setTheme(id, null), true);
+    assert.equal('theme' in store.spaces().find((space) => space.id === id), false);
   });
 });

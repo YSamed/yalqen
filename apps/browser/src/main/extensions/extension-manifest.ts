@@ -51,6 +51,10 @@ export function popupPage(manifest: Manifest): string | null {
   return nonEmpty(action(manifest)?.default_popup);
 }
 
+export function sidePanelPage(manifest: Manifest): string | null {
+  return nonEmpty(record(manifest.side_panel)?.default_path);
+}
+
 export function optionsPage(manifest: Manifest): string | null {
   return nonEmpty(record(manifest.options_ui)?.page) ?? nonEmpty(manifest.options_page);
 }
@@ -59,7 +63,7 @@ export function actionTitle(manifest: Manifest, fallback: string): string {
   return nonEmpty(action(manifest)?.default_title) ?? fallback;
 }
 
-function sizedIcon(icons: Record<string, unknown> | null, size: number): string | null {
+export function sizedIcon(icons: Record<string, unknown> | null, size: number): string | null {
   const sized = Object.entries(icons ?? {})
     .flatMap(([key, file]) => {
       const pixels = Number(key);
@@ -77,6 +81,16 @@ export function iconFile(manifest: Manifest, size: number): string | null {
 export function resolveInside(root: string, relative: string): string | null {
   const resolved = path.resolve(root, relative.replace(/^\/+/, ''));
   return resolved.startsWith(root + path.sep) ? resolved : null;
+}
+
+export function extensionFile(root: string, extensionId: string, raw: string): string | null {
+  try {
+    const url = new URL(raw, `chrome-extension://${extensionId}/`);
+    if (url.protocol !== 'chrome-extension:' || url.host !== extensionId) return null;
+    return resolveInside(root, decodeURIComponent(url.pathname));
+  } catch {
+    return null;
+  }
 }
 
 export function extensionPage(baseUrl: string, page: string | null): string | null {

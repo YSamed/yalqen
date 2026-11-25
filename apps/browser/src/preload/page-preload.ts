@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import {
   AutofillChannel,
-  AgentBridgeChannel,
   ExtensionsChannel,
   NEW_TAB_URL,
   PageChannel,
@@ -10,14 +9,8 @@ import {
   SETTINGS_URL,
   SettingsChannel as settingsChannel,
   SitePermissionsChannel,
-  type AgentBridgeView,
-  type AgentSetupKind,
-  type AgentClientId,
-  type AgentConnections,
-  type AgentSetupResult,
   type ClearDataRequest,
   type ExtensionInfo,
-  type NewTabCenter,
   type PasswordsView,
   type ManualPassword,
   type PasswordTransferResult,
@@ -27,11 +20,20 @@ import {
   type ProfilesResult,
   type RequestRule,
   type SettingsApi,
+  type SettingsSaveResult,
   type SettingsValues,
   type SettingsView,
   type SitePermissionsView,
   type SubmittedCredential,
 } from '../shared/types.js';
+import {
+  AgentBridgeChannel,
+  type AgentBridgeView,
+  type AgentSetupKind,
+  type AgentClientId,
+  type AgentConnections,
+  type AgentSetupResult,
+} from '../shared/agent.js';
 import { WEB_STORE_ORIGIN } from '../shared/web-store.js';
 import { selectLogin } from '../shared/login-selection.js';
 import { setupGoogleSignInPage } from './google-sign-in.js';
@@ -44,9 +46,17 @@ import { READING_LIST_URL, ReadingListChannel, type ReadingListApi } from '../sh
 import { BOOSTS_URL, BoostChannel, type BoostApi } from '../shared/boosts.js';
 import { EASELS_URL, EaselChannel, type EaselApi } from '../shared/easels.js';
 import { WORKSPACES_URL, WorkspaceChannel, type WorkspaceApi } from '../shared/workspaces.js';
+import { accentHex } from '../shared/accent.js';
 
 setupAutofill();
 setupTabTransition();
+
+if (location.href.split('#')[0] === NEW_TAB_URL && window === window.top) {
+  ipcRenderer.on(PageChannel.newTabMarkColor, (_event, color: string) => {
+    document.documentElement?.style.setProperty('--mark-color', color);
+    document.documentElement?.toggleAttribute('data-mark-tint', color.toLowerCase() !== accentHex('orange'));
+  });
+}
 
 if (location.href.startsWith(READING_LIST_URL) && window === window.top) {
   const api: ReadingListApi = {
@@ -97,44 +107,12 @@ if (location.href.startsWith(WORKSPACES_URL) && window === window.top) {
 }
 const GAP_MS = 350;
 const COOLDOWN_MS = 650;
-const PENDING_CENTER_MS = 250;
 
 let distance = 0;
 let lastAt = 0;
 let navigatedAt = 0;
 let gestureAt = -Infinity;
 let gestureInScroller = false;
-
-if (location.href === NEW_TAB_URL && window === window.top) {
-  let centerOffset = 0;
-  let pending: NewTabCenter | null = null;
-  let pendingTimer = 0;
-  const applyCenterOffset = () => {
-    document.documentElement?.style.setProperty('--newtab-center-offset', `${centerOffset}px`);
-  };
-  const apply = (offset: number) => {
-    pending = null;
-    clearTimeout(pendingTimer);
-    centerOffset = offset;
-    applyCenterOffset();
-  };
-  const receive = (center: NewTabCenter | undefined) => {
-    if (!center || !Number.isFinite(center.offset)) return;
-    if (center.width === null || Math.abs(window.innerWidth - center.width) < 1) {
-      apply(center.offset);
-      return;
-    }
-    pending = center;
-    clearTimeout(pendingTimer);
-    pendingTimer = window.setTimeout(() => apply(center.offset), PENDING_CENTER_MS);
-  };
-  window.addEventListener('resize', () => {
-    if (pending) receive(pending);
-  });
-  ipcRenderer.on(PageChannel.newTabCenter, (_event, center: NewTabCenter) => receive(center));
-  receive(ipcRenderer.sendSync(PageChannel.newTabCenter));
-  window.addEventListener('DOMContentLoaded', applyCenterOffset, { once: true });
-}
 
 function hasHorizontalScroller(event: WheelEvent): boolean {
   for (const target of event.composedPath()) {
@@ -161,6 +139,9 @@ window.addEventListener(
       event.shiftKey
     )
       return;
+    // A tilt wheel reports whole wheel notches; only touchpad swipes should navigate.
+    const notches = (event as WheelEvent & { wheelDeltaX?: number }).wheelDeltaX ?? 0;
+    if (process.platform !== 'darwin' && notches !== 0 && notches % 120 === 0) return;
     if (Math.abs(event.deltaX) < Math.abs(event.deltaY) * 1.25) {
       distance = 0;
       return;
@@ -186,6 +167,12 @@ window.addEventListener(
   { capture: true, passive: true },
 );
 
+// Electron's mouse events on a WebContents are unreliable, so the page reports presses to activate its split pane.
+window.addEventListener('pointerdown', () => ipcRenderer.send(PageChannel.pointerDown), {
+  capture: true,
+  passive: true,
+});
+
 if (location.origin === WEB_STORE_ORIGIN && window === window.top) setupWebStorePage();
 if (location.hostname === 'accounts.google.com') setupGoogleSignInPage();
 
@@ -199,16 +186,18 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
   const api: SettingsApi = {
     get: () => ipcRenderer.invoke(settingsChannel.get) as Promise<SettingsView>,
     update: (patch: Partial<SettingsValues>) =>
-      ipcRenderer.invoke(settingsChannel.update, patch) as Promise<SettingsView>,
+      ipcRenderer.invoke(settingsChannel.update, patch) as Promise<SettingsSaveResult>,
     clearData: (request: ClearDataRequest) => ipcRenderer.invoke(settingsChannel.clearData, request) as Promise<void>,
     makeDefault: () => ipcRenderer.invoke(settingsChannel.makeDefault) as Promise<SettingsView>,
     relaunch: () => ipcRenderer.invoke(settingsChannel.relaunch) as Promise<void>,
     processUsage: () => ipcRenderer.invoke(settingsChannel.processUsage) as Promise<ProcessUsage>,
     checkForUpdates: () => ipcRenderer.invoke(settingsChannel.checkForUpdates) as Promise<void>,
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
-    chooseDownloadDirectory: () => ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsView>,
-    chooseNewTabBackground: () => ipcRenderer.invoke(settingsChannel.chooseNewTabBackground) as Promise<SettingsView>,
-    removeNewTabBackground: () => ipcRenderer.invoke(settingsChannel.removeNewTabBackground) as Promise<SettingsView>,
+    chooseDownloadDirectory: () =>
+      ipcRenderer.invoke(settingsChannel.chooseDownloadDirectory) as Promise<SettingsSaveResult | null>,
+    setSpaceTheme: (id, theme) => ipcRenderer.invoke(settingsChannel.setSpaceTheme, id, theme) as Promise<SettingsView>,
+    spaceAction: (action, id, value) =>
+      ipcRenderer.invoke(settingsChannel.spaceAction, action, id, value) as Promise<string | null>,
     showImportMenu: (kind: 'bookmarks' | 'history') =>
       ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,
     updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,

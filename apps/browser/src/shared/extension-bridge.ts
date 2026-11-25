@@ -6,6 +6,15 @@ export const ExtensionBridgeChannel = {
   windows: 'yalqen-extension-bridge:windows',
   contextMenus: 'yalqen-extension-bridge:context-menus',
   notifications: 'yalqen-extension-bridge:notifications',
+  library: 'yalqen-extension-bridge:library',
+  sidePanel: 'yalqen-extension-bridge:side-panel',
+  action: 'yalqen-extension-bridge:action',
+  webAuthFlow: 'yalqen-extension-bridge:web-auth-flow',
+  netRequest: 'yalqen-extension-bridge:net-request',
+  frames: 'yalqen-extension-bridge:frames',
+  queryTabs: 'yalqen-extension-bridge:query-tabs',
+  contexts: 'yalqen-extension-bridge:contexts',
+  windowCall: 'yalqen-extension-bridge:window-call',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;
@@ -23,17 +32,58 @@ export type ExtensionBridgeEvent =
   | 'webNavigation.onCompleted'
   | 'webNavigation.onErrorOccurred'
   | 'webNavigation.onHistoryStateUpdated'
+  | 'webNavigation.onReferenceFragmentUpdated'
   | 'commands.onCommand'
   | 'contextMenus.onClicked'
   | 'notifications.onClicked'
   | 'notifications.onButtonClicked'
-  | 'notifications.onClosed';
+  | 'notifications.onClosed'
+  | 'history.onVisited'
+  | 'history.onVisitRemoved'
+  | 'bookmarks.onCreated'
+  | 'bookmarks.onRemoved'
+  | 'bookmarks.onChanged'
+  | 'bookmarks.onMoved'
+  | 'downloads.onCreated'
+  | 'downloads.onChanged'
+  | 'downloads.onErased'
+  | 'downloads.onDeterminingFilename'
+  | 'sidePanel.onOpened'
+  | 'sidePanel.onClosed'
+  | 'action.onClicked'
+  | 'runtime.onInstalled';
 
 export const WINDOW_ID_NONE = -1;
+
+export function urlMatchesPattern(pattern: string, raw: string): boolean {
+  if (pattern === '<all_urls>') return /^(https?|wss?|ftp|file|data):/.test(raw);
+  const match = /^(\*|[a-z][a-z0-9+.-]*):\/\/([^/]*)(\/.*)$/.exec(pattern);
+  if (!match) return false;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  const [, scheme, host, path] = match;
+  const protocol = url.protocol.slice(0, -1);
+  if (scheme === '*' ? protocol !== 'http' && protocol !== 'https' : scheme !== protocol) return false;
+  const hostname = url.hostname.toLowerCase();
+  const wanted = host!.toLowerCase();
+  if (
+    wanted !== '*' &&
+    wanted !== hostname &&
+    !(wanted.startsWith('*.') && (hostname === wanted.slice(2) || hostname.endsWith(wanted.slice(1))))
+  )
+    return false;
+  const glob = new RegExp(`^${path!.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+  return glob.test(url.pathname + url.search);
+}
 
 export interface ExtensionWindowState {
   id: number;
   focused: boolean;
+  type?: 'normal' | 'popup';
 }
 
 export interface ExtensionWindows {
@@ -41,8 +91,8 @@ export interface ExtensionWindows {
   windows: ReturnType<typeof chromeWindow>[];
 }
 
-export function chromeWindow({ id, focused }: ExtensionWindowState) {
-  return { id, focused, type: 'normal', state: 'normal', incognito: false, alwaysOnTop: false };
+export function chromeWindow({ id, focused, type = 'normal' }: ExtensionWindowState) {
+  return { id, focused, type, state: 'normal', incognito: false, alwaysOnTop: false };
 }
 
 const EXTENSION_ID = /^[a-p]{32}$/;
@@ -64,6 +114,13 @@ export function authRedirectExtension(url: string): string | null {
   } catch {
     return null;
   }
+}
+
+export function fragmentOnly(before: string | undefined, after: string): boolean {
+  if (before === undefined || before === after) return false;
+  const [beforePath] = before.split('#', 1);
+  const [afterPath] = after.split('#', 1);
+  return beforePath === afterPath;
 }
 
 export function extensionTabUrl(raw: unknown, extensionId: string): string | null {

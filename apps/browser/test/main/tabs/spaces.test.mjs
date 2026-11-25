@@ -66,7 +66,7 @@ test('every space shows only its own tabs, pinned tabs and folders', () => {
     ['Docs'],
   );
   assert.deepEqual(
-    m.pinnedPages.map((page) => page.url),
+    state.tabs.filter((tab) => tab.pinned).map((tab) => tab.url),
     ['https://c.example/'],
   );
 });

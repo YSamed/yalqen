@@ -1,16 +1,15 @@
-import { ipcMain, webContents, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { ipcMain, webContents, type IpcMainEvent, type IpcMainInvokeEvent, type WebContents } from 'electron';
 import {
-  AgentBridgeChannel,
   AutofillChannel,
   ExtensionsChannel,
   PasswordsChannel,
   SETTINGS_URL,
   SettingsChannel,
-  type AgentBridgeView,
   type ExtensionInfo,
   type PasswordsView,
   type SettingsView,
 } from '../../shared/types.js';
+import { AgentBridgeChannel, type AgentBridgeView } from '../../shared/agent.js';
 
 const settings = new URL(SETTINGS_URL);
 
@@ -35,6 +34,20 @@ export function handleSettingsCall(
   ipcMain.handle(channel, (event, ...args: unknown[]) => (isSettingsFrame(event) ? listener(event, ...args) : null));
 }
 
+// Settings pages opened for one profile carry ?space=<id>; the Passwords, Autofill and Sites panes act on that profile.
+export function settingsSpace(contents: WebContents): string | null {
+  const url = contents.mainFrame.url;
+  return isSettingsUrl(url) ? (new URL(url).searchParams.get('space') ?? '') : null;
+}
+
+function broadcastEach(channel: string, valueFor: (contents: WebContents) => unknown): void {
+  for (const contents of webContents.getAllWebContents()) {
+    if (contents.isDestroyed() || !isSettingsUrl(contents.mainFrame.url)) continue;
+    const value = valueFor(contents);
+    if (value !== null) contents.send(channel, value);
+  }
+}
+
 function broadcast(channel: string, value: unknown): void {
   for (const contents of webContents.getAllWebContents()) {
     if (!contents.isDestroyed() && isSettingsUrl(contents.mainFrame.url)) contents.send(channel, value);
@@ -53,10 +66,12 @@ export function broadcastAgentBridge(view: AgentBridgeView): void {
   broadcast(AgentBridgeChannel.changed, view);
 }
 
-export function broadcastPasswords(view: PasswordsView): void {
-  broadcast(PasswordsChannel.changed, view);
+export function broadcastPasswords(viewFor: (contents: WebContents) => PasswordsView | null): void {
+  broadcastEach(PasswordsChannel.changed, viewFor);
 }
 
-export function broadcastAutofill(view: import('../../shared/autofill.js').AutofillView): void {
-  broadcast(AutofillChannel.changed, view);
+export function broadcastAutofill(
+  viewFor: (contents: WebContents) => import('../../shared/autofill.js').AutofillView | null,
+): void {
+  broadcastEach(AutofillChannel.changed, viewFor);
 }

@@ -4,6 +4,7 @@ import placement from '../../../dist/main/tabs/page-placement.js';
 import tabs from '../../../dist/main/tabs/tabs.js';
 import menus from '../../../dist/main/window/window-menus.js';
 import i18n from '../../../dist/shared/i18n.js';
+import layout from '../../../dist/shared/split-layout.js';
 
 const { slotRect, SPLIT_GAP } = placement;
 
@@ -35,6 +36,16 @@ test('panes share the page width with a gap and cover it edge to edge', () => {
   assert.ok(panes.every((pane) => pane.y === 20 && pane.height === 500));
 });
 
+test('dragging a divider resizes its two neighbours and stops at the minimum width', () => {
+  const bounds = { x: 0, y: 0, width: 1006, height: 500 };
+  const weights = layout.resizeWeights(bounds, undefined, 2, 0, 303);
+  const [left, right] = [0, 1].map((index) => slotRect(bounds, { index, count: 2, weights }));
+  assert.equal(left.width, 300);
+  assert.equal(right.x + right.width, 1006);
+  const squeezed = layout.resizeWeights(bounds, weights, 2, 0, 5);
+  assert.equal(slotRect(bounds, { index: 0, count: 2, weights: squeezed }).width, layout.MIN_PANE_WIDTH);
+});
+
 test('splitting follows list order, caps the pane count and keeps the focused tab', () => {
   const manager = fixture();
   manager.split(['c', 'a']);
@@ -51,6 +62,65 @@ test('splitting follows list order, caps the pane count and keeps the focused ta
   assert.equal(manager.canSplitWithActive('b'), false);
   manager.splitWithActive('d');
   assert.equal(manager.canSplitWithActive('e'), false);
+});
+
+test('split with a new tab opens a blank tab beside the active one and toggles off', () => {
+  const manager = fixture(['a', 'b']);
+  manager.open = () => {
+    manager.tabs.push(manager.createRecord({ id: 'n', url: 'yalqen://newtab/' }));
+    return 'n';
+  };
+  manager.splitWithNewTab();
+  assert.deepEqual(manager.splitTabIds, ['a', 'n']);
+  assert.equal(manager.activeTabId, 'n');
+  manager.splitWithNewTab();
+  assert.deepEqual(manager.splitTabIds, []);
+});
+
+test('a tab opened from a favorite goes to the end of the list, not under the favorites', () => {
+  const manager = fixture(['fav', 'a', 'b']);
+  manager.find('fav').pinnedUrl = 'https://fav.example/';
+  manager.activeId = 'fav';
+  manager.insertAfterActive(manager.createRecord({ id: 'child', url: 'https://child.example/' }));
+  assert.deepEqual(
+    manager.tabs.map((tab) => tab.id),
+    ['fav', 'a', 'b', 'child'],
+  );
+  manager.activeId = 'a';
+  manager.insertAfterActive(manager.createRecord({ id: 'next', url: 'https://next.example/' }));
+  assert.deepEqual(
+    manager.tabs.map((tab) => tab.id),
+    ['fav', 'a', 'next', 'b', 'child'],
+  );
+});
+
+test('dropping a tab on another opens them side by side and joins an existing split', () => {
+  const manager = fixture();
+  manager.splitInto('c', 'b');
+  assert.deepEqual(manager.splitTabIds, ['b', 'c']);
+  manager.splitInto('d', 'c');
+  assert.deepEqual(manager.splitTabIds, ['b', 'c', 'd']);
+  manager.splitInto('b', 'd');
+  assert.deepEqual(manager.splitTabIds, ['b', 'c', 'd']);
+  manager.splitInto('a', 'b');
+  manager.splitInto('e', 'b');
+  assert.deepEqual(manager.splitTabIds, ['b', 'c', 'd', 'a']);
+});
+
+test('sidebar rows reorder across plain tabs and opened favorites', () => {
+  const manager = fixture(['fav', 'a', 'b']);
+  manager.find('fav').pinnedUrl = 'https://fav.example/';
+  manager.openedPinned.set('fav', null);
+  const rows = () => manager.listOrder().map((tab) => tab.id);
+  assert.deepEqual(rows(), ['fav', 'a', 'b']);
+  manager.moveRow('fav', 'b', true);
+  assert.deepEqual(rows(), ['a', 'b', 'fav']);
+  manager.moveRow('b', 'a', false);
+  assert.deepEqual(rows(), ['b', 'a', 'fav']);
+  manager.moveRow('fav', 'a', false);
+  assert.deepEqual(rows(), ['b', 'fav', 'a']);
+  manager.moveRow('a', 'a', true);
+  assert.deepEqual(rows(), ['b', 'fav', 'a']);
 });
 
 test('a split opened from outside its members focuses the first member', () => {

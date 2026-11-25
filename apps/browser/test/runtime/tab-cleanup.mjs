@@ -37,7 +37,6 @@ async function click(selector, modifiers = []) {
 }
 
 let tabCleanup = true;
-let collapsed = false;
 
 app
   .whenReady()
@@ -56,20 +55,14 @@ app
       developer: false,
       pageFullScreen: false,
       windowFullScreen: false,
-      addressPlaceholder: 'Search',
-      panelCollapsed: collapsed,
-      panelSide: 'left',
-      pinnedDisplay: 'always',
+      panelCollapsed: false,
       tabCleanup,
       favorites: [],
       spaces: [],
       activeSpaceId: '',
       sidebarVisible: true,
       media: null,
-      toolbarVisible: true,
-      toolbarTabs: true,
       toolbarButtons: ['settings'],
-      toolbarExtensions: [],
       ...windowAppearance,
       defaultZoom: 1,
       downloads: { active: 0, progress: null, started: 0 },
@@ -142,16 +135,14 @@ app
     assert.equal(manager.tabs.length, 3);
 
     manager.tabs.push(manager.createRecord({ id: 'e', url: 'https://e.example/', title: 'Tab e' }));
-    collapsed = true;
     changed();
-    await eventually("document.querySelector('aside.panel')?.classList.contains('collapsed')");
     await eventually(`document.querySelector('${cleanButton}')?.getAttribute('aria-label') === 'Clean 1 tab'`);
 
     tabCleanup = false;
     changed();
     await eventually(`!document.querySelector('${cleanButton}')`);
     console.log(
-      'PASS: the sidebar clean button closes unpinned idle tabs only, shows its shortcut, stays in the collapsed sidebar and follows its setting',
+      'PASS: the sidebar clean button closes unpinned idle tabs only, shows its shortcut and follows its setting',
     );
   })
   .then(() => app.quit())

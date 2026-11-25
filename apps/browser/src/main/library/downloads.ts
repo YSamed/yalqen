@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { MenuItemConstructorOptions } from 'electron';
 import { getLocale, t } from '../../shared/i18n.js';
 import type { DownloadsSummary } from '../../shared/types.js';
 import { JsonFile } from '../storage/json-file.js';
@@ -17,10 +16,10 @@ export interface DownloadEntry {
   totalBytes: number;
   startedAt: number;
   private?: boolean;
+  screenshot?: boolean;
 }
 
 const MAX_ENTRIES = 200;
-const MENU_ENTRIES = 8;
 const STATES = new Set<string>([
   'progressing',
   'paused',
@@ -147,7 +146,7 @@ export class DownloadStore {
   }
 
   add(entry: DownloadEntry): void {
-    this.started++;
+    if (!entry.screenshot) this.started++;
     this.entries.unshift({ ...entry });
     if (this.entries.length > MAX_ENTRIES) this.entries.length = MAX_ENTRIES;
     this.save();
@@ -235,25 +234,4 @@ export function downloadCommands(entry: DownloadEntry): [keyof DownloadActions &
         ['remove', t('downloads.removeFromList')],
       ];
   }
-}
-
-export function downloadsMenuTemplate(
-  entries: readonly DownloadEntry[],
-  actions: DownloadActions,
-): MenuItemConstructorOptions[] {
-  const recent = entries.slice(0, MENU_ENTRIES);
-  return [
-    ...(recent.length === 0
-      ? [{ label: t('downloads.menuNone'), enabled: false }]
-      : recent.map((entry) => ({
-          label: `${entry.filename} — ${downloadStatus(entry)}`,
-          submenu: downloadCommands(entry).map(([action, label]) => ({
-            label,
-            click: () => (actions[action] as (id: string) => void)(entry.id),
-          })),
-        }))),
-    { type: 'separator' },
-    { label: t('downloads.menuAll'), click: actions.showAll },
-    { label: t('downloads.menuOpenFolder'), click: actions.openFolder },
-  ];
 }

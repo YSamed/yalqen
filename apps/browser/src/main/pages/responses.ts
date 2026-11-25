@@ -1,3 +1,4 @@
+import { accentCss } from '../../shared/accent.js';
 export const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:";
 
 export function notFound(): Response {
@@ -7,7 +8,7 @@ export function notFound(): Response {
 let accentAttribute = '';
 
 export function setPageAccent(hex: string | null): void {
-  accentAttribute = hex && /^#[0-9a-f]{6}$/i.test(hex) ? ` style="--accent: ${hex}"` : '';
+  accentAttribute = hex && /^#[0-9a-f]{6}$/i.test(hex) ? ` style="--accent: ${accentCss(hex)}"` : '';
 }
 
 export function htmlResponse(body: string, csp: string, noStore = true): Response {

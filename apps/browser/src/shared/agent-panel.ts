@@ -1,3 +1,4 @@
+import type { TabSnapshot } from './types.js';
 import type {
   AgentChatContext,
   AgentChatImage,
@@ -6,8 +7,7 @@ import type {
   AgentSessionState,
   AgentTerminalSize,
   ProjectRunState,
-  TabSnapshot,
-} from './types.js';
+} from './agent.js';
 
 export const MAX_CHAT_TABS = 5;
 export const SIGN_IN_PROVIDERS: readonly AgentProviderId[] = ['claude', 'codex'];

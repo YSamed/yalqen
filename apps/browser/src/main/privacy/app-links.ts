@@ -1,4 +1,4 @@
-import { app, dialog, type BaseWindow, type MessageBoxOptions, type WebContents } from 'electron';
+import { app, dialog, type BaseWindow, type MessageBoxOptions, type Session, type WebContents } from 'electron';
 import { t } from '../../shared/i18n.js';
 import { INTERNAL_SCHEME } from '../../shared/types.js';
 import { permissionOrigin, type PermissionStore } from './permissions.js';
@@ -41,7 +41,7 @@ export interface AppLinkPrompt {
 }
 
 export interface AppLinksOptions {
-  storeFor: (isPrivate: boolean) => PermissionStore;
+  storeFor: (browsing: Session | null, isPrivate: boolean) => PermissionStore | null;
   appFor?: (url: string) => string;
   confirm: (prompt: AppLinkPrompt, contents: WebContents | null) => Promise<{ open: boolean; always: boolean }>;
 }
@@ -79,8 +79,8 @@ export class AppLinks {
     const name = appDisplayName((this.options.appFor ?? appForUrl)(url));
     if (!name && process.platform !== 'linux') return false;
     const origin = permissionOrigin(requestingUrl);
-    const store = this.options.storeFor(isPrivate);
-    if (origin) {
+    const store = this.options.storeFor(contents?.session ?? null, isPrivate);
+    if (origin && store) {
       const decided = store.decide(origin, ['apps']);
       if (decided !== 'ask') return decided === 'allow';
     }
@@ -88,7 +88,7 @@ export class AppLinks {
       { app: name || t('appLinks.anApp'), host: origin ? new URL(origin).host : null },
       contents,
     );
-    if (open && always && origin) store.set(origin, ['apps'], 'allow');
+    if (open && always && origin) store?.set(origin, ['apps'], 'allow');
     return open;
   }
 }

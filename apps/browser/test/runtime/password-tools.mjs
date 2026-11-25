@@ -52,11 +52,11 @@ app
     const store = new passwords.PasswordStore(profile, handlers.safeStorageCipher);
     assert.equal(store.view().available, true);
     handlers.installPasswordHandlers({
-      store,
+      storeFor: () => store,
       savesPasswords: () => false,
       parentOf: (contents) => windows.find((candidate) => candidate.webContents === contents),
       isSettingsFrame: settingsPage.isSettingsFrame,
-      onChange: () => settingsPage.broadcastPasswords(store.view()),
+      onChange: () => settingsPage.broadcastPasswords(() => store.view()),
       authenticate: async () => {
         authentications++;
         return authenticated;
@@ -89,7 +89,7 @@ app
       clearData: async () => {},
       updater: {},
       relaunch() {},
-      permissions: {},
+      permissionsFor: () => ({}),
       requestRules: {},
       onRequestRulesSaved() {},
     });

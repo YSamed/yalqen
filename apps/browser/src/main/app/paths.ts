@@ -9,7 +9,6 @@ export function preloadPath(
     | 'page-preload'
     | 'command-preload'
     | 'find-preload'
-    | 'welcome-preload'
     | 'confirm-preload'
     | 'peek-preload'
     | 'extension-apis',

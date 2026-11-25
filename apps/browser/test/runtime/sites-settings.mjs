@@ -59,7 +59,7 @@ app
       clearData: async () => {},
       updater: {},
       relaunch() {},
-      permissions,
+      permissionsFor: () => permissions,
       requestRules: { list: () => [] },
       onRequestRulesSaved() {},
       siteIcons: (domains) => {

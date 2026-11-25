@@ -35,7 +35,7 @@ function setup(appName = 'Slack') {
   const prompts = [];
   let reply = { open: true, always: false };
   const links = new AppLinks({
-    storeFor: (isPrivate) => (isPrivate ? stores.private : stores.normal),
+    storeFor: (_browsing, isPrivate) => (isPrivate ? stores.private : stores.normal),
     appFor: () => appName,
     confirm: async (prompt) => {
       prompts.push(prompt);

@@ -1,4 +1,4 @@
-import type { AgentChatMessage } from '../../shared/types.js';
+import type { AgentChatMessage } from '../../shared/agent.js';
 
 const MAX_MESSAGE = 1200;
 const MAX_DIGEST = 8000;

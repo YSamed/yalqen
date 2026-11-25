@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { accentCss } from '../../shared/accent';
   import { onMount, tick } from 'svelte';
   import type { ConfirmOpen } from '../../shared/types';
   import Button from '../ui/Button.svelte';
@@ -23,10 +24,11 @@
 
   onMount(() =>
     api.onOpen(async (next) => {
-      document.documentElement.style.setProperty('--accent', next.accent);
+      document.documentElement.style.setProperty('--accent', accentCss(next.accent));
       open = next;
       await tick();
-      card?.querySelector<HTMLButtonElement>('[data-cancel]')?.focus();
+      // Keyboard users still get the ring once they press a key; a fresh dialog should not open with one.
+      card?.querySelector<HTMLButtonElement>('[data-cancel]')?.focus({ focusVisible: false });
     }),
   );
 </script>
@@ -36,28 +38,40 @@
 {#if open}
   <div class="scrim">
     <div
-      class={['card', open.danger && 'danger']}
+      class={['card', open.danger && 'danger', open.tint && 'tinted']}
+      style:--menu-tint={open.tint}
       bind:this={card}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
       aria-describedby="confirm-message"
     >
-      <div class="badge"><Icon name={open.icon} size={22} /></div>
-      <h1 id="confirm-title">{open.title}</h1>
-      {#if open.message}<p id="confirm-message">{open.message}</p>{/if}
+      <header>
+        {#if open.image}
+          <img class="badge image" src={open.image} alt="" />
+        {:else}
+          <span class="badge"><Icon name={open.icon} size={16} /></span>
+        {/if}
+        <div class="heading">
+          <h1 id="confirm-title">{open.title}</h1>
+          {#if open.message && open.items.length === 0}<p id="confirm-message">{open.message}</p>{/if}
+        </div>
+      </header>
       {#if open.items.length > 0}
+        <div class="divider"></div>
+        {#if open.message}<p id="confirm-message" class="section">{open.message}</p>{/if}
         <ul>
           {#each open.items as item, index (index)}
-            <li><Icon name="check" size={12} /><span>{item}</span></li>
+            <li><Icon name="check" size={14} /><span>{item}</span></li>
           {/each}
         </ul>
       {/if}
+      <div class="divider"></div>
       <div class="actions">
-        <Button size="lg" variant="surface" data-cancel onclick={() => answer(false)}>
+        <Button variant="tonal" data-cancel onclick={() => answer(false)}>
           {open.cancelLabel}
         </Button>
-        <Button size="lg" variant={open.danger ? 'danger' : 'primary'} onclick={() => answer(true)}>
+        <Button variant={open.danger ? 'danger' : 'primary'} onclick={() => answer(true)}>
           {open.confirmLabel}
         </Button>
       </div>
@@ -71,129 +85,151 @@
   }
 
   .scrim {
-    --card: #fbfaf8;
-    --hair: rgb(16 18 24 / 0.1);
-    --row: rgb(16 18 24 / 0.035);
     display: grid;
     place-items: center;
     height: 100vh;
     padding: 24px;
     box-sizing: border-box;
-    background: rgb(30 30 36 / 0.22);
+    background: light-dark(rgb(30 30 36 / 0.16), rgb(5 5 7 / 0.4));
     color: var(--text);
     font-family: var(--font);
-    animation: fade 160ms var(--ease-out) both;
+    animation: fade 140ms var(--ease-out) both;
   }
 
-  @media (prefers-color-scheme: dark) {
-    .scrim {
-      --card: #1c1c1f;
-      --hair: rgb(255 255 255 / 0.1);
-      --row: rgb(255 255 255 / 0.04);
-      background: rgb(5 5 7 / 0.5);
-    }
-  }
-
+  /* Same surface, edge and rows as the sidebar menus. */
   .card {
+    --menu-surface: light-dark(#f7f7f8, #26282b);
+    --menu-line: light-dark(rgb(16 18 24 / 0.08), rgb(255 255 255 / 0.08));
     --tone: var(--accent);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    width: min(380px, 100%);
+    width: min(334px, 100%);
     max-height: 100%;
     overflow: auto;
     box-sizing: border-box;
-    padding: 26px 22px 20px;
-    border-radius: 20px;
-    background: var(--card);
-    text-align: center;
+    padding: 6px;
+    border-radius: 16px;
+    background: var(--menu-surface);
     box-shadow:
-      0 0 0 0.5px var(--hair),
-      0 30px 80px rgb(0 0 0 / 0.35),
-      0 2px 6px rgb(0 0 0 / 0.15);
-    animation: arrive 260ms var(--ease-out) both;
+      0 0 0 0.5px light-dark(rgb(16 18 24 / 0.16), rgb(255 255 255 / 0.16)),
+      inset 0 1px 0 light-dark(rgb(255 255 255 / 0.7), rgb(255 255 255 / 0.06)),
+      0 18px 48px rgb(0 0 0 / 0.32);
+    animation: menu-in 140ms var(--ease-out) both;
+  }
+
+  .card.tinted {
+    --menu-surface: light-dark(
+      color-mix(in srgb, var(--menu-tint) 6%, #f7f7f8),
+      color-mix(in srgb, var(--menu-tint) 16%, #222427)
+    );
   }
 
   .card.danger {
     --tone: var(--danger, #c94d4d);
   }
 
+  header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 10px 8px;
+  }
+
   .badge {
     display: grid;
+    flex: none;
     place-items: center;
-    width: 48px;
-    height: 48px;
-    margin-bottom: 14px;
-    border-radius: 14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     background: color-mix(in srgb, var(--tone) 16%, transparent);
     color: var(--tone);
   }
 
+  .badge.image {
+    object-fit: contain;
+    background: none;
+  }
+
+  .heading {
+    min-width: 0;
+    padding-top: 4px;
+  }
+
   h1 {
     margin: 0;
-    font-size: 16px;
-    font-weight: 650;
-    line-height: 1.3;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
     overflow-wrap: anywhere;
+    text-wrap: pretty;
   }
 
   p {
-    margin: 6px 0 0;
+    margin: 3px 0 0;
     color: var(--text-muted);
-    font-size: var(--font-size);
+    font-size: 13px;
     line-height: 1.4;
+  }
+
+  p.section {
+    margin: 6px 10px 2px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .divider {
+    flex: none;
+    height: 1px;
+    margin: 6px 10px;
+    background: var(--menu-line);
   }
 
   ul {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    align-self: stretch;
-    margin: 16px 0 0;
+    margin: 0;
     padding: 0;
     list-style: none;
-    text-align: left;
   }
 
   li {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 9px 12px;
-    background: var(--row);
-    font-size: var(--font-size);
-    line-height: 1.4;
+    gap: 8px;
+    min-height: 37px;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
     overflow-wrap: anywhere;
-  }
-
-  li:first-child {
-    border-radius: 10px 10px 4px 4px;
-  }
-
-  li:last-child {
-    border-radius: 4px 4px 10px 10px;
-  }
-
-  li:only-child {
-    border-radius: 10px;
   }
 
   li :global(svg) {
     flex: none;
-    margin-top: 3px;
-    color: var(--tone);
+    margin-top: 2px;
+    color: var(--text-muted);
   }
 
   .actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    align-self: stretch;
-    margin-top: 20px;
+    gap: 6px;
+    padding: 4px;
   }
 
   .actions :global(.btn) {
     justify-content: center;
+    height: 37px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .actions :global(.btn.tonal) {
+    color: var(--text);
   }
 
   @keyframes fade {
@@ -202,10 +238,10 @@
     }
   }
 
-  @keyframes arrive {
+  @keyframes menu-in {
     from {
       opacity: 0;
-      transform: translateY(6px) scale(0.98);
+      transform: translateY(4px) scale(0.985);
     }
   }
 

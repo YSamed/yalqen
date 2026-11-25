@@ -153,7 +153,7 @@ app
       clearData: async () => {},
       updater: {},
       relaunch() {},
-      permissions: { origins: () => [], list: () => [] },
+      permissionsFor: () => ({ origins: () => [], list: () => [] }),
       requestRules: {},
       onRequestRulesSaved() {},
     });

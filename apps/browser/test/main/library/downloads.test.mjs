@@ -9,7 +9,7 @@ import i18n from '../../../dist/shared/i18n.js';
 
 i18n.setLocale('tr');
 
-const { DownloadStore, downloadStatus, downloadsMenuTemplate, downloadsSummary, formatBytes, uniquePath } = downloads;
+const { DownloadStore, downloadCommands, downloadStatus, downloadsSummary, formatBytes, uniquePath } = downloads;
 const { renderDownloads } = downloadsPage;
 
 const entry = (overrides = {}) => ({
@@ -89,6 +89,7 @@ test('the store counts every download that starts', () => {
     assert.equal(store.summary().started, 0);
     store.add(entry({ id: 'a' }));
     store.add(entry({ id: 'b' }));
+    store.add(entry({ id: 'shot', screenshot: true }));
     store.remove('a');
     assert.equal(store.summary().started, 2);
     assert.equal(new DownloadStore(dir).summary().started, 0);
@@ -123,50 +124,10 @@ test('the list persists and running downloads come back as failed', () => {
   });
 });
 
-test('the menu offers commands that fit each download', () => {
-  const calls = [];
-  const record = (name) => (id) => calls.push([name, id]);
-  const actions = {
-    open: record('open'),
-    show: record('show'),
-    pause: record('pause'),
-    resume: record('resume'),
-    cancel: record('cancel'),
-    retry: record('retry'),
-    remove: record('remove'),
-    showAll: () => calls.push(['all']),
-    openFolder: () => calls.push(['folder']),
-  };
-  const items = downloadsMenuTemplate(
-    [
-      entry({ id: 'r', filename: 'a.zip', state: 'progressing', receivedBytes: 1024, totalBytes: 2048 }),
-      entry({ id: 'c' }),
-    ],
-    actions,
-  );
-  assert.deepEqual(
-    items.map((item) => item.label ?? '-'),
-    [
-      'a.zip — %50 · 1 KB / 2 KB',
-      'report.pdf — Tamamlandı · 2 KB',
-      '-',
-      'Tüm indirilenler',
-      'İndirilenler klasörünü aç',
-    ],
-  );
-  assert.deepEqual(
-    items[0].submenu.map((item) => item.label),
-    ['Duraklat', 'İptal et'],
-  );
-  assert.deepEqual(
-    items[1].submenu.map((item) => item.label),
-    ['Aç', 'Klasörde göster', 'Listeden kaldır'],
-  );
-  items[0].submenu[0].click();
-  items[1].submenu[1].click();
-  items[3].click();
-  assert.deepEqual(calls, [['pause', 'r'], ['show', 'c'], ['all']]);
-  assert.equal(downloadsMenuTemplate([], actions)[0].label, 'Henüz indirme yok');
+test('each download offers the commands that fit its state', () => {
+  const labels = (value) => downloadCommands(value).map(([, label]) => label);
+  assert.deepEqual(labels(entry({ state: 'progressing', receivedBytes: 1, totalBytes: 2 })), ['Duraklat', 'İptal et']);
+  assert.deepEqual(labels(entry()), ['Aç', 'Klasörde göster', 'Listeden kaldır']);
 });
 
 test('the downloads page escapes names and links to its commands', () => {

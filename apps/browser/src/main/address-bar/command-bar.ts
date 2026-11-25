@@ -1,13 +1,15 @@
-import { ipcMain, type BaseWindow, type IpcMainEvent, type WebContentsView } from 'electron';
+import { ipcMain, type BaseWindow, type IpcMainEvent, type WebContents, type WebContentsView } from 'electron';
 import {
   CommandBarChannel,
   type AddressSuggestion,
   type CommandBarAction,
+  type CommandBarArea,
   type CommandBarOpen,
   type DevCommandId,
   type SearchEngineId,
   type TabId,
 } from '../../shared/types.js';
+import { sidebarMenuAction, type SidebarMenuAction } from '../../shared/sidebar-menu.js';
 import { SEARCH_ENGINES } from './search.js';
 import { isDevCommandId } from '../devtools/dev-commands.js';
 import { getLocale } from '../../shared/i18n.js';
@@ -28,6 +30,8 @@ export interface CommandBarHost {
   onInput: (input: string) => void;
   onSwitchTab: (id: TabId) => void;
   onRunCommand: (id: DevCommandId) => void;
+  onSidebarMenu: (action: SidebarMenuAction) => void;
+  onDragDownload: (id: string, contents: WebContents) => void;
 }
 
 export class CommandBar {
@@ -39,6 +43,7 @@ export class CommandBar {
   private loaded: Promise<void> = Promise.resolve();
   private lastOpen: CommandBarOpen | null = null;
   private destroyed = false;
+  private parked: BaseWindow | null = null;
 
   constructor(private readonly options: CommandBarOptions) {
     ipcMain.on(CommandBarChannel.action, this.onAction);
@@ -53,6 +58,7 @@ export class CommandBar {
     this.lastOpen = open;
     if (!this.opened) {
       this.opened = true;
+      this.unpark();
       host.window.contentView.addChildView(view);
     } else {
       this.keepOnTop(host.window);
@@ -60,6 +66,13 @@ export class CommandBar {
     host.window.focus();
     view.webContents.focus();
     if (this.ready) view.webContents.send(CommandBarChannel.open, open);
+  }
+
+  // The bar follows the page area, so it moves with the sidebar like the new tab search does.
+  updateArea(window: BaseWindow, area: CommandBarArea): void {
+    if (!this.isOpenIn(window) || !this.lastOpen?.area) return;
+    this.lastOpen = { ...this.lastOpen, area };
+    this.view?.webContents.send(CommandBarChannel.area, area);
   }
 
   showSuggestions(window: BaseWindow, input: string, suggestions: AddressSuggestion[]): void {
@@ -74,7 +87,25 @@ export class CommandBar {
     if (!this.host.window.isDestroyed()) this.host.window.contentView.removeChildView(this.view);
   }
 
+  // A hidden view takes no drops, so the page under it can receive the file while the view stays the drag source.
+  private parkForDrag(): void {
+    if (!this.opened || !this.view || !this.host) return;
+    this.opened = false;
+    this.lastOpen = null;
+    this.parked = this.host.window;
+    this.view.setVisible(false);
+  }
+
+  private unpark(): void {
+    const window = this.parked;
+    this.parked = null;
+    if (!this.view) return;
+    if (window && !window.isDestroyed()) window.contentView.removeChildView(this.view);
+    this.view.setVisible(true);
+  }
+
   release(window: BaseWindow): void {
+    if (this.parked === window) this.unpark();
     if (this.host?.window !== window) return;
     this.close();
     this.host = null;
@@ -106,6 +137,7 @@ export class CommandBar {
     this.destroyed = true;
     ipcMain.off(CommandBarChannel.action, this.onAction);
     this.close();
+    this.unpark();
     this.host = null;
     if (this.view && !this.view.webContents.isDestroyed()) this.view.webContents.close();
     this.view = null;
@@ -134,8 +166,18 @@ export class CommandBar {
       if (typeof action.input === 'string') host.onInput(action.input);
       return;
     }
+    const menu = this.mode === 'sidebar-menu' ? this.lastOpen?.menu : undefined;
+    const dragged = action.type === 'drag-download' ? sidebarMenuAction(action, menu) : null;
+    if (dragged?.type === 'drag-download') {
+      this.parkForDrag();
+      return host.onDragDownload(dragged.id, event.sender);
+    }
     this.close();
-    if (action.type === 'switch-tab' && typeof action.id === 'string') {
+    if (menu) {
+      const menuAction = sidebarMenuAction(action, menu);
+      if (menuAction) host.onSidebarMenu(menuAction);
+      else host.onDismiss();
+    } else if (action.type === 'switch-tab' && typeof action.id === 'string') {
       host.onSwitchTab(action.id);
     } else if (action.type === 'run-command' && isDevCommandId(action.id)) {
       host.onRunCommand(action.id);

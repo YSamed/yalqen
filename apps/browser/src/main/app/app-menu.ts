@@ -90,14 +90,9 @@ export function installAppMenu(host: AppMenuHost): void {
           });
         },
         zoom: (direction) => current()?.tabs.zoom(direction),
-        cyclePanel: () => {
-          const { sidebarVisible, panelCollapsed } = settings.get();
-          if (!sidebarVisible) updateSettings({ sidebarVisible: true, panelCollapsed: false });
-          else if (panelCollapsed) updateSettings({ sidebarVisible: false });
-          else updateSettings({ panelCollapsed: true });
-        },
+        togglePanel: () => updateSettings({ panelCollapsed: !settings.get().panelCollapsed }),
+        toggleFullScreen: () => current()?.toggleFullScreen(),
         toggleAgentPanel: () => current()?.toggleAgentPanel(),
-        toggleToolbar: () => updateSettings({ toolbarVisible: !settings.get().toolbarVisible }),
         toggleDevTools: () => current()?.tabs.toggleDevTools(),
         toggleDeviceView: () => current()?.tabs.toggleEmulation(host.deviceId()),
         rotateDevice: () => current()?.tabs.rotateDevice(),

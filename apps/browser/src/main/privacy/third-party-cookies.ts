@@ -1,7 +1,8 @@
 import type { Session } from 'electron';
 import { getDomain } from 'tldts';
 import { withColorSchemeHint } from './color-scheme-hint.js';
-import { rewriteSignInHeaders, signInRequestHeaders } from './sign-in-headers.js';
+import { HEADER_STAGE, setSendStage } from './header-stages.js';
+import { signInRequestHeaders } from './sign-in-headers.js';
 
 export function siteOf(url: string, domains?: Map<string, string>): string | null {
   try {
@@ -51,7 +52,7 @@ export function setThirdPartyCookieBlocking(
   const { webRequest } = session;
   if (!enabled) {
     blocking.delete(session);
-    rewriteSignInHeaders(session);
+    setSendStage(session, HEADER_STAGE.cookies, null);
     webRequest.onCompleted(null);
     webRequest.onErrorOccurred(null);
     return;
@@ -73,18 +74,15 @@ export function setThirdPartyCookieBlocking(
     return page;
   };
 
-  webRequest.onBeforeSendHeaders((details, callback) => {
+  setSendStage(session, HEADER_STAGE.cookies, (details, headers) => {
     existing.delete(details.id);
     const page = details.resourceType === 'mainFrame' ? null : pageOf(details);
     const request = page ? siteOf(details.url, domains) : null;
-    const signIn = signInRequestHeaders(details.url, details.requestHeaders, process.platform);
+    const signIn = signInRequestHeaders(details.url, headers, process.platform);
     const isDocument = details.resourceType === 'mainFrame' || details.resourceType === 'subFrame';
-    const rewritten = signIn ?? (isDocument ? withColorSchemeHint(details.requestHeaders, darkColors()) : null);
-    if (!page || allowed(page.url) || request === null || request === page.site) {
-      callback(rewritten ? { requestHeaders: rewritten } : {});
-      return;
-    }
-    const requestHeaders = { ...(rewritten ?? details.requestHeaders) };
+    const rewritten = signIn ?? (isDocument ? withColorSchemeHint(headers, darkColors()) : null);
+    if (!page || allowed(page.url) || request === null || request === page.site) return rewritten;
+    const requestHeaders = { ...(rewritten ?? headers) };
     const sent = new Set<string>();
     for (const key of Object.keys(requestHeaders)) {
       if (key.toLowerCase() !== 'cookie') continue;
@@ -92,7 +90,7 @@ export function setThirdPartyCookieBlocking(
       delete requestHeaders[key];
     }
     existing.set(details.id, sent);
-    callback({ requestHeaders });
+    return requestHeaders;
   });
   webRequest.onCompleted((details) => {
     const sent = existing.get(details.id);

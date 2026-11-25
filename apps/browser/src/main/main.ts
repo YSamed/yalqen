@@ -2,6 +2,8 @@ import { startupPages } from '../shared/startup-pages.js';
 import { bench } from './bench/bench.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import {
   app,
   dialog,
@@ -22,11 +24,11 @@ import {
   NEW_TAB_URL,
   IpcChannel,
   type ChromeLayout,
-  type AgentBridgeView,
   type ClearDataRequest,
   type UiAction,
   type SettingsView,
 } from '../shared/types.js';
+import { type AgentBridgeView } from '../shared/agent.js';
 import { AdBlocker } from './privacy/adblock.js';
 import { SiteProtections } from './privacy/site-protections.js';
 import { LocalThreatLists } from './privacy/threat-lists.js';
@@ -34,7 +36,7 @@ import { ThreatGuard } from './privacy/threat-guard.js';
 import { registerAgentBridgeIpc } from './agent-bridge/agent-ipc.js';
 import { AgentBridge, mcpUrl, setupSnippet } from './agent-bridge/bridge.js';
 import type { BridgeHost } from './agent-bridge/tools.js';
-import type { AgentProject } from './window/agent-project.js';
+import type { AgentProject } from './agent-bridge/agent-project.js';
 import {
   DEFAULT_TARGETS,
   connectionStates,
@@ -59,10 +61,8 @@ import {
   importFirefoxHistory,
   isFirefoxPlaces,
 } from './library/browser-import.js';
-import { WelcomeCard } from './window/welcome-card.js';
 import { importBookmarksWithDialog, importHistoryWithDialog } from './window/import-dialogs.js';
 import { ConfirmDialog } from './window/confirm-dialog.js';
-import { appearancePatch, invitationSources, invitationTabs } from './app/invitation.js';
 import { setPageAccent } from './pages/responses.js';
 import { accentHex } from '../shared/accent.js';
 import { CertificateExceptions, handleCertificateErrors } from './privacy/certificates.js';
@@ -71,9 +71,13 @@ import { CommandBar } from './address-bar/command-bar.js';
 import { DEFAULT_DEVICE_ID } from './devtools/devices.js';
 import { DownloadManager } from './library/download-manager.js';
 import { DownloadStore } from './library/downloads.js';
+import { ScreenshotWatcher } from './library/screenshot-watcher.js';
 import { ExtensionBridge } from './extensions/extension-bridge.js';
 import { WINDOW_ID_NONE } from '../shared/extension-bridge.js';
 import { ExtensionPopup } from './extensions/extension-popup.js';
+import { NetRequestRules } from './extensions/net-request.js';
+import { InstallEvents } from './extensions/install-events.js';
+import { ExtensionPopupWindows } from './extensions/extension-windows.js';
 import { ExtensionManager } from './extensions/extensions.js';
 import { registerExtensionsIpc } from './extensions/extensions-ipc.js';
 import { registerWebStoreApi } from './extensions/web-store-api.js';
@@ -86,6 +90,7 @@ import { chromeUserAgent } from './app/page-preferences.js';
 import { FindBar } from './window/find-bar.js';
 import { ExternalUrlInbox } from './app/external-urls.js';
 import { miniWindowUrl } from './app/launch.js';
+import { widevineReady } from './app/widevine.js';
 import { startAutoArchive } from './tabs/auto-archive.js';
 import { startMemorySaver } from './tabs/memory-saver.js';
 import { LAZY_SAVE_DELAY_MS } from './storage/json-file.js';
@@ -133,9 +138,10 @@ import {
   broadcastAutofill,
   broadcastSettings,
   isSettingsFrame,
+  settingsSpace,
 } from './app/settings-page.js';
+import { partitionDataProfile, ProfileStores } from './privacy/profile-stores.js';
 import { registerSettingsIpc } from './app/settings-ipc.js';
-import { backgroundFile, removeBackground, saveBackground } from './pages/new-tab-background.js';
 import {
   applyCookieBlocking,
   applyPageLanguage,
@@ -149,12 +155,14 @@ import { isDefaultBrowser, refreshDefaultBrowser } from './app/default-browser.j
 import { EMPTY_HISTORY_INDEX, suggest } from './address-bar/suggestions.js';
 import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
+import { QuitController } from './app/quit.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
-import { YalqenWindow, glassAtLaunch, type AppContext, type WindowOptions } from './window/window.js';
+import { YalqenWindow, type AppContext, type WindowOptions } from './window/window.js';
 import { createPageView } from './tabs/tabs.js';
 import { createOverlayView } from './window/overlay-view.js';
 import { openMiniWindow } from './window/mini-window.js';
+import { SettingsWindow } from './window/settings-window.js';
 import { ZoomStore } from './tabs/zoom.js';
 
 if (process.platform === 'linux' && app.commandLine.hasSwitch('no-sandbox')) {
@@ -223,6 +231,8 @@ function startBrowser(): void {
   const workspaces = new WorkspaceStore(userData, (partition) => {
     forgetSessionData(partitionSession(partition));
     sessions.spaces.delete(partition);
+    const profile = partitionDataProfile(partition);
+    if (profile) profileStores.forget(profile);
   });
   const regularSessions = () => [daily, ...workspaces.storedPartitions().map(partitionSession)];
   const favorites = new FavoriteStore(userData);
@@ -249,7 +259,30 @@ function startBrowser(): void {
   const closedTabs = closedTabStore.tabs;
   let privatePermissions = new PermissionStore(null);
   let privateZoom = new ZoomStore(null, defaultZoom);
-  const permissionsFor = (isPrivate: boolean) => (isPrivate ? privatePermissions : permissions);
+  const profileStores = new ProfileStores(userData, safeStorageCipher, { passwords, autofill, permissions });
+  // undefined means the session or settings scope belongs to no known profile, so it gets no data at all.
+  const dataProfileOf = (contents: WebContents): string | null | undefined => {
+    const space = settingsSpace(contents);
+    if (space !== null)
+      return space === DEFAULT_SPACE_ID || workspaces.spaces().some(({ id }) => id === space)
+        ? workspaces.profile(space)
+        : undefined;
+    return sessionDataProfile(contents.session);
+  };
+  const sessionDataProfile = (browsing: Session): string | null | undefined => {
+    if (browsing === sessions.daily) return null;
+    const partition = [...sessions.spaces].find(([, candidate]) => candidate === browsing)?.[0];
+    return partition === undefined ? undefined : (partitionDataProfile(partition) ?? undefined);
+  };
+  const dataFor = (contents: WebContents) => {
+    const profile = dataProfileOf(contents);
+    return profile === undefined ? null : profileStores.get(profile);
+  };
+  const permissionsFor = (browsing: Session | null, isPrivate: boolean) => {
+    if (isPrivate) return privatePermissions;
+    const profile = browsing ? sessionDataProfile(browsing) : undefined;
+    return profile === undefined ? null : (profileStores.get(profile)?.permissions ?? null);
+  };
 
   const windows: YalqenWindow[] = [];
   const readingListChanged = () => broadcastReadingList(webContents.getAllWebContents());
@@ -279,6 +312,31 @@ function startBrowser(): void {
     defaultName: () => t('easels.defaultName'),
   });
   const storageOrigins = new StorageOrigins(userData);
+  const runSpaceAction = async (action: unknown, id: unknown, value: unknown): Promise<string | null> => {
+    if (action === 'create') {
+      const names = new Set(workspaces.spaces().map(({ name }) => name));
+      let number = 1;
+      while (names.has(t('spaces.newName', { number }))) number++;
+      return workspaces.create(t('spaces.newName', { number }));
+    }
+    if (typeof id !== 'string') return null;
+    if (action === 'rename') return workspaces.rename(id, value) ? id : null;
+    if (action === 'share')
+      return (value === null || typeof value === 'string') && workspaces.setProfile(id, value) ? id : null;
+    if (action !== 'remove') return null;
+    const space = workspaces.spaces().find((entry) => entry.id === id);
+    if (!space) return null;
+    const { response } = await dialog.showMessageBox({
+      type: 'question',
+      message: t('spaces.deleteConfirm', { name: space.name }),
+      detail: t('spaces.deleteDetail'),
+      buttons: [t('spaces.cancel'), t('spaces.delete')],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    return response === 1 && workspaces.remove(id) ? id : null;
+  };
   const workspacesChanged = () => {
     for (const contents of webContents.getAllWebContents())
       if (!contents.isDestroyed() && contents.getURL().startsWith(WORKSPACES_URL))
@@ -301,26 +359,28 @@ function startBrowser(): void {
     },
     changed: workspacesChanged,
   });
+  const settingsWindow = new SettingsWindow({
+    preload: preloadPath('page-preload'),
+    session: daily,
+    icon: appIcon,
+    openTab: (url) => {
+      const window = mainWindow() ?? openWindow({});
+      window.tabs.open(url, { isPrivate: false });
+      window.focus();
+    },
+  });
   const siteStorage = new SiteStorageManager(daily, storageOrigins, () => history.list().map((entry) => entry.url));
   observeStorageOrigins(daily, storageOrigins, (contents) =>
     windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.hasContents(contents)),
   );
   installSiteStorageHandlers({
     manager: siteStorage,
-    parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
+    parentOf: (contents) =>
+      settingsWindow.owns(contents)
+        ? (settingsWindow.browserWindow ?? undefined)
+        : windows.find((window) => window.tabs.hasContents(contents))?.window,
   });
   let current: YalqenWindow | null = null;
-  let quitting = false;
-  let quitPending = false;
-  const confirmQuit = async (): Promise<boolean> => {
-    const open = [...windows];
-    for (const window of open) {
-      if (!(await window.tabs.confirmCloseAll())) return false;
-    }
-    if (open.length !== windows.length || open.some((window, index) => windows[index] !== window)) return false;
-    for (const window of open) window.approveClose();
-    return true;
-  };
   let started = false;
   const eachWindow = (run: (window: YalqenWindow) => void) => {
     for (const window of [...windows]) run(window);
@@ -349,13 +409,25 @@ function startBrowser(): void {
       pushState();
       broadcastExtensions(extensions.list());
     },
-    { automatic: () => settings.get().autoUpdateExtensions },
+    {
+      automatic: () => settings.get().autoUpdateExtensions,
+      removed: (id) => {
+        netRequest.forget(id);
+        installEvents.forget(id);
+      },
+    },
   );
   const extensionPopup = new ExtensionPopup();
   const mainWindow = () =>
     focusedFirst().find((window) => !window.isPrivate && !window.isDeveloper && window.webApp === null) ?? null;
   const tabsWindowOf = (contents: Electron.WebContents) => windows.find((window) => window.tabs.hasContents(contents));
   const extensionWindows = () => focusedFirst().filter((window) => !window.isPrivate && !window.window.isDestroyed());
+  const extensionWindowById = (id: number | null) =>
+    id === null ? mainWindow() : extensionWindows().find((window) => window.window.id === id);
+  const extensionPopupWindows = new ExtensionPopupWindows(daily, {
+    created: (state) => extensionBridge.windowCreated(state),
+    removed: (id) => extensionBridge.windowRemoved(id),
+  });
   const extensionBridge = new ExtensionBridge(
     daily,
     {
@@ -366,9 +438,50 @@ function startBrowser(): void {
       },
       close: (contents) => tabsWindowOf(contents)?.tabs.closeContents(contents) ?? false,
       isTab: (contents) => tabsWindowOf(contents) !== undefined,
-      windowId: (contents) => tabsWindowOf(contents)?.window.id ?? extensionPopup.windowId(contents) ?? WINDOW_ID_NONE,
+      windowId: (contents) =>
+        (tabsWindowOf(contents) ?? windows.find((window) => window.ownsExtensionSidePanel(contents)))?.window.id ??
+        extensionPopup.windowId(contents) ??
+        extensionPopupWindows.windowId(contents) ??
+        WINDOW_ID_NONE,
       isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
-      windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
+      viewType: (contents) =>
+        tabsWindowOf(contents) || extensionPopupWindows.windowId(contents) !== undefined
+          ? 'TAB'
+          : windows.some((window) => window.ownsExtensionSidePanel(contents))
+            ? 'SIDE_PANEL'
+            : extensionPopup.windowId(contents) !== undefined
+              ? 'POPUP'
+              : null,
+      windows: () => [
+        ...extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
+        ...extensionPopupWindows.states(),
+      ],
+      openPopupWindow: (url, options) => extensionPopupWindows.create(url, options),
+      focusWindow: (id) => {
+        if (extensionPopupWindows.focus(id)) return true;
+        const window = extensionWindowById(id);
+        window?.focus();
+        return window !== undefined;
+      },
+      removeWindow: (id) => extensionPopupWindows.remove(id),
+      openAction: (extensionId, contents) =>
+        ((contents && tabsWindowOf(contents)) ?? mainWindow())?.openExtensionAction(extensionId),
+      openActionPopup: (windowId, popupUrl) => {
+        const window = extensionWindowById(windowId);
+        if (!window) return 'no-window';
+        const url = popupUrl(window.tabs.activeContents());
+        if (!url) return 'no-popup';
+        window.openExtensionActionPopup(url);
+        return 'opened';
+      },
+      openSidePanel: (extensionId, url, windowId) =>
+        extensionWindowById(windowId)?.openExtensionSidePanel(extensionId, url) ?? null,
+      closeSidePanel: (extensionId, windowId) => {
+        for (const window of windowId === null ? windows : [extensionWindowById(windowId)])
+          window?.closeExtensionSidePanel(extensionId);
+      },
+      sidePanelOpen: (extensionId, windowId) => extensionWindowById(windowId)?.sidePanelExtension === extensionId,
+      refreshSidePanel: (windowId) => extensionWindowById(windowId)?.syncExtensionSidePanel(),
     },
     preloadPath('extension-apis'),
   );
@@ -387,6 +500,8 @@ function startBrowser(): void {
   const reloadPages = (prefix: string) => eachWindow((window) => window.tabs.reloadPages(prefix));
   const windowOf = (contents: Electron.WebContents) =>
     windows.find((window) => window.tabs.hasContents(contents)) ?? current;
+  const settingsParent = (contents: Electron.WebContents) =>
+    settingsWindow.owns(contents) ? (settingsWindow.browserWindow ?? undefined) : undefined;
   const extensionAccess = new ExtensionAccessController({
     extensions,
     pages: () =>
@@ -417,6 +532,19 @@ function startBrowser(): void {
           : saved.map(pinnedOnly).filter((window) => window.tabs.length > 0),
     };
   };
+  const quit = new QuitController({
+    windows,
+    beforeClose: async () => {
+      if (!settings.get().clearOnExit) return;
+      storageOrigins.clear();
+      await Promise.allSettled(
+        regularSessions().flatMap((browsing) => [browsing.clearStorageData(), browsing.clearCache()]),
+      );
+    },
+    saveSession: (resume) =>
+      store.saveNow(resume ? { version: 2, windows: windowsToSave(), resume: true } : sessionSnapshot()),
+    quit: () => app.quit(),
+  });
 
   applyPageLanguage(sessions, getLocale());
   applyCookieBlocking(sessions, settings.get().blockThirdPartyCookies, cookiesAllowed);
@@ -444,21 +572,21 @@ function startBrowser(): void {
     parentOf: (contents) => windowOf(contents)?.window,
   });
   installPasswordHandlers({
-    store: passwords,
+    storeFor: (contents) => dataFor(contents)?.passwords ?? null,
     savesPasswords: (contents) =>
       isRegularSession(sessions, contents.session) && windows.some((window) => window.tabs.hasContents(contents)),
-    parentOf: (contents) => windowOf(contents)?.window,
+    parentOf: (contents) => settingsParent(contents) ?? windowOf(contents)?.window,
     isSettingsFrame,
-    onChange: () => broadcastPasswords(passwords.view()),
+    onChange: () => broadcastPasswords((contents) => dataFor(contents)?.passwords.view() ?? null),
   });
   installAutofillHandlers({
-    store: autofill,
+    storeFor: (contents) => dataFor(contents)?.autofill ?? null,
     allowed: (contents) =>
       isRegularSession(sessions, contents.session) &&
       !certificates.hasException(contents.getURL()) &&
       windows.some((window) => !window.isPrivate && !window.isDeveloper && window.tabs.activeContents() === contents),
     parentOf: (contents) => windows.find((window) => window.tabs.hasContents(contents))?.window,
-    changed: () => broadcastAutofill(autofill.view()),
+    changed: () => broadcastAutofill((contents) => dataFor(contents)?.autofill.view() ?? null),
   });
   installOneTimeCodeHandlers({
     allowed: (contents) =>
@@ -489,10 +617,33 @@ function startBrowser(): void {
     directory: () => settings.get().downloadDirectory ?? app.getPath('downloads'),
     askBeforeDownload: () => settings.get().askBeforeDownload,
     parentOf: (contents) => windowOf(contents)?.window,
+    ignore: (contents) => extensionBridge.isSilentAuth(contents),
     onStateChange: pushState,
     checkFile: (file) => threatLists.checkFile(file),
+    chooseName: (entry) => extensionBridge.chooseDownloadName(entry),
   });
   const downloadsChanged = () => downloadManager.changed();
+  const screenshots = new ScreenshotWatcher((file, size) => {
+    downloads.add({
+      id: randomUUID(),
+      url: pathToFileURL(file).href,
+      filename: path.basename(file),
+      savePath: file,
+      state: 'completed',
+      receivedBytes: size,
+      totalBytes: size,
+      startedAt: Date.now(),
+      screenshot: true,
+    });
+    downloadsChanged();
+  });
+  if (process.platform === 'darwin') screenshots.setEnabled(settings.get().screenshotsInDownloads);
+  extensionBridge.attachLibrary({ history, bookmarks, downloads, downloadManager, bookmarksChanged });
+  const netRequest = new NetRequestRules(daily, path.join(userData, 'extension-net-rules.json'));
+  extensionBridge.attachNetRequest(netRequest);
+  const installEvents = new InstallEvents(daily, path.join(userData, 'extension-versions.json'), (id, details) =>
+    extensionBridge.dispatchInstalled(id, details),
+  );
 
   const agentTokens = new AgentTokenStore(userData, safeStorageCipher);
   const focusedFirst = () => (current ? [current, ...windows.filter((window) => window !== current)] : windows);
@@ -599,6 +750,7 @@ function startBrowser(): void {
     path.join(userData, 'adblock-engine.bin'),
     (session, url) => siteProtections.isAllowed('adBlocking', url, session === privateBrowsing),
     (details) => threatGuard.blocked(details),
+    (session, details) => netRequest.decide(session, details),
   );
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () => resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
@@ -610,14 +762,11 @@ function startBrowser(): void {
     preload: preloadPath('find-preload'),
     page: rendererPath('find.html'),
   });
-  const welcome = new WelcomeCard({
-    preload: preloadPath('welcome-preload'),
-    page: rendererPath('welcome.html'),
-  });
   const confirmDialog = new ConfirmDialog({
     preload: preloadPath('confirm-preload'),
     page: rendererPath('confirm.html'),
     accent: () => accentHex(settings.get().accentColor),
+    tint: (base) => windows.find((window) => window.window === base)?.menuTint() ?? null,
   });
   setPageAccent(accentHex(settings.get().accentColor));
   nativeTheme.themeSource = settings.get().theme;
@@ -635,37 +784,39 @@ function startBrowser(): void {
       update: updater.status(),
       threatLists: threatLists.view(),
       spaces: [{ id: DEFAULT_SPACE_ID, name: t('spaces.default'), icon: null }, ...workspaces.spaces()],
+      spaceShares: workspaces.profiles(),
     };
   };
   const updater = new Updater({
     load: app.isPackaged && !bench ? loadAutoUpdater : null,
     automatic: () => settings.get().autoUpdate,
-    onChange: () => broadcastSettings(settingsView()),
-    beforeInstall: async () => {
-      if (!(await confirmQuit())) return false;
-      quitting = true;
-      store.saveNow({ version: 2, windows: windowsToSave(), resume: true });
-      await forgetOnExit();
-      return true;
+    onChange: () => {
+      broadcastSettings(settingsView());
+      pushState();
     },
+    beforeInstall: () => quit.prepareUpdate(),
   });
   let refreshAppMenu = () => {};
   const updateSettings = (patch: unknown) => {
     const previous = settings.get();
     const next = settings.update(patch);
-    if (next === previous) return;
+    if (!next || next === previous) return next;
     if (JSON.stringify(next.shortcuts) !== JSON.stringify(previous.shortcuts)) refreshAppMenu();
     if (next.threatProtection && !previous.threatProtection) void threatLists.update();
     if (next.defaultZoom !== previous.defaultZoom) eachWindow((window) => window.tabs.applyDefaultZoom());
     if (next.secureDns !== previous.secureDns) app.configureHostResolver(hostResolverOptions(next.secureDns));
     nativeTheme.themeSource = next.theme;
     if (next.darkSites !== previous.darkSites) boosts.refreshAll();
-    if (next.accentColor !== previous.accentColor) setPageAccent(accentHex(next.accentColor));
+    if (next.accentColor !== previous.accentColor) {
+      setPageAccent(accentHex(next.accentColor));
+      eachWindow((window) => window.tabs.syncNewTabMarkColors());
+    }
     if (next.discardAfterMinutes > 0 !== previous.discardAfterMinutes > 0)
       eachWindow((window) => window.tabs.applyFreezeSetting());
     if (next.autoUpdate !== previous.autoUpdate) updater.schedule();
     if (next.autoUpdateExtensions !== previous.autoUpdateExtensions && !bench) extensions.scheduleUpdates();
     if (next.usageCounting !== previous.usageCounting) usage.schedule();
+    if (process.platform === 'darwin') screenshots.setEnabled(next.screenshotsInDownloads);
     if (next.agentBridge !== previous.agentBridge) void agentBridge.sync();
     else if (next.agentOrigins !== previous.agentOrigins) eachWindow((window) => window.tabs.syncAgent());
     if (next.agentTracing !== previous.agentTracing) eachWindow((window) => window.tabs.refreshRequestRules());
@@ -673,6 +824,7 @@ function startBrowser(): void {
     applyCookieBlocking(sessions, next.blockThirdPartyCookies, cookiesAllowed);
     pushState();
     broadcastSettings(settingsView());
+    return next;
   };
 
   const usage = new UsageReporter({
@@ -692,17 +844,15 @@ function startBrowser(): void {
     siteProtections,
     commandBar,
     findBar,
-    welcome,
     confirmDialog,
     history,
     repoPrompt,
-    dismissAnnouncement: () => settings.update({ dismissedAnnouncement: app.getVersion() }),
-    dismissFeedback: () => settings.update({ dismissedFeedback: app.getVersion() }),
     dismissUpdate: () => {
       const status = updater.status();
       if (status.state === 'ready') settings.update({ dismissedUpdate: status.version });
     },
     installUpdate: () => updater.install(),
+    updateReady: () => updater.status().state === 'ready',
     chatPreferences,
     downloads,
     bookmarks,
@@ -742,6 +892,10 @@ function startBrowser(): void {
       else bookmarks.add(url, title);
       bookmarksChanged();
     },
+    bookmarkTabs: (tabs) => {
+      for (const { url, title } of tabs) if (!bookmarks.has(url)) bookmarks.add(url, title);
+      bookmarksChanged();
+    },
     runBookmarksCommand: (command, params) => {
       if (runBookmarksCommand(bookmarks, command, params)) bookmarksChanged();
     },
@@ -766,7 +920,7 @@ function startBrowser(): void {
       else openWindow({ developer: profile === 'developer', isPrivate: profile === 'private', from });
     },
     onWindowChange: (persist) => {
-      if (persist && !quitting)
+      if (persist && !quit.isQuitting)
         store.scheduleSave(sessionSnapshot, persist === 'lazy' ? LAZY_SAVE_DELAY_MS : undefined);
     },
     onPrivateTabsClosed: () => {
@@ -787,10 +941,9 @@ function startBrowser(): void {
       if (process.platform === 'win32') void refreshDefaultBrowser().then(() => broadcastSettings(settingsView()));
     },
     onWindowClosing: (window) => {
-      if (quitting) return;
+      if (quit.isQuitting) return;
       if (windows.length === 1) {
-        quitting = true;
-        store.saveNow(sessionSnapshot());
+        quit.lastWindowClosing();
         return;
       }
       const index = windows.indexOf(window);
@@ -812,7 +965,9 @@ function startBrowser(): void {
       if (window.isDeveloper && !windows.some((other) => other.isDeveloper || other.tabs.hasDeveloperTabs))
         forgetSessionData(developer);
       if (current === window) current = windows.at(-1) ?? null;
+      if (!windows.length) settingsWindow.close();
     },
+    openSettings: (pane) => settingsWindow.open(pane),
   };
 
   const openWindow = (options: WindowOptions): YalqenWindow => {
@@ -838,29 +993,19 @@ function startBrowser(): void {
   });
   const servePages = (browsing: Session, isPrivate: boolean) =>
     serveInternalPages(browsing, internalPages, {
-      pinned: () => [
-        ...new Map(windows.flatMap((window) => window.tabs.pinnedPages).map((page) => [page.url, page])).values(),
-      ],
       visits: (query) => history.list(query),
       archived: () => (isPrivate ? [] : closedTabs),
       downloads: { list: () => downloads.list(), changes: downloadManager.changes },
       bookmarks: (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
-      showWelcome: () => {
-        const showWelcome = !settings.get().welcomeCompleted;
-        if (showWelcome) settings.update({ welcomeCompleted: true });
-        return showWelcome;
-      },
       readyUpdate: () => {
         const status = updater.status();
         return !isPrivate && status.state === 'ready' && settings.get().dismissedUpdate !== status.version
           ? status.version
           : null;
       },
-      showAnnouncement: () => !isPrivate && settings.get().dismissedAnnouncement !== app.getVersion(),
-      showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
-      opaque: () => !glassAtLaunch(settings),
-      background: () => backgroundFile(userData, settings.get().newTabBackground),
+      engine: () => searchEngine().label,
+      accent: () => accentHex(settings.get().accentColor),
       suggestions: (query) =>
         suggest(query, {
           tabs: [],
@@ -947,13 +1092,23 @@ function startBrowser(): void {
   refreshAppMenu = () => installAppMenu(appMenuHost);
   refreshAppMenu();
 
-  const senderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
+  const uiSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     windows.find((window) => window.uiContents === event.sender);
+  // The floating chat view hosts the agent panel too, but only the window UI may change the layout.
+  const senderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
+    windows.find((window) => window.ownsAgentPanel(event.sender));
   ipcMain.handle(IpcChannel.getState, (event) => senderWindow(event)?.state() ?? null);
-  ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => senderWindow(event)?.setLayout(next));
+  ipcMain.on(IpcChannel.setLayout, (event, next: ChromeLayout) => uiSenderWindow(event)?.setLayout(next));
   ipcMain.on(IpcChannel.action, (event, action: UiAction) => senderWindow(event)?.handleAction(action));
   const agentSenderWindow = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent) =>
     event.senderFrame === event.sender.mainFrame ? senderWindow(event) : undefined;
+  ipcMain.handle(
+    IpcChannel.agentDraft,
+    (event, projectId: string, id: string) => agentSenderWindow(event)?.projectById(projectId)?.draftFor(id) ?? null,
+  );
+  ipcMain.on(IpcChannel.agentDraftUpdate, (event, projectId: string, id: string, patch) => {
+    agentSenderWindow(event)?.projectById(projectId)?.updateDraft(id, patch);
+  });
   ipcMain.handle(IpcChannel.agentSnapshot, (event) => agentSenderWindow(event)?.agentSession.snapshot() ?? null);
   ipcMain.handle(IpcChannel.agentSelectDirectory, (event) => agentSenderWindow(event)?.selectAgentDirectory() ?? null);
   ipcMain.handle(
@@ -1087,10 +1242,12 @@ function startBrowser(): void {
   registerExtensionsIpc({
     extensions,
     access: extensionAccess,
-    parentWindow: (contents) => windowOf(contents)?.window,
+    parentWindow: (contents) => settingsParent(contents) ?? windowOf(contents)?.window,
     confirm: (window, request, returnFocus) => confirmDialog.confirm(window, request, returnFocus),
     openTab: (contents, url) => {
-      windowOf(contents)?.tabs.open(url, { isPrivate: false });
+      const window = settingsWindow.owns(contents) ? (mainWindow() ?? openWindow({})) : windowOf(contents);
+      window?.tabs.open(url, { isPrivate: false });
+      if (settingsWindow.owns(contents)) window?.focus();
     },
   });
   const clearData = async (request: ClearDataRequest) => {
@@ -1112,28 +1269,21 @@ function startBrowser(): void {
     }
     if (request.cache) await Promise.all(regular.map((browsing) => browsing.clearCache()));
   };
-  const forgetOnExit = async () => {
-    if (!settings.get().clearOnExit) return;
-    storageOrigins.clear();
-    await Promise.allSettled(
-      regularSessions().flatMap((browsing) => [browsing.clearStorageData(), browsing.clearCache()]),
-    );
-  };
   const showImportMenu = (kind: 'bookmarks' | 'history', contents: WebContents) => {
-    const window = windowOf(contents);
+    const window = settingsParent(contents) ?? windowOf(contents)?.window;
     if (!window) return;
     const firefox = firefoxProfiles();
     const menu =
       kind === 'bookmarks'
         ? bookmarkImportMenu(
             [...chromiumProfiles('Bookmarks'), ...arcSidebarSources(), ...firefox],
-            (file) => void importBookmarksWithDialog(window.window, context.importBookmarks, file),
+            (file) => void importBookmarksWithDialog(window, context.importBookmarks, file),
           )
         : historyImportMenu(
             [...chromiumProfiles('History'), ...firefox],
-            (file) => void importHistoryWithDialog(window.window, context.importHistory, file),
+            (file) => void importHistoryWithDialog(window, context.importHistory, file),
           );
-    Menu.buildFromTemplate(menu.submenu).popup({ window: window.window });
+    Menu.buildFromTemplate(menu.submenu).popup({ window });
   };
   registerSettingsIpc({
     view: settingsView,
@@ -1143,31 +1293,23 @@ function startBrowser(): void {
     clearData,
     showImportMenu,
     updater,
-    relaunch: () => {
-      void confirmQuit().then(async (allowed) => {
-        if (!allowed) return;
-        quitting = true;
-        store.saveNow(sessionSnapshot());
-        await forgetOnExit();
+    relaunch: () =>
+      quit.relaunch(() => {
         app.releaseSingleInstanceLock();
         app.relaunch({ args: profileArguments(process.argv.slice(1), persistentProfiles.id) });
-        app.quit();
-      });
-    },
+      }),
     requestRules,
-    permissions,
+    permissionsFor: (contents) => dataFor(contents)?.permissions ?? null,
     siteIcons: (domains) => siteIcons(history.list(), domains),
-    setNewTabBackground: (source) => {
-      const previous = settings.get().newTabBackground;
-      if (source === null) {
-        removeBackground(userData, previous);
-        updateSettings({ newTabBackground: '' });
-        return;
-      }
-      const saved = saveBackground(userData, source, previous);
-      if (saved) updateSettings({ newTabBackground: saved });
-    },
     onRequestRulesSaved: () => eachWindow((window) => window.tabs.refreshRequestRules()),
+    setSpaceTheme: (id, theme) => {
+      if (workspaces.setTheme(id, theme)) workspacesChanged();
+    },
+    spaceAction: async (action, id, value) => {
+      const result = await runSpaceAction(action, id, value);
+      if (result !== null) workspacesChanged();
+      return result;
+    },
   });
 
   const stopMemorySaver = startMemorySaver({
@@ -1180,20 +1322,7 @@ function startBrowser(): void {
     afterHours: () => settings.get().autoArchiveHours,
   });
 
-  app.on('before-quit', (event) => {
-    if (quitting) return;
-    event.preventDefault();
-    if (quitPending) return;
-    quitPending = true;
-    void confirmQuit().then(async (allowed) => {
-      quitPending = false;
-      if (!allowed) return;
-      quitting = true;
-      store.saveNow(sessionSnapshot());
-      await forgetOnExit();
-      app.quit();
-    });
-  });
+  app.on('before-quit', (event) => quit.beforeQuit(event));
   app.on('will-quit', () => {
     persistentProfiles.stop();
     stopMemorySaver();
@@ -1203,15 +1332,16 @@ function startBrowser(): void {
     updater.stop();
     usage.stop();
     downloadManager.destroy();
+    screenshots.setEnabled(false);
     adBlocker.destroy();
     threatLists.stop();
     commandBar.destroy();
     findBar.destroy();
-    welcome.destroy();
     confirmDialog.destroy();
     extensionPopup.close();
     extensions.stopUpdates();
     extensions.saveNow();
+    netRequest.saveNow();
     history.saveNow();
     storageOrigins.saveNow();
     repoPrompt.saveNow();
@@ -1220,16 +1350,15 @@ function startBrowser(): void {
     bookmarks.saveNow();
     liveFolders.saveNow();
     zoom.saveNow();
-    permissions.saveNow();
-    passwords.saveNow();
+    profileStores.saveAll();
     closedTabStore.saveNow();
     requestRules.saveNow();
   });
   app.on('activate', () => {
-    if (started && windows.length === 0 && !quitting) openWindow({});
+    if (started && windows.length === 0 && !quit.isQuitting) openWindow({});
   });
   app.on('second-instance', () => {
-    if (!started || quitting) return;
+    if (!started || quit.isQuitting) return;
     (current ?? openWindow({})).focus();
   });
 
@@ -1303,50 +1432,8 @@ function startBrowser(): void {
     });
     if (restoring && restored.length > 0 && first) openExternal([first, ...rest], external);
     else if (rest.length > 0) openExternal(rest, external);
-    showInvitation();
   };
 
-  const showInvitation = () => {
-    const window = current;
-    if (bench || settings.get().invitationSeen || !window || window.isPrivate || window.isDeveloper || window.webApp)
-      return;
-    const sources = invitationSources([...arcSidebarSources(), ...chromiumProfiles('Bookmarks'), ...firefoxProfiles()]);
-    const values = settings.get();
-    welcome.show({
-      window: window.window,
-      open: {
-        name: values.displayName,
-        accent: values.accentColor,
-        theme: values.theme,
-        tabs: invitationTabs(values),
-        material: glassAtLaunch(settings) ? 'glass' : 'opaque',
-        sources: sources.map(({ id, browser, profile }) => ({ id, browser, profile })),
-      },
-      onAction: (action) => {
-        if (action.type === 'appearance') updateSettings(appearancePatch(action));
-        else if (action.type === 'name' && typeof action.name === 'string')
-          updateSettings({ displayName: action.name });
-      },
-      importFrom: async (request) => {
-        const source = sources.find((item) => item.id === request.source);
-        if (!source) return { ok: false, bookmarks: 0, visits: 0 };
-        try {
-          const bookmarks =
-            request.bookmarks === true ? (await context.importBookmarks(source.bookmarks)).bookmarks : 0;
-          const visits =
-            request.history === true && source.history ? (await context.importHistory(source.history)).visits : 0;
-          return { ok: true, bookmarks, visits };
-        } catch (error) {
-          console.warn('[invitation] could not import:', error);
-          return { ok: false, bookmarks: 0, visits: 0 };
-        }
-      },
-      onFinish: () => {
-        settings.update({ invitationSeen: true });
-        window.focus();
-      },
-    });
-  };
   void extensions.loadAll().then(() => {
     bench?.mark('extensions-loaded');
     if (!bench) extensions.scheduleUpdates();
@@ -1378,9 +1465,10 @@ app.setAboutPanelOptions({
 if (!primary) {
   app.quit();
 } else {
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     bench?.mark('app-ready');
     if (!app.isPackaged) app.dock?.setIcon(appIcon);
+    await widevineReady();
     startBrowser();
   });
 }

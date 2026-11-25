@@ -19,6 +19,7 @@ export interface HistoryEntry {
 export type ImportedVisit = Pick<HistoryEntry, 'url' | 'title' | 'visitedAt'>;
 
 export class HistoryStore {
+  onChange: (() => void) | null = null;
   private readonly file: string;
   private entries: HistoryEntry[] = [];
   private readonly json: JsonFile;
@@ -103,6 +104,18 @@ export class HistoryStore {
     this.changed(LAZY_SAVE_DELAY_MS);
   }
 
+  removeUrl(url: string): void {
+    const before = this.entries.length;
+    this.entries = this.entries.filter((entry) => entry.url !== url);
+    if (this.entries.length !== before) this.changed();
+  }
+
+  removeRange(start: number, end: number): void {
+    const before = this.entries.length;
+    this.entries = this.entries.filter((entry) => entry.visitedAt < start || entry.visitedAt >= end);
+    if (this.entries.length !== before) this.changed();
+  }
+
   remove(id: string): void {
     const index = this.entries.findIndex((entry) => entry.id === id);
     if (index < 0) return;
@@ -129,6 +142,7 @@ export class HistoryStore {
   private changed(delayMs?: number): void {
     this.cachedIndex = null;
     this.json.schedule(() => this.entries, delayMs);
+    this.onChange?.();
   }
 }
 

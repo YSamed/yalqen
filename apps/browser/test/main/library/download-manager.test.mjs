@@ -8,8 +8,9 @@ const { DownloadManager } = downloadManager;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const downloads = path.join('downloads');
 
-function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } = {}) {
+function fixture(t, { askBefore = true, responses = [], paths = [], checkFile, ignore, chooseName } = {}) {
   const session = new EventEmitter();
+  const privateSession = new EventEmitter();
   session.downloadURL = (url) => {
     session.retried = url;
   };
@@ -37,18 +38,20 @@ function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } 
     {
       store,
       daily: session,
-      privateBrowsing: new EventEmitter(),
+      privateBrowsing: privateSession,
       developer: new EventEmitter(),
       directory: () => downloads,
       askBeforeDownload: () => askBefore,
       parentOf: () => undefined,
+      ignore,
       onStateChange: () => {},
       checkFile,
+      chooseName,
     },
     dialogs,
   );
   t.after(() => manager.destroy());
-  const start = (name = 'report.pdf') => {
+  const start = (name = 'report.pdf', contents, browsing = session) => {
     const item = new EventEmitter();
     item.state = 'progressing';
     item.paused = false;
@@ -70,10 +73,10 @@ function fixture(t, { askBefore = true, responses = [], paths = [], checkFile } 
     item.cancel = () => {
       item.state = 'cancelled';
     };
-    session.emit('will-download', {}, item);
+    browsing.emit('will-download', {}, item, contents);
     return item;
   };
-  return { manager, start, prompts, saves, entries, session };
+  return { manager, start, prompts, saves, entries, session, privateSession };
 }
 
 test('automatic downloads use the configured directory and reserve unique paths', (t) => {
@@ -181,4 +184,108 @@ test('verification failures never mark a file completed', async (t) => {
   item.emit('done', {}, 'completed');
   await tick();
   assert.equal([...f.entries.values()][0].state, 'interrupted');
+});
+
+test('extension downloads resolve with their entry and keep the download prompt', async (t) => {
+  const f = fixture(t, { askBefore: false });
+  const started = f.manager.download('https://example.com/report.pdf', 'notes/named.pdf');
+  assert.equal(f.session.retried, 'https://example.com/report.pdf');
+  const item = f.start();
+  assert.equal(item.savePath, path.join(downloads, 'named.pdf'));
+  assert.equal(f.entries.get(await started).savePath, item.savePath);
+
+  const asked = fixture(t, { responses: [2] });
+  const refused = asked.manager.download('https://example.com/report.pdf', null);
+  asked.start();
+  assert.equal(await refused, null);
+  assert.equal(asked.prompts.length, 1);
+});
+
+test('extension downloads that never start resolve null and a late will-download still works', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = fixture(t, { askBefore: false });
+  const started = f.manager.download('https://example.com/report.pdf', 'named.pdf');
+  t.mock.timers.tick(30_000);
+  assert.equal(await started, null);
+  assert.equal(f.manager.waiters.size, 0);
+  assert.equal(f.manager.suggestedNames.size, 0);
+  const item = f.start();
+  assert.equal(item.savePath, path.join(downloads, 'report.pdf'));
+  assert.equal(f.entries.size, 1);
+});
+
+test('ignored sources are cancelled without a prompt or an entry', async (t) => {
+  const hidden = {};
+  const f = fixture(t, { ignore: (contents) => contents === hidden });
+  const ignored = f.start('hidden.bin', hidden);
+  assert.equal(ignored.state, 'cancelled');
+  assert.equal(ignored.paused, false);
+  assert.equal(ignored.savePath, undefined);
+  await tick();
+  assert.deepEqual(f.prompts, []);
+  assert.equal(f.entries.size, 0);
+  assert.equal(f.start('shown.bin', {}).paused, true);
+});
+
+test('a name hook renames the file before the download prompt', async (t) => {
+  const asked = [];
+  let answer;
+  const f = fixture(t, {
+    responses: [0],
+    chooseName: (entry) => {
+      asked.push(entry);
+      return new Promise((resolve) => {
+        answer = resolve;
+      });
+    },
+  });
+  const item = f.start();
+  assert.equal(item.paused, true);
+  assert.equal(asked[0].url, 'https://example.com/report.pdf');
+  assert.equal(asked[0].savePath, path.join(downloads, 'report.pdf'));
+  assert.deepEqual(f.prompts, []);
+  answer('renamed.pdf');
+  await tick();
+  await tick();
+  assert.equal(f.prompts.length, 1);
+  assert.equal(item.paused, false);
+  assert.equal(item.savePath, path.join(downloads, 'renamed.pdf'));
+  const [entry] = f.entries.values();
+  assert.equal(entry.id, asked[0].id);
+  assert.equal(entry.filename, 'renamed.pdf');
+  assert.equal(f.start().savePath, path.join(downloads, 'report.pdf'));
+});
+
+test('a name hook that never answers falls back to the original name', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const f = fixture(t, { askBefore: false, chooseName: () => new Promise(() => {}) });
+  const item = f.start();
+  assert.equal(item.paused, true);
+  assert.equal(f.entries.size, 0);
+  t.mock.timers.tick(5_000);
+  await tick();
+  assert.equal(item.paused, false);
+  assert.equal(item.savePath, path.join(downloads, 'report.pdf'));
+  assert.equal(f.entries.size, 1);
+});
+
+test('ignored and private downloads skip the name hook, and no listener keeps the start synchronous', (t) => {
+  const asked = [];
+  const hidden = {};
+  const f = fixture(t, {
+    askBefore: false,
+    ignore: (contents) => contents === hidden,
+    chooseName: (entry) => {
+      asked.push(entry);
+      return null;
+    },
+  });
+  assert.equal(f.start('hidden.bin', hidden).state, 'cancelled');
+  const privateItem = f.start('private.bin', undefined, f.privateSession);
+  assert.equal(privateItem.paused, false);
+  assert.equal(asked.length, 0);
+  const item = f.start();
+  assert.equal(asked.length, 1);
+  assert.equal(item.paused, false);
+  assert.equal(f.entries.size, 2);
 });

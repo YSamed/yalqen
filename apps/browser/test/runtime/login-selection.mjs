@@ -62,7 +62,7 @@ app
     let gate;
     let prompts = 0;
     handlers.installPasswordHandlers({
-      store,
+      storeFor: () => store,
       savesPasswords: (contents) => allowed.has(contents),
       isSettingsFrame: () => false,
       parentOf: (contents) => windows.find((window) => window.webContents === contents),

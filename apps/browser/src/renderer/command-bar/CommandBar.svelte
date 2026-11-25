@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { accentCss } from '../../shared/accent';
   import { onMount, tick } from 'svelte';
   import type { AddressSuggestion, CommandBarAction, CommandBarOpen } from '../../shared/types';
   import { matchSearchKeyword } from '../../shared/search-keyword';
   import { t } from '../../shared/i18n';
   import { displayHost } from '../../shared/hosts';
   import Icon from '../ui/Icon.svelte';
-  import SearchField from '../ui/SearchField.svelte';
+  import SidebarMenu from './SidebarMenu.svelte';
 
   const KIND_ICON = { tab: 'sidebar', bookmark: 'star', history: 'history', command: 'gauge' } as const;
 
@@ -16,12 +17,16 @@
   let selected = $state(-1);
   let engines: CommandBarOpen['engines'] = $state([]);
   let engine: CommandBarOpen['engines'][number] | null = $state(null);
+  let menu: CommandBarOpen['menu'] | null = $state.raw(null);
+  let tint: string | null = $state(null);
+  let area: CommandBarOpen['area'] | null = $state(null);
 
   function finish(action: CommandBarAction): void {
     value = '';
     suggestions = [];
     selected = -1;
     engine = null;
+    menu = null;
     window.yalqenCommand.send(action);
   }
 
@@ -83,9 +88,11 @@
 
   onMount(() => {
     const offOpen = window.yalqenCommand.onOpen((open) => {
-      document.documentElement.toggleAttribute('data-opaque', open.material === 'opaque');
-      document.documentElement.style.setProperty('--accent', open.accent);
+      document.documentElement.style.setProperty('--accent', accentCss(open.accent));
       placeholder = open.placeholder;
+      tint = open.tint ?? null;
+      area = open.area ?? null;
+      menu = open.mode === 'sidebar-menu' ? (open.menu ?? null) : null;
       value = open.value ?? '';
       engines = open.engines;
       engine = null;
@@ -101,9 +108,13 @@
       suggestions = next.suggestions;
       selected = -1;
     });
+    const offArea = window.yalqenCommand.onArea((next) => {
+      area = next;
+    });
     return () => {
       offOpen();
       offSuggestions();
+      offArea();
     };
   });
 </script>
@@ -112,122 +123,193 @@
 
 <svelte:window onkeydown={onKeydown} onmousedown={onBackdropMouseDown} />
 
-<div class="backdrop">
-  <div class="box">
-    <form class="bar" role="search" onsubmit={submit}>
-      <SearchField
-        size="lg"
-        bind:ref={input}
-        bind:value
-        oninput={onInput}
-        placeholder={engine ? t('commandBar.searchOn', { engine: engine.label }) : placeholder}
-        aria-label={t('commandBar.placeholder')}
-        role="combobox"
-        aria-expanded={suggestions.length > 0}
-        aria-controls="suggestions"
-        aria-activedescendant={selected >= 0 ? `suggestion-${selected}` : undefined}
-      >
-        {#snippet trailing()}
-          {#if engine}<span class="engine">{engine.label}</span>{/if}
-        {/snippet}
-      </SearchField>
-    </form>
-    {#if suggestions.length > 0}
-      <ul class="suggestions" id="suggestions" role="listbox" aria-label={t('commandBar.suggestions')}>
-        {#each suggestions as suggestion, index (suggestion.url)}
-          <li
-            id="suggestion-{index}"
-            role="option"
-            tabindex="-1"
-            aria-selected={index === selected}
-            class:selected={index === selected}
-            onmousedown={(event) => event.preventDefault()}
-            onclick={() => pick(suggestion)}
-            onkeydown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                pick(suggestion);
-              }
-            }}
-            onmousemove={() => (selected = index)}
-          >
-            <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={14} /></span>
-            <span class="title">{suggestion.title || displayHost(suggestion.url)}</span>
-            <span class="url">{detail(suggestion)}</span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+{#if menu}
+  <SidebarMenu {menu} onaction={finish} />
+{:else}
+  <div class="backdrop">
+    <div
+      class="panel"
+      class:tinted={tint !== null}
+      class:placed={area !== null}
+      style:--menu-tint={tint}
+      style:--area-x={area ? `${area.x}px` : null}
+      style:--area-y={area ? `${area.y}px` : null}
+      style:--area-width={area ? `${area.width}px` : null}
+      style:--area-height={area ? `${area.height}px` : null}
+    >
+      <form class="search" role="search" onsubmit={submit}>
+        <Icon name="search" size={16} />
+        <input
+          bind:this={input}
+          bind:value
+          oninput={onInput}
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder={engine ? t('commandBar.searchOn', { engine: engine.label }) : placeholder}
+          aria-label={t('commandBar.placeholder')}
+          role="combobox"
+          aria-expanded={suggestions.length > 0}
+          aria-controls="suggestions"
+          aria-activedescendant={selected >= 0 ? `suggestion-${selected}` : undefined}
+        />
+        {#if engine}<span class="engine">{engine.label}</span>{/if}
+      </form>
+      {#if suggestions.length > 0}
+        <div class="divider"></div>
+        <ul class="suggestions" id="suggestions" role="listbox" aria-label={t('commandBar.suggestions')}>
+          {#each suggestions as suggestion, index (suggestion.url)}
+            <li
+              id="suggestion-{index}"
+              role="option"
+              tabindex="-1"
+              aria-selected={index === selected}
+              class:selected={index === selected}
+              onmousedown={(event) => event.preventDefault()}
+              onclick={() => pick(suggestion)}
+              onkeydown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  pick(suggestion);
+                }
+              }}
+              onmousemove={() => (selected = index)}
+            >
+              <span class="kind"><Icon name={KIND_ICON[suggestion.kind]} size={16} /></span>
+              <span class="title">{suggestion.title || displayHost(suggestion.url)}</span>
+              <span class="url">{detail(suggestion)}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
-  :global(body) {
+  :global(html body) {
     background: transparent;
   }
 
+  /* The search row stays where the old centered bar was while suggestions grow below it. */
   .backdrop {
-    display: grid;
-    place-items: center;
-    height: 100%;
-    padding: 16px;
-    background: rgb(0 0 0 / 0.18);
-  }
-
-  .box {
     position: relative;
-    width: min(640px, 100%);
+    display: grid;
+    place-items: start center;
+    height: 100%;
+    padding: max(16px, calc(50vh - 25px)) 16px 16px;
+    box-sizing: border-box;
+    background: light-dark(rgb(30 30 36 / 0.16), rgb(5 5 7 / 0.4));
   }
 
-  .bar {
-    --search-field-bg: rgb(255 255 255 / 0.88);
-    --search-field-shadow:
-      0 0 0 0.5px rgb(0 0 0 / 0.12), inset 0 1px rgb(255 255 255 / 0.8), 0 12px 40px rgb(0 0 0 / 0.22);
+  /* Same surface, edge and rows as the sidebar menus. */
+  .panel {
+    --menu-surface: light-dark(#f7f7f8, #26282b);
+    --menu-hover: light-dark(rgb(16 18 24 / 0.06), rgb(255 255 255 / 0.08));
+    --menu-line: light-dark(rgb(16 18 24 / 0.08), rgb(255 255 255 / 0.08));
+    display: flex;
+    flex-direction: column;
+    width: min(640px, 100%);
+    overflow: hidden;
+    border-radius: 16px;
+    background: var(--menu-surface);
+    box-shadow:
+      0 0 0 0.5px light-dark(rgb(16 18 24 / 0.16), rgb(255 255 255 / 0.16)),
+      inset 0 1px 0 light-dark(rgb(255 255 255 / 0.7), rgb(255 255 255 / 0.06)),
+      0 18px 48px rgb(0 0 0 / 0.32);
+    color: var(--text);
+    font-family: var(--font);
+    animation: menu-in 140ms var(--ease-out);
+  }
+
+  /* Lines up with the new tab page's search box: centered on the page area, 24% down plus the mark. */
+  .panel.placed {
+    --panel-width: min(652px, var(--area-width) - 48px);
+    position: absolute;
+    top: calc(var(--area-y) + var(--area-height) * 0.24 + 98px);
+    left: calc(var(--area-x) + (var(--area-width) - var(--panel-width)) / 2);
+    width: var(--panel-width);
+  }
+
+  .panel.tinted {
+    --menu-surface: light-dark(
+      color-mix(in srgb, var(--menu-tint) 6%, #f7f7f8),
+      color-mix(in srgb, var(--menu-tint) 16%, #222427)
+    );
+  }
+
+  .search {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    height: 50px;
+    margin: 0;
+    padding: 0 18px;
+    color: var(--text-muted);
+  }
+
+  .search input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 17px;
+    user-select: text;
+  }
+
+  .search input::placeholder {
+    color: var(--text-muted);
   }
 
   .engine {
     padding: 2px 8px;
     border-radius: 8px;
-    background: var(--surface-hover);
+    background: var(--menu-hover);
     color: var(--text-muted);
     font-size: 12px;
     white-space: nowrap;
   }
 
+  .divider {
+    height: 1px;
+    margin: 0 16px 6px;
+    background: var(--menu-line);
+  }
+
   .suggestions {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    left: 0;
     margin: 0;
-    padding: 6px;
-    border-radius: 20px;
-    background: var(--surface);
-    box-shadow:
-      0 0 0 0.5px rgb(0 0 0 / 0.12),
-      0 12px 40px rgb(0 0 0 / 0.22);
+    padding: 0 6px 6px;
     list-style: none;
   }
 
   .suggestions li {
     display: flex;
     align-items: center;
-    gap: 10px;
-    height: 40px;
-    padding: 0 12px;
-    border-radius: 14px;
+    gap: 8px;
+    height: 37px;
+    padding: 0 10px;
+    border-radius: 8px;
     color: var(--text);
     font-size: 14px;
+    font-weight: 500;
+    cursor: default;
   }
 
   .suggestions li.selected {
-    background: var(--surface-hover);
+    background: var(--menu-hover);
   }
 
   .kind {
     display: grid;
     flex: none;
     place-items: center;
+    width: 16px;
+    height: 16px;
     color: var(--text-muted);
   }
 
@@ -243,24 +325,22 @@
     margin-left: auto;
     overflow: hidden;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 400;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  @media (prefers-color-scheme: dark) {
-    .backdrop {
-      background: rgb(0 0 0 / 0.35);
-    }
-
-    .bar {
-      --search-field-bg: rgb(38 37 40 / 0.9);
-      --search-field-shadow:
-        0 0 0 0.5px rgb(255 255 255 / 0.14), inset 0 1px rgb(255 255 255 / 0.14), 0 12px 40px rgb(0 0 0 / 0.5);
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.985);
     }
   }
 
-  :global([data-opaque]) .bar {
-    --search-field-bg: light-dark(#fff, #1b1b1e);
+  @media (prefers-reduced-motion: reduce) {
+    .panel {
+      animation: none;
+    }
   }
 </style>

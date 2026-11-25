@@ -13,7 +13,6 @@ import {
   ARCHIVE_URL,
   NEW_TAB_URL,
   PageChannel,
-  SETTINGS_URL,
   type BrowserState,
   type CommandPage,
   type DeviceId,
@@ -31,7 +30,7 @@ import { unreadCount } from '../../shared/unread.js';
 import { leavesPinnedSite } from './pinned-home.js';
 import { previewKind } from '../../shared/previews.js';
 import { PREVIEW_WORLD_ID, type PreviewTab } from './previews.js';
-import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
+import { REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
   resizeEmulation,
@@ -51,8 +50,6 @@ import { t } from '../../shared/i18n.js';
 import {
   internalNavigation,
   isAllowedFrom,
-  type AnnouncementAction,
-  type FeedbackAction,
   type UpdateCardAction,
   type InternalNavigation,
 } from '../pages/internal-navigation.js';
@@ -64,9 +61,11 @@ import { shouldArchive } from './auto-archive.js';
 import { AutoReloader } from './auto-reload.js';
 import { shouldDiscard, type DiscardCandidate } from './memory-saver.js';
 import { PagePlacement, SPLIT_GAP, type PaneSlot } from './page-placement.js';
+import { resizeWeights } from '../../shared/split-layout.js';
 import type { PersistChange, SavedGroups, SavedTab, SavedWindow } from './persistence.js';
 import { isActivation, mayOpenWindow, opensInPlace, opensPeek, recordBlocked } from './popups.js';
-import { captureHistory, createTab, liveContents, savedTab, type RecentPage, type Tab } from './tab.js';
+import { captureHistory, createTab, liveContents, savedTab, type Tab } from './tab.js';
+import { edgeColor } from './page-color.js';
 import { checkBeforeUnload } from './before-unload.js';
 import { keepsPlaying, TabFreezer } from './tab-freezer.js';
 import { answerPausedRequest, needsDebugger, pushOverrides, releaseDebugger, rulesFor } from './tab-overrides.js';
@@ -119,6 +118,12 @@ import { tabForBookmark } from '../../shared/bookmarks-panel.js';
 
 const STORAGE_WORLD_ID = 1001;
 const MAX_PINCH_ZOOM = 3;
+// Lets the page paint its top edge before the toolbar samples it.
+const PAGE_COLOR_DELAYS_MS = [300, 1500];
+// Samples at most this often while the page scrolls, plus once after it stops.
+const SCROLL_COLOR_INTERVAL_MS = 120;
+const SCROLL_COLOR_SETTLE_MS = 200;
+const SCROLL_KEYS = new Set([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown']);
 
 type Listen = WebContents['on'];
 
@@ -126,8 +131,10 @@ interface TabManagerOptions {
   window: BaseWindow;
   pagePreload: string;
   pageTheme: string;
+  newTabMarkColor?: (space: string) => string;
   closed: SavedTab[];
   onClosedChanged?: () => void;
+  openSettings: (pane?: string) => void;
   privateWindow: boolean;
   session: Session;
   privateSession: Session;
@@ -149,8 +156,6 @@ interface TabManagerOptions {
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
   onRepoPrompt: (action: RepoPromptAction) => void;
-  onAnnouncement: (action: AnnouncementAction) => void;
-  onFeedback: (action: FeedbackAction) => void;
   onUpdateCard: (action: UpdateCardAction) => void;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
   onVisit: (url: string, title: string) => string | null;
@@ -166,7 +171,7 @@ interface TabManagerOptions {
   hasCertificateException: (url: string) => boolean;
   certificateToken: (url: string) => string | null;
   onCertificateProceed: (token: string, url: string) => boolean;
-  popupsAllowed: (url: string, isPrivate: boolean) => boolean;
+  popupsAllowed: (url: string, isPrivate: boolean, browsing: Session) => boolean;
   onPageCommand: (page: CommandPage, command: string, params: URLSearchParams, contents: WebContents) => void;
   isBookmarked: (url: string) => boolean;
   upgradeHttp: (url: string) => string | null;
@@ -200,6 +205,7 @@ interface GroupState {
 
 export const MAX_SPLIT_PANES = 4;
 export type SplitSide = 'left' | 'right';
+export type CloseApproval = () => boolean;
 
 export type PageReader<T> = (contents: WebContents, backendNodeId: number, view: Rectangle) => Promise<T>;
 
@@ -227,6 +233,7 @@ export class TabManager {
   private shown: Tab[] = [];
   private fullScreenId: TabId | null = null;
   private splitPreview: SplitSide | null = null;
+  private readonly splitWeights = new WeakMap<TabId[], number[]>();
   private readonly autoReloader = new AutoReloader(() => this.tabs);
   private readonly freezer: TabFreezer;
   private readonly translation: TabTranslation;
@@ -257,6 +264,10 @@ export class TabManager {
 
   get activeUrl(): string {
     return this.active()?.url ?? NEW_TAB_URL;
+  }
+
+  get showsOnlyNewTab(): boolean {
+    return this.shown.every((tab) => tab.url === NEW_TAB_URL);
   }
 
   get liveCount(): number {
@@ -330,6 +341,17 @@ export class TabManager {
     this.changed(true);
   }
 
+  syncNewTabMarkColors(): void {
+    for (const tab of this.tabs) this.syncNewTabMarkColor(tab);
+  }
+
+  private syncNewTabMarkColor(tab: Tab): void {
+    const contents = liveContents(tab);
+    if (!contents || withoutHash(contents.getURL()) !== NEW_TAB_URL) return;
+    const color = this.options.newTabMarkColor?.(tab.space);
+    if (color) contents.send(PageChannel.newTabMarkColor, color);
+  }
+
   private realignSessions(): void {
     let visible = false;
     for (const tab of this.tabs) if (this.dropForeignView(tab)) visible ||= this.visibleIds().includes(tab.id);
@@ -378,6 +400,8 @@ export class TabManager {
     | 'activeTabId'
     | 'selectedTabIds'
     | 'splitTabIds'
+    | 'splitGroups'
+    | 'splitWeights'
     | 'tabGroups'
     | 'device'
     | 'zoom'
@@ -391,6 +415,8 @@ export class TabManager {
       activeTabId: this.activeId,
       selectedTabIds: this.selectedTabIds,
       splitTabIds: this.splits.flat(),
+      splitGroups: this.splits.map((split) => [...split]),
+      splitWeights: this.splits.map((split) => this.splitWeights.get(split) ?? null),
       tabGroups: this.groupView(),
       device: this.placement.deviceFrame(this.active()),
       devToolsDivider: this.devToolsDivider,
@@ -403,7 +429,7 @@ export class TabManager {
     return tab ? this.snapshot(tab) : null;
   }
 
-  setPageLayout(bounds: Rectangle, newTabCenterOffset: number): void {
+  setPageLayout(bounds: Rectangle): void {
     const { placement } = this;
     const current = placement.bounds;
     const boundsChanged =
@@ -411,14 +437,12 @@ export class TabManager {
       bounds.y !== current.y ||
       bounds.width !== current.width ||
       bounds.height !== current.height;
-    if (!boundsChanged && newTabCenterOffset === placement.newTabCenterOffset) return;
+    if (!boundsChanged) return;
     placement.bounds = bounds;
-    placement.newTabCenterOffset = newTabCenterOffset;
     for (const tab of this.shown) {
-      placement.syncNewTabCenter(tab);
-      if (boundsChanged && tab.view) placement.place(tab, tab.view, true);
+      if (tab.view) placement.place(tab, tab.view, true);
     }
-    if (boundsChanged && this.shown.some((tab) => tab.emulation)) this.changed();
+    if (this.shown.some((tab) => tab.emulation)) this.changed();
   }
 
   setPageRadius(radius: number): void {
@@ -504,6 +528,7 @@ export class TabManager {
     this.selectionAnchor = id;
 
     const previous = this.active();
+    if (next.view && next.pageColor === null) this.samplePageColor(next, next.view);
     if (previous === next && next.view) {
       if (next.url !== 'about:blank') next.view.webContents.focus();
       this.changed();
@@ -551,6 +576,26 @@ export class TabManager {
     this.split(side === 'left' ? [id, ...current] : [...current, id], true);
   }
 
+  splitInto(id: TabId, target: TabId): void {
+    if (id === target || !this.find(id) || !this.find(target)) return;
+    const current = this.splitOf(target) ?? [target];
+    if (current.includes(id) || current.length >= MAX_SPLIT_PANES) return;
+    this.splitPreview = null;
+    this.split([...current, id], true);
+  }
+
+  splitWithNewTab(): void {
+    const active = this.activeId;
+    if (!active) return;
+    if (this.splitOf(active)) {
+      this.unsplit(active);
+      return;
+    }
+    const id = this.open(NEW_TAB_URL, { activate: false });
+    this.splitWithActive(id);
+    this.activate(id);
+  }
+
   previewSplit(id: TabId | null, side: unknown): void {
     const next = id && this.canSplitWithActive(id) ? (side === 'left' ? 'left' : 'right') : null;
     if (next === this.splitPreview) return;
@@ -589,7 +634,7 @@ export class TabManager {
     this.changed(true);
   }
 
-  private splitOf(id: TabId | null): TabId[] | undefined {
+  splitOf(id: TabId | null): TabId[] | undefined {
     return id ? this.splits.find((split) => split.includes(id)) : undefined;
   }
 
@@ -617,7 +662,10 @@ export class TabManager {
     const index = visible.indexOf(tab.id);
     const preview = this.splitPreview;
     const count = visible.length + (preview ? 1 : 0);
-    return count > 1 && index >= 0 ? { index: index + (preview === 'left' ? 1 : 0), count } : null;
+    const weights = preview ? undefined : this.splitWeights.get(visible);
+    if (count < 2 || index < 0) return null;
+    const slot = { index: index + (preview === 'left' ? 1 : 0), count };
+    return weights ? { ...slot, weights } : slot;
   }
 
   private showVisible(): void {
@@ -634,9 +682,9 @@ export class TabManager {
     for (const tab of next) {
       const view = this.ensureLive(tab);
       this.freezer.unfreeze(tab);
-      this.placement.syncNewTabCenter(tab);
       this.placement.place(tab, view);
       if (!this.shown.includes(tab)) {
+        this.syncNewTabMarkColor(tab);
         this.options.window.contentView.addChildView(view);
         if (tab.devToolsShown && tab.devTools) this.options.window.contentView.addChildView(tab.devTools);
       }
@@ -741,15 +789,8 @@ export class TabManager {
     }));
   }
 
-  setSelectedGroup(value: unknown): boolean {
-    return this.setGroup(this.selected.size ? this.selected : new Set(this.activeId ? [this.activeId] : []), value);
-  }
-
   setTabGroup(id: TabId, value: unknown): boolean {
-    return this.setGroup(this.selected.has(id) ? this.selected : new Set([id]), value);
-  }
-
-  private setGroup(ids: ReadonlySet<TabId>, value: unknown): boolean {
+    const ids = this.selected.has(id) ? this.selected : new Set([id]);
     const name = value === null ? null : tabGroupName(value);
     if (value !== null && !name) return false;
     if (name && !this.hasGroup(name) && this.groupView().length >= 50) return false;
@@ -910,26 +951,12 @@ export class TabManager {
   private async closeGroup(targets: Tab[], keepId: TabId | undefined, unchanged: () => boolean): Promise<boolean> {
     if ((keepId && this.closing.has(keepId)) || !targets.length || targets.some((tab) => this.closing.has(tab.id)))
       return false;
-    const pages = targets.map((tab) => ({
-      tab,
-      contents: liveContents(tab),
-      url: liveContents(tab)?.getURL() ?? tab.url,
-      navigation: this.navigations.get(tab) ?? 0,
-    }));
+    const pagesUnchanged = this.watchClosingPages(targets);
     if (keepId) this.closing.add(keepId);
     for (const tab of targets) this.closing.add(tab.id);
     try {
       for (const tab of targets) if (!(await this.confirmClose(tab))) return false;
-      if (
-        !unchanged() ||
-        pages.some(
-          ({ tab, contents, url, navigation }) =>
-            liveContents(tab) !== contents ||
-            (contents?.getURL() ?? tab.url) !== url ||
-            (this.navigations.get(tab) ?? 0) !== navigation,
-        )
-      )
-        return false;
+      if (!unchanged() || !pagesUnchanged()) return false;
       if (targets.some((tab) => tab.id === this.activeId)) {
         const retained = keepId ? this.find(keepId) : this.listOrder().find((tab) => !targets.includes(tab));
         if (retained) this.activate(retained.id);
@@ -944,12 +971,29 @@ export class TabManager {
     }
   }
 
-  async confirmCloseAll(): Promise<boolean> {
+  private watchClosingPages(tabs: readonly Tab[]): CloseApproval {
+    const pages = tabs.map((tab) => {
+      const contents = liveContents(tab);
+      return { tab, contents, url: contents?.getURL() ?? tab.url, navigation: this.navigations.get(tab) ?? 0 };
+    });
+    return () =>
+      pages.every(
+        ({ tab, contents, url, navigation }) =>
+          liveContents(tab) === contents &&
+          (contents?.getURL() ?? tab.url) === url &&
+          (this.navigations.get(tab) ?? 0) === navigation,
+      );
+  }
+
+  async confirmCloseAll(): Promise<CloseApproval | null> {
     const tabs = [...this.tabs];
+    const pagesUnchanged = this.watchClosingPages(tabs);
+    const approved = () =>
+      tabs.length === this.tabs.length && tabs.every((tab, index) => this.tabs[index] === tab) && pagesUnchanged();
     for (const tab of tabs) {
-      if (!(await this.confirmClose(tab))) return false;
+      if (!(await this.confirmClose(tab))) return null;
     }
-    return tabs.length === this.tabs.length && tabs.every((tab, index) => this.tabs[index] === tab);
+    return approved() ? approved : null;
   }
 
   private async confirmClose(tab: Tab): Promise<boolean> {
@@ -1110,6 +1154,29 @@ export class TabManager {
     const ordered = moveTabSelection(here, selected, id, toIndex);
     const slots = this.tabs.flatMap((tab, index) => (tab.space === this.space ? [index] : []));
     slots.forEach((slot, index) => (this.tabs[slot] = ordered[index]));
+    this.changed(true);
+  }
+
+  // Sidebar rows mix plain tabs and opened favorites, which sit after an anchor tab instead of at an index.
+  moveRow(id: TabId, target: TabId, after: boolean): void {
+    const order = this.listOrder().map((tab) => tab.id);
+    const selected = this.selectedTabIds;
+    const moving = new Set(selected.includes(id) ? selected.filter((item) => order.includes(item)) : [id]);
+    if (!order.includes(id) || !order.includes(target) || moving.has(target)) return;
+    const rest = order.filter((item) => !moving.has(item));
+    rest.splice(rest.indexOf(target) + (after ? 1 : 0), 0, ...order.filter((item) => moving.has(item)));
+    const rank = new Map(rest.map((item, index) => [item, index]));
+    const slots = this.tabs.flatMap((tab, index) => (!tab.pinnedUrl && rank.has(tab.id) ? [index] : []));
+    const sorted = slots.map((slot) => this.tabs[slot]).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+    slots.forEach((slot, index) => (this.tabs[slot] = sorted[index]));
+    const anchors: [TabId, TabId | null][] = [];
+    let anchor: TabId | null = null;
+    for (const item of rest) {
+      if (!this.find(item)?.pinnedUrl) anchor = item;
+      else if (this.openedPinned.has(item)) anchors.push([item, anchor]);
+    }
+    for (const [item] of anchors) this.openedPinned.delete(item);
+    for (const [item, value] of anchors) this.openedPinned.set(item, value);
     this.changed(true);
   }
 
@@ -1326,7 +1393,7 @@ export class TabManager {
   }
 
   openSettings(pane?: string): void {
-    this.openSingle(pane ? `${SETTINGS_URL}${pane}` : SETTINGS_URL);
+    this.options.openSettings(pane);
   }
 
   certificateChain(): CertificateDetails[] | null {
@@ -1501,11 +1568,12 @@ export class TabManager {
 
   previewTab(id: TabId | null, url: string): PreviewTab | null {
     const kind = previewKind(url);
-    if (!kind) return null;
-    const host = new URL(url).host;
+    if (!id && !kind) return null;
     const tab = id
       ? this.find(id)
-      : this.tabs.find((candidate) => previewKind(candidate.url) === kind && new URL(candidate.url).host === host);
+      : this.tabs.find(
+          (candidate) => previewKind(candidate.url) === kind && new URL(candidate.url).host === new URL(url).host,
+        );
     if (tab?.isPrivate || (id && !tab)) return null;
     return tab ? { id: tab.id, url: tab.url, contents: liveContents(tab) } : { id: null, url, contents: null };
   }
@@ -1766,8 +1834,6 @@ export class TabManager {
       if (!contents || this.options.hasOwnZoom(tab.url, tab.isPrivate)) continue;
       contents.setZoomFactor(this.options.defaultZoom());
     }
-    const active = this.active();
-    if (active) this.placement.syncNewTabCenter(active);
     this.changed();
   }
 
@@ -1839,6 +1905,17 @@ export class TabManager {
     const tab = this.tabs.find((item) => item.view?.webContents === contents);
     if (tab) this.openDevTools(tab);
     contents.inspectElement(x, y);
+  }
+
+  resizeSplit(index: number, x: number): void {
+    const split = this.splitOf(this.activeId);
+    if (!split || !Number.isInteger(index) || index < 0 || index >= split.length - 1 || !Number.isFinite(x)) return;
+    this.splitWeights.set(
+      split,
+      resizeWeights(this.placement.bounds, this.splitWeights.get(split), split.length, index, x),
+    );
+    for (const shown of this.shown) if (shown.view) void this.placement.place(shown, shown.view, true);
+    this.changed();
   }
 
   resizeDevTools(x: number): void {
@@ -1920,6 +1997,15 @@ export class TabManager {
     }
   }
 
+  importIntoSpace(saved: SavedWindow, space: string): void {
+    let state = this.groupStates.get(space);
+    if (!state) this.groupStates.set(space, (state = { collapsed: new Set(), parents: new Map() }));
+    for (const [name, parent] of parseGroupParents(saved.groupParents))
+      if (!state.parents.has(name) && canNestGroup(state.parents, name, parent)) state.parents.set(name, parent);
+    this.tabs.push(...saved.tabs.map((tab) => this.createRecord({ ...tab, space })));
+    this.changed(true);
+  }
+
   toSavedWindow(only?: string): SavedWindow {
     const kept = this.tabs.filter((tab) => !tab.isPrivate && (only === undefined || tab.space === only));
     const groupsOf = (space: string): SavedGroups => {
@@ -1978,12 +2064,6 @@ export class TabManager {
 
   suggestionTabs(): { id: TabId; title: string; url: string }[] {
     return this.tabs.filter((tab) => tab.id !== this.activeId).map(({ id, title, url }) => ({ id, title, url }));
-  }
-
-  get pinnedPages(): RecentPage[] {
-    return this.here.flatMap((tab) =>
-      tab.pinnedUrl ? [{ url: tab.pinnedUrl, title: tab.title, faviconUrl: tab.faviconUrl }] : [],
-    );
   }
 
   get hasPrivateTabs(): boolean {
@@ -2150,7 +2230,8 @@ export class TabManager {
   }
 
   private insertAfterActive(tab: Tab): void {
-    const index = this.activeId ? this.indexOf(this.activeId) + 1 : this.tabs.length;
+    const active = this.active();
+    const index = active && !active.pinnedUrl ? this.indexOf(active.id) + 1 : this.tabs.length;
     this.tabs.splice(index, 0, tab);
   }
 
@@ -2227,7 +2308,7 @@ export class TabManager {
     const tab = this.createRecord({ url }, opener.isPrivate, opener.developer);
     tab.space = opener.space;
     tab.openerId = opener.id;
-    this.insertAfterActive(tab);
+    this.tabs.push(tab);
     let view: WebContentsView;
     if (webContents) {
       view = new WebContentsView({ webContents });
@@ -2258,7 +2339,6 @@ export class TabManager {
     const contents = view.webContents;
     const factor = direction === 0 ? this.options.defaultZoom() : stepZoom(contents.getZoomFactor(), direction);
     contents.setZoomFactor(factor);
-    this.placement.syncNewTabCenter(tab);
     this.options.onZoom(contents.getURL(), factor, tab.isPrivate);
     this.changed();
   }
@@ -2273,7 +2353,6 @@ export class TabManager {
   private setEmulation(tab: Tab, emulation: Emulation | null): void {
     const wasEmulated = tab.emulation !== null;
     tab.emulation = emulation;
-    this.placement.syncNewTabCenter(tab);
     const view = tab.view;
     if (view) {
       const applied = emulation ? this.placement.place(tab, view) : this.placement.clearDevice(tab, view);
@@ -2290,6 +2369,67 @@ export class TabManager {
       });
     }
     this.changed();
+  }
+
+  private samplePageColor(tab: Tab, view: WebContentsView): void {
+    for (const delay of PAGE_COLOR_DELAYS_MS) this.samplePageColorAfter(tab, view, delay);
+  }
+
+  private samplePageColorAfter(tab: Tab, view: WebContentsView, delay: number): void {
+    setTimeout(() => void this.capturePageColor(tab, view), delay);
+  }
+
+  private async capturePageColor(tab: Tab, view: WebContentsView): Promise<void> {
+    const color = await this.readPageColor(tab, view);
+    if (color !== undefined) this.setPageColor(tab, color);
+  }
+
+  private async readPageColor(tab: Tab, view: WebContentsView): Promise<string | null | undefined> {
+    const contents = view.webContents;
+    if (tab.view !== view || contents.isDestroyed() || tab.url === NEW_TAB_URL) return undefined;
+    const { width } = this.placement.bounds;
+    if (width <= 0) return undefined;
+    const image = await contents.capturePage({ x: 0, y: 0, width, height: 4 }).catch(() => null);
+    if (!image || image.isEmpty() || tab.view !== view) return undefined;
+    const size = image.getSize();
+    const bitmap = image.toBitmap();
+    const scale = Math.sqrt(bitmap.length / 4 / (size.width * size.height)) || 1;
+    return edgeColor(bitmap, Math.round(size.width * scale), Math.round(size.height * scale));
+  }
+
+  private setPageColor(tab: Tab, color: string | null): void {
+    if (color === tab.pageColor) return;
+    tab.pageColor = color;
+    this.changed('lazy');
+  }
+
+  // Mid-scroll, a color must show in two reads in a row, so content sliding under the toolbar does not flicker it.
+  private scrollColorSampler(tab: Tab, view: WebContentsView): () => void {
+    let capturing = false;
+    let lastCapture = 0;
+    let candidate: string | null | undefined;
+    let trailing: ReturnType<typeof setTimeout> | undefined;
+    const capture = (settled: boolean) => {
+      if (tab.id !== this.activeId) return;
+      if (capturing) {
+        if (settled) trailing = setTimeout(() => capture(true), SCROLL_COLOR_INTERVAL_MS);
+        return;
+      }
+      capturing = true;
+      lastCapture = Date.now();
+      void this.readPageColor(tab, view)
+        .then((color) => {
+          if (color === undefined) return;
+          if (settled || color === candidate) this.setPageColor(tab, color);
+          candidate = color === tab.pageColor ? undefined : color;
+        })
+        .finally(() => (capturing = false));
+    };
+    return () => {
+      clearTimeout(trailing);
+      trailing = setTimeout(() => capture(true), SCROLL_COLOR_SETTLE_MS);
+      if (Date.now() - lastCapture >= SCROLL_COLOR_INTERVAL_MS) capture(false);
+    };
   }
 
   private attachListeners(tab: Tab, view: WebContentsView): void {
@@ -2312,31 +2452,36 @@ export class TabManager {
 
   private listenForInput(tab: Tab, view: WebContentsView, listen: Listen): void {
     const contents = view.webContents;
+    const sampleAfterScroll = this.scrollColorSampler(tab, view);
     listen('before-input-event', (_event, input) => {
       const modifier = input.control || input.meta || input.alt || input.shift;
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
+      if (input.type === 'keyDown' && SCROLL_KEYS.has(input.key)) sampleAfterScroll();
+    });
+    // A left-button drag covers the scrollbar thumb.
+    listen('input-event', (_event, input) => {
+      if (input.type === 'mouseWheel' || (input.type === 'mouseMove' && input.modifiers?.includes('leftbuttondown'))) {
+        sampleAfterScroll();
+      }
     });
 
     const allowPinch = () => void contents.setVisualZoomLevelLimits(1, MAX_PINCH_ZOOM).catch(() => {});
     allowPinch();
     listen('did-navigate', allowPinch);
 
-    listen('focus', () => {
+    const activatePane = () => {
       if (tab.id === this.activeId || !this.shown.includes(tab)) return;
       this.activeId = tab.id;
       this.selectionAnchor = tab.id;
       this.changed();
-    });
+    };
+    listen('focus', activatePane);
 
     listen('ipc-message', (event, channel, direction) => {
+      // A pane that already holds focus fires no focus event, so a press must activate it too.
+      if (channel === PageChannel.pointerDown) return activatePane();
       if (channel !== PageChannel.swipe || event.senderFrame !== contents.mainFrame || tab.id !== this.activeId) return;
       if (direction === 'back' || direction === 'forward') this.options.onPageSwipe(direction);
-    });
-
-    listen('ipc-message-sync', (event, channel) => {
-      if (channel !== PageChannel.newTabCenter) return;
-      event.returnValue =
-        event.senderFrame === contents.mainFrame ? this.placement.newTabCenter(tab) : { offset: 0, width: null };
     });
 
     listen('zoom-changed', (_event, direction) => this.zoomView(tab, view, direction === 'in' ? 1 : -1));
@@ -2344,6 +2489,7 @@ export class TabManager {
 
   private listenForPageChrome(tab: Tab, view: WebContentsView, listen: Listen): void {
     const contents = view.webContents;
+    listen('dom-ready', () => this.syncNewTabMarkColor(tab));
     listen('did-navigate', (_event, url) => {
       tab.edited = false;
       tab.interacted = false;
@@ -2413,7 +2559,13 @@ export class TabManager {
         this.options.onAppLink?.(contents, url, tab.isPrivate);
         return { action: 'deny' };
       }
-      if (mayOpenWindow(tab.activatedAt, Date.now(), this.options.popupsAllowed(contents.getURL(), tab.isPrivate))) {
+      if (
+        mayOpenWindow(
+          tab.activatedAt,
+          Date.now(),
+          this.options.popupsAllowed(contents.getURL(), tab.isPrivate, contents.session),
+        )
+      ) {
         tab.activatedAt = 0;
         if (opensPeek(disposition, features, url)) {
           this.options.onPeek(url, tab.isPrivate, tab.developer);
@@ -2607,7 +2759,7 @@ export class TabManager {
       this.changed(true);
     });
     listen('did-finish-load', () => {
-      this.placement.syncNewTabCenter(tab);
+      this.samplePageColor(tab, view);
       this.translation.detectLanguage(tab, contents);
       if (!failure) return;
       const script = failure;
@@ -2616,6 +2768,7 @@ export class TabManager {
     });
     listen('did-navigate-in-page', (_event, url, isMainFrame) => {
       if (isMainFrame) updateUrl(!isSameVisit(tab.url, url));
+      if (isMainFrame) this.samplePageColor(tab, view);
     });
     listen('render-process-gone', () => {
       tab.history = captureHistory(tab);
@@ -2667,18 +2820,9 @@ export class TabManager {
         if (navigation.action === 'star') void contents.loadURL(REPO_URL);
         else contents.reload();
         return;
-      case 'new-tab-announcement':
-        this.options.onAnnouncement(navigation.action);
-        contents.reload();
-        return;
       case 'new-tab-update':
         this.options.onUpdateCard(navigation.action);
         if (navigation.action === 'close') contents.reload();
-        return;
-      case 'new-tab-feedback':
-        this.options.onFeedback(navigation.action);
-        if (navigation.action === 'open') void contents.loadURL(FEEDBACK_URL);
-        else contents.reload();
         return;
     }
   }
@@ -2722,6 +2866,7 @@ export class TabManager {
       title: tab.title,
       url: tab.url,
       faviconUrl: tab.faviconUrl,
+      pageColor: tab.pageColor,
       live: tab.view !== null,
       frozen: tab.frozen,
       loading: tab.loading,

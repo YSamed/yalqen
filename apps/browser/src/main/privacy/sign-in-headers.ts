@@ -1,7 +1,8 @@
 import type { Session } from 'electron';
+import { HEADER_STAGE, setSendStage } from './header-stages.js';
 import { signInUserAgent } from '../app/page-preferences.js';
 
-const SIGN_IN_URLS = ['https://accounts.google.com/*'];
+const SIGN_IN_ORIGIN = 'https://accounts.google.com/';
 
 export function signInRequestHeaders(
   url: string,
@@ -20,7 +21,7 @@ export function signInRequestHeaders(
 }
 
 export function rewriteSignInHeaders(session: Session): void {
-  session.webRequest.onBeforeSendHeaders({ urls: SIGN_IN_URLS }, ({ url, requestHeaders }, callback) =>
-    callback({ requestHeaders: signInRequestHeaders(url, requestHeaders, process.platform) ?? requestHeaders }),
+  setSendStage(session, HEADER_STAGE.signIn, ({ url }, headers) =>
+    url.startsWith(SIGN_IN_ORIGIN) ? signInRequestHeaders(url, headers, process.platform) : null,
   );
 }

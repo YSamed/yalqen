@@ -1,21 +1,14 @@
 <script lang="ts">
-  import type {
-    AgentSessionState,
-    DownloadsSummary,
-    TabId,
-    TabSnapshot,
-    ToolbarExtension,
-    ToolbarItemId,
-    TranslationStatus,
-  } from '../../shared/types';
-  import { toolbarExtensionId } from '../../shared/types';
+  import type { DownloadsSummary, TabId, TabSnapshot, ToolbarButtonId } from '../../shared/types';
+  import type { AgentSessionState } from '../../shared/agent';
+  import { anchorRect } from './anchor';
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
-  import { devStates, isNewTab, siteLabel } from './format';
+  import { isNewTab, siteLabel } from './format';
   import Capsule from './Capsule.svelte';
   import Icon from '../ui/Icon.svelte';
-  import NewTabButton from './NewTabButton.svelte';
-  import Button from '../ui/Button.svelte';
+  import PageActions from './PageActions.svelte';
+  import LoadProgress from './LoadProgress.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import { modeOf, TAB_MODES, type TabMode } from '../../shared/tab-modes';
   import type { MessageKey } from '../../shared/i18n';
@@ -48,42 +41,42 @@
   }
 
   let {
-    tabs,
+    sidebarMenu = false,
+    panelCollapsed = false,
+    panes = [],
+    leadingWidth = 0,
+    span = false,
+    activeTab,
     developer,
-    activeTabId,
-    zoom,
-    defaultZoom,
     downloads,
     ready,
     extensions,
     buttons,
-    toolbarExtensions = [],
     leadingInset,
     trailingInset,
     centerOffset,
     alignLeading = false,
-    trailingOverhang = 0,
     agentAvailable,
     agentPanelOpen,
     agentStatus,
     modeSwitch = false,
     bookmarksPanelOpen = false,
   }: {
-    tabs: TabSnapshot[];
+    sidebarMenu?: boolean;
+    panelCollapsed?: boolean;
+    panes?: { tab: TabSnapshot | null; x: number; width: number }[];
+    leadingWidth?: number;
+    span?: boolean;
+    activeTab: TabSnapshot | null;
     developer: boolean;
-    activeTabId: TabId | null;
-    zoom: number;
-    defaultZoom: number;
     downloads: DownloadsSummary;
     ready: boolean;
     extensions: boolean;
-    buttons: ToolbarItemId[];
-    toolbarExtensions?: ToolbarExtension[];
+    buttons: ToolbarButtonId[];
     leadingInset: number;
     trailingInset: number;
     centerOffset: number;
     alignLeading?: boolean;
-    trailingOverhang?: number;
     agentAvailable: boolean;
     agentPanelOpen: boolean;
     agentStatus: AgentSessionState['status'];
@@ -91,47 +84,28 @@
     bookmarksPanelOpen?: boolean;
   } = $props();
 
-  let brokenIcons: Record<string, true> = $state({});
   let toolbar: HTMLElement | undefined = $state();
   let group: HTMLElement | undefined = $state();
   let strip: HTMLElement | undefined = $state();
   let trailing: HTMLElement | undefined = $state();
   let groupOffset = 0;
   const send = window.yalqen.send;
-  const translateTitle: Record<TranslationStatus, string> = {
-    idle: t('toolbar.translatePage'),
-    translating: t('toolbar.translatingPage'),
-    translated: t('toolbar.showOriginalPage'),
-    failed: t('toolbar.translationFailed'),
-  };
   let dropKey = $state(0);
   let seenStarts: number | null = null;
-  const activeTab = $derived(tabs.find((tab) => tab.id === activeTabId) ?? null);
-  const bookmarkable = $derived(
-    activeTab !== null && (activeTab.url.startsWith('http') || activeTab.url.startsWith('file:')),
-  );
-  const states = $derived(activeTab ? devStates(activeTab) : []);
-  const zoomChanged = $derived(Math.round(zoom * 100) !== Math.round(defaultZoom * 100));
-  const hasActions = $derived(
-    bookmarkable ||
-      zoomChanged ||
-      states.length > 0 ||
-      activeTab?.translation.available === true ||
-      (activeTab?.blockedPopups ?? 0) > 0,
-  );
+  const split = $derived(span && panes.length > 1);
+  let trailingWidth = $state(0);
+  const PANE_CLOSE_WIDTH = 36;
 
-  function anchorOf(element: HTMLElement) {
-    const { x, y, width, height } = element.getBoundingClientRect();
-    return { x, y, width, height };
+  function paneAction(id: TabId, action: Parameters<typeof send>[0]): void {
+    if (id !== activeTab?.id) send({ type: 'activate-tab', id });
+    send(action);
   }
-
-  function openExtensionAction(id: string, event: MouseEvent & { currentTarget: HTMLElement }): void {
-    send({ type: 'open-extension-action', id, anchor: anchorOf(event.currentTarget) });
-  }
+  const surface = $derived(span && activeTab && !isNewTab(activeTab.url) ? (activeTab.pageColor ?? null) : null);
+  const surfaceTone = $derived(surface === null ? null : toneScheme(surface));
+  const chatPill = $derived(span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {
-    const { x, y, width, height } = event.currentTarget.getBoundingClientRect();
-    send({ type: 'open-extensions-menu', anchor: { x, y, width, height } });
+    send({ type: 'open-extensions-menu', anchor: anchorRect(event.currentTarget) });
   }
 
   $effect(() => {
@@ -141,15 +115,10 @@
     seenStarts = started;
   });
 
-  $effect(() => {
-    void activeTabId;
-    strip?.querySelector('.chip.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  });
-
   let alignGroup: (() => void) | null = null;
   $effect(() => {
-    void activeTabId;
-    void tabs;
+    // The active chip is keyed by tab id, so only a new id replaces the element the observer watches.
+    void activeTab?.id;
     if (!toolbar || !group || !strip || !trailing) return;
     const header = toolbar;
     const tabGroup = group;
@@ -159,10 +128,14 @@
     if (!active || !controls) return;
 
     const align = () => {
+      if (span) {
+        groupOffset = 0;
+        tabGroup.style.transform = '';
+        return;
+      }
       const headerBounds = header.getBoundingClientRect();
       const groupBounds = tabGroup.getBoundingClientRect();
-      const contentRight =
-        tabGroup.querySelector('.new-tab-slot > *')?.getBoundingClientRect().right ?? groupBounds.right;
+      const contentRight = groupBounds.right;
       const contentCenter = (contentRight - groupBounds.left) / 2;
       const leftLimit = headerBounds.left + leadingInset + 8;
       const targetLeft = alignLeading
@@ -189,42 +162,19 @@
   $effect(() => {
     void centerOffset;
     void leadingInset;
+    void span;
     void alignLeading;
     untrack(() => alignGroup?.());
   });
+
+  function toneScheme(hex: string): 'light' | 'dark' {
+    const [red, green, blue] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+    return 0.299 * red! + 0.587 * green! + 0.114 * blue! > 150 ? 'light' : 'dark';
+  }
 </script>
 
-{#snippet favicon(tab: TabSnapshot)}
-  <span class="favicon">
-    {#if isNewTab(tab.url)}
-      <Icon name="search" size={14} />
-    {:else if tab.faviconUrl && !brokenIcons[tab.faviconUrl]}
-      <img src={tab.faviconUrl} alt="" width="16" height="16" onerror={() => (brokenIcons[tab.faviconUrl!] = true)} />
-    {:else}
-      <Icon name="globe" size={14} />
-    {/if}
-    {#if tab.unread}<span class="unread-dot" aria-hidden="true"></span>{/if}
-  </span>
-{/snippet}
-
-{#snippet button(id: ToolbarItemId)}
-  {@const extensionId = toolbarExtensionId(id)}
-  {@const pinned = extensionId ? toolbarExtensions.find((extension) => extension.id === extensionId) : undefined}
-  {#if extensionId}
-    {#if pinned}
-      <IconButton class="extension" label={pinned.title} onclick={(event) => openExtensionAction(pinned.id, event)}>
-        {#if pinned.icon}<img src={pinned.icon} alt="" width="16" height="16" />{:else}<Icon name="extensions" />{/if}
-      </IconButton>
-    {/if}
-  {:else if id === 'devtools'}
-    <IconButton
-      icon="code"
-      label={t('toolbar.devtools')}
-      title={t('toolbar.devtoolsTitle')}
-      disabled={!ready || !activeTab}
-      onclick={() => send({ type: 'toggle-devtools' })}
-    />
-  {:else if id === 'home'}
+{#snippet button(id: ToolbarButtonId)}
+  {#if id === 'home'}
     <IconButton icon="home" label={t('toolbar.home')} onclick={() => send({ type: 'go-home' })} />
   {:else if id === 'bookmarks'}
     <IconButton
@@ -267,7 +217,8 @@
       tone={downloads.active > 0 ? 'accent' : 'default'}
       label={downloads.active > 0 ? t('toolbar.downloadsActive', { count: downloads.active }) : t('toolbar.downloads')}
       title={t('toolbar.downloads')}
-      onclick={() => send({ type: 'open-downloads' })}
+      onclick={(event) =>
+        send({ type: 'open-sidebar-menu', kind: 'downloads', anchor: anchorRect(event.currentTarget) })}
     >
       {#if downloads.active > 0}
         <svg class="ring" class:indeterminate={downloads.progress === null} viewBox="0 0 28 28" aria-hidden="true">
@@ -292,58 +243,84 @@
   {/if}
 {/snippet}
 
+{#snippet panelToggle()}
+  <IconButton
+    size="lg"
+    variant="surface"
+    class="panel-toggle"
+    icon="sidebar-left"
+    label={panelCollapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
+    title={panelCollapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
+    aria-expanded={!panelCollapsed}
+    onclick={() => send({ type: 'toggle-panel' })}
+  />
+{/snippet}
+
+{#snippet navigation()}
+  <IconButton
+    size="lg"
+    variant="surface"
+    icon="nav-back"
+    label={t('toolbar.back')}
+    disabled={!activeTab?.canGoBack}
+    onclick={() => send({ type: 'go-back' })}
+  />
+  <IconButton
+    size="lg"
+    variant="surface"
+    icon="nav-forward"
+    label={t('toolbar.forward')}
+    disabled={!activeTab?.canGoForward}
+    onclick={() => send({ type: 'go-forward' })}
+  />
+  {#if activeTab?.loading}
+    <IconButton
+      size="lg"
+      variant="surface"
+      icon="close"
+      label={t('toolbar.stop')}
+      title={t('toolbar.stopTitle')}
+      onclick={() => send({ type: 'stop' })}
+    />
+  {:else}
+    <IconButton
+      size="lg"
+      variant="surface"
+      icon="nav-reload"
+      label={t('toolbar.reload')}
+      title={t('toolbar.reloadTitle')}
+      onclick={() => send({ type: 'reload' })}
+    />
+  {/if}
+{/snippet}
+
 <header
-  class="toolbar"
+  class="toolbar card"
+  class:span
+  class:split
+  class:blank-page={activeTab !== null && isNewTab(activeTab.url)}
+  class:surface-light={surfaceTone === 'light'}
+  class:surface-dark={surfaceTone === 'dark'}
+  style:--card-surface={surface}
+  class:busy={downloads.active > 0 || agentStatus === 'running' || agentStatus === 'error'}
   bind:this={toolbar}
   style:padding-left="{leadingInset}px"
   style:padding-right="{trailingInset}px"
+  style:--bar-card-left="{leadingInset + leadingWidth + 8}px"
+  style:--bar-group-offset="{Math.max(0, 9 + Math.min(0, leadingWidth))}px"
 >
-  <div class="side leading" aria-hidden="true"></div>
+  <div class="side leading" style:flex={span ? `0 0 ${Math.max(0, leadingWidth)}px` : undefined}></div>
 
   <div class="tab-group" bind:this={group}>
-    {#if activeTab?.canGoBack}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="back"
-        label={t('toolbar.back')}
-        onclick={() => send({ type: 'go-back' })}
-      />
-    {/if}
-    {#if activeTab?.canGoForward}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="forward"
-        label={t('toolbar.forward')}
-        onclick={() => send({ type: 'go-forward' })}
-      />
-    {/if}
-    {#if activeTab?.loading}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="close"
-        label={t('toolbar.stop')}
-        title={t('toolbar.stopTitle')}
-        onclick={() => send({ type: 'stop' })}
-      />
-    {:else}
-      <IconButton
-        size="lg"
-        variant="surface"
-        icon="reload"
-        label={t('toolbar.reload')}
-        title={t('toolbar.reloadTitle')}
-        onclick={() => send({ type: 'reload' })}
-      />
-    {/if}
+    {#if span}{@render panelToggle()}{/if}
+    {@render navigation()}
     <ol class="strip" bind:this={strip} aria-label={t('toolbar.openTabs')}>
-      {#each tabs as tab (tab.id)}
-        {@const active = tab.id === activeTabId}
-        <li class="chip" class:active>
-          {#if active}
+      {#if activeTab}
+        {#key activeTab.id}
+          {@const tab = activeTab}
+          <li class="chip active">
             <div class="pill">
+              <LoadProgress loading={tab.loading} />
               {#if modeSwitch}
                 {@const mode = modeOf(tab)}
                 <div
@@ -376,16 +353,6 @@
                   {/each}
                 </div>
               {:else}
-                {#if tab.security !== 'local'}
-                  <IconButton
-                    size="sm"
-                    icon="lock"
-                    class={['site', tab.security]}
-                    label={tab.security === 'secure' ? t('toolbar.siteInfoSecure') : t('toolbar.siteInfoNotSecure')}
-                    title={t('toolbar.siteInfo')}
-                    onclick={() => send({ type: 'open-site-info' })}
-                  />
-                {/if}
                 {#if developer}
                   <span class="private-badge developer" title={t('toolbar.developerWindow')}>
                     <Icon name="gauge" size={14} />
@@ -398,16 +365,14 @@
               {/if}
               <button
                 class="address"
-                class:after-site={modeSwitch || tab.security !== 'local' || tab.isPrivate}
                 title={t('toolbar.addressTitle')}
                 aria-current="page"
                 onclick={() => send({ type: 'open-address' })}
               >
-                {@render favicon(tab)}
                 {#if isNewTab(tab.url)}
                   <span class="label hint">{t('commandBar.placeholder')}</span>
                 {:else}
-                  <span class="label">{siteLabel(tab)}</span>
+                  <span class="label crumb">{siteLabel(tab)}</span>
                 {/if}
               </button>
               {#if tab.audible || tab.muted}
@@ -420,139 +385,88 @@
                   onclick={() => send({ type: 'toggle-mute', id: tab.id })}
                 />
               {/if}
-              {#if activeTab && hasActions}
-                <span class="page-actions" role="group" aria-label={t('toolbar.pageActions')}>
-                  {#if bookmarkable}
-                    <IconButton
-                      icon="star"
-                      tone={activeTab.bookmarked ? 'accent' : 'muted'}
-                      class="star"
-                      label={activeTab.bookmarked ? t('toolbar.removeBookmark') : t('toolbar.addBookmark')}
-                      title={activeTab.bookmarked ? t('toolbar.removeBookmarkTitle') : t('toolbar.addBookmarkTitle')}
-                      aria-pressed={activeTab.bookmarked}
-                      onclick={() => send({ type: 'toggle-bookmark' })}
-                    />
-                  {/if}
-                  {#if activeTab.translation.available}
-                    {#if activeTab.translation.status === 'idle' || activeTab.translation.status === 'failed'}
-                      <IconButton
-                        icon="translate"
-                        tone={activeTab.translation.status === 'failed' ? 'warn' : 'muted'}
-                        label={translateTitle[activeTab.translation.status]}
-                        onclick={() => send({ type: 'toggle-translation' })}
-                      />
-                    {:else}
-                      <Button
-                        size="sm"
-                        variant="tonal"
-                        icon="translate"
-                        disabled={activeTab.translation.status === 'translating'}
-                        aria-pressed={activeTab.translation.status === 'translated'}
-                        title={translateTitle[activeTab.translation.status]}
-                        onclick={() => send({ type: 'toggle-translation' })}
-                      >
-                        {activeTab.translation.status === 'translating'
-                          ? t('toolbar.translating')
-                          : t('toolbar.translated')}
-                      </Button>
-                    {/if}
-                  {/if}
-                  {#if activeTab.blockedPopups > 0}
-                    <IconButton
-                      icon="popup-blocked"
-                      variant="tonal"
-                      tone="warn"
-                      label={t('toolbar.popupsBlocked', { count: activeTab.blockedPopups })}
-                      title={t('toolbar.popupBlocked')}
-                      onclick={() => send({ type: 'open-blocked-popups' })}
-                    />
-                  {/if}
-                  {#if states.length > 0}
-                    {#key activeTab.agentReadAt}
-                      <Button
-                        size="sm"
-                        variant="tonal"
-                        icon="gauge"
-                        class={[
-                          'dev-state',
-                          activeTab.agentObserved && 'agent',
-                          activeTab.agentReadAt !== null && Date.now() - activeTab.agentReadAt < 1500 && 'agent-read',
-                        ]}
-                        aria-label={t('toolbar.developerStatus', { states: states.join(', ') })}
-                        title={states.join(' · ')}
-                        onclick={() => send({ type: 'open-dev-menu' })}
-                      >
-                        {states.length}
-                      </Button>
-                    {/key}
-                  {/if}
-                  {#if zoomChanged}
-                    <Button
-                      size="sm"
-                      variant="tonal"
-                      class="zoom"
-                      title={t('toolbar.resetZoomTitle')}
-                      onclick={() => send({ type: 'reset-zoom' })}
-                    >
-                      {t('toolbar.zoomPercent', { percent: Math.round(zoom * 100) })}
-                    </Button>
-                  {/if}
-                </span>
-              {/if}
-              <IconButton
-                size="sm"
-                icon="close"
-                tone="muted"
-                class="close"
-                label={t('toolbar.close')}
-                title={t('toolbar.closeTitle')}
-                onclick={() => send({ type: 'close-tab', id: tab.id })}
-              />
-              {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}
+              <PageActions {tab} />
             </div>
-          {:else}
-            <button
-              class="select"
-              class:private={tab.isPrivate}
-              title={tab.isPrivate ? t('toolbar.privateTabTitle', { title: tab.title }) : tab.title}
-              onclick={(event) => send({ type: 'activate-tab', id: tab.id, animate: event.detail > 0 })}
-              onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-            >
-              {@render favicon(tab)}
-              <span class="label">{siteLabel(tab)}</span>
-            </button>
-            {#if tab.audible || tab.muted}
-              <IconButton
-                size="sm"
-                icon={tab.muted ? 'muted' : 'sound'}
-                tone="muted"
-                label={tab.muted ? t('toolbar.unmute') : t('toolbar.mute')}
-                aria-pressed={tab.muted}
-                onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-              />
-            {/if}
-            <IconButton
-              size="sm"
-              icon="close"
-              tone="muted"
-              class="close"
-              label={t('toolbar.close')}
-              title={t('toolbar.closeTitle')}
-              onclick={() => send({ type: 'close-tab', id: tab.id })}
-            />
-            {#if tab.loading}<span class="loading" aria-label={t('toolbar.loading')}></span>{/if}
-          {/if}
-        </li>
-      {/each}
+          </li>
+        {/key}
+      {/if}
     </ol>
-    <div class="new-tab-slot">
-      <NewTabButton />
-    </div>
   </div>
 
-  <div class="side trailing" bind:this={trailing} style:margin-right="{-trailingOverhang}px">
+  {#if split}
+    {#each panes as pane, index (index)}
+      {@const tab = pane.tab}
+      <div
+        class="pane-bar"
+        class:active={tab !== null && tab.id === activeTab?.id}
+        style:left="{pane.x}px"
+        style:width="{pane.width}px"
+        style:--reserve={index === panes.length - 1 ? `${trailingWidth}px` : undefined}
+        style:padding-left={index === 0 && leadingInset + 4 > pane.x + 6 ? `${leadingInset + 4 - pane.x}px` : undefined}
+      >
+        {#if index === 0}{@render panelToggle()}{/if}
+        {#if tab}
+          <IconButton
+            size="lg"
+            variant="surface"
+            icon="nav-back"
+            label={t('toolbar.back')}
+            disabled={!tab.canGoBack}
+            onclick={() => paneAction(tab.id, { type: 'go-back' })}
+          />
+          <IconButton
+            size="lg"
+            variant="surface"
+            icon="nav-forward"
+            label={t('toolbar.forward')}
+            disabled={!tab.canGoForward}
+            onclick={() => paneAction(tab.id, { type: 'go-forward' })}
+          />
+          <IconButton
+            size="lg"
+            variant="surface"
+            icon={tab.loading ? 'close' : 'nav-reload'}
+            label={tab.loading ? t('toolbar.stop') : t('toolbar.reload')}
+            onclick={() => paneAction(tab.id, { type: tab.loading ? 'stop' : 'reload' })}
+          />
+          <div class="pane-pill">
+            {#key tab.id}<LoadProgress loading={tab.loading} />{/key}
+            <button
+              class="pane-address"
+              title={t('toolbar.addressTitle')}
+              onclick={() => paneAction(tab.id, { type: 'open-address' })}
+            >
+              {#if isNewTab(tab.url)}
+                <span class="label hint">{t('commandBar.placeholder')}</span>
+              {:else}
+                <span class="label crumb">{siteLabel(tab)}</span>
+              {/if}
+            </button>
+            {#if tab.id === activeTab?.id}<PageActions {tab} />{/if}
+          </div>
+          <IconButton
+            size="lg"
+            variant="surface"
+            tone="muted"
+            class="pane-close"
+            icon="close"
+            label={t('toolbar.close')}
+            title={t('toolbar.closeTitle')}
+            onclick={() => send({ type: 'close-tab', id: tab.id })}
+          />
+        {/if}
+      </div>
+    {/each}
+  {/if}
+
+  <div
+    class="side trailing"
+    bind:this={trailing}
+    bind:clientWidth={trailingWidth}
+    style:margin-right="{split ? PANE_CLOSE_WIDTH : 0}px"
+  >
     <Capsule>
-      {#if agentAvailable}
+      {#if agentAvailable && !chatPill}
         <IconButton
           icon="sparkle"
           label={t('agentPanel.toggle')}
@@ -572,11 +486,39 @@
           {/if}
         </IconButton>
       {/if}
-      {#each buttons as id (id)}
-        {@render button(id)}
-      {/each}
+      <!-- Like Dia, the card style keeps the toolbar to navigation; these actions live in the sidebar menu when it shows. -->
+      {#if !sidebarMenu}
+        {#each buttons as id (id)}
+          {@render button(id)}
+        {/each}
+      {/if}
     </Capsule>
   </div>
+
+  {#if chatPill}
+    <div class="chat-slot">
+      <button
+        type="button"
+        class="chat-pill"
+        class:open={agentPanelOpen}
+        title={t('agentPanel.toggleTitle')}
+        aria-expanded={agentPanelOpen}
+        aria-controls="agent-panel"
+        disabled={!ready}
+        onclick={() => send({ type: 'toggle-agent-panel' })}
+      >
+        <Icon name="sparkle" size={14} />
+        <span>{t('newTab.chat')}</span>
+        {#if agentStatus === 'running' || agentStatus === 'starting' || agentStatus === 'error'}
+          <span
+            class="agent-dot"
+            class:error={agentStatus === 'error'}
+            aria-label={t(agentStatus === 'error' ? 'agentPanel.failed' : 'agentPanel.running')}
+          ></span>
+        {/if}
+      </button>
+    </div>
+  {/if}
 </header>
 
 <style>
@@ -597,9 +539,267 @@
     display: flex;
     grid-area: bar;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     min-width: 0;
     -webkit-app-region: drag;
+  }
+
+  .toolbar.card.span {
+    position: relative;
+    z-index: 1;
+    grid-column: 1 / span 2;
+  }
+
+  /* Extends under the page view's top corners. */
+  .toolbar.card.span::before {
+    position: absolute;
+    right: 7px;
+    left: var(--bar-card-left);
+    content: '';
+    pointer-events: none;
+    top: 6px;
+    bottom: -4px;
+    border-radius: 10px 10px 0 0;
+    background: var(--card-surface, var(--page));
+    transition: background-color 180ms ease-out;
+  }
+
+  .toolbar.card.span.blank-page::before {
+    bottom: 0;
+    background: var(--page-veil);
+  }
+
+  /* The toolbar takes the page's own top color, so its text and icons follow that color's lightness. */
+  .toolbar {
+    --address-hover: rgb(16 18 24 / 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .toolbar {
+      --address-hover: rgb(0 0 0 / 0.4);
+    }
+  }
+
+  :global(:root[data-mode='private']) .toolbar {
+    --address-hover: rgb(255 255 255 / 0.06);
+  }
+
+  .toolbar.surface-light {
+    --address-hover: rgb(16 18 24 / 0.06);
+    --text: #1a1b1e;
+    --text-muted: rgb(26 27 30 / 0.62);
+    --surface-hover: rgb(16 18 24 / 0.06);
+  }
+
+  .toolbar.surface-dark {
+    --address-hover: rgb(0 0 0 / 0.4);
+    --text: #f3f3f4;
+    --text-muted: rgb(243 243 244 / 0.62);
+    --surface-hover: rgb(255 255 255 / 0.08);
+  }
+
+  .chat-slot {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    padding: 6px 4px 0 0;
+    -webkit-app-region: no-drag;
+  }
+
+  .chat-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 11px 0 9px;
+    border: 0;
+    border-radius: 8px;
+    background: rgb(from var(--text) r g b / 0.06);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .chat-pill :global(svg) {
+    color: var(--frame-primary, var(--accent));
+  }
+
+  .chat-pill:hover,
+  .chat-pill.open {
+    background: rgb(from var(--text) r g b / 0.1);
+  }
+
+  .chat-pill .agent-dot {
+    top: 5px;
+    right: 5px;
+    bottom: auto;
+  }
+
+  .toolbar.split::before,
+  .toolbar.split .tab-group {
+    visibility: hidden;
+  }
+
+  /* In the last pane, --reserve keeps the hover-revealed trailing controls clear of the close button. */
+  .pane-bar {
+    position: absolute;
+    top: 6px;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 calc(6px + var(--reserve, 0px)) 0 6px;
+    border-radius: 10px 10px 0 0;
+    background: var(--page);
+  }
+
+  .pane-pill {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    min-width: 0;
+    height: 32px;
+    padding-right: 5px;
+    border-radius: 8px;
+    transition: background-color var(--transition);
+    -webkit-app-region: no-drag;
+  }
+
+  .pane-pill:is(:hover, :focus-within) {
+    background: var(--address-hover);
+  }
+
+  .toolbar.card .pane-pill:is(:hover, :focus-within) :global(.page-actions) {
+    opacity: 1;
+  }
+
+  .pane-address {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: default;
+  }
+
+  .pane-bar :global(.pane-close) {
+    margin-left: auto;
+  }
+
+  .toolbar.card.span .tab-group {
+    position: relative;
+    flex: 1 1 auto;
+    gap: 3px;
+    padding: 6px 0 0 var(--bar-group-offset);
+  }
+
+  .toolbar.card.span :global(.icon-btn.lg:not(.panel-toggle)) {
+    color: rgb(from var(--text) r g b / 0.5);
+  }
+
+  .toolbar.card.span :global(.icon-btn.panel-toggle) {
+    color: rgb(from var(--text) r g b / 0.82);
+  }
+
+  /* Dia leaves the toolbar empty on a new tab; the page's own search box takes the address. */
+  .toolbar.card.span.blank-page .chip.active {
+    display: none;
+  }
+
+  /* Dia draws these with SF Symbols at 13pt regular, a thinner line than the app's 1.4. */
+  .toolbar.card.span :global(.icon-btn.lg svg) {
+    stroke-width: 1.15;
+  }
+
+  .toolbar.card.span :global(.icon-btn.lg) {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .toolbar.card.span .trailing {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 6px 6px 0 0;
+  }
+
+  .toolbar.card.span .strip {
+    flex: 1 1 auto;
+  }
+
+  .toolbar.card.span .chip.active {
+    flex: 1 1 auto;
+    width: auto;
+    height: 32px;
+  }
+
+  .toolbar.card.span .pill {
+    border-radius: 8px;
+    transition: background-color var(--transition);
+  }
+
+  .toolbar.card.span .chip.active:is(:hover, :focus-within) .pill {
+    background: var(--address-hover);
+  }
+
+  .toolbar.card.span .address {
+    justify-content: flex-start;
+  }
+
+  .crumb {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .toolbar.card.span .leading {
+    padding-top: 6px;
+    padding-left: 0;
+    overflow: hidden;
+  }
+
+  .toolbar.card :global(.icon-btn.surface),
+  .toolbar.card :global(.capsule) {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .toolbar.card :global(.capsule) {
+    padding: 0;
+  }
+
+  .toolbar.card :global(.icon-btn:disabled) {
+    opacity: 0.6;
+  }
+
+  .toolbar.card :global(.page-actions) {
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .toolbar.card .chip.active:is(:hover, :focus-within) :global(.page-actions) {
+    opacity: 1;
+  }
+
+  .toolbar.card .trailing {
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .toolbar.card:is(:hover, :focus-within, .busy) .trailing {
+    opacity: 1;
   }
 
   .side {
@@ -610,7 +810,10 @@
   }
 
   .leading {
-    justify-content: space-between;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: 6px;
+    padding-left: 8px;
   }
 
   .trailing {
@@ -623,22 +826,6 @@
     align-items: center;
     gap: 6px;
     min-width: 0;
-  }
-
-  .new-tab-slot {
-    display: flex;
-    flex: 0 1000 92px;
-    min-width: var(--chrome-control-size);
-  }
-
-  @media (max-width: 760px) {
-    .new-tab-slot {
-      flex-basis: var(--chrome-control-size);
-    }
-  }
-
-  :global([data-material='glass']) .pill {
-    box-shadow: var(--shadow), var(--rim);
   }
 
   .strip {
@@ -672,13 +859,9 @@
     -webkit-app-region: no-drag;
   }
 
-  .chip:not(.active):hover {
-    background: var(--surface-hover);
-  }
-
   .chip.active {
     gap: 6px;
-    width: clamp(280px, 34vw, 480px);
+    width: clamp(240px, 40vw, 520px);
     max-width: none;
     min-width: 160px;
     padding-right: 0;
@@ -693,63 +876,24 @@
     height: 100%;
     padding-right: 5px;
     border-radius: 999px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
   }
 
-  .page-actions {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 2px;
-  }
-
-  .chip:not(.active) :global(.close) {
-    position: absolute;
-    right: 5px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--transition);
-  }
-
-  .chip:not(.active):hover :global(.close),
-  .chip :global(.close:focus-visible) {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .chip:not(.active):hover .label,
-  .chip:not(.active):focus-within .label {
-    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent calc(100% - 8px));
-  }
-
-  .select,
   .address {
+    position: relative;
     display: flex;
     flex: 1;
     align-items: center;
-    gap: 7px;
+    justify-content: center;
+    gap: 6px;
     min-width: 0;
     height: 100%;
-    padding: 0 6px 0 11px;
+    padding: 0 6px;
     border: 0;
     border-radius: 999px;
     background: transparent;
     color: var(--text-muted);
     font-size: 13px;
-  }
-
-  .address {
-    justify-content: center;
-    padding-left: 33px;
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  .address:not(.after-site)::after {
-    flex: none;
-    width: 16px;
-    content: '';
+    font-weight: 400;
   }
 
   .private-badge {
@@ -862,71 +1006,8 @@
     }
   }
 
-  .select.private {
-    font-style: italic;
-  }
-
-  .chip :global(.site) {
-    margin-left: 4px;
-  }
-
-  .chip :global(.site.insecure) {
-    color: var(--warn);
-  }
-
-  .chip :global(.site.dangerous) {
-    color: #d93025;
-  }
-
-  .tab-group :global(.star[aria-pressed='true'] path) {
+  .tab-group :global(.bookmark[aria-pressed='true'] path) {
     fill: currentColor;
-  }
-
-  .tab-group :global(.zoom) {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tab-group :global(.dev-state) {
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tab-group :global(.dev-state.agent) {
-    position: relative;
-  }
-
-  .tab-group :global(.dev-state.agent)::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
-
-  .tab-group :global(.dev-state.agent-read) {
-    animation: agent-read 1.2s ease-out;
-  }
-
-  @keyframes agent-read {
-    from {
-      box-shadow: 0 0 0 2px var(--accent);
-    }
-    to {
-      box-shadow: 0 0 0 2px transparent;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .tab-group :global(.dev-state.agent-read) {
-      animation: none;
-    }
-  }
-
-  .address.after-site {
-    padding-left: 6px;
   }
 
   .ring {
@@ -1043,38 +1124,6 @@
     }
   }
 
-  .unread-dot {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 1.5px var(--surface-strong);
-    pointer-events: none;
-  }
-
-  .favicon {
-    position: relative;
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 16px;
-    height: 16px;
-    color: var(--text-muted);
-  }
-
-  .chip:not(.active) .favicon {
-    opacity: 0.7;
-  }
-
-  .favicon img {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-  }
-
   .label {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1083,59 +1132,5 @@
 
   .label.hint {
     color: var(--text-muted);
-  }
-
-  .loading {
-    position: absolute;
-    right: 16px;
-    bottom: 1px;
-    left: 16px;
-    height: 2px;
-    border-radius: 1px;
-    background: var(--accent);
-    animation: pulse 1.2s ease-in-out infinite alternate;
-  }
-
-  .chip.active .loading {
-    overflow: hidden;
-    background: transparent;
-    animation: none;
-  }
-
-  .chip.active .loading::after {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 28%;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--accent);
-    content: '';
-    animation: search-sweep 1.4s ease-in-out infinite;
-  }
-
-  @keyframes search-sweep {
-    from {
-      transform: translateX(-100%);
-    }
-    to {
-      transform: translateX(360%);
-    }
-  }
-
-  @keyframes pulse {
-    from {
-      opacity: 0.2;
-    }
-    to {
-      opacity: 0.7;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chip.active .loading::after {
-      width: 100%;
-      animation: none;
-    }
   }
 </style>

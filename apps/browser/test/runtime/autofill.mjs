@@ -108,7 +108,7 @@ app
     );
     const browsing = session.fromPartition('persist:autofill');
     handlers.installAutofillHandlers({
-      store,
+      storeFor: () => store,
       allowed: (contents) => contents.session === browsing,
       parentOf: (contents) => windows.find((w) => w.webContents === contents),
       changed() {},

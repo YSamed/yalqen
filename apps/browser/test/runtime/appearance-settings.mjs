@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, dialog, session } from 'electron';
 import { registerBeforeQuit, registerWillQuit, removeDirectory } from '../helpers/cleanup-tasks.mjs';
 import settings from '../../dist/main/app/settings.js';
 import ipc from '../../dist/main/app/settings-ipc.js';
 import internal from '../../dist/main/pages/internal-pages.js';
+import agent from '../../dist/shared/agent.js';
 import types from '../../dist/shared/types.js';
 import siteStorage from '../../dist/shared/site-storage.js';
 import settingsPage from '../../dist/main/app/settings-page.js';
@@ -32,20 +33,10 @@ async function eventually(predicate) {
 const run = (script) => window.webContents.executeJavaScript(script);
 const choice = (label) =>
   `Array.from(document.querySelectorAll('#pane [role=radio]')).find(item=>item.textContent.trim()===${JSON.stringify(label)})`;
-const labelled = (label) => `document.querySelector('#pane [aria-label=${JSON.stringify(label)}]')`;
 app
   .whenReady()
   .then(async () => {
     const preferences = new settings.SettingsStore(profile);
-    const pinnable = 'abcdefghijklmnopabcdefghijklmnop';
-    const uninstalled = 'ponmlkjihgfedcbaponmlkjihgfedcba';
-    preferences.update({ toolbarButtons: ['bookmarks', 'history', 'settings', `extension:${uninstalled}`] });
-    const icon =
-      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-    ipcMain.handle(types.ExtensionsChannel.list, () => [
-      { id: pinnable, name: 'Grammar Helper', enabled: true, icon },
-      { id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', name: 'Switched Off', enabled: false, icon },
-    ]);
     settingsPage.handleSettingsCall(siteStorage.SiteStorageChannel.list, () => ({
       sites: [],
       total: 0,
@@ -59,7 +50,7 @@ app
       neverSave: [],
     }));
     settingsPage.handleSettingsCall(types.AutofillChannel.list, () => ({ available: false, records: [] }));
-    settingsPage.handleSettingsCall(types.AgentBridgeChannel.status, () => ({
+    settingsPage.handleSettingsCall(agent.AgentBridgeChannel.status, () => ({
       enabled: false,
       port: null,
       error: null,
@@ -78,7 +69,7 @@ app
       view: () => ({
         values: preferences.get(),
         version: 'test',
-        downloadDirectory: profile,
+        downloadDirectory: preferences.get().downloadDirectory ?? profile,
         defaultBrowser: true,
         engines: [{ id: 'google', label: 'Google' }],
         customTemplateValid: true,
@@ -93,7 +84,7 @@ app
       },
       updater: {},
       relaunch() {},
-      permissions: { origins: () => [] },
+      permissionsFor: () => ({ origins: () => [] }),
       requestRules: { list: () => [] },
       onRequestRulesSaved() {},
     });
@@ -122,84 +113,47 @@ app
     window.webContents.on('console-message', ({ level, message }) => {
       if (level === 'error') rendererErrors.push(message);
     });
-    await window.loadURL('yalqen://settings/appearance');
-    await eventually(`!!${choice('Right, narrow')}`);
-
-    await run(`${choice('Right, narrow')}.click()`);
-    await eventually(`${choice('Right, narrow')}.getAttribute('aria-checked')==='true'`);
-    assert.deepEqual(
-      (({ sidebarVisible, panelSide, panelCollapsed }) => ({ sidebarVisible, panelSide, panelCollapsed }))(
-        preferences.get(),
-      ),
-      { sidebarVisible: true, panelSide: 'right', panelCollapsed: true },
-    );
-    await run(`${choice('Hidden, tabs on top')}.click()`);
-    await eventually(`${choice('Hidden, tabs on top')}.getAttribute('aria-checked')==='true'`);
-    assert.equal(preferences.get().sidebarVisible, false);
-    assert.equal(preferences.get().panelSide, 'right');
-    await run(
-      `${choice('Hidden, tabs on top')}.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))`,
-    );
-    await eventually(`${choice('Left, wide')}.getAttribute('aria-checked')==='true'`);
-    assert.equal(preferences.get().sidebarVisible, true);
-    assert.equal(preferences.get().panelCollapsed, false);
-
+    await window.loadURL('yalqen://settings/');
+    await eventually(`!!${choice('Dark')}`);
     await run(`${choice('Dark')}.click()`);
     await eventually(`${choice('Dark')}.getAttribute('aria-checked')==='true'`);
     assert.equal(preferences.get().theme, 'dark');
 
-    const missing = `extension:${uninstalled}`;
-    await run(`${labelled('Remove History button')}.click()`);
-    await eventually(`!!${labelled('Add History button')}`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'settings', missing]);
-    await run(`${labelled('Add Downloads button')}.click()`);
-    await eventually(`!!${labelled('Remove Downloads button')}`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'settings', 'downloads', missing]);
-    await run(
-      `${labelled('Remove Downloads button')}.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',altKey:true,bubbles:true}))`,
-    );
-    await eventually(`document.querySelector('#pane [data-id]:nth-of-type(2)')?.dataset.id==='downloads'`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', missing]);
-    await run(`document.querySelector('#pane [data-id=settings]').click()`);
-    assert.ok(preferences.get().toolbarButtons.includes('settings'));
-    assert.equal(await run(`document.querySelectorAll('#pane .bar [data-id]').length`), 3);
+    const saveError = `document.querySelector('.save-error[role=alert]')`;
+    const temp = `${preferences.file}.tmp`;
+    const engine = `document.getElementById('engine')`;
+    const customEngine = `Array.from(document.getElementById(${engine}.getAttribute('aria-controls')).querySelectorAll('[role=option]')).find(item=>item.textContent.trim()==='Custom')`;
+    const selectCustomEngine = () => run(`${engine}.click(); ${customEngine}.click()`);
 
-    await eventually(`!!${labelled('Add Developer tools button')}`);
-    await run(`${labelled('Add Developer tools button')}.click()`);
-    await eventually(`!!${labelled('Remove Developer tools button')}`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', 'devtools', missing]);
+    fs.mkdirSync(temp);
+    await selectCustomEngine();
+    await eventually(`${saveError}?.checkVisibility()`);
+    assert.match(await run(`${saveError}.textContent`), /could not save/i);
+    assert.equal(await run(`${customEngine}.getAttribute('aria-selected')`), 'false');
+    assert.equal(preferences.get().searchEngine, 'google');
+    fs.rmdirSync(temp);
+    await selectCustomEngine();
+    await eventually(`${customEngine}.getAttribute('aria-selected')==='true' && !${saveError}`);
+    assert.equal(new settings.SettingsStore(profile).get().searchEngine, 'custom');
 
-    await eventually(`!!${labelled('Add Grammar Helper button')}`);
-    assert.equal(await run(`!!${labelled('Add Switched Off button')}`), false);
-    assert.equal(await run(`${labelled('Add Grammar Helper button')}.querySelector('img')?.getAttribute('src')`), icon);
-    await run(`${labelled('Add Grammar Helper button')}.click()`);
-    await eventually(`!!${labelled('Remove Grammar Helper button')}`);
-    const pinned = `extension:${pinnable}`;
-    assert.deepEqual(preferences.get().toolbarButtons, [
-      'bookmarks',
-      'downloads',
-      'settings',
-      'devtools',
-      pinned,
-      missing,
-    ]);
-    await run(
-      `${labelled('Remove Grammar Helper button')}.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',altKey:true,bubbles:true}))`,
-    );
-    await eventually(
-      `document.querySelector('#pane [data-id]:nth-of-type(4)')?.dataset.id===${JSON.stringify(pinned)}`,
-    );
-    assert.deepEqual(preferences.get().toolbarButtons, [
-      'bookmarks',
-      'downloads',
-      'settings',
-      pinned,
-      'devtools',
-      missing,
-    ]);
-    await run(`${labelled('Remove Grammar Helper button')}.click()`);
-    await eventually(`!!${labelled('Add Grammar Helper button')}`);
-    assert.deepEqual(preferences.get().toolbarButtons, ['bookmarks', 'downloads', 'settings', 'devtools', missing]);
+    const downloadFolder = fs.mkdtempSync(path.join(profile, 'downloads-'));
+    const changeFolder = `Array.from(document.querySelectorAll('#pane button')).find(item=>item.textContent.trim()==='Change…')`;
+    const showOpenDialog = dialog.showOpenDialog;
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [downloadFolder] });
+    try {
+      fs.mkdirSync(temp);
+      await run(`${changeFolder}.click()`);
+      await eventually(`${saveError}?.checkVisibility() && !${changeFolder}.disabled`);
+      assert.equal(preferences.get().downloadDirectory, null);
+      fs.rmdirSync(temp);
+      await run(`${changeFolder}.click()`);
+      await eventually(
+        `document.querySelector('#pane').textContent.includes(${JSON.stringify(downloadFolder)}) && !${saveError}`,
+      );
+      assert.equal(new settings.SettingsStore(profile).get().downloadDirectory, downloadFolder);
+    } finally {
+      dialog.showOpenDialog = showOpenDialog;
+    }
 
     await window.loadURL('yalqen://settings/privacy');
     const clearButton = `Array.from(document.querySelectorAll('#pane button')).find(item=>item.textContent.trim()==='Clear…')`;
@@ -216,7 +170,11 @@ app
       `Array.from(document.querySelectorAll('#pane dialog button')).find(item=>item.textContent.trim()==='Close').click()`,
     );
     await eventually(`!document.querySelector('#pane dialog').open`);
-    assert.equal(await run(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`), true);
+    assert.equal(await run(`!!document.querySelector('#pane #secure-dns')`), false);
+    await window.loadURL('yalqen://settings/advanced');
+    await eventually(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`);
+    await window.loadURL('yalqen://settings/tabs');
+    await eventually(`!!document.querySelector('#pane h2')`);
 
     assert.deepEqual(rendererErrors, []);
 
@@ -226,7 +184,7 @@ app
     await eventually(`!!document.querySelector('#pane #secure-dns')?.checkVisibility()`);
 
     console.log(
-      'PASS: appearance settings pick theme and sidebar layout from cards, edit toolbar buttons from the preview and show advanced settings for matching searches, and clear browsing data from a dialog',
+      'PASS: appearance settings pick theme, report failed saves and allow retry, search advanced settings, and clear browsing data',
     );
   })
   .catch((error) => {

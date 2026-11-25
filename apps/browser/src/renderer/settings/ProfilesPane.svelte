@@ -1,10 +1,21 @@
 <script lang="ts">
+  import type { ComponentProps } from 'svelte';
   import type { SettingsValues, SettingsView } from '../../shared/types';
-  import Profiles from './Profiles.svelte';
-  import SpaceRules from './SpaceRules.svelte';
+  import SpaceProfiles from './SpaceProfiles.svelte';
 
-  let { view, update }: { view: SettingsView; update: (patch: Partial<SettingsValues>) => Promise<void> } = $props();
+  let {
+    view,
+    update,
+    profile,
+    open,
+    showData,
+  }: {
+    view: SettingsView;
+    update: (patch: Partial<SettingsValues>) => Promise<void>;
+    profile: string | null;
+    open: ComponentProps<typeof SpaceProfiles>['open'];
+    showData: ComponentProps<typeof SpaceProfiles>['showData'];
+  } = $props();
 </script>
 
-<Profiles />
-<SpaceRules {view} {update} />
+<SpaceProfiles settings={view} {update} {profile} {open} {showData} />

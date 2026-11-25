@@ -1,9 +1,20 @@
 <script lang="ts">
-  import type { Favorite, PanelSide, PinnedDisplay, ProfileKind, TabId, TabSnapshot } from '../../shared/types';
+  import { onDestroy } from 'svelte';
+  import type {
+    DownloadsSummary,
+    Favorite,
+    ProfileKind,
+    SidebarFooterItem,
+    TabId,
+    TabSnapshot,
+  } from '../../shared/types';
   import type { MediaInfo } from '../../shared/sidebar-widgets';
   import { t } from '../../shared/i18n';
   import { cubicOut } from 'svelte/easing';
-  import { scale } from 'svelte/transition';
+  import { prefersReducedMotion } from 'svelte/motion';
+  import SidebarFooter from './SidebarFooter.svelte';
+  import { SpaceSwipe } from './space-swipe.svelte';
+  import { TabDrag, type SplitSide } from './tab-drag.svelte';
   import { flip } from 'svelte/animate';
   import { devStates } from './format';
   import Icon from '../ui/Icon.svelte';
@@ -15,7 +26,8 @@
   import type { TabGroup } from '../../shared/tab-groups';
   import type { LiveFolderView } from '../../shared/live-folders';
   import type { SpaceView } from '../../shared/workspaces';
-  import { createSwipeTracker } from '../../shared/swipe';
+  import type { LiveFolderKind } from '../../shared/live-folders';
+  import { hostOf } from '../../shared/hosts';
 
   let {
     tabs,
@@ -24,17 +36,12 @@
     activeTabId,
     selectedTabIds,
     splitTabIds,
+    splitGroups = [],
     groups,
-    collapsed,
-    fading,
-    closing,
-    side,
+    slide = 0,
     topInset,
-    rowInset,
-    edgeInset,
     fullWidth,
     profile,
-    pinnedDisplay,
     tabCleanup = false,
     favorites,
     liveFolders,
@@ -43,6 +50,10 @@
     media,
     pageRect,
     onSplitDrop,
+    agents = { waiting: 0, working: 0 },
+    updateReady = false,
+    downloads = { active: 0, progress: null, started: 0 },
+    footerItems = [],
   }: {
     tabs: TabSnapshot[];
     listOrder: TabId[];
@@ -50,17 +61,12 @@
     activeTabId: TabId | null;
     selectedTabIds: TabId[];
     splitTabIds: TabId[];
+    splitGroups?: TabId[][];
     groups: TabGroup[];
-    collapsed: boolean;
-    fading: boolean;
-    closing: boolean;
-    side: PanelSide;
+    slide?: number;
     topInset: number;
-    rowInset: number;
-    edgeInset: number;
     fullWidth: number;
     profile: ProfileKind;
-    pinnedDisplay: PinnedDisplay;
     tabCleanup?: boolean;
     favorites: Favorite[];
     liveFolders: LiveFolderView[];
@@ -69,52 +75,28 @@
     media: MediaInfo | null;
     pageRect?: () => DOMRect | undefined;
     onSplitDrop?: (side: SplitSide | null) => void;
+    agents?: { waiting: number; working: number };
+    updateReady?: boolean;
+    downloads?: DownloadsSummary;
+    footerItems?: SidebarFooterItem[];
   } = $props();
 
-  type DragGroup = 'pinned' | 'listed';
-  type SplitSide = 'left' | 'right';
-  interface Press {
-    id: TabId;
-    group: DragGroup;
-    list: HTMLElement;
-    item: HTMLElement;
-    x: number;
-    y: number;
-    scrollTop: number;
-    home: DOMRect;
-    dragging: boolean;
-    cancelled: boolean;
-  }
-
-  const DRAG_THRESHOLD = 4;
-  const SCROLL_EDGE = 28;
-  const SCROLL_STEP = 8;
-
-  let press: Press | null = null;
-  let pointer = { x: 0, y: 0 };
-  let splitSide: SplitSide | null = null;
-  let scrollFrame = 0;
-  let lists: HTMLElement | undefined = $state();
-  let dragId: TabId | null = $state(null);
-  let dragGroup: DragGroup | null = $state(null);
-  let dragOffset = $state({ x: 0, y: 0 });
-  let dropIndex: number | null = $state(null);
-  let settleOrder: string | null = $state(null);
-  let returningId: TabId | null = $state(null);
-  let settleTimer = 0;
-  let returnTimer = 0;
   let brokenIcons: Record<string, true> = $state({});
-  let folderPress: { name: string; x: number; y: number; dragging: boolean } | null = null;
-  let dropFolder: string | null = $state(null);
   let renaming: string | null = $state(null);
   let renameValue = $state('');
-  let renamingSpace: string | null = $state(null);
   let addingLiveFolder = $state(false);
-  const swipe = createSwipeTracker();
-  let addMenu: HTMLDivElement | undefined = $state();
+
+  let liveFolderKind = $state<LiveFolderKind>('feed');
+  $effect(() =>
+    window.yalqen.onAddLiveFolder((kind) => {
+      if (kind) liveFolderKind = kind;
+      addingLiveFolder = true;
+    }),
+  );
 
   const send = window.yalqen.send;
   const previews = createHoverPreviews(send);
+  onDestroy(previews.dismiss);
   const selected = $derived(new Set(selectedTabIds));
   const split = $derived(new Set(splitTabIds));
 
@@ -132,22 +114,34 @@
   const idleCount = $derived(
     tabCleanup ? listed.filter((tab) => !tab.live && !tab.isPrivate && tab.id !== activeTabId).length : 0,
   );
-  const listedIndex = $derived(new Map(listed.map((tab, index) => [tab.id, index])));
-  const orderKey = $derived(tabs.map((tab) => tab.id).join(','));
-  const activeSpaceName = $derived(
-    spaces.length > 1 ? spaces.find((space) => space.id === activeSpaceId)?.name : undefined,
+  const mergedSplits = $derived.by(() => {
+    const shownIndex = new Map(listOrder.map((id, index) => [id, index]));
+    const merged = splitGroups.flatMap((group) => {
+      const members = group.flatMap((id) => tabsById.get(id) ?? []);
+      const shown = members.filter((tab) => shownIndex.has(tab.id));
+      if (members.length < 2 || shown.length === 0) return [];
+      const head = shown.reduce((first, tab) => (shownIndex.get(tab.id)! < shownIndex.get(first.id)! ? tab : first));
+      return [{ head, members }];
+    });
+    return {
+      heads: new Map(merged.map(({ head, members }) => [head.id, members])),
+      hidden: new Set(
+        merged.flatMap(({ head, members }) => members.filter((tab) => tab !== head).map((tab) => tab.id)),
+      ),
+    };
+  });
+  const orderKey = $derived(`${tabs.map((tab) => tab.id).join(',')}|${listOrder.join(',')}`);
+  const visibleEntries = $derived(
+    listOrder.flatMap((id) => {
+      const tab = tabsById.get(id);
+      return tab ? [tab] : [];
+    }),
   );
-  const inSpaceRow = $derived(!collapsed && spaces.length > 0);
-  const showPinned = $derived(pinnedDisplay === 'always' || (pinnedDisplay === 'expanded' && !collapsed));
-  const entries = $derived(
-    listOrder
-      .map((id) => tabsById.get(id))
-      .filter((tab): tab is TabSnapshot => tab !== undefined && (!showPinned || !collapsed || !tab.pinned)),
-  );
+  const entriesByGroup = $derived(Map.groupBy(visibleEntries, (tab) => tab.group || ''));
   const groupsByName = $derived(new Map(groups.map((group) => [group.name, group])));
   const sections = $derived(
     [
-      { key: 'ungrouped', group: null, depth: 0, entries: entries.filter((tab) => !tab.group) },
+      { key: 'ungrouped', group: null, depth: 0, entries: entriesByGroup.get('') ?? [] },
       ...groups.flatMap((group) => {
         const ancestors = groupAncestors(group);
         return ancestors.some((ancestor) => ancestor.collapsed)
@@ -157,7 +151,7 @@
                 key: 'group:' + group.name,
                 group,
                 depth: ancestors.length,
-                entries: entries.filter((tab) => tab.group === group.name),
+                entries: entriesByGroup.get(group.name) ?? [],
               },
             ];
       }),
@@ -169,18 +163,6 @@
     for (let next = groupsByName.get(group.parent ?? ''); next; next = groupsByName.get(next.parent ?? ''))
       chain.push(next);
     return chain;
-  }
-
-  function indent(depth: number): string | undefined {
-    return collapsed || depth === 0 ? undefined : `${depth * 12}px`;
-  }
-
-  function folderAt(): string | null {
-    for (const element of document.elementsFromPoint(pointer.x, pointer.y)) {
-      const name = (element as HTMLElement).dataset?.folder;
-      if (name) return name;
-    }
-    return null;
   }
 
   function canDropFolder(name: string, target: string): boolean {
@@ -195,36 +177,7 @@
     );
   }
 
-  function onFolderPointerDown(event: PointerEvent, name: string): void {
-    if (event.button !== 0 || !event.isPrimary || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    folderPress = { name, x: event.clientX, y: event.clientY, dragging: false };
-  }
-
-  function moveFolderDrag(event: PointerEvent): void {
-    if (!folderPress || !event.isPrimary) return;
-    pointer = { x: event.clientX, y: event.clientY };
-    if (!folderPress.dragging && Math.hypot(pointer.x - folderPress.x, pointer.y - folderPress.y) < DRAG_THRESHOLD)
-      return;
-    folderPress.dragging = true;
-    const target = folderAt();
-    dropFolder = target && canDropFolder(folderPress.name, target) ? target : null;
-  }
-
-  function finishFolderDrag(): void {
-    if (folderPress?.dragging) {
-      suppressNextClick();
-      if (dropFolder) send({ type: 'move-tab-group', name: folderPress.name, parent: dropFolder });
-    }
-    cancelFolderDrag();
-  }
-
-  function cancelFolderDrag(): void {
-    folderPress = null;
-    dropFolder = null;
-  }
-
   function startRename(name: string): void {
-    if (collapsed) return;
     renaming = name;
     renameValue = name;
   }
@@ -236,73 +189,39 @@
     if (renameValue.trim() && renameValue !== name) send({ type: 'rename-tab-group', name, next: renameValue });
   }
 
-  function switchSpaceBySwipe(event: WheelEvent): void {
-    const direction = swipe(event.deltaX, event.deltaY, event.timeStamp);
-    const next = direction && spaces[spaces.findIndex((space) => space.id === activeSpaceId) + direction];
-    if (next) send({ type: 'switch-space', id: next.id });
-  }
-
-  function startSpaceRename(space: SpaceView): void {
-    if (collapsed || !space.id) return;
-    renamingSpace = space.id;
-    renameValue = space.name;
-  }
-
-  function commitSpaceRename(): void {
-    if (renamingSpace === null) return;
-    const id = renamingSpace;
-    renamingSpace = null;
-    if (renameValue.trim() && renameValue !== spaces.find((space) => space.id === id)?.name)
-      send({ type: 'rename-space', id, name: renameValue });
-  }
+  const spaceSwipe = new SpaceSwipe((id) => send({ type: 'switch-space', id }));
+  $effect(() => spaceSwipe.showSpace(activeSpaceId, spaces));
 
   function focusSelect(node: HTMLInputElement): void {
     node.focus();
     node.select();
   }
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-  function popIn(node: Element) {
-    return scale(node, { start: 0.85, duration: reducedMotion.matches ? 0 : 160, easing: cubicOut });
-  }
-  let layoutRects: [Element, DOMRect][] = [];
-  $effect.pre(() => {
-    void collapsed;
-    if (!lists || reducedMotion.matches) return;
-    layoutRects = [...lists.querySelectorAll('li')].map((li) => [li, li.getBoundingClientRect()]);
-  });
-  $effect(() => {
-    void collapsed;
-    queueMicrotask(() => {
-      for (const [li, from] of layoutRects) {
-        const to = li.getBoundingClientRect();
-        const dx = from.left - to.left;
-        const dy = from.top - to.top;
-        if (li.isConnected && (dx || dy))
-          li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], {
-            duration: 200,
-            easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-          });
-      }
-      layoutRects = [];
-    });
-  });
 
   function reorder(node: Element, { from, to }: { from: DOMRect; to: DOMRect }) {
-    const before = layoutRects.findIndex(([li]) => li === node);
-    if (before >= 0) [, from] = layoutRects.splice(before, 1)[0];
-    return flip(node, { from, to }, { duration: reducedMotion.matches ? 0 : 200, easing: cubicOut });
+    return flip(node, { from, to }, { duration: prefersReducedMotion.current ? 0 : 200, easing: cubicOut });
   }
-  const draggingPinned = $derived(dragGroup === 'pinned');
-  const draggingListed = $derived(dragGroup === 'listed');
+  const drag = new TabDrag({
+    tabs: () => tabs,
+    pinned: () => pinned,
+    listed: () => listed,
+    orderKey: () => orderKey,
+    activeTabId: () => activeTabId,
+    groupOf: (id) => tabsById.get(id)?.group,
+    canNestFolder: canDropFolder,
+    pageRect: () => pageRect?.(),
+    onSplitDrop: (side) => onSplitDrop?.(side),
+    send,
+  });
+  const draggingPinned = $derived(drag.group === 'pinned');
+  const draggingListed = $derived(drag.group === 'listed');
+
+  const unreadHosts = $derived(
+    new Set(tabs.flatMap((tab) => (tab.unread && !tab.isPrivate ? (hostOf(tab.url) ?? []) : []))),
+  );
 
   function favoriteUnread(url: string): boolean {
-    try {
-      const { host } = new URL(url);
-      return tabs.some((tab) => tab.unread && !tab.isPrivate && new URL(tab.url).host === host);
-    } catch {
-      return false;
-    }
+    const host = hostOf(url);
+    return host !== null && unreadHosts.has(host);
   }
 
   function label(tab: TabSnapshot): string {
@@ -321,229 +240,10 @@
     return states.length > 0 ? `${tab.title} (${states.join(', ')})` : tab.title;
   }
 
-  function onPointerDown(event: PointerEvent & { currentTarget: HTMLElement }, id: TabId, group: DragGroup): void {
-    if (event.button !== 0 || !event.isPrimary || !lists || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    if (settleOrder !== null) resetDragState();
-    press = {
-      id,
-      group,
-      list: event.currentTarget.parentElement!,
-      item: event.currentTarget,
-      x: event.clientX,
-      y: event.clientY,
-      scrollTop: lists.scrollTop,
-      home: event.currentTarget.getBoundingClientRect(),
-      dragging: false,
-      cancelled: false,
-    };
-  }
-
-  function onPointerMove(event: PointerEvent): void {
-    if (folderPress) {
-      moveFolderDrag(event);
-      return;
-    }
-    if (!press || press.cancelled || !event.isPrimary) return;
-    pointer = { x: event.clientX, y: event.clientY };
-    if (!press.dragging) {
-      if (Math.hypot(pointer.x - press.x, pointer.y - press.y) < DRAG_THRESHOLD) return;
-      press.dragging = true;
-      dragId = press.id;
-      dragGroup = press.group;
-    }
-    track();
-    setSplitSide(splitSideAt(), press.id);
-    const folder = press.group === 'listed' && !splitSide ? folderAt() : null;
-    dropFolder = folder && folder !== tabsById.get(press.id)?.group ? folder : null;
-    if (splitSide || dropFolder) dropIndex = null;
-    if (scrollSpeed() !== 0 && !scrollFrame) scrollFrame = requestAnimationFrame(autoScroll);
-  }
-
-  function splitSideAt(): SplitSide | null {
-    const page = pageRect?.();
-    if (!press || press.id === activeTabId || !page) return null;
-    if (pointer.x < page.left || pointer.x > page.right || pointer.y < page.top || pointer.y > page.bottom) return null;
-    return pointer.x < page.left + page.width / 2 ? 'left' : 'right';
-  }
-
-  function setSplitSide(next: SplitSide | null, id: TabId | null = null): void {
-    if (next === splitSide) return;
-    splitSide = next;
-    send({ type: 'preview-split', id: next ? id : null, side: next ?? 'right' });
-    onSplitDrop?.(next);
-  }
-
-  function onPointerUp(event: PointerEvent): void {
-    if (folderPress) {
-      finishFolderDrag();
-      return;
-    }
-    if (!press || !event.isPrimary) return;
-    if (press.dragging) {
-      suppressNextClick();
-      if (!press.cancelled && splitSide) {
-        send({ type: 'split-tab', id: press.id, side: splitSide });
-        splitSide = null;
-        onSplitDrop?.(null);
-        endDrag();
-        return;
-      }
-      if (!press.cancelled && dropFolder) {
-        send({ type: 'move-tab-to-group', id: press.id, name: dropFolder });
-        endDrag();
-        return;
-      }
-      if (!press.cancelled && commitMove(press.id, press.group === 'pinned' ? pinned : listed)) {
-        settle();
-        return;
-      }
-      returnHome(press.id);
-    }
-    endDrag();
-  }
-
   function onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && folderPress) {
-      cancelFolderDrag();
-      return;
-    }
-    if (event.key === 'Escape' && selectedTabIds.length > 0 && !press?.dragging) {
-      send({ type: 'clear-tab-selection' });
-      return;
-    }
-    if (event.key !== 'Escape' || !press?.dragging) return;
-    press.cancelled = true;
-    resetDragState();
+    if (event.key !== 'Escape' || drag.escape()) return;
+    if (selectedTabIds.length > 0) send({ type: 'clear-tab-selection' });
   }
-
-  function track(): void {
-    if (!press || !lists) return;
-    const horizontal = press.group === 'pinned' && !collapsed;
-    const bounds = lists.getBoundingClientRect();
-    const scrolled = lists.scrollTop - press.scrollTop;
-    const content = lists.lastElementChild?.getBoundingClientRect();
-    const homeTop = press.home.top - bounds.top + press.scrollTop;
-    const contentHeight = (content?.bottom ?? bounds.bottom) - bounds.top + lists.scrollTop;
-    const minY = -homeTop;
-    const maxY = contentHeight - press.home.height - homeTop;
-    const minX = bounds.left - press.home.left;
-    const maxX = bounds.right - press.home.right;
-    dragOffset = {
-      x: horizontal ? Math.min(Math.max(pointer.x - press.x, minX), maxX) : 0,
-      y: Math.min(Math.max(pointer.y - press.y + scrolled, minY), maxY),
-    };
-    dropIndex = slotAt(press, horizontal);
-  }
-
-  function slotAt(current: Press, horizontal: boolean): number | null {
-    let nearest: { index: number; rect: DOMRect } | null = null;
-    let nearestDistance = Infinity;
-    for (const item of current.list.querySelectorAll<HTMLElement>(':scope > [data-drag-index]')) {
-      const rect = item.getBoundingClientRect();
-      if (item === current.item) {
-        rect.x -= dragOffset.x;
-        rect.y -= dragOffset.y;
-      }
-      const dx = Math.max(rect.left - pointer.x, 0, pointer.x - rect.right);
-      const dy = Math.max(rect.top - pointer.y, 0, pointer.y - rect.bottom);
-      const distance = Math.hypot(dx, dy);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = { index: Number(item.dataset.dragIndex), rect };
-      }
-    }
-    if (!nearest) return null;
-    const { index, rect } = nearest;
-    const before = horizontal ? pointer.x < rect.left + rect.width / 2 : pointer.y < rect.top + rect.height / 2;
-    const slot = before ? index : index + 1;
-    const from = (current.group === 'pinned' ? pinned : listed).findIndex((tab) => tab.id === current.id);
-    return slot === from || slot === from + 1 ? null : slot;
-  }
-
-  function scrollSpeed(): number {
-    if (!lists) return 0;
-    const { top, bottom } = lists.getBoundingClientRect();
-    if (pointer.y < top + SCROLL_EDGE && lists.scrollTop > 0) return -SCROLL_STEP;
-    if (pointer.y > bottom - SCROLL_EDGE && lists.scrollTop + lists.clientHeight < lists.scrollHeight)
-      return SCROLL_STEP;
-    return 0;
-  }
-
-  function autoScroll(): void {
-    const speed = press?.dragging && !press.cancelled ? scrollSpeed() : 0;
-    if (speed === 0 || !lists) {
-      scrollFrame = 0;
-      return;
-    }
-    lists.scrollTop += speed;
-    track();
-    scrollFrame = requestAnimationFrame(autoScroll);
-  }
-
-  function commitMove(id: TabId, group: TabSnapshot[]): boolean {
-    if (dropIndex === null || !group.some((tab) => tab.id === id)) return false;
-    const from = tabs.findIndex((tab) => tab.id === id);
-    const before = group[dropIndex];
-    const target = before ? tabs.indexOf(before) : tabs.indexOf(group[group.length - 1]) + 1;
-    const toIndex = target > from ? target - 1 : target;
-    if (toIndex === from) return false;
-    send({ type: 'move-tab', id, toIndex });
-    return true;
-  }
-
-  function settle(): void {
-    press = null;
-    dropIndex = null;
-    cancelAnimationFrame(scrollFrame);
-    scrollFrame = 0;
-    settleOrder = orderKey;
-    clearTimeout(settleTimer);
-    settleTimer = window.setTimeout(resetDragState, 400);
-  }
-
-  function returnHome(id: TabId): void {
-    returningId = id;
-    clearTimeout(returnTimer);
-    returnTimer = window.setTimeout(() => (returningId = null), 220);
-  }
-
-  function suppressNextClick(): void {
-    const swallow = (event: MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
-    window.addEventListener('click', swallow, { capture: true, once: true });
-    setTimeout(() => window.removeEventListener('click', swallow, { capture: true }));
-  }
-
-  function resetDragState(): void {
-    setSplitSide(null);
-    dragId = null;
-    dragGroup = null;
-    dropFolder = null;
-    dropIndex = null;
-    dragOffset = { x: 0, y: 0 };
-    settleOrder = null;
-    clearTimeout(settleTimer);
-    cancelAnimationFrame(scrollFrame);
-    scrollFrame = 0;
-  }
-
-  function endDrag(): void {
-    cancelFolderDrag();
-    press = null;
-    resetDragState();
-  }
-
-  function dragStyle(id: TabId): string | undefined {
-    return id === dragId && (settleOrder === null || settleOrder === orderKey)
-      ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
-      : undefined;
-  }
-
-  $effect(() => {
-    if (settleOrder !== null && settleOrder !== orderKey) resetDragState();
-  });
 </script>
 
 {#snippet favicon(tab: Pick<TabSnapshot, 'faviconUrl'>, size: number, unread = false)}
@@ -564,40 +264,6 @@
   </span>
 {/snippet}
 
-{#snippet panelToggle()}
-  <IconButton
-    size="lg"
-    variant="surface"
-    tone="muted"
-    class="panel-toggle"
-    icon={side === 'left'
-      ? collapsed
-        ? 'panel-expand'
-        : 'panel-close'
-      : collapsed
-        ? 'panel-expand-right'
-        : 'panel-close-right'}
-    label={collapsed ? t('tabPanel.expandSidebar') : t('tabPanel.collapseSidebar')}
-    title={collapsed ? t('tabPanel.expandSidebarTitle') : t('tabPanel.collapseSidebarTitle')}
-    aria-expanded={!collapsed}
-    onclick={() => send({ type: 'toggle-panel' })}
-  />
-{/snippet}
-
-{#snippet compactTab(tab: TabSnapshot)}
-  <IconButton
-    size="lg"
-    variant={tab.id === activeTabId ? 'surface' : 'ghost'}
-    label={label(tab)}
-    aria-current={tab.id === activeTabId ? 'page' : undefined}
-    aria-pressed={selected.has(tab.id)}
-    onclick={(e) => selectTab(e, tab.id)}
-    onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-  >
-    {@render favicon(tab, 16, tab.unread)}
-  </IconButton>
-{/snippet}
-
 {#snippet tabRow(tab: TabSnapshot)}
   {@const tabLabel = label(tab)}
   <IconButton
@@ -605,16 +271,16 @@
     variant={tab.id === activeTabId ? 'surface' : 'ghost'}
     class="tab-icon"
     label={tabLabel}
-    tabindex={collapsed ? 0 : -1}
-    aria-current={collapsed && tab.id === activeTabId ? 'page' : undefined}
+    tabindex={-1}
     aria-pressed={selected.has(tab.id)}
     onclick={(e) => selectTab(e, tab.id)}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
-    {@render favicon(tab, 16, tab.unread)}
+    {@render favicon(tab, 16)}
   </IconButton>
   <div class="pill">
     {@render selectButton(tab, tabLabel)}
+    {#if tab.unread}<span class="unread-dot trailing" aria-hidden="true"></span>{/if}
     <span class="actions">
       <IconButton
         size="sm"
@@ -625,6 +291,35 @@
         onclick={() => send({ type: 'close-tab', id: tab.id })}
       />
     </span>
+  </div>
+{/snippet}
+
+{#snippet splitRow(members: TabSnapshot[])}
+  <div class="split-row" class:compact={members.length > 2}>
+    {#each members as member (member.id)}
+      <div class="split-half">
+        <button
+          class="split-select"
+          title={member.url}
+          aria-label={label(member)}
+          aria-current={member.id === activeTabId ? 'page' : undefined}
+          onclick={(e) => selectTab(e, member.id)}
+          onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: member.id })}
+        >
+          {@render favicon(member, 16, member.unread)}
+          <span class="title">{member.title}</span>
+        </button>
+        <IconButton
+          size="sm"
+          tone="muted"
+          icon="close"
+          class="split-close"
+          label={t('tabPanel.close')}
+          title={t('tabPanel.closeTitle')}
+          onclick={() => send({ type: 'close-tab', id: member.id })}
+        />
+      </div>
+    {/each}
   </div>
 {/snippet}
 
@@ -640,10 +335,11 @@
   >
     <span class="title">{tab.title}</span>
     {#if split.has(tab.id)}<span class="mark" title={t('tabPanel.splitTab')}><Icon name="split" size={13} /></span>{/if}
-    {#if developer}<span class="mark" title={t('tabPanel.developerTab')}><Icon name="gauge" size={13} /></span
-      >{:else if tab.isPrivate}<span class="mark" title={t('tabPanel.privateTab')}
-        ><Icon name="private" size={13} /></span
-      >{/if}
+    {#if developer}<span class="mark" title={t('tabPanel.developerTab')}>
+        <Icon name="gauge" size={13} />
+      </span>{:else if tab.isPrivate}<span class="mark" title={t('tabPanel.privateTab')}>
+        <Icon name="private" size={13} />
+      </span>{/if}
   </button>
   {#if tab.audible || tab.muted}
     <IconButton
@@ -658,32 +354,122 @@
   {/if}
 {/snippet}
 
+{#snippet sectionBody(section: (typeof sections)[number])}
+  {#if section.group}
+    {@const group = section.group}
+    {#if renaming === group.name}
+      <input
+        class="group-rename"
+        aria-label={t('tabPanel.renameFolder')}
+        maxlength="80"
+        bind:value={renameValue}
+        use:focusSelect
+        onblur={commitRename}
+        onkeydown={(e) => {
+          if (e.key === 'Enter') commitRename();
+          else if (e.key === 'Escape') renaming = null;
+          e.stopPropagation();
+        }}
+      />
+    {:else}
+      <button
+        class="group-heading"
+        class:drop-target={drag.dropFolder === group.name}
+        data-folder={group.name}
+        title={group.name}
+        aria-label={`${group.name} (${group.count})`}
+        aria-expanded={!group.collapsed}
+        onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
+        ondblclick={() => startRename(group.name)}
+        onpointerdown={(e) => drag.pressFolder(e, group.name)}
+        oncontextmenu={(e) => {
+          e.preventDefault();
+          send({ type: 'open-folder-menu', name: group.name });
+        }}
+        onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
+      >
+        <Icon name="folder" size={15} />
+        <span class="folder-name">{group.name}</span>
+        <Icon name={group.collapsed ? 'down' : 'up'} size={12} />
+        {#if group.collapsed}
+          <span class="folder-peek" aria-hidden="true">
+            {#each section.entries.slice(0, 3) as tab (tab.id)}{@render favicon(tab, 14)}{/each}
+          </span>
+          <small>{group.count}</small>
+        {/if}
+      </button>
+    {/if}
+  {/if}
+  {#if !section.group?.collapsed}
+    <ol class="rows" class:shifting={draggingListed}>
+      {#each section.entries.filter((entry) => !mergedSplits.hidden.has(entry.id)) as tab (tab.id)}
+        {@const merged = mergedSplits.heads.get(tab.id)}
+        <li
+          class="row"
+          class:private={tab.isPrivate}
+          class:active={tab.id === activeTabId || !!merged?.some((member) => member.id === activeTabId)}
+          class:split={!!merged}
+          class:selected={selected.has(tab.id)}
+          class:lifted={draggingListed && tab.id === drag.dragId}
+          class:returning={tab.id === drag.returningId}
+          class:split-drop={drag.dropTab === tab.id}
+          data-tab-id={tab.id}
+          data-hover-preview={!tab.isPrivate ? '' : undefined}
+          animate:reorder
+          style:transform={draggingListed ? drag.style(tab.id) : undefined}
+          onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
+          onpointerleave={previews.leave}
+          onpointerdown={(e) => drag.pressTab(e, tab.id, 'listed')}
+          oncontextmenu={(e) => {
+            e.preventDefault();
+            send({ type: 'open-tab-menu', id: tab.id });
+          }}
+        >
+          {#if merged}{@render splitRow(merged)}{:else}{@render tabRow(tab)}{/if}
+        </li>
+      {/each}
+    </ol>
+  {/if}
+{/snippet}
+
 <svelte:window
-  onpointermove={onPointerMove}
-  onpointerup={onPointerUp}
-  onpointercancel={endDrag}
+  onpointerdowncapture={previews.dismiss}
+  onwheelcapture={previews.dismiss}
+  onkeydowncapture={previews.dismiss}
+  onpointermove={(e) => drag.move(e)}
+  onpointerup={(e) => drag.release(e)}
+  onpointercancel={() => drag.end()}
   onkeydown={onKeyDown}
-  onblur={endDrag}
+  onblur={() => drag.end()}
 />
 
 <aside
-  class="panel"
-  class:collapsed
-  class:dragging={dragId !== null}
-  class:fading
-  class:closing
-  class:opening={fading && !closing}
-  class:right={side === 'right'}
+  class="panel card"
+  class:dragging={drag.dragId !== null}
   aria-label={t('tabPanel.tabs')}
-  onwheel={switchSpaceBySwipe}
-  style={`--panel-row-inset: ${rowInset}px; --panel-edge-inset: ${edgeInset}px; --panel-full-width: ${fullWidth}px`}
+  onwheel={(event) => spaceSwipe.wheel(event, spaces, activeSpaceId)}
+  oncontextmenu={(event) => {
+    // Rows open their own menus first; only empty sidebar space gets the sidebar menu.
+    if (event.defaultPrevented || (event.target as Element).closest('input, textarea, [contenteditable="true"]'))
+      return;
+    event.preventDefault();
+    send({ type: 'open-sidebar-context-menu' });
+  }}
+  style:--panel-full-width="{fullWidth}px"
 >
   <div class="top" style:height="{topInset}px"></div>
 
-  <div class="body">
-    <div class="lists" bind:this={lists}>
+  <div class="body" style:transform={slide ? `translateX(${slide}px)` : undefined}>
+    <div
+      class="lists"
+      class:space-shifting={spaceSwipe.shifting}
+      class:space-settling={spaceSwipe.shifting && !spaceSwipe.following}
+      style:--space-shift="{spaceSwipe.shift}px"
+      style:--space-fade={1 - Math.min(Math.abs(spaceSwipe.shift) / 120, 0.6)}
+      bind:this={drag.lists}
+    >
       {#if favorites.length > 0}
-        <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.favorites')}>
+        <ul class="favorites global" aria-label={t('tabPanel.favorites')}>
           {#each favorites as favorite (favorite.url)}
             <li
               class="favorite"
@@ -703,67 +489,59 @@
                 label={favorite.title}
                 onclick={() => send({ type: 'open-favorite', url: favorite.url })}
               >
-                {@render favicon(favorite, 16, favoriteUnread(favorite.url))}
+                {@render favicon(favorite, 18, favoriteUnread(favorite.url))}
               </IconButton>
             </li>
           {/each}
         </ul>
-        {#if collapsed}<span class="divider" aria-hidden="true"></span>{/if}
       {/if}
 
-      {#if !collapsed && activeSpaceName}
-        <p class="space-name">{activeSpaceName}</p>
-      {/if}
-
-      {#if showPinned && pinned.length > 0}
-        <ul class="favorites" class:rows={collapsed} aria-label={t('tabPanel.pinned')}>
+      {#if pinned.length > 0}
+        <ul class="favorites" aria-label={t('tabPanel.pinned')}>
           {#each pinned as tab, index (tab.id)}
             <li
               class="favorite"
               class:active={tab.id === activeTabId}
               class:selected={selected.has(tab.id)}
-              class:discarded={!tab.live}
-              class:lifted={tab.id === dragId}
-              class:returning={tab.id === returningId}
-              class:drop-before={draggingPinned && dropIndex === index}
-              class:drop-after={draggingPinned && dropIndex === index + 1 && index === pinned.length - 1}
+              class:lifted={draggingPinned && tab.id === drag.dragId}
+              class:returning={tab.id === drag.returningId}
+              class:drop-before={draggingPinned && drag.dropIndex === index}
+              class:drop-after={draggingPinned && drag.dropIndex === index + 1 && index === pinned.length - 1}
+              class:split-drop={drag.dropTab === tab.id}
               data-drag-index={index}
-              data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
+              data-tab-id={tab.id}
+              data-hover-preview={!tab.isPrivate ? '' : undefined}
               animate:reorder
-              style:transform={dragStyle(tab.id)}
+              style:transform={draggingPinned ? drag.style(tab.id) : undefined}
               onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
               onpointerleave={previews.leave}
-              onpointerdown={(e) => onPointerDown(e, tab.id, 'pinned')}
+              onpointerdown={(e) => drag.pressTab(e, tab.id, 'pinned')}
               oncontextmenu={(e) => {
                 e.preventDefault();
                 send({ type: 'open-tab-menu', id: tab.id });
               }}
             >
-              {#if collapsed}
-                {@render compactTab(tab)}
-              {:else}
-                <IconButton
-                  size="lg"
-                  variant="surface"
-                  class="tile"
-                  label={label(tab)}
-                  aria-current={tab.id === activeTabId ? 'page' : undefined}
-                  aria-pressed={selected.has(tab.id)}
-                  onclick={(e) => selectTab(e, tab.id)}
-                  onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
-                >
-                  {@render favicon(tab, 16, tab.unread)}
-                  {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
-                </IconButton>
-              {/if}
+              <IconButton
+                size="lg"
+                variant="surface"
+                class="tile"
+                label={label(tab)}
+                aria-current={tab.id === activeTabId ? 'page' : undefined}
+                aria-pressed={selected.has(tab.id)}
+                onclick={(e) => selectTab(e, tab.id)}
+                onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
+              >
+                {@render favicon(tab, 18, tab.unread)}
+                {#if tab.audible && !tab.muted}<span class="audible-dot" aria-hidden="true"></span>{/if}
+              </IconButton>
             </li>
           {/each}
         </ul>
       {/if}
 
       {#if tabCleanup && listed.length > 0}
-        <div class="tab-cleanup" class:compact={collapsed}>
-          {#if !collapsed}<span class="cleanup-line" aria-hidden="true"></span>{/if}
+        <div class="tab-cleanup">
+          <span class="cleanup-line" aria-hidden="true"></span>
           <IconButton
             size="sm"
             icon="broom"
@@ -775,230 +553,93 @@
             onclick={() => {
               if (idleCount > 0) send({ type: 'clean-tabs' });
             }}
-          />
+          >
+            <span class="tidy-label">{t('tabPanel.tidy')}</span>
+          </IconButton>
         </div>
-      {:else if !collapsed && (favorites.length > 0 || (showPinned && pinned.length > 0))}
-        <span class="section-divider" aria-hidden="true"></span>
-      {:else if collapsed && showPinned && pinned.length > 0 && listed.length > 0}
-        <span class="divider" aria-hidden="true"></span>
       {/if}
 
       {#each sections as section (section.key)}
         {#if section.group}
-          {@const group = section.group}
-          {#if renaming === group.name}
-            <input
-              class="group-rename"
-              style:margin-inline-start={indent(section.depth)}
-              aria-label={t('tabPanel.renameFolder')}
-              maxlength="80"
-              bind:value={renameValue}
-              use:focusSelect
-              onblur={commitRename}
-              onkeydown={(e) => {
-                if (e.key === 'Enter') commitRename();
-                else if (e.key === 'Escape') renaming = null;
-                e.stopPropagation();
-              }}
-            />
-          {:else}
-            <button
-              class="group-heading"
-              class:drop-target={dropFolder === group.name}
-              style:margin-inline-start={indent(section.depth)}
-              data-folder={group.name}
-              title={group.name}
-              aria-label={`${group.name} (${group.count})`}
-              aria-expanded={!group.collapsed}
-              onclick={() => send({ type: 'toggle-tab-group', name: group.name })}
-              ondblclick={() => startRename(group.name)}
-              onpointerdown={(e) => onFolderPointerDown(e, group.name)}
-              oncontextmenu={(e) => {
-                e.preventDefault();
-                send({ type: 'open-folder-menu', name: group.name });
-              }}
-              onkeydown={(e) => e.key === 'F2' && startRename(group.name)}
-            >
-              <span>{collapsed ? group.name.slice(0, 1) : group.name}</span><small>{group.count}</small>
-            </button>
-          {/if}
-        {/if}
-        {#if !section.group?.collapsed}
-          <ol class="rows" style:margin-inline-start={indent(section.depth)}>
-            {#each section.entries as tab (tab.id)}
-              {@const index = listedIndex.get(tab.id) ?? -1}
-              <li
-                class="row"
-                class:private={tab.isPrivate}
-                class:active={tab.id === activeTabId}
-                class:selected={selected.has(tab.id)}
-                class:discarded={!tab.live}
-                class:lifted={index >= 0 && tab.id === dragId}
-                class:returning={index >= 0 && tab.id === returningId}
-                class:drop-before={index >= 0 && draggingListed && dropIndex === index}
-                class:drop-after={index >= 0 &&
-                  draggingListed &&
-                  dropIndex === index + 1 &&
-                  tab.id === section.entries.filter((entry) => !entry.pinned).at(-1)?.id}
-                data-drag-index={index >= 0 ? index : undefined}
-                data-hover-preview={!tab.isPrivate && previews.has(tab.url) ? '' : undefined}
-                animate:reorder
-                style:transform={index >= 0 ? dragStyle(tab.id) : undefined}
-                onpointerenter={(e) => !tab.isPrivate && previews.enter(e.currentTarget, tab.id, tab.url)}
-                onpointerleave={previews.leave}
-                onpointerdown={(e) => index >= 0 && onPointerDown(e, tab.id, 'listed')}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  send({ type: 'open-tab-menu', id: tab.id });
-                }}
-              >
-                {@render tabRow(tab)}
-              </li>
-            {/each}
-          </ol>
+          <div
+            class="folder"
+            class:open={!section.group.collapsed}
+            style:margin-inline-start={section.depth ? `${section.depth * 12}px` : undefined}
+          >
+            {@render sectionBody(section)}
+          </div>
+        {:else}
+          {@render sectionBody(section)}
         {/if}
       {/each}
 
-      {#if collapsed}
-        <div class="new-tab-position" in:popIn>
-          <NewTabButton />
-        </div>
-      {/if}
+      <div class="new-tab-row">
+        <NewTabButton />
+      </div>
     </div>
 
-    {#if !collapsed && profile !== 'private'}
-      <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} />
+    {#if profile !== 'private'}
+      <LiveFolders folders={liveFolders} bind:adding={addingLiveFolder} bind:kind={liveFolderKind} />
     {/if}
 
     <div class="spacer"></div>
 
     {#if media}
-      <MediaPlayer {media} compact={collapsed} />
+      <MediaPlayer {media} />
     {/if}
 
-    {#if spaces.length > 0}
-      <div class="spaces" class:compact={collapsed}>
-        {#if inSpaceRow}{@render panelToggle()}{/if}
-        {#if renamingSpace !== null}
-          <input
-            class="group-rename"
-            aria-label={t('spaces.rename')}
-            maxlength="80"
-            bind:value={renameValue}
-            use:focusSelect
-            onblur={commitSpaceRename}
-            onkeydown={(e) => {
-              if (e.key === 'Enter') commitSpaceRename();
-              else if (e.key === 'Escape') renamingSpace = null;
-              e.stopPropagation();
-            }}
-          />
-        {:else}
-          <div class="space-dots" role="group" aria-label={t('spaces.switcher')}>
-            {#each spaces.length > 1 ? spaces : [] as space (space.id)}
-              <button
-                class="space-dot"
-                aria-pressed={space.id === activeSpaceId}
-                aria-label={space.name}
-                title={space.name}
-                onclick={() => send({ type: 'switch-space', id: space.id })}
-                ondblclick={() => startSpaceRename(space)}
-                oncontextmenu={(e) => {
-                  e.preventDefault();
-                  send({ type: 'open-space-menu', id: space.id });
-                }}
-                onkeydown={(e) => e.key === 'F2' && startSpaceRename(space)}
-              >
-                {#if space.icon}{space.icon}{:else}<span class="dot" aria-hidden="true"></span>{/if}
-              </button>
-            {/each}
-          </div>
-          {#if !collapsed}
-            <IconButton
-              size="lg"
-              variant="surface"
-              tone="muted"
-              icon="plus"
-              class="space-add"
-              label={t('tabPanel.addMenu')}
-              aria-haspopup="true"
-              popovertarget="sidebar-add-menu"
-            />
-          {/if}
-          <div bind:this={addMenu} id="sidebar-add-menu" class="select-content up add-menu" popover="auto">
-            <button
-              type="button"
-              class="select-item"
-              onclick={() => {
-                addMenu?.hidePopover();
-                send({ type: 'new-tab' });
-              }}
-            >
-              {t('newTabButton.label')}
-            </button>
-            <button
-              type="button"
-              class="select-item"
-              onclick={() => {
-                addMenu?.hidePopover();
-                send({ type: 'create-space' });
-              }}
-            >
-              {t('spaces.add')}
-            </button>
-            {#if profile !== 'private'}
-              <button
-                type="button"
-                class="select-item"
-                onclick={() => {
-                  addMenu?.hidePopover();
-                  send({ type: 'import-space' });
-                }}
-              >
-                {t('spaces.import')}
-              </button>
-            {/if}
-            {#if !collapsed && profile !== 'private'}
-              <button
-                type="button"
-                class="select-item"
-                onclick={() => {
-                  addMenu?.hidePopover();
-                  addingLiveFolder = true;
-                }}
-              >
-                {t('liveFolders.add')}
-              </button>
-            {/if}
-          </div>
-        {/if}
+    {#if agents.waiting + agents.working > 0}
+      <button
+        type="button"
+        class="agents"
+        class:waiting={agents.waiting > 0}
+        onclick={() => send({ type: 'toggle-agent-panel' })}
+      >
+        <span class="orb" aria-hidden="true"></span>
+        {#if agents.waiting > 0}<span class="agents-waiting">
+            {t('tabPanel.agentsWaiting', { count: agents.waiting })}
+          </span>{/if}
+        <span class="agents-count">{t('tabPanel.agentsWorking', { count: agents.waiting + agents.working })}</span>
+        <Icon name="up" size={12} />
+      </button>
+    {/if}
+
+    {#if updateReady}
+      <div class="update-card">
+        <Icon name="download" size={16} />
+        <span class="update-label">{t('tabPanel.updateReady')}</span>
+        <button type="button" class="update-restart" onclick={() => send({ type: 'install-update' })}>
+          {t('tabPanel.restart')}
+        </button>
       </div>
     {/if}
 
-    {#if selectedTabIds.length > 1 || !inSpaceRow}
-      <footer class="footer" class:compact={collapsed}>
-        {#if selectedTabIds.length > 1}
-          <div
-            class="selection"
-            aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
-            title={t('tabPanel.selectionHint')}
+    {#if spaces.length > 0}
+      <SidebarFooter {profile} {spaces} {activeSpaceId} {footerItems} {activeTabId} {downloads} />
+    {/if}
+
+    {#if selectedTabIds.length > 1}
+      <footer class="footer">
+        <div
+          class="selection"
+          aria-label={t('tabPanel.selected', { count: selectedTabIds.length })}
+          title={t('tabPanel.selectionHint')}
+        >
+          <span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span>
+          <IconButton
+            icon="close"
+            size="sm"
+            label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
+            onclick={() => send({ type: 'close-selected-tabs' })}
+          />
+          <button
+            class="clear-selection"
+            aria-label={t('tabPanel.clearSelection')}
+            onclick={() => send({ type: 'clear-tab-selection' })}
           >
-            {#if !collapsed}<span aria-live="polite">{t('tabPanel.selected', { count: selectedTabIds.length })}</span
-              >{/if}
-            <IconButton
-              icon="close"
-              size="sm"
-              label={t('window.closeSelectedTabs', { count: selectedTabIds.length })}
-              onclick={() => send({ type: 'close-selected-tabs' })}
-            />
-            <button
-              class="clear-selection"
-              aria-label={t('tabPanel.clearSelection')}
-              onclick={() => send({ type: 'clear-tab-selection' })}>Esc</button
-            >
-          </div>
-        {/if}
-        {#if !inSpaceRow}{@render panelToggle()}{/if}
+            Esc
+          </button>
+        </div>
       </footer>
     {/if}
   </div>
@@ -1020,6 +661,7 @@
     margin: 6px 0 3px;
   }
   .group-heading.drop-target,
+  .split-drop,
   .group-rename:focus {
     outline: 2px solid var(--accent);
   }
@@ -1041,14 +683,6 @@
   .group-heading small {
     font-size: 10px;
   }
-  .collapsed .group-heading {
-    width: 34px;
-    justify-content: center;
-    padding: 4px;
-  }
-  .collapsed .group-heading small {
-    display: none;
-  }
   .panel {
     position: relative;
     display: flex;
@@ -1056,21 +690,8 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    padding: 0 var(--panel-row-inset) 8px var(--panel-edge-inset);
+    padding: 0 6px 8px;
     overflow-x: clip;
-  }
-
-  .panel.right {
-    padding: 0 var(--panel-edge-inset) 8px var(--panel-row-inset);
-  }
-
-  .panel:not(.collapsed) .lists {
-    padding-top: 4px;
-  }
-
-  .panel.collapsed {
-    align-items: center;
-    padding: 0 0 8px;
   }
 
   .top {
@@ -1083,17 +704,24 @@
     flex: 0 1 auto;
     flex-direction: column;
     min-height: 0;
+    padding-top: 4px;
     overflow-y: auto;
     scrollbar-width: none;
   }
 
-  .lists::-webkit-scrollbar {
-    display: none;
+  .lists.space-shifting > :not(.global) {
+    opacity: var(--space-fade);
+    transform: translateX(var(--space-shift));
   }
 
-  .collapsed .lists {
-    align-items: center;
-    width: 100%;
+  .lists.space-settling > :not(.global) {
+    transition:
+      transform 280ms var(--ease-out),
+      opacity 280ms var(--ease-out);
+  }
+
+  .lists::-webkit-scrollbar {
+    display: none;
   }
 
   .body {
@@ -1104,47 +732,9 @@
     transition: opacity 120ms ease-out;
   }
 
-  .collapsed .body {
-    align-items: center;
-    width: 100%;
-  }
-
   .body > :not(.lists, .spaces, .footer),
-  .spaces > :global(:not(.panel-toggle)),
   .footer > :global(:not(.panel-toggle)) {
     transition: opacity 120ms ease-out;
-  }
-
-  .fading .body > :not(.lists, .spaces, .footer),
-  .fading .spaces > :global(:not(.panel-toggle)),
-  .fading .footer > :global(:not(.panel-toggle)) {
-    opacity: 0;
-  }
-
-  .collapsed .pill {
-    display: none;
-  }
-
-  .closing .pill {
-    opacity: 0;
-  }
-
-  .opening .pill {
-    animation: pill-in 160ms var(--ease-out) 80ms backwards;
-  }
-
-  @keyframes pill-in {
-    from {
-      opacity: 0;
-    }
-  }
-
-  .panel:not(.collapsed) .body {
-    width: calc(var(--panel-full-width) - var(--panel-row-inset) - var(--panel-edge-inset));
-  }
-
-  .panel.right:not(.collapsed) .body {
-    align-self: flex-end;
   }
 
   .rows {
@@ -1159,35 +749,13 @@
       padding 160ms var(--ease-out);
   }
 
-  .collapsed .rows {
-    gap: 6px;
-    padding: 4px 0;
-  }
-
   .favorites:not(.rows) {
     display: grid;
-    grid-template-columns: repeat(4, var(--chrome-control-size));
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
     gap: 6px;
     margin: 0 0 8px;
     padding: 0;
     list-style: none;
-  }
-
-  .space-name {
-    margin: 0 0 6px;
-    padding: 0 10px;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .section-divider {
-    flex: none;
-    height: 1px;
-    margin: 0 10px 6px;
-    background: var(--page-divider);
   }
 
   .tab-cleanup {
@@ -1196,10 +764,6 @@
     gap: 6px;
     align-items: center;
     margin: -4px 4px 2px 10px;
-  }
-
-  .tab-cleanup.compact {
-    margin: 2px 0;
   }
 
   .cleanup-line {
@@ -1212,27 +776,11 @@
     opacity: 0.4;
   }
 
-  .divider {
-    width: 16px;
-    height: 1px;
-    margin: 4px 0;
-    background: var(--page-divider);
-  }
-
   .favorite {
     position: relative;
   }
 
-  .favorite.active :global(.tile) {
-    background-color: var(--surface-strong);
-    box-shadow:
-      var(--shadow),
-      inset 0 0 0 1.5px var(--accent);
-  }
-
-  .favorite.selected :global(.icon-btn),
-  .row.selected .pill,
-  .collapsed .row.selected :global(.icon-btn) {
+  .favorite.selected :global(.icon-btn) {
     box-shadow: inset 0 0 0 1.5px var(--accent);
     background-color: color-mix(in srgb, var(--accent) 12%, transparent);
   }
@@ -1255,15 +803,6 @@
     background: var(--surface);
     color: inherit;
     font: inherit;
-  }
-  .compact .selection {
-    flex-direction: column;
-    flex-basis: auto;
-  }
-
-  .favorite.discarded .favicon {
-    opacity: 0.45;
-    filter: grayscale(1);
   }
 
   .audible-dot {
@@ -1296,43 +835,15 @@
     right: -2px;
   }
 
-  .collapsed .favorite.drop-before::before,
-  .collapsed .favorite.drop-after::after {
-    top: auto;
-    bottom: auto;
-    right: 6px;
-    left: 6px;
-    width: auto;
-    height: 2px;
-  }
-
-  .collapsed .favorite.drop-before::before {
-    top: -4px;
-  }
-
-  .collapsed .favorite.drop-after::after {
-    bottom: -4px;
-  }
-
   .row {
     position: relative;
     display: flex;
     align-items: center;
     min-width: 0;
-    height: var(--chrome-control-size);
-    border-radius: 999px;
-    color: var(--text-muted);
-    transition:
-      background var(--transition),
-      color var(--transition);
-  }
-
-  .collapsed .row {
-    height: auto;
-  }
-
-  .panel:not(.collapsed) .row {
-    gap: 6px;
+    height: 36px;
+    border-radius: 10px;
+    color: var(--text);
+    transition: background var(--transition);
   }
 
   .pill {
@@ -1341,39 +852,291 @@
     align-items: center;
     min-width: 0;
     height: 100%;
-    border-radius: 999px;
-    transition:
-      background var(--transition),
-      box-shadow var(--transition);
+    border-radius: 8px;
   }
 
-  .panel:not(.dragging) .row:not(.active):hover .pill {
+  .card .favorites:not(.rows) :global(.tile) {
+    width: 100%;
+    height: 41px;
+    border-radius: 10px;
+    background: var(--card-tile);
+    box-shadow: none;
+  }
+
+  .card .favorites:not(.rows) :global(.tile:hover) {
     background: var(--surface-hover);
   }
 
-  .row:hover {
+  .card .favorite.active :global(.tile) {
+    background: var(--card-active);
+    box-shadow: var(--card-shadow);
+  }
+
+  .panel.card .rows {
+    gap: 5px;
+  }
+
+  .panel.card .row :global(.tab-icon) {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .panel.card .body {
+    width: calc(var(--panel-full-width) - 12px);
+  }
+
+  .card:not(.dragging) .row:not(.active):hover {
+    background: var(--surface-hover);
+  }
+
+  .panel.card .row.active {
+    background: var(--card-active);
+    box-shadow: var(--card-shadow);
+  }
+
+  .panel.card .row.selected {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .folder {
+    flex: none;
+    margin: 4px 0;
+    padding: 2px 4px 4px;
+    border-radius: 12px;
+    background: var(--card-tile);
+  }
+
+  .folder:not(.open) {
+    padding-bottom: 2px;
+  }
+
+  .folder .group-heading {
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 8px 6px;
+    background: transparent;
     color: var(--text);
+    font-size: 14px;
   }
 
-  .row.active {
+  .folder .folder-name {
+    flex: 0 1 auto;
+  }
+
+  .folder-peek {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+  }
+
+  .folder .group-heading small {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .unread-dot.trailing {
+    position: static;
+    flex: none;
+    width: 6px;
+    height: 6px;
+    margin: 0 10px;
+    background: var(--text-muted);
+    box-shadow: none;
+  }
+
+  .tab-cleanup :global(.tab-cleanup-button:has(.tidy-label)) {
+    width: auto;
+    gap: 4px;
+    padding: 0 6px;
+  }
+
+  .tidy-label {
+    font-size: 13px;
+  }
+
+  .agents {
+    --agents-gold: light-dark(#8a5a00, #e6c278);
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 9px;
+    height: 32px;
+    margin-top: 8px;
+    padding: 0 12px 0 8px;
+    white-space: nowrap;
+    border: 0;
+    border-radius: 999px;
+    background: var(--card-tile);
+    color: color-mix(in srgb, var(--agents-gold) 75%, transparent);
+    font-size: 14px;
+  }
+
+  .agents.waiting {
+    background: color-mix(in srgb, var(--agents-gold) 12%, var(--card-tile));
+  }
+
+  .agents:hover {
+    background: var(--surface-hover);
+  }
+
+  .agents-waiting {
+    color: var(--agents-gold);
+  }
+
+  .agents-count {
+    margin-left: auto;
+  }
+
+  .orb {
+    --orb-light: light-dark(#7a6a40, #f4e2b0);
+    --orb-dark: light-dark(#3a3020, #6b5a30);
+    display: block;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--orb-light), var(--orb-dark) 75%);
+    mask: radial-gradient(circle, #000 0.85px, transparent 1.1px) 0 0 / 2.4px 2.4px;
+  }
+
+  .update-card {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+    height: 32px;
+    margin-top: 5px;
+    padding: 0 4px 0 11px;
+    border-radius: 16px;
+    background: var(--card-tile);
+    color: var(--text-muted);
+  }
+
+  .update-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
     color: var(--text);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .row.active .pill {
-    background: var(--surface);
-    box-shadow: var(--shadow);
+  .update-restart {
+    flex: none;
+    height: 24px;
+    padding: 0 11px;
+    border: 0;
+    border-radius: 999px;
+    background: light-dark(#1d1d22, #f4f4f5);
+    color: light-dark(#ffffff, #18181b);
+    font-size: 13px;
+    font-weight: 500;
   }
 
-  .row.discarded :global(.tab-icon) {
-    opacity: 0.55;
+  .update-restart:hover {
+    background: light-dark(#34343b, #ffffff);
   }
 
-  :global([data-material='glass']) .row.active .pill {
-    box-shadow: var(--shadow), var(--rim);
+  .panel.card .row.split:not(.active) {
+    background: var(--card-tile);
   }
 
-  .row:not(.active) .favicon {
-    opacity: 0.7;
+  .split-row {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .split-half {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .split-select {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .split-select .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .split-row.compact .split-select {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .split-row.compact .title {
+    display: none;
+  }
+
+  .split-half :global(.split-close) {
+    position: absolute;
+    top: 50%;
+    left: 5px;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .split-row.compact .split-half :global(.split-close) {
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .row:is(:hover, :has(:focus-visible)) .split-half :global(.split-close) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .row:is(:hover, :has(:focus-visible)) .split-select .favicon {
+    visibility: hidden;
+  }
+
+  .card .footer :global(.icon-btn.surface) {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .new-tab-row {
+    flex: none;
+    margin-top: 4px;
+  }
+
+  .new-tab-row :global(.btn.new-tab-wide) {
+    height: 36px;
+    gap: 9px;
+    padding-left: 9px;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .new-tab-row :global(.btn.new-tab-wide:hover) {
+    background: var(--surface-hover);
+    color: var(--text);
   }
 
   .select {
@@ -1383,12 +1146,13 @@
     gap: 10px;
     min-width: 0;
     height: 100%;
-    padding: 0 6px 0 10px;
+    padding: 0 6px 0 0;
     border: 0;
-    border-radius: 999px;
+    border-radius: 8px;
     background: transparent;
     color: inherit;
-    font-size: var(--font-size);
+    font-size: 13px;
+    font-weight: 500;
     text-align: left;
   }
 
@@ -1419,16 +1183,6 @@
     background: var(--accent);
     box-shadow: 0 0 0 1.5px var(--surface-strong);
     pointer-events: none;
-  }
-
-  .row.discarded .favicon img,
-  .row.discarded .favicon > :global(svg) {
-    opacity: 0.45;
-    filter: grayscale(1);
-  }
-
-  .row.discarded .title {
-    opacity: 0.7;
   }
 
   .title {
@@ -1476,43 +1230,14 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .returning {
+    .returning,
+    .rows.shifting > .row:not(.lifted) {
       transition: transform 200ms var(--ease-out);
     }
   }
 
-  .row.lifted .pill,
-  .row.lifted :global(.tab-icon) {
-    background: linear-gradient(var(--surface), var(--surface)), var(--page);
-    box-shadow: var(--shadow);
-  }
-
   .row.lifted .actions {
     display: none;
-  }
-
-  .row.drop-before::before,
-  .row.drop-after::after {
-    content: '';
-    position: absolute;
-    right: 10px;
-    left: 10px;
-    height: 2px;
-    border-radius: 1px;
-    background: var(--accent);
-  }
-
-  .row.drop-before::before {
-    top: -2px;
-  }
-
-  .row.drop-after::after {
-    bottom: -2px;
-  }
-
-  .new-tab-position {
-    flex: none;
-    margin-top: 6px;
   }
 
   .footer {
@@ -1528,101 +1253,7 @@
     padding-top: 8px;
   }
 
-  .footer.compact {
-    flex-direction: column;
-    gap: 6px;
-    padding: 8px 0 0;
-  }
-
   .spacer {
     flex: 1;
-  }
-
-  .spaces {
-    display: flex;
-    flex: none;
-    align-items: center;
-    padding-top: 8px;
-  }
-
-  .right .spaces {
-    flex-direction: row-reverse;
-  }
-
-  .spaces.compact {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .space-dots {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: safe center;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .compact .space-dots {
-    flex-direction: column;
-  }
-
-  .space-dot {
-    width: 16px;
-  }
-
-  .spaces :global(.space-add) {
-    anchor-name: --sidebar-add;
-  }
-
-  .space-dot {
-    display: grid;
-    flex: none;
-    place-items: center;
-    height: var(--control-sm);
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: var(--font-size-small);
-  }
-
-  .space-dot:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
-  .space-dot .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-  }
-
-  .space-dot[aria-pressed='true'] {
-    color: var(--accent);
-    cursor: default;
-  }
-
-  .space-dot[aria-pressed='true'] .dot {
-    width: 8px;
-    height: 8px;
-  }
-
-  .add-menu {
-    position-anchor: --sidebar-add;
-    left: auto;
-    right: anchor(right);
-  }
-
-  .right .add-menu {
-    left: anchor(left);
-    right: auto;
-  }
-
-  .add-menu .select-item {
-    padding-inline: 8px;
   }
 </style>

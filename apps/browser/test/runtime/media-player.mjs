@@ -50,17 +50,12 @@ let state = {
   splitTabIds: [],
   pageFullScreen: false,
   windowFullScreen: false,
-  addressPlaceholder: 'Search',
   panelCollapsed: false,
-  panelSide: 'left',
-  pinnedDisplay: 'always',
   favorites: [],
   spaces: [],
   activeSpaceId: '',
   sidebarVisible: true,
   media: null,
-  toolbarVisible: true,
-  toolbarTabs: true,
   toolbarButtons: ['settings'],
   ...windowAppearance,
   device: null,
@@ -186,15 +181,6 @@ app
     await click('.player button.track');
     assert.deepEqual(actions.at(-1), { type: 'activate-tab', id: 'b' });
 
-    push({ panelCollapsed: true, media: { ...song, updatedAt: Date.now() } });
-    await eventually("!!document.querySelector('.player .play') && !document.querySelector('.player .pill')");
-    assert.equal(
-      await window.webContents.executeJavaScript("document.querySelector('.player .play').title"),
-      'Midnight City',
-    );
-    await click('.player .play');
-    assert.deepEqual(actions.at(-1), { type: 'toggle-media', id: 'b' });
-    await eventually("document.querySelector('.player .play')?.getAttribute('aria-label') === 'Play'");
     push({ panelCollapsed: true, media: null });
     await eventually("!document.querySelector('.player')");
     push({ panelCollapsed: false });
