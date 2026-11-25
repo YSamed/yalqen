@@ -375,16 +375,6 @@
                   <span class="label crumb">{siteLabel(tab)}</span>
                 {/if}
               </button>
-              {#if tab.audible || tab.muted}
-                <IconButton
-                  size="sm"
-                  icon={tab.muted ? 'muted' : 'sound'}
-                  tone="muted"
-                  label={tab.muted ? t('toolbar.unmute') : t('toolbar.mute')}
-                  aria-pressed={tab.muted}
-                  onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-                />
-              {/if}
               <PageActions {tab} />
             </div>
           </li>

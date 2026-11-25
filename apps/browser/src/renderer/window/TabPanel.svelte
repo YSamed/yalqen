@@ -266,17 +266,22 @@
 
 {#snippet tabRow(tab: TabSnapshot)}
   {@const tabLabel = label(tab)}
+  {@const audio = tab.audible || tab.muted}
   <IconButton
     size="lg"
     variant={tab.id === activeTabId ? 'surface' : 'ghost'}
-    class="tab-icon"
-    label={tabLabel}
-    tabindex={-1}
-    aria-pressed={selected.has(tab.id)}
-    onclick={(e) => selectTab(e, tab.id)}
+    class={audio ? 'tab-icon audio' : 'tab-icon'}
+    label={audio ? (tab.muted ? t('tabPanel.unmute') : t('tabPanel.mute')) : tabLabel}
+    tabindex={audio ? 0 : -1}
+    aria-pressed={audio ? tab.muted : selected.has(tab.id)}
+    onclick={(e) => (audio ? send({ type: 'toggle-mute', id: tab.id }) : selectTab(e, tab.id))}
     onauxclick={(e) => e.button === 1 && send({ type: 'close-tab', id: tab.id })}
   >
     {@render favicon(tab, 16)}
+    {#if audio}
+      <span class="audio-glyph" aria-hidden="true"><Icon name={tab.muted ? 'muted' : 'sound'} size={15} /></span>
+      <span class="audio-badge" class:muted={tab.muted} aria-hidden="true"></span>
+    {/if}
   </IconButton>
   <div class="pill">
     {@render selectButton(tab, tabLabel)}
@@ -344,17 +349,6 @@
         <Icon name="private" size={13} />
       </span>{/if}
   </button>
-  {#if tab.audible || tab.muted}
-    <IconButton
-      size="sm"
-      tone="muted"
-      icon={tab.muted ? 'muted' : 'sound'}
-      class="audio"
-      label={tab.muted ? t('tabPanel.unmute') : t('tabPanel.mute')}
-      aria-pressed={tab.muted}
-      onclick={() => send({ type: 'toggle-mute', id: tab.id })}
-    />
-  {/if}
 {/snippet}
 
 {#snippet sectionBody(section: (typeof sections)[number])}
@@ -1236,8 +1230,39 @@
     display: none;
   }
 
-  .row:not(:hover, :focus-within) :global(.audio) {
-    margin-right: 4px;
+  .row :global(.tab-icon.audio) {
+    position: relative;
+  }
+
+  .audio-glyph {
+    position: absolute;
+    inset: 0;
+    display: none;
+    place-items: center;
+    color: var(--text);
+  }
+
+  :global(.tab-icon.audio:is(:hover, :focus-visible)) .audio-glyph {
+    display: grid;
+  }
+
+  :global(.tab-icon.audio:is(:hover, :focus-visible)) .favicon,
+  :global(.tab-icon.audio:is(:hover, :focus-visible)) .audio-badge {
+    visibility: hidden;
+  }
+
+  .audio-badge {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .audio-badge.muted {
+    background: var(--text-muted);
   }
 
   .dragging,

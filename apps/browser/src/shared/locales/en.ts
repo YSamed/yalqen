@@ -866,8 +866,6 @@ export const en = {
     'Developer window: clean session, deleted when the windows close; ad blocking and third-party cookie blocking off',
   'toolbar.privateTab': "Private tab: history isn't saved, cookies are deleted when the tabs close",
   'toolbar.addressTitle': 'Search or enter address (⌘L)',
-  'toolbar.unmute': 'Unmute',
-  'toolbar.mute': 'Mute',
   'toolbar.pageActions': 'Page actions',
   'toolbar.removeBookmark': 'Remove bookmark',
   'toolbar.addBookmark': 'Add bookmark',

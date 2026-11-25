@@ -874,8 +874,6 @@ export const tr: Record<MessageKey, string> = {
     'Geliştirici penceresi: temiz oturum, reklam ve üçüncü taraf çerez engeli kapalı, pencereler kapanınca silinir',
   'toolbar.privateTab': 'Gizli sekme: geçmiş kaydedilmez, çerezler sekmeler kapanınca silinir',
   'toolbar.addressTitle': 'Ara veya adres yaz (⌘L)',
-  'toolbar.unmute': 'Sesi aç',
-  'toolbar.mute': 'Sessize al',
   'toolbar.pageActions': 'Sayfa işlemleri',
   'toolbar.removeBookmark': 'Yer iminden kaldır',
   'toolbar.addBookmark': 'Yer imlerine ekle',
