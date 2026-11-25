@@ -135,7 +135,7 @@ test('manifest messages are localized case-insensitively', () => {
   assert.equal(localize('__MSG_missing__', messages), '__MSG_missing__');
 });
 
-test('popups open under the button and stay inside the window', () => {
+test('popups open under the button, or above it near the bottom, and stay inside the window', () => {
   const anchor = { x: 900, y: 8, width: 28, height: 28 };
   assert.deepEqual(popupBounds(anchor, { width: 300, height: 200 }, { width: 1280, height: 800 }), {
     x: 628,
@@ -157,6 +157,14 @@ test('popups open under the button and stay inside the window', () => {
       width: 25,
       height: 25,
     },
+  );
+  assert.deepEqual(
+    popupBounds({ x: 111, y: 777, width: 35, height: 35 }, { width: 380, height: 600 }, { width: 1249, height: 820 }),
+    { x: 8, y: 171, width: 380, height: 600 },
+  );
+  assert.deepEqual(
+    popupBounds({ x: 111, y: 300, width: 35, height: 35 }, { width: 380, height: 900 }, { width: 1249, height: 400 }),
+    { x: 8, y: 8, width: 380, height: 286 },
   );
 });
 

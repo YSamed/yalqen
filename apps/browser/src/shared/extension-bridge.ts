@@ -10,6 +10,9 @@ export const ExtensionBridgeChannel = {
   sidePanel: 'yalqen-extension-bridge:side-panel',
   action: 'yalqen-extension-bridge:action',
   webAuthFlow: 'yalqen-extension-bridge:web-auth-flow',
+  netRequest: 'yalqen-extension-bridge:net-request',
+  frames: 'yalqen-extension-bridge:frames',
+  queryTabs: 'yalqen-extension-bridge:query-tabs',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;
@@ -45,9 +48,35 @@ export type ExtensionBridgeEvent =
   | 'downloads.onDeterminingFilename'
   | 'sidePanel.onOpened'
   | 'sidePanel.onClosed'
-  | 'action.onClicked';
+  | 'action.onClicked'
+  | 'runtime.onInstalled';
 
 export const WINDOW_ID_NONE = -1;
+
+export function urlMatchesPattern(pattern: string, raw: string): boolean {
+  if (pattern === '<all_urls>') return /^(https?|wss?|ftp|file|data):/.test(raw);
+  const match = /^(\*|[a-z][a-z0-9+.-]*):\/\/([^/]*)(\/.*)$/.exec(pattern);
+  if (!match) return false;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  const [, scheme, host, path] = match;
+  const protocol = url.protocol.slice(0, -1);
+  if (scheme === '*' ? protocol !== 'http' && protocol !== 'https' : scheme !== protocol) return false;
+  const hostname = url.hostname.toLowerCase();
+  const wanted = host!.toLowerCase();
+  if (
+    wanted !== '*' &&
+    wanted !== hostname &&
+    !(wanted.startsWith('*.') && (hostname === wanted.slice(2) || hostname.endsWith(wanted.slice(1))))
+  )
+    return false;
+  const glob = new RegExp(`^${path!.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+  return glob.test(url.pathname + url.search);
+}
 
 export interface ExtensionWindowState {
   id: number;

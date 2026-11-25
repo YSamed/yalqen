@@ -25,6 +25,7 @@ import {
   fragmentOnly,
   shortcutMatches,
   suggestedShortcut,
+  urlMatchesPattern,
 } from '../../shared/extension-bridge.js';
 import { callCookies, chromeCookieChange, cookieUrl, extensionGrant, hostPermitted } from './extension-cookies.js';
 import { ExtensionMenus } from './extension-menus.js';
@@ -35,6 +36,7 @@ import type { DownloadEntry } from '../library/downloads.js';
 import { SidePanelApi } from './side-panel-api.js';
 import { ActionApi, type ActionState } from './action-api.js';
 import { SilentAuthFlows } from './auth-flow.js';
+import { NET_REQUEST_PERMISSIONS, type NetRequestRules } from './net-request.js';
 
 const ACTION_COMMANDS = new Set(['_execute_action', '_execute_browser_action', '_execute_page_action']);
 
@@ -70,6 +72,7 @@ export class ExtensionBridge {
   private readonly menus = new ExtensionMenus();
   private readonly notifications = new Map<string, Map<string, Notification>>();
   private library: ExtensionLibrary | null = null;
+  private netRequest: NetRequestRules | null = null;
   private readonly historyListeners = new Set<string>();
   private readonly filenameListeners = new Set<string>();
   private readonly filenameRequests = new Map<
@@ -130,6 +133,13 @@ export class ExtensionBridge {
     ipcMain.handle(ExtensionBridgeChannel.webAuthFlow, (event, details) =>
       this.webAuthFlow(this.frameExtension(event), details),
     );
+    ipcMain.handle(ExtensionBridgeChannel.netRequest, (event, method, args) =>
+      this.callNetRequest(this.frameExtension(event), method, args),
+    );
+    ipcMain.handle(ExtensionBridgeChannel.queryTabs, (event, query) =>
+      this.queryTabs(this.frameExtension(event), query, event.sender),
+    );
+    ipcMain.handle(ExtensionBridgeChannel.frames, (event, tabId) => this.frameList(this.frameExtension(event), tabId));
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
       const contents = event.sender;
       if (contents.session !== session || event.senderFrame !== contents.mainFrame || this.frames.has(contents)) return;
@@ -183,6 +193,10 @@ export class ExtensionBridge {
         }
       },
     });
+  }
+
+  attachNetRequest(rules: NetRequestRules): void {
+    this.netRequest = rules;
   }
 
   chooseDownloadName(entry: DownloadEntry): Promise<string | null> | null {
@@ -291,6 +305,15 @@ export class ExtensionBridge {
     this.permitted(extensionId, 'sidePanel');
     if (typeof method !== 'string') throw new Error('Unsupported sidePanel method');
     return this.sidePanels.call(extensionId, method, Array.isArray(args) ? args : []);
+  }
+
+  private callNetRequest(extensionId: string, method: unknown, args: unknown): Promise<unknown> {
+    if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
+    const permissions = this.grant(extensionId).permissions;
+    if (!NET_REQUEST_PERMISSIONS.some((permission) => permissions.includes(permission)))
+      throw new Error('Missing declarativeNetRequest permission');
+    if (!this.netRequest || typeof method !== 'string') throw new Error('Unsupported declarativeNetRequest method');
+    return this.netRequest.call(extensionId, method, Array.isArray(args) ? args : []);
   }
 
   private callLibrary(extensionId: string, namespace: unknown, method: unknown, args: unknown): unknown {
@@ -408,6 +431,20 @@ export class ExtensionBridge {
     return true;
   }
 
+  dispatchInstalled(extensionId: string, details: unknown, attempt = 0): void {
+    const extension = this.session.extensions.getExtension(extensionId);
+    if (!extension) return;
+    this.session.serviceWorkers.startWorkerForScope(extension.url).then(
+      (worker) => {
+        if (!worker.isDestroyed()) worker.send(ExtensionBridgeChannel.event, 'runtime.onInstalled', [details]);
+      },
+      () => {
+        // The worker registers a moment after the extension loads.
+        if (attempt < 10) setTimeout(() => this.dispatchInstalled(extensionId, details, attempt + 1), 500);
+      },
+    );
+  }
+
   // A sleeping MV3 worker has no receiver, so start it before handing over a user action.
   private deliver(extensionId: string, name: ExtensionBridgeEvent, args: unknown[]): void {
     for (const receiver of this.frames.values()) if (receiver.extensionId() === extensionId) receiver.send(name, args);
@@ -495,6 +532,11 @@ export class ExtensionBridge {
     worker.ipc.handle(ExtensionBridgeChannel.webAuthFlow, (_event, details) =>
       this.webAuthFlow(extensionId, details, worker),
     );
+    worker.ipc.handle(ExtensionBridgeChannel.netRequest, (_event, method, args) =>
+      this.callNetRequest(extensionId, method, args),
+    );
+    worker.ipc.handle(ExtensionBridgeChannel.queryTabs, (_event, query) => this.queryTabs(extensionId, query));
+    worker.ipc.handle(ExtensionBridgeChannel.frames, (_event, tabId) => this.frameList(extensionId, tabId));
   }
 
   private frameExtension(event: IpcMainInvokeEvent): string {
@@ -636,6 +678,54 @@ export class ExtensionBridge {
       const visible = seesUrls ? change : { status: change.status };
       receiver.send(name, [contents.id, visible, this.tab(contents, extensionId)]);
     }
+  }
+
+  // Electron's own tabs.query also lists extension popups and side panels, so a popup asking for the active tab gets itself.
+  private queryTabs(extensionId: string, raw: unknown, caller?: WebContents): Record<string, unknown>[] {
+    if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
+    const query = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+    const windows = this.host.windows();
+    const lastFocused = (windows.find((window) => window.focused) ?? windows[0])?.id;
+    const callerWindow = caller ? this.host.windowId(caller) : null;
+    const current = windows.some((window) => window.id === callerWindow) ? callerWindow : lastFocused;
+    const patterns = typeof query.url === 'string' ? [query.url] : Array.isArray(query.url) ? query.url : null;
+    return [...this.watched]
+      .filter((contents) => !contents.isDestroyed() && this.host.isTab(contents))
+      .filter((contents) => {
+        const windowId = this.host.windowId(contents);
+        if (typeof query.active === 'boolean' && this.host.isActive(contents) !== query.active) return false;
+        if (typeof query.highlighted === 'boolean' && this.host.isActive(contents) !== query.highlighted) return false;
+        if (typeof query.currentWindow === 'boolean' && (windowId === current) !== query.currentWindow) return false;
+        if (typeof query.lastFocusedWindow === 'boolean' && (windowId === lastFocused) !== query.lastFocusedWindow)
+          return false;
+        if (typeof query.windowId === 'number' && windowId !== (query.windowId === -2 ? current : query.windowId))
+          return false;
+        if (typeof query.audible === 'boolean' && contents.isCurrentlyAudible() !== query.audible) return false;
+        if (typeof query.muted === 'boolean' && contents.isAudioMuted() !== query.muted) return false;
+        if (typeof query.status === 'string' && (contents.isLoading() ? 'loading' : 'complete') !== query.status)
+          return false;
+        return (
+          !patterns ||
+          patterns.some((pattern) => typeof pattern === 'string' && urlMatchesPattern(pattern, contents.getURL()))
+        );
+      })
+      .map((contents) => this.tab(contents, extensionId));
+  }
+
+  private frameList(extensionId: string, tabId: unknown): Record<string, unknown>[] | null {
+    this.permitted(extensionId, 'webNavigation');
+    const contents = typeof tabId === 'number' ? this.tabContents(tabId) : null;
+    if (!contents) return null;
+    const frameId = (target: WebFrameMain) => (target.parent ? target.frameTreeNodeId : 0);
+    return contents.mainFrame.framesInSubtree.map((frame) => ({
+      frameId: frameId(frame),
+      parentFrameId: frame.parent ? frameId(frame.parent) : -1,
+      processId: frame.osProcessId,
+      url: frame.url,
+      errorOccurred: false,
+      frameType: frame.parent ? 'sub_frame' : 'outermost_frame',
+      documentLifecycle: 'active',
+    }));
   }
 
   // Chrome numbers the main frame 0 and other frames by frame tree node id, like scripting.executeScript does.

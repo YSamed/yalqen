@@ -18,11 +18,14 @@ export function sanitizeAnchor(raw: unknown): AnchorRect {
 }
 
 export function popupBounds(anchor: AnchorRect, preferred: Size, area: Size): Rectangle {
-  const y = Math.round(anchor.y + anchor.height + GAP);
+  const below = Math.round(anchor.y + anchor.height + GAP);
+  const roomBelow = area.height - below - EDGE;
+  const roomAbove = anchor.y - GAP - EDGE;
+  const opensUp = roomAbove > roomBelow;
   const width = clamp(Math.ceil(preferred.width), MIN_SIZE, Math.min(MAX_WIDTH, area.width - 2 * EDGE));
-  const height = clamp(Math.ceil(preferred.height), MIN_SIZE, Math.min(MAX_HEIGHT, area.height - y - EDGE));
+  const height = clamp(Math.ceil(preferred.height), MIN_SIZE, Math.min(MAX_HEIGHT, opensUp ? roomAbove : roomBelow));
   const x = Math.round(clamp(anchor.x + anchor.width - width, EDGE, area.width - width - EDGE));
-  return { x, y, width, height };
+  return { x, y: opensUp ? Math.round(anchor.y - GAP - height) : below, width, height };
 }
 
 interface ExtensionPopupRequest {
@@ -93,8 +96,10 @@ export class ExtensionPopup {
   }
 
   private closeView(view: WebContentsView): void {
+    // A closing popup can blur after Electron has already dropped the view's webContents.
+    const contents = view.webContents as WebContents | undefined;
     this.detach(view);
-    if (!view.webContents.isDestroyed()) view.webContents.close();
+    if (contents && !contents.isDestroyed()) contents.close();
   }
 
   private detach(view: WebContentsView): void {

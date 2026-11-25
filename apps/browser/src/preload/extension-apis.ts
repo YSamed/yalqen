@@ -19,6 +19,9 @@ interface Bridge {
   library(namespace: string, method: string, args: unknown[]): Promise<unknown>;
   sidePanel(method: string, args: unknown[]): Promise<unknown>;
   action(method: string, args: unknown[]): Promise<unknown>;
+  netRequest(method: string, args: unknown[]): Promise<unknown>;
+  frames(tabId: unknown): Promise<{ frameId: number }[] | null>;
+  queryTabs(query: unknown): Promise<unknown[]>;
   silentWebAuthFlow(details: unknown): Promise<string>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
@@ -40,6 +43,9 @@ const bridge: Bridge = {
   library: (namespace, method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.library, namespace, method, args),
   sidePanel: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.sidePanel, method, args),
   action: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.action, method, args),
+  netRequest: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.netRequest, method, args),
+  frames: (tabId) => ipcRenderer.invoke(ExtensionBridgeChannel.frames, tabId),
+  queryTabs: (query) => ipcRenderer.invoke(ExtensionBridgeChannel.queryTabs, query),
   silentWebAuthFlow: (details) =>
     ipcRenderer.invoke(ExtensionBridgeChannel.webAuthFlow, details).catch((error: Error) => {
       throw new Error(error.message.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, ''));
@@ -58,6 +64,7 @@ function installExtensionApis(api: Bridge): void {
   const runtime = chromeApi?.runtime as
     | {
         id: string;
+        dynamicId?: string;
         getManifest(): {
           permissions?: string[];
           commands?: Record<string, { description?: string; suggested_key?: unknown }>;
@@ -118,11 +125,13 @@ function installExtensionApis(api: Bridge): void {
     settle(api.createTab(properties ?? {}), callback),
   );
   define(tabs, 'remove', (ids: unknown, callback: Callback) => settle(api.removeTabs(ids), callback));
+  define(tabs, 'query', (query: unknown, callback: Callback) => settle(api.queryTabs(query), callback));
   define(tabs, 'getCurrent', (callback: Callback) => settle(api.currentTab(), callback));
   const tabUpdated = event('tabs.onUpdated');
   const tabRemoved = event('tabs.onRemoved');
   define(tabs, 'onUpdated', tabUpdated);
   define(tabs, 'onRemoved', tabRemoved);
+  define(runtime as unknown as Record<string, unknown>, 'onInstalled', event('runtime.onInstalled'));
 
   if (!chromeApi.cookies && permissions.includes('cookies')) {
     const call = (method: string) => (details: unknown, callback: Callback) =>
@@ -248,7 +257,22 @@ function installExtensionApis(api: Bridge): void {
       onReferenceFragmentUpdated: event('webNavigation.onReferenceFragmentUpdated'),
       onCreatedNavigationTarget: event(),
       onTabReplaced: event(),
+      getAllFrames: (details: { tabId?: unknown } | undefined, callback: Callback) =>
+        settle(api.frames(details?.tabId), callback),
+      getFrame: (details: { tabId?: unknown; frameId?: unknown } | undefined, callback: Callback) =>
+        settle(
+          api
+            .frames(details?.tabId)
+            .then((frames) => frames?.find(({ frameId }) => frameId === details?.frameId) ?? null),
+          callback,
+        ),
     });
+  }
+
+  const extensionNamespace = chromeApi.extension as Record<string, unknown> | undefined;
+  for (const name of ['isAllowedFileSchemeAccess', 'isAllowedIncognitoAccess']) {
+    if (extensionNamespace && typeof extensionNamespace[name] !== 'function')
+      define(extensionNamespace, name, (callback: Callback) => settle(Promise.resolve(false), callback));
   }
 
   const library = (namespace: string, methods: string[], events: Record<string, ExtensionBridgeEvent | undefined>) => {
@@ -505,15 +529,98 @@ function installExtensionApis(api: Bridge): void {
           api.windows().then(({ windows }) => windows),
           lastArgument(args),
         ),
+      // shortcut: windows.create opens the page as a tab in a browser window, not a separate popup window; add real popup windows if an extension needs its own window.
+      create: (properties: { url?: unknown } | undefined, callback: Callback) => {
+        const url = Array.isArray(properties?.url) ? properties.url[0] : properties?.url;
+        return settle(
+          api.createTab({ url, active: true }).then((tab) => ({
+            id: (tab as { windowId?: number }).windowId,
+            focused: true,
+            incognito: false,
+            alwaysOnTop: false,
+            type: 'normal',
+            state: 'normal',
+            tabs: [tab],
+          })),
+          callback,
+        );
+      },
+      update: (id: unknown, _info: unknown, callback: Callback) =>
+        settle(
+          pick(({ windows }) => windows.find((window) => window.id === id)),
+          callback,
+        ),
       onCreated: event('windows.onCreated'),
       onRemoved: event('windows.onRemoved'),
       onFocusChanged: event('windows.onFocusChanged'),
     });
   }
 
-  const bridged = ['cookies', 'identity', 'history', 'bookmarks', 'downloads', 'downloads.open', 'sidePanel'].filter(
-    (name) => permissions.includes(name),
-  );
+  const netRequestPermissions = ['declarativeNetRequest', 'declarativeNetRequestWithHostAccess'];
+  if (netRequestPermissions.some((name) => permissions.includes(name))) {
+    const netRequestCall =
+      (method: string) =>
+      (...args: unknown[]) =>
+        settle(
+          api.netRequest(
+            method,
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        );
+    define(chromeApi, 'declarativeNetRequest', {
+      ...Object.fromEntries(
+        [
+          'getAvailableStaticRuleCount',
+          'getDisabledRuleIds',
+          'getDynamicRules',
+          'getEnabledRulesets',
+          'getMatchedRules',
+          'getSessionRules',
+          'isRegexSupported',
+          'setExtensionActionOptions',
+          'updateDynamicRules',
+          'updateEnabledRulesets',
+          'updateSessionRules',
+          'updateStaticRules',
+        ].map((method) => [method, netRequestCall(method)]),
+      ),
+      DYNAMIC_RULESET_ID: '_dynamic',
+      SESSION_RULESET_ID: '_session',
+      GUARANTEED_MINIMUM_STATIC_RULES: 30000,
+      MAX_NUMBER_OF_DYNAMIC_RULES: 30000,
+      MAX_NUMBER_OF_UNSAFE_DYNAMIC_RULES: 5000,
+      MAX_NUMBER_OF_SESSION_RULES: 5000,
+      MAX_NUMBER_OF_UNSAFE_SESSION_RULES: 5000,
+      MAX_NUMBER_OF_REGEX_RULES: 1000,
+      MAX_NUMBER_OF_STATIC_RULESETS: 100,
+      MAX_NUMBER_OF_ENABLED_STATIC_RULESETS: 50,
+      MAX_GETMATCHEDRULES_CALLS_PER_INTERVAL: 20,
+      GETMATCHEDRULES_QUOTA_INTERVAL: 10,
+      RuleActionType: {
+        BLOCK: 'block',
+        REDIRECT: 'redirect',
+        ALLOW: 'allow',
+        UPGRADE_SCHEME: 'upgradeScheme',
+        MODIFY_HEADERS: 'modifyHeaders',
+        ALLOW_ALL_REQUESTS: 'allowAllRequests',
+      },
+      onRuleMatchedDebug: event(),
+    });
+    if (runtime.dynamicId) api.netRequest('useDynamicId', [runtime.dynamicId]).catch(() => undefined);
+  }
+
+  const bridged = [
+    'cookies',
+    'identity',
+    'history',
+    'bookmarks',
+    'downloads',
+    'downloads.open',
+    'sidePanel',
+    ...netRequestPermissions,
+    'declarativeNetRequestFeedback',
+  ].filter((name) => permissions.includes(name));
   const native = chromeApi.permissions as
     | {
         contains(query: unknown): Promise<boolean>;

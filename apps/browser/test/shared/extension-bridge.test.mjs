@@ -10,6 +10,7 @@ const {
   fragmentOnly,
   shortcutMatches,
   suggestedShortcut,
+  urlMatchesPattern,
   WINDOW_ID_NONE,
 } = tabs;
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
@@ -95,4 +96,14 @@ test('fragmentOnly detects a hash-only change', () => {
   assert.equal(fragmentOnly('https://a.test/p?a=1', 'https://a.test/p?a=2#x'), false);
   assert.equal(fragmentOnly('https://a.test/p#x', 'https://a.test/p#x'), false);
   assert.equal(fragmentOnly(undefined, 'https://a.test/p#x'), false);
+});
+
+test('tab url queries follow Chrome match patterns', () => {
+  assert.equal(urlMatchesPattern('https://*.example.com/*', 'https://www.example.com/a?b=1'), true);
+  assert.equal(urlMatchesPattern('https://*.example.com/*', 'https://example.com/'), true);
+  assert.equal(urlMatchesPattern('https://*.example.com/*', 'https://notexample.com/'), false);
+  assert.equal(urlMatchesPattern('*://site.test/login*', 'http://site.test/login?next=1'), true);
+  assert.equal(urlMatchesPattern('*://site.test/login*', 'https://site.test/home'), false);
+  assert.equal(urlMatchesPattern('<all_urls>', 'https://a.test/'), true);
+  assert.equal(urlMatchesPattern('<all_urls>', `chrome-extension://${ID}/popup.html`), false);
 });

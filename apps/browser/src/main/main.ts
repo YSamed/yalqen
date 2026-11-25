@@ -75,6 +75,8 @@ import { ScreenshotWatcher } from './library/screenshot-watcher.js';
 import { ExtensionBridge } from './extensions/extension-bridge.js';
 import { WINDOW_ID_NONE } from '../shared/extension-bridge.js';
 import { ExtensionPopup } from './extensions/extension-popup.js';
+import { NetRequestRules } from './extensions/net-request.js';
+import { InstallEvents } from './extensions/install-events.js';
 import { ExtensionManager } from './extensions/extensions.js';
 import { registerExtensionsIpc } from './extensions/extensions-ipc.js';
 import { registerWebStoreApi } from './extensions/web-store-api.js';
@@ -603,6 +605,11 @@ function startBrowser(): void {
   });
   if (process.platform === 'darwin') screenshots.setEnabled(settings.get().screenshotsInDownloads);
   extensionBridge.attachLibrary({ history, bookmarks, downloads, downloadManager, bookmarksChanged });
+  const netRequest = new NetRequestRules(daily, path.join(userData, 'extension-net-rules.json'));
+  extensionBridge.attachNetRequest(netRequest);
+  new InstallEvents(daily, path.join(userData, 'extension-versions.json'), (id, details) =>
+    extensionBridge.dispatchInstalled(id, details),
+  );
 
   const agentTokens = new AgentTokenStore(userData, safeStorageCipher);
   const focusedFirst = () => (current ? [current, ...windows.filter((window) => window !== current)] : windows);
@@ -709,6 +716,7 @@ function startBrowser(): void {
     path.join(userData, 'adblock-engine.bin'),
     (session, url) => siteProtections.isAllowed('adBlocking', url, session === privateBrowsing),
     (details) => threatGuard.blocked(details),
+    (session, details) => netRequest.decide(session, details),
   );
   adBlocker.setEnabled(settings.get().adBlocking);
   const searchEngine = () => resolveSearchEngine(settings.get().searchEngine, settings.get().customSearchTemplate);
