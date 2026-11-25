@@ -28,6 +28,12 @@ test('a busy or missing edge gives no color', () => {
 });
 
 test('near-identical shades count as one color', () => {
-  const bitmap = strip(96, 4, (x) => (x % 2 ? [250, 250, 250] : [252, 253, 251]));
-  assert.match(edgeColor(bitmap, 96, 4), /^#fa|^#fc/);
+  const shades = [
+    [250, 250, 250],
+    [252, 253, 251],
+    [249, 251, 252],
+  ];
+  // Each shade alone covers a third of the samples, so only grouping them gives a color.
+  const bitmap = strip(96, 4, (x) => shades[Math.floor(x / 2) % 3]);
+  assert.equal(edgeColor(bitmap, 96, 4), '#fafafa');
 });
