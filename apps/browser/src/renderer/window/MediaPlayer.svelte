@@ -119,20 +119,20 @@
 </script>
 
 <section class="player" aria-label={t('widgets.media')} in:appear>
-  <IconButton
-    size="lg"
-    variant="surface"
-    class="play"
-    icon={playing ? 'pause' : 'play'}
-    label={playing ? t('widgets.pause') : t('widgets.play')}
-    onclick={toggle}
-  />
   <div
     class="pill"
     class:scrubbing={scrubbed !== null}
     class:skippable={media.canPrevious || media.canNext}
     bind:this={pill}
   >
+    <IconButton
+      size="sm"
+      variant="tonal"
+      class="play"
+      icon={playing ? 'pause' : 'play'}
+      label={playing ? t('widgets.pause') : t('widgets.play')}
+      onclick={toggle}
+    />
     {#if position !== null && media.duration !== null}
       <span class="fill" style:width="{progress * 100}%"></span>
       <div
@@ -188,11 +188,7 @@
 
 <style>
   .player {
-    display: flex;
     flex: none;
-    align-items: center;
-    gap: 6px;
-    height: var(--chrome-control-size);
     margin-top: auto;
     color: var(--text);
   }
@@ -200,25 +196,38 @@
   .pill {
     position: relative;
     display: flex;
-    flex: 1;
     align-items: center;
+    gap: 2px;
     min-width: 0;
-    height: 100%;
+    height: 40px;
+    padding-left: 6px;
     overflow: hidden;
-    border-radius: 999px;
-    background: var(--surface);
-    box-shadow: var(--shadow);
+    border-radius: 10px;
+    background: var(--card-tile);
+    transition: background var(--transition);
   }
 
-  :global([data-material='glass']) .pill {
-    box-shadow: var(--shadow), var(--rim);
+  .pill:hover {
+    background: var(--surface-hover);
+  }
+
+  .pill :global(.play) {
+    flex: none;
+    border-radius: 50%;
   }
 
   .fill {
     position: absolute;
-    inset: 0 auto 0 0;
-    background: color-mix(in srgb, var(--text) 9%, transparent);
+    inset: auto auto 0 0;
+    height: 2px;
+    border-radius: 0 2px 2px 0;
+    background: var(--accent);
     pointer-events: none;
+    transition: width 1s linear;
+  }
+
+  .pill.scrubbing .fill {
+    transition: none;
   }
 
   .track {
@@ -229,9 +238,9 @@
     gap: 8px;
     min-width: 0;
     height: 100%;
-    padding: 0 12px;
+    padding: 0 10px 0 6px;
     border: 0;
-    border-radius: 999px;
+    border-radius: 8px;
     color: inherit;
     font: inherit;
     font-size: var(--font-size);
@@ -273,5 +282,11 @@
 
   .pill.skippable:is(:hover, :focus-within):not(.scrubbing) .time {
     display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fill {
+      transition: none;
+    }
   }
 </style>
