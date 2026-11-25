@@ -22,7 +22,6 @@ import { preloadPath, rendererPath } from '../app/paths.js';
 import {
   NEW_TAB_URL,
   IpcChannel,
-  TOOLBAR_BUTTON_IDS,
   placeSidebarFooterItem,
   sanitizeSidebarFooterItems,
   type AnchorRect,
@@ -817,7 +816,7 @@ export class YalqenWindow {
       liveFolders: this.webApp || this.isPrivate ? [] : this.app.liveFolders.view(),
       sidebarVisible: !this.webApp,
       media: !this.webApp && this.app.settings.get().sidebarWidgets.includes('media') ? this.tabs.mediaState() : null,
-      toolbarButtons: this.webApp ? ['settings', 'downloads'] : [...TOOLBAR_BUTTON_IDS],
+      toolbarButtons: this.webApp ? ['settings', 'downloads'] : [],
       sidebarFooterItems: this.app.settings.get().sidebarFooterItems,
       material: this.material(),
       frameTheme: this.app.settings.get().frameTheme,
