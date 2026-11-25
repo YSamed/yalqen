@@ -16,6 +16,7 @@ interface FindBarOptions {
 export interface FindBarHost {
   window: BaseWindow;
   area: () => Rectangle;
+  tint: () => string | null;
   onFind: (text: string, forward: boolean, next: boolean) => void;
   onClose: () => void;
 }
@@ -45,7 +46,7 @@ export class FindBar {
     host.window.focus();
     view.webContents.focus();
     void this.loaded.then(() => {
-      if (this.opened && this.view === view) view.webContents.send(FindBarChannel.open);
+      if (this.opened && this.view === view) view.webContents.send(FindBarChannel.open, host.tint());
     });
   }
 

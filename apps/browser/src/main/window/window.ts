@@ -450,6 +450,7 @@ export class YalqenWindow {
     this.findHost = {
       window: this.window,
       area: () => this.pageArea,
+      tint: () => this.menuTint(),
       onFind: (text, forward, next) => this.tabs.findInPage(text, forward, next),
       onClose: () => {
         if (this.findTarget) this.tabs.stopFind(this.findTarget.tabId);
@@ -1574,6 +1575,8 @@ export class YalqenWindow {
       engines: SEARCH_ENGINES.map(({ id, label }) => ({ id, label })),
       material: this.material(),
       accent: this.accent(),
+      tint: this.menuTint(),
+      area: this.pageArea,
     });
     if (!this.tabs.activeIsPrivate) setImmediate(() => this.app.history.index());
   }
@@ -2947,6 +2950,7 @@ export class YalqenWindow {
     this.tabs.setPageLayout(bounds);
     this.sidePanel?.place(reserved ? bounds : null);
     this.pageArea = bounds;
+    this.commandBar.updateArea(this.window, bounds);
     this.placeFloatingChat();
     this.findBar.relayout(this.window);
     this.peek.relayout();

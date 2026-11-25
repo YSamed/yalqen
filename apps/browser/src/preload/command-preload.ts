@@ -3,6 +3,7 @@ import {
   CommandBarChannel as channel,
   type CommandBarAction,
   type CommandBarApi,
+  type CommandBarArea,
   type CommandBarOpen,
   type CommandBarSuggestions,
 } from '../shared/types.js';
@@ -17,6 +18,11 @@ const api: CommandBarApi = {
     const handler = (_event: IpcRendererEvent, suggestions: CommandBarSuggestions) => listener(suggestions);
     ipcRenderer.on(channel.suggestions, handler);
     return () => ipcRenderer.off(channel.suggestions, handler);
+  },
+  onArea: (listener) => {
+    const handler = (_event: IpcRendererEvent, area: CommandBarArea) => listener(area);
+    ipcRenderer.on(channel.area, handler);
+    return () => ipcRenderer.off(channel.area, handler);
   },
   send: (action: CommandBarAction) => ipcRenderer.send(channel.action, action),
 };

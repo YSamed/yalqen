@@ -38,7 +38,7 @@ export const FindBarChannel = {
 } as const;
 
 export interface FindBarApi {
-  onOpen(listener: () => void): () => void;
+  onOpen(listener: (tint: string | null) => void): () => void;
   onResult(listener: (result: FindResult) => void): () => void;
   send(action: FindBarAction): void;
 }

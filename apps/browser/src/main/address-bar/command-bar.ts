@@ -3,6 +3,7 @@ import {
   CommandBarChannel,
   type AddressSuggestion,
   type CommandBarAction,
+  type CommandBarArea,
   type CommandBarOpen,
   type DevCommandId,
   type SearchEngineId,
@@ -65,6 +66,13 @@ export class CommandBar {
     host.window.focus();
     view.webContents.focus();
     if (this.ready) view.webContents.send(CommandBarChannel.open, open);
+  }
+
+  // The bar follows the page area, so it moves with the sidebar like the new tab search does.
+  updateArea(window: BaseWindow, area: CommandBarArea): void {
+    if (!this.isOpenIn(window) || !this.lastOpen?.area) return;
+    this.lastOpen = { ...this.lastOpen, area };
+    this.view?.webContents.send(CommandBarChannel.area, area);
   }
 
   showSuggestions(window: BaseWindow, input: string, suggestions: AddressSuggestion[]): void {

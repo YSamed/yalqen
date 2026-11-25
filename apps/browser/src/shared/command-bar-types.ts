@@ -10,7 +10,16 @@ export interface CommandBarOpen {
   engines: { id: SearchEngineId; label: string }[];
   material: WindowMaterial;
   accent: string;
+  tint?: string | null;
+  area?: CommandBarArea;
   menu?: SidebarMenu;
+}
+
+export interface CommandBarArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export type SidebarMenuKind = 'tabs' | 'chats' | 'spaces' | 'downloads';
@@ -87,11 +96,13 @@ export type CommandBarAction =
 export const CommandBarChannel = {
   open: 'yalqen-command:open',
   suggestions: 'yalqen-command:suggestions',
+  area: 'yalqen-command:area',
   action: 'yalqen-command:action',
 } as const;
 
 export interface CommandBarApi {
   onOpen(listener: (open: CommandBarOpen) => void): () => void;
   onSuggestions(listener: (suggestions: CommandBarSuggestions) => void): () => void;
+  onArea(listener: (area: CommandBarArea) => void): () => void;
   send(action: CommandBarAction): void;
 }
