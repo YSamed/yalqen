@@ -157,7 +157,7 @@ function prepareProfile(browser, profile, template) {
   if (browser.kind !== 'yalqen') return;
   fs.writeFileSync(
     path.join(profile, 'settings.json'),
-    JSON.stringify({ version: 1, adBlocking: browser.adBlocking, welcomeCompleted: true, startupBehavior: 'restore' }),
+    JSON.stringify({ version: 1, adBlocking: browser.adBlocking, startupBehavior: 'restore' }),
   );
   if (browser.adBlocking) fs.copyFileSync(engineCache, path.join(profile, 'adblock-engine.bin'));
 }

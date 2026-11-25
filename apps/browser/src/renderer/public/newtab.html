@@ -132,26 +132,6 @@
         filter: var(--mark-shadow);
       }
 
-      .welcome {
-        margin: -8px 0 28px;
-        text-align: center;
-      }
-
-      .welcome h1 {
-        margin: 0;
-        font-size: clamp(26px, 3.6vw, 36px);
-        font-weight: 600;
-        letter-spacing: -0.03em;
-        line-height: 1.1;
-      }
-
-      .welcome p {
-        max-width: 400px;
-        margin: 10px auto 0;
-        color: var(--muted);
-        font-size: 14px;
-      }
-
       .search {
         --query-height: 52px;
         position: relative;
@@ -351,42 +331,6 @@
         display: block;
       }
 
-      .tips {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-        width: min(652px, 100%);
-        margin: 18px 0 0;
-        padding: 0;
-        list-style: none;
-      }
-
-      .tips li {
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: var(--chip);
-        box-shadow:
-          var(--rim),
-          0 0 0 0.5px rgb(16 18 24 / 0.08);
-      }
-
-      .tips strong,
-      .tips small {
-        display: block;
-      }
-
-      .tips strong {
-        margin-bottom: 3px;
-        font-size: 12px;
-        font-weight: 600;
-      }
-
-      .tips small {
-        color: var(--muted);
-        font-size: 11px;
-        line-height: 1.4;
-      }
-
       .cards {
         position: fixed;
         z-index: 2;
@@ -451,18 +395,11 @@
           width: auto;
         }
       }
-
-      @media (max-width: 560px) {
-        .tips {
-          grid-template-columns: 1fr;
-        }
-      }
     </style>
   </head>
   <body>
     <main>
       <img class="mark" src="yalqen://newtab/mark.png" alt="" width="72" height="72" />
-      __YALQEN_WELCOME_SLOT__
       <div class="search">
         <form id="search-form" class="search-field lg" action="yalqen://newtab/search" method="get" role="search">
           <div class="query-row">
@@ -530,11 +467,8 @@
           </div>
         </form>
       </div>
-      __YALQEN_TIPS_SLOT__
     </main>
-    <div class="cards">
-      __YALQEN_UPDATE_SLOT__ __YALQEN_ANNOUNCEMENT_SLOT__ __YALQEN_FEEDBACK_SLOT__ __YALQEN_REPO_PROMPT_SLOT__
-    </div>
+    <div class="cards">__YALQEN_UPDATE_SLOT__ __YALQEN_REPO_PROMPT_SLOT__</div>
     <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>
 </html>

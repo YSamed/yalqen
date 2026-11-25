@@ -71,8 +71,6 @@ app
         onPageSwipe: noop,
         onNewTabSearch: noop,
         onRepoPrompt: noop,
-        onAnnouncement: noop,
-        onFeedback: noop,
         onUpdateCard: noop,
         onHtmlFullScreenChange: noop,
         onVisit: () => null,

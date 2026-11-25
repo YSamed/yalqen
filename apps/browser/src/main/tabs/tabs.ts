@@ -30,7 +30,7 @@ import { unreadCount } from '../../shared/unread.js';
 import { leavesPinnedSite } from './pinned-home.js';
 import { previewKind } from '../../shared/previews.js';
 import { PREVIEW_WORLD_ID, type PreviewTab } from './previews.js';
-import { FEEDBACK_URL, REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
+import { REPO_URL, type RepoPromptAction } from '../app/repo-prompt.js';
 import {
   applyDeviceMetrics,
   resizeEmulation,
@@ -50,8 +50,6 @@ import { t } from '../../shared/i18n.js';
 import {
   internalNavigation,
   isAllowedFrom,
-  type AnnouncementAction,
-  type FeedbackAction,
   type UpdateCardAction,
   type InternalNavigation,
 } from '../pages/internal-navigation.js';
@@ -153,8 +151,6 @@ interface TabManagerOptions {
   onPageSwipe: (direction: 'back' | 'forward') => void;
   onNewTabSearch: (query: string) => void;
   onRepoPrompt: (action: RepoPromptAction) => void;
-  onAnnouncement: (action: AnnouncementAction) => void;
-  onFeedback: (action: FeedbackAction) => void;
   onUpdateCard: (action: UpdateCardAction) => void;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
   onVisit: (url: string, title: string) => string | null;
@@ -2755,18 +2751,9 @@ export class TabManager {
         if (navigation.action === 'star') void contents.loadURL(REPO_URL);
         else contents.reload();
         return;
-      case 'new-tab-announcement':
-        this.options.onAnnouncement(navigation.action);
-        contents.reload();
-        return;
       case 'new-tab-update':
         this.options.onUpdateCard(navigation.action);
         if (navigation.action === 'close') contents.reload();
-        return;
-      case 'new-tab-feedback':
-        this.options.onFeedback(navigation.action);
-        if (navigation.action === 'open') void contents.loadURL(FEEDBACK_URL);
-        else contents.reload();
         return;
     }
   }

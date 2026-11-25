@@ -36,10 +36,7 @@ function serve(sources, settings = path.resolve('src/renderer/settings.html')) {
     visits: () => [],
     downloads: { list: () => [], changes: new changeFeed.ChangeFeed() },
     bookmarks: () => ({ folders: [], bookmarks: [] }),
-    showWelcome: () => false,
     readyUpdate: () => null,
-    showAnnouncement: () => false,
-    showFeedback: () => false,
     showRepoPrompt: () => false,
     suggestions: () => [],
     ...sources,
@@ -76,20 +73,11 @@ test('the new tab serves matching local suggestions and its script', async () =>
   assert.ok((await mark.arrayBuffer()).byteLength > 0);
 });
 
-test('the repo prompt is only rendered when it is due and never beside the welcome', async () => {
+test('the repo prompt is only rendered when it is due', async () => {
   const body = async (sources) => (await serve(sources)(new Request('yalqen://newtab/'))).text();
   assert.doesNotMatch(await body({}), /class="repo-prompt"/);
   assert.match(await body({ showRepoPrompt: () => true }), /yalqen:\/\/newtab\/repo\?action=star/);
-  assert.doesNotMatch(await body({ showWelcome: () => true, showRepoPrompt: () => true }), /class="repo-prompt"/);
-});
-
-test('the announcement shows beside the welcome and replaces the repo prompt', async () => {
-  const body = async (sources) => (await serve(sources)(new Request('yalqen://newtab/'))).text();
-  assert.doesNotMatch(await body({}), /class="repo-prompt announcement"/);
-  assert.match(await body({ showAnnouncement: () => true }), /yalqen:\/\/newtab\/announcement\?action=try/);
-  assert.match(await body({ showWelcome: () => true, showAnnouncement: () => true }), /announcement\?action=close/);
-  const both = await body({ showAnnouncement: () => true, showRepoPrompt: () => true });
-  assert.doesNotMatch(both, /repo\?action=star/);
+  assert.doesNotMatch(await body({ showRepoPrompt: () => true }), /welcome|tips|announcement|feedback/);
 });
 
 test('the update card shows the ready version and replaces the repo prompt', async () => {
@@ -99,17 +87,6 @@ test('the update card shows the ready version and replaces the repo prompt', asy
   assert.match(shown, /yalqen:\/\/newtab\/update\?action=install/);
   assert.match(shown, /1\.2\.3/);
   assert.doesNotMatch(shown, /repo\?action=star/);
-});
-
-test('the feedback card is its own card and never shows on the welcome', async () => {
-  const body = async (sources) => (await serve(sources)(new Request('yalqen://newtab/'))).text();
-  assert.doesNotMatch(await body({}), /feedback\?action=open/);
-  assert.match(await body({ showFeedback: () => true }), /yalqen:\/\/newtab\/feedback\?action=open/);
-  assert.doesNotMatch(await body({ showWelcome: () => true, showFeedback: () => true }), /feedback\?action/);
-  const both = await body({ showAnnouncement: () => true, showFeedback: () => true, showRepoPrompt: () => true });
-  assert.match(both, /announcement\?action=try/);
-  assert.match(both, /feedback\?action=open/);
-  assert.doesNotMatch(both, /repo\?action=star/);
 });
 
 test('the downloads page updates itself when the list changes', async () => {

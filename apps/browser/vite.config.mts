@@ -47,7 +47,6 @@ export default defineConfig({
         command: page('command.html'),
         chat: page('chat.html'),
         find: page('find.html'),
-        welcome: page('welcome.html'),
         confirm: page('confirm.html'),
         peek: page('peek.html'),
       },

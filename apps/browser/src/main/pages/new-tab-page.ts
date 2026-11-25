@@ -5,11 +5,7 @@ import { htmlResponse, notFound, scriptResponse } from './responses.js';
 
 const NEW_TAB_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https: data:; script-src 'self'; connect-src 'self'";
-const WELCOME_MARKER = '__YALQEN_WELCOME_SLOT__';
-const TIPS_MARKER = '__YALQEN_TIPS_SLOT__';
-const ANNOUNCEMENT_MARKER = '__YALQEN_ANNOUNCEMENT_SLOT__';
 const UPDATE_MARKER = '__YALQEN_UPDATE_SLOT__';
-const FEEDBACK_MARKER = '__YALQEN_FEEDBACK_SLOT__';
 const REPO_PROMPT_MARKER = '__YALQEN_REPO_PROMPT_SLOT__';
 const ENGINE_MARKER = '__YALQEN_ENGINE_SLOT__';
 const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
@@ -21,40 +17,11 @@ export interface NewTabAssets {
 }
 
 export interface NewTabSources {
-  showWelcome: () => boolean;
   readyUpdate: () => string | null;
-  showAnnouncement: () => boolean;
-  showFeedback: () => boolean;
   showRepoPrompt: () => boolean;
   engine?: () => string;
   accent?: () => string;
   suggestions: (query: string) => AddressSuggestion[];
-}
-
-function renderWelcome(): string {
-  return `<section class="welcome" aria-labelledby="welcome-title">
-    <h1 id="welcome-title">${t('internalPages.welcomeTitle')}</h1>
-    <p>${t('internalPages.welcomeText')}</p>
-  </section>`;
-}
-
-function renderTips(): string {
-  return `<ul class="tips" aria-label="${t('internalPages.tips')}">
-    <li><strong>${t('internalPages.tipTabsTitle')}</strong><small>${t('internalPages.tipTabsText')}</small></li>
-    <li><strong>${t('internalPages.tipPinTitle')}</strong><small>${t('internalPages.tipPinText')}</small></li>
-    <li><strong>${t('internalPages.tipAdsTitle')}</strong><small>${t('internalPages.tipAdsText')}</small></li>
-  </ul>`;
-}
-
-function renderAnnouncement(): string {
-  return `<aside class="repo-prompt announcement" aria-labelledby="announcement-title">
-    <a class="icon-btn sm tone-muted repo-prompt-close" href="${NEW_TAB_URL}announcement?action=close" aria-label="${t('internalPages.close')}">${SMALL_FORGET_ICON}</a>
-    <strong id="announcement-title">${t('internalPages.announcementTitle')}</strong>
-    <p>${t('internalPages.announcementText')}</p>
-    <div class="repo-prompt-actions">
-      <a class="btn primary" href="${NEW_TAB_URL}announcement?action=try">${t('internalPages.announcementTry')}</a>
-    </div>
-  </aside>`;
 }
 
 function renderUpdate(version: string): string {
@@ -64,17 +31,6 @@ function renderUpdate(version: string): string {
     <p>${t('internalPages.updateText')}</p>
     <div class="repo-prompt-actions">
       <a class="btn primary" href="${NEW_TAB_URL}update?action=install">${t('internalPages.updateInstall')}</a>
-    </div>
-  </aside>`;
-}
-
-function renderFeedback(): string {
-  return `<aside class="repo-prompt feedback" aria-labelledby="feedback-title">
-    <a class="icon-btn sm tone-muted repo-prompt-close" href="${NEW_TAB_URL}feedback?action=close" aria-label="${t('internalPages.close')}">${SMALL_FORGET_ICON}</a>
-    <strong id="feedback-title">${t('internalPages.feedbackTitle')}</strong>
-    <p>${t('internalPages.feedbackText')}</p>
-    <div class="repo-prompt-actions">
-      <a class="btn primary" href="${NEW_TAB_URL}feedback?action=open">${t('internalPages.feedbackOpen')}</a>
     </div>
   </aside>`;
 }
@@ -104,23 +60,11 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
         headers: { 'cache-control': 'no-store' },
       });
     case '/': {
-      const welcomeVisible = sources.showWelcome();
       const readyUpdate = sources.readyUpdate();
-      const announcementVisible = sources.showAnnouncement();
-      const feedbackVisible = !welcomeVisible && sources.showFeedback();
       const slots: [string, string][] = [
-        [WELCOME_MARKER, welcomeVisible ? renderWelcome() : ''],
-        [TIPS_MARKER, welcomeVisible ? renderTips() : ''],
         [UPDATE_MARKER, readyUpdate ? renderUpdate(readyUpdate) : ''],
-        [ANNOUNCEMENT_MARKER, announcementVisible ? renderAnnouncement() : ''],
-        [FEEDBACK_MARKER, feedbackVisible ? renderFeedback() : ''],
         [ENGINE_MARKER, escapeHtml(sources.engine?.() ?? '')],
-        [
-          REPO_PROMPT_MARKER,
-          !welcomeVisible && !readyUpdate && !announcementVisible && !feedbackVisible && sources.showRepoPrompt()
-            ? renderRepoPrompt()
-            : '',
-        ],
+        [REPO_PROMPT_MARKER, !readyUpdate && sources.showRepoPrompt() ? renderRepoPrompt() : ''],
       ];
       const accent = sources.accent?.();
       const template = accent

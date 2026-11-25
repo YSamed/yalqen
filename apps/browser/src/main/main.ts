@@ -61,10 +61,8 @@ import {
   importFirefoxHistory,
   isFirefoxPlaces,
 } from './library/browser-import.js';
-import { WelcomeCard } from './window/welcome-card.js';
 import { importBookmarksWithDialog, importHistoryWithDialog } from './window/import-dialogs.js';
 import { ConfirmDialog } from './window/confirm-dialog.js';
-import { appearancePatch, invitationSources } from './app/invitation.js';
 import { setPageAccent } from './pages/responses.js';
 import { accentHex } from '../shared/accent.js';
 import { CertificateExceptions, handleCertificateErrors } from './privacy/certificates.js';
@@ -157,7 +155,6 @@ import { Updater, loadAutoUpdater } from './app/updater.js';
 import { UsageReporter, USAGE_ENDPOINT } from './app/usage.js';
 import { ChatPreferenceStore } from './agent-bridge/chat-preferences.js';
 import { YalqenWindow, type AppContext, type WindowOptions } from './window/window.js';
-import { glassAvailable } from './window/glass.js';
 import { createPageView } from './tabs/tabs.js';
 import { createOverlayView } from './window/overlay-view.js';
 import { openMiniWindow } from './window/mini-window.js';
@@ -723,10 +720,6 @@ function startBrowser(): void {
     preload: preloadPath('find-preload'),
     page: rendererPath('find.html'),
   });
-  const welcome = new WelcomeCard({
-    preload: preloadPath('welcome-preload'),
-    page: rendererPath('welcome.html'),
-  });
   const confirmDialog = new ConfirmDialog({
     preload: preloadPath('confirm-preload'),
     page: rendererPath('confirm.html'),
@@ -810,12 +803,9 @@ function startBrowser(): void {
     siteProtections,
     commandBar,
     findBar,
-    welcome,
     confirmDialog,
     history,
     repoPrompt,
-    dismissAnnouncement: () => settings.update({ dismissedAnnouncement: app.getVersion() }),
-    dismissFeedback: () => settings.update({ dismissedFeedback: app.getVersion() }),
     dismissUpdate: () => {
       const status = updater.status();
       if (status.state === 'ready') settings.update({ dismissedUpdate: status.version });
@@ -967,19 +957,12 @@ function startBrowser(): void {
       archived: () => (isPrivate ? [] : closedTabs),
       downloads: { list: () => downloads.list(), changes: downloadManager.changes },
       bookmarks: (query) => ({ folders: bookmarks.folders(), bookmarks: bookmarks.bookmarks(query) }),
-      showWelcome: () => {
-        const showWelcome = !settings.get().welcomeCompleted;
-        if (showWelcome) settings.update({ welcomeCompleted: true });
-        return showWelcome;
-      },
       readyUpdate: () => {
         const status = updater.status();
         return !isPrivate && status.state === 'ready' && settings.get().dismissedUpdate !== status.version
           ? status.version
           : null;
       },
-      showAnnouncement: () => !isPrivate && settings.get().dismissedAnnouncement !== app.getVersion(),
-      showFeedback: () => !isPrivate && settings.get().dismissedFeedback !== app.getVersion(),
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
       engine: () => searchEngine().label,
       accent: () => accentHex(settings.get().accentColor),
@@ -1340,7 +1323,6 @@ function startBrowser(): void {
     threatLists.stop();
     commandBar.destroy();
     findBar.destroy();
-    welcome.destroy();
     confirmDialog.destroy();
     extensionPopup.close();
     extensions.stopUpdates();
@@ -1435,49 +1417,8 @@ function startBrowser(): void {
     });
     if (restoring && restored.length > 0 && first) openExternal([first, ...rest], external);
     else if (rest.length > 0) openExternal(rest, external);
-    showInvitation();
   };
 
-  const showInvitation = () => {
-    const window = current;
-    if (bench || settings.get().invitationSeen || !window || window.isPrivate || window.isDeveloper || window.webApp)
-      return;
-    const sources = invitationSources([...arcSidebarSources(), ...chromiumProfiles('Bookmarks'), ...firefoxProfiles()]);
-    const values = settings.get();
-    welcome.show({
-      window: window.window,
-      open: {
-        name: values.displayName,
-        accent: values.accentColor,
-        theme: values.theme,
-        material: glassAvailable ? 'glass' : 'opaque',
-        sources: sources.map(({ id, browser, profile }) => ({ id, browser, profile })),
-      },
-      onAction: (action) => {
-        if (action.type === 'appearance') updateSettings(appearancePatch(action));
-        else if (action.type === 'name' && typeof action.name === 'string')
-          updateSettings({ displayName: action.name });
-      },
-      importFrom: async (request) => {
-        const source = sources.find((item) => item.id === request.source);
-        if (!source) return { ok: false, bookmarks: 0, visits: 0 };
-        try {
-          const bookmarks =
-            request.bookmarks === true ? (await context.importBookmarks(source.bookmarks)).bookmarks : 0;
-          const visits =
-            request.history === true && source.history ? (await context.importHistory(source.history)).visits : 0;
-          return { ok: true, bookmarks, visits };
-        } catch (error) {
-          console.warn('[invitation] could not import:', error);
-          return { ok: false, bookmarks: 0, visits: 0 };
-        }
-      },
-      onFinish: () => {
-        settings.update({ invitationSeen: true });
-        window.focus();
-      },
-    });
-  };
   void extensions.loadAll().then(() => {
     bench?.mark('extensions-loaded');
     if (!bench) extensions.scheduleUpdates();

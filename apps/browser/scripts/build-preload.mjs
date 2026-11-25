@@ -7,7 +7,6 @@ const PRELOADS = [
   'preload',
   'command-preload',
   'find-preload',
-  'welcome-preload',
   'confirm-preload',
   'peek-preload',
   'page-preload',

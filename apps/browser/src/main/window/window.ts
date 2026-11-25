@@ -54,7 +54,6 @@ import { DEFAULT_SPACE_ID, SPACE_ICONS, type SpaceView } from '../../shared/work
 import type { BookmarkImportResult, HistoryImportResult } from '../library/browser-import.js';
 import type { CertificateExceptions } from '../privacy/certificates.js';
 import type { CommandBar, CommandBarHost } from '../address-bar/command-bar.js';
-import type { WelcomeCard } from './welcome-card.js';
 import type { ConfirmDialog } from './confirm-dialog.js';
 import { contextMenuTemplate } from './context-menu.js';
 import {
@@ -212,12 +211,9 @@ export interface AppContext {
   siteProtections: SiteProtections;
   commandBar: CommandBar;
   findBar: FindBar;
-  welcome: WelcomeCard;
   confirmDialog: ConfirmDialog;
   history: HistoryStore;
   repoPrompt: RepoPrompt;
-  dismissAnnouncement: () => void;
-  dismissFeedback: () => void;
   dismissUpdate: () => void;
   installUpdate: () => void;
   updateReady: () => boolean;
@@ -523,7 +519,6 @@ export class YalqenWindow {
         this.peek.keepOnTop();
         this.findBar.keepOnTop(this.window);
         this.commandBar.keepOnTop(this.window);
-        app.welcome.keepOnTop(this.window);
         app.confirmDialog.keepOnTop(this.window);
         this.pushState();
         app.onWindowChange(persist);
@@ -534,14 +529,9 @@ export class YalqenWindow {
         else this.tabs.navigate(resolveInput(query, app.searchEngine()));
       },
       onRepoPrompt: (action) => app.repoPrompt.respond(action),
-      onFeedback: () => app.dismissFeedback(),
       onUpdateCard: (action) => {
         if (action === 'install') app.installUpdate();
         else app.dismissUpdate();
-      },
-      onAnnouncement: (action) => {
-        app.dismissAnnouncement();
-        if (action === 'try') this.openAgentPanel();
       },
       onHtmlFullScreenChange: (tabId, fullScreen) => {
         if (fullScreen) {

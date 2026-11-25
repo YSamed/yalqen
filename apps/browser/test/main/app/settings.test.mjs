@@ -37,7 +37,7 @@ test('unknown or mistyped fields fall back', () => {
       version: 1,
       searchEngine: 'google',
       customSearchTemplate: null,
-      theme: 'light',
+      theme: 'dark',
       darkSites: false,
       frameTheme: { colors: ['#de5a92'], intensity: 50, texture: 'none', textureStrength: 40 },
       startupBehavior: 'restore',
@@ -75,12 +75,8 @@ test('unknown or mistyped fields fall back', () => {
       askBeforeDownload: true,
       screenshotsInDownloads: false,
       downloadDirectory: null,
-      welcomeCompleted: false,
-      invitationSeen: false,
       displayName: '',
       accentColor: 'orange',
-      dismissedAnnouncement: '',
-      dismissedFeedback: '',
       dismissedUpdate: '',
       agentBridge: false,
       agentOrigins: [],
@@ -251,8 +247,8 @@ test('an update that changes nothing keeps the same settings and skips the write
     const before = store.get();
     assert.equal(store.update({ theme: before.theme, searchEngine: 'nope' }), before);
     assert.equal(fs.existsSync(store.file), false);
-    assert.notEqual(store.update({ theme: 'dark' }), before);
-    assert.equal(JSON.parse(fs.readFileSync(store.file, 'utf8')).theme, 'dark');
+    assert.notEqual(store.update({ theme: 'light' }), before);
+    assert.equal(JSON.parse(fs.readFileSync(store.file, 'utf8')).theme, 'light');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -273,7 +269,14 @@ test('the invitation name is trimmed, single-spaced and capped, and the accent s
   assert.equal(values.accentColor, 'ocean');
   assert.equal(sanitizeSettings({ displayName: 'x'.repeat(80) }).displayName.length, 40);
   assert.equal(sanitizeSettings({ accentColor: '#ff0000' }).accentColor, 'orange');
-  assert.equal(sanitizeSettings({ invitationSeen: 'yes' }).invitationSeen, false);
+  const legacy = sanitizeSettings({
+    invitationSeen: true,
+    welcomeCompleted: true,
+    dismissedAnnouncement: '1.0.0',
+    dismissedFeedback: '1.0.0',
+  });
+  for (const key of ['invitationSeen', 'welcomeCompleted', 'dismissedAnnouncement', 'dismissedFeedback'])
+    assert.equal(key in legacy, false);
 });
 
 test('space rules keep only valid, unique entries and cap at fifty', () => {

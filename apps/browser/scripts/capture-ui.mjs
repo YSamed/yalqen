@@ -353,10 +353,7 @@ Object.assign(api, {
         { id: 'b2', url: 'https://example.com/', title: 'Example', folderId: 'f1', createdAt: 2 },
       ],
     }),
-    showWelcome: () => false,
     readyUpdate: () => null,
-    showAnnouncement: () => false,
-    showFeedback: () => false,
     showRepoPrompt: () => false,
     suggestions: () => [],
   };

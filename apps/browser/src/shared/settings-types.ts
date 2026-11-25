@@ -52,12 +52,8 @@ export interface SettingsValues {
   askBeforeDownload: boolean;
   screenshotsInDownloads: boolean;
   downloadDirectory: string | null;
-  welcomeCompleted: boolean;
-  invitationSeen: boolean;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
-  dismissedAnnouncement: string;
-  dismissedFeedback: string;
   dismissedUpdate: string;
   agentBridge: boolean;
   agentOrigins: string[];
