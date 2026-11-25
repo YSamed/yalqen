@@ -37,6 +37,7 @@ import { SidePanelApi } from './side-panel-api.js';
 import { ActionApi, type ActionState } from './action-api.js';
 import { SilentAuthFlows } from './auth-flow.js';
 import { NET_REQUEST_PERMISSIONS, type NetRequestRules } from './net-request.js';
+import type { PopupWindowOptions } from './extension-windows.js';
 
 const ACTION_COMMANDS = new Set(['_execute_action', '_execute_browser_action', '_execute_page_action']);
 
@@ -44,6 +45,10 @@ export interface ExtensionBridgeHost {
   open(url: string | null, active: boolean): WebContents | null;
   close(contents: WebContents): boolean;
   isTab(contents: WebContents): boolean;
+  viewType(contents: WebContents): 'TAB' | 'POPUP' | 'SIDE_PANEL' | null;
+  openPopupWindow(url: string, options: PopupWindowOptions): ExtensionWindowState;
+  focusWindow(id: number): boolean;
+  removeWindow(id: number): boolean;
   windowId(contents: WebContents): number;
   isActive(contents: WebContents): boolean;
   windows(): ExtensionWindowState[];
@@ -138,6 +143,12 @@ export class ExtensionBridge {
     );
     ipcMain.handle(ExtensionBridgeChannel.queryTabs, (event, query) =>
       this.queryTabs(this.frameExtension(event), query, event.sender),
+    );
+    ipcMain.handle(ExtensionBridgeChannel.windowCall, (event, method, args) =>
+      this.windowCall(this.frameExtension(event), method, args),
+    );
+    ipcMain.handle(ExtensionBridgeChannel.contexts, (event, filter) =>
+      this.contexts(this.frameExtension(event), filter),
     );
     ipcMain.handle(ExtensionBridgeChannel.frames, (event, tabId) => this.frameList(this.frameExtension(event), tabId));
     ipcMain.on(ExtensionBridgeChannel.subscribe, (event) => {
@@ -536,6 +547,10 @@ export class ExtensionBridge {
       this.callNetRequest(extensionId, method, args),
     );
     worker.ipc.handle(ExtensionBridgeChannel.queryTabs, (_event, query) => this.queryTabs(extensionId, query));
+    worker.ipc.handle(ExtensionBridgeChannel.windowCall, (_event, method, args) =>
+      this.windowCall(extensionId, method, args, worker),
+    );
+    worker.ipc.handle(ExtensionBridgeChannel.contexts, (_event, filter) => this.contexts(extensionId, filter));
     worker.ipc.handle(ExtensionBridgeChannel.frames, (_event, tabId) => this.frameList(extensionId, tabId));
   }
 
@@ -710,6 +725,83 @@ export class ExtensionBridge {
         );
       })
       .map((contents) => this.tab(contents, extensionId));
+  }
+
+  private windowCall(extensionId: string, method: unknown, raw: unknown, worker?: ServiceWorkerMain): unknown {
+    if (!this.session.extensions.getExtension(extensionId)) throw new Error('Unknown extension');
+    const args = Array.isArray(raw) ? raw : [];
+    const state = (id: unknown) => this.host.windows().find((window) => window.id === id);
+    if (method === 'create') {
+      const options = (typeof args[0] === 'object' && args[0] !== null ? args[0] : {}) as Record<string, unknown>;
+      const url = Array.isArray(options.url) ? options.url[0] : options.url;
+      if (options.type === 'popup' || options.type === 'panel') {
+        const target = extensionTabUrl(url, extensionId);
+        if (!target) throw new Error('A popup window needs a url');
+        return { ...chromeWindow(this.host.openPopupWindow(target, options)), tabs: [] };
+      }
+      const tab = this.create(extensionId, { url, active: true }, worker) as { windowId: number };
+      return { ...chromeWindow(state(tab.windowId) ?? { id: tab.windowId, focused: true }), tabs: [tab] };
+    }
+    const id = args[0];
+    if (typeof id !== 'number' || !state(id)) throw new Error(`No window with id: ${String(id)}.`);
+    if (method === 'update') {
+      if ((args[1] as { focused?: unknown } | undefined)?.focused === true) this.host.focusWindow(id);
+      return chromeWindow(state(id)!);
+    }
+    if (method === 'remove') {
+      if (!this.host.removeWindow(id)) throw new Error('Only windows an extension opened can be closed.');
+      return undefined;
+    }
+    throw new Error('Unsupported windows method');
+  }
+
+  // Electron's own runtime.getContexts hits a NOTREACHED for Yalqen's popup and panel views and leaves them out.
+  private contexts(extensionId: string, raw: unknown): Record<string, unknown>[] {
+    const extension = this.session.extensions.getExtension(extensionId);
+    if (!extension) throw new Error('Unknown extension');
+    const filter = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+    const list = (key: string) => (Array.isArray(filter[key]) ? (filter[key] as unknown[]) : null);
+    const background = Object.values(this.session.serviceWorkers.getAllRunning()).some(
+      (worker) => worker.scope === extension.url,
+    )
+      ? [
+          {
+            contextType: 'BACKGROUND',
+            contextId: `${extensionId}-background`,
+            tabId: -1,
+            windowId: -1,
+            frameId: -1,
+            incognito: false,
+          },
+        ]
+      : [];
+    const documents = [...this.watched]
+      .filter((contents) => !contents.isDestroyed() && extensionIdOf(contents.getURL()) === extensionId)
+      .map((contents) => {
+        const type = this.host.viewType(contents) ?? 'OFFSCREEN_DOCUMENT';
+        const url = contents.getURL();
+        return {
+          contextType: type,
+          contextId: `${extensionId}-${contents.id}`,
+          tabId: type === 'TAB' ? contents.id : -1,
+          windowId: type === 'OFFSCREEN_DOCUMENT' ? -1 : this.host.windowId(contents),
+          frameId: 0,
+          documentUrl: url,
+          documentOrigin: new URL(url).origin,
+          incognito: false,
+        };
+      });
+    return [...background, ...documents].filter(
+      (context) =>
+        (list('contextTypes')?.includes(context.contextType) ?? true) &&
+        (list('contextIds')?.includes(context.contextId) ?? true) &&
+        (list('tabIds')?.includes(context.tabId) ?? true) &&
+        (list('windowIds')?.includes(context.windowId) ?? true) &&
+        (list('frameIds')?.includes(context.frameId) ?? true) &&
+        (list('documentUrls')?.includes((context as { documentUrl?: string }).documentUrl) ?? true) &&
+        (list('documentOrigins')?.includes((context as { documentOrigin?: string }).documentOrigin) ?? true) &&
+        (typeof filter.incognito !== 'boolean' || filter.incognito === context.incognito),
+    );
   }
 
   private frameList(extensionId: string, tabId: unknown): Record<string, unknown>[] | null {

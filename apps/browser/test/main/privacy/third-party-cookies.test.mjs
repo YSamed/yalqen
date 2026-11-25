@@ -43,7 +43,7 @@ test('cookie names are read from request and response headers', () => {
 test('cookie listeners are attached only while blocking is on', () => {
   const calls = [];
   const webRequest = Object.fromEntries(
-    ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [
+    ['onBeforeSendHeaders', 'onHeadersReceived', 'onCompleted', 'onErrorOccurred'].map((name) => [
       name,
       (...args) => calls.push([name, args.at(-1) !== null]),
     ]),
@@ -55,6 +55,7 @@ test('cookie listeners are attached only while blocking is on', () => {
   cookies.setThirdPartyCookieBlocking(session, true);
   assert.deepEqual(calls, [
     ['onBeforeSendHeaders', true],
+    ['onHeadersReceived', true],
     ['onCompleted', true],
     ['onErrorOccurred', true],
   ]);
@@ -62,6 +63,7 @@ test('cookie listeners are attached only while blocking is on', () => {
   cookies.setThirdPartyCookieBlocking(session, false);
   assert.deepEqual(calls, [
     ['onBeforeSendHeaders', true],
+    ['onHeadersReceived', true],
     ['onCompleted', false],
     ['onErrorOccurred', false],
   ]);
@@ -72,7 +74,7 @@ function fixture(allowed) {
   const removed = [];
   const session = {
     webRequest: Object.fromEntries(
-      ['onBeforeSendHeaders', 'onCompleted', 'onErrorOccurred'].map((name) => [
+      ['onBeforeSendHeaders', 'onHeadersReceived', 'onCompleted', 'onErrorOccurred'].map((name) => [
         name,
         (...args) => {
           listeners[name] = args.at(-1);

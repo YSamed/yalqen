@@ -35,9 +35,11 @@ const CONDITION_KEYS = new Set([
   'domainType',
   'tabIds',
   'excludedTabIds',
+  'responseHeaders',
+  'excludedResponseHeaders',
 ]);
 
-// shortcut: rules with conditions checked after the request starts (responseHeaders, topDomains) never match; evaluate them in onHeadersReceived if a blocker needs them.
+// shortcut: topDomains and other conditions newer than this list make a rule never match; add them here once a blocker uses them.
 const supported = (rule: NetRule) => Object.keys(rule.condition).every((key) => CONDITION_KEYS.has(key));
 
 const ACTION_RANK: Record<string, number> = {
@@ -61,18 +63,50 @@ export interface NetRequest {
   type: string;
   initiator: string | null;
   tabId: number;
+  responseHeaders?: Record<string, string[]>;
 }
 
 export interface RuleMatch {
   rule: NetRule;
   regex: RegExp | null;
+  rulesetId: string;
 }
 
 interface Compiled {
   rule: NetRule;
+  rulesetId: string;
   priority: number;
+  response: boolean;
   test: (request: NetRequest, url: ParsedUrl) => boolean;
   regex: () => RegExp | null;
+}
+
+interface HeaderCondition {
+  header?: unknown;
+  values?: unknown;
+  excludedValues?: unknown;
+}
+
+const valuePattern = (pattern: string) =>
+  new RegExp(
+    `^${pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.')}$`,
+    'i',
+  );
+
+function headerConditionMet(conditions: unknown, headers: Record<string, string[]>): boolean {
+  if (!Array.isArray(conditions)) return false;
+  const lower = Object.fromEntries(Object.entries(headers).map(([name, values]) => [name.toLowerCase(), values]));
+  return conditions.some(({ header, values, excludedValues }: HeaderCondition) => {
+    const present = typeof header === 'string' ? lower[header.toLowerCase()] : undefined;
+    if (!present) return false;
+    const matches = (list: unknown) =>
+      (strings(list) ?? []).some((pattern) => present.some((value) => valuePattern(pattern).test(value)));
+    if (excludedValues !== undefined && matches(excludedValues)) return false;
+    return values === undefined || matches(values);
+  });
 }
 
 interface ParsedUrl {
@@ -161,7 +195,7 @@ export function validateRule(raw: unknown): NetRule {
   return { id, priority: rule!.priority, action: rule!.action!, condition };
 }
 
-function compile(rule: NetRule): Compiled {
+function compile(rule: NetRule, rulesetId: string): Compiled {
   const condition = rule.condition;
   const flags = condition.isUrlFilterCaseSensitive === true ? '' : 'i';
   const source =
@@ -186,11 +220,26 @@ function compile(rule: NetRule): Compiled {
   const tabIds = numbers(condition.tabIds);
   const excludedTabIds = numbers(condition.excludedTabIds);
   const domainType = condition.domainType;
+  const responseHeaders = condition.responseHeaders;
+  const excludedResponseHeaders = condition.excludedResponseHeaders;
+  const response = responseHeaders !== undefined || excludedResponseHeaders !== undefined;
   return {
     rule,
+    rulesetId,
     priority: rule.priority ?? 1,
+    response,
     regex,
     test: (request, url) => {
+      if (response) {
+        if (!request.responseHeaders) return false;
+        if (responseHeaders !== undefined && !headerConditionMet(responseHeaders, request.responseHeaders))
+          return false;
+        if (
+          excludedResponseHeaders !== undefined &&
+          headerConditionMet(excludedResponseHeaders, request.responseHeaders)
+        )
+          return false;
+      }
       if (types && !types.includes(request.type)) return false;
       if (excludedTypes.includes(request.type)) return false;
       const method = request.method.toLowerCase();
@@ -242,12 +291,12 @@ export class RuleIndex {
   readonly size: number;
   readonly allowsFrames: boolean;
 
-  constructor(rules: readonly NetRule[]) {
+  constructor(rules: readonly NetRule[], rulesetId = '') {
     this.size = rules.length;
     this.allowsFrames = rules.some((rule) => rule.action.type === 'allowAllRequests');
     for (const rule of rules) {
       if (!supported(rule)) continue;
-      const compiled = compile(rule);
+      const compiled = compile(rule, rulesetId);
       const keys = indexKeys(rule);
       if (keys.length === 0) this.generic.push(compiled);
       for (const key of keys) {
@@ -289,21 +338,84 @@ export function parseRequest(request: NetRequest): ParsedUrl {
   };
 }
 
+const matchOf = (compiled: Compiled): RuleMatch => ({
+  rule: compiled.rule,
+  regex: compiled.regex(),
+  rulesetId: compiled.rulesetId,
+});
+
+// Rules with response header conditions wait for the response; all others decide before the request starts.
 export function bestMatch(
   indexes: readonly RuleIndex[],
   request: NetRequest,
   only?: (rule: NetRule) => boolean,
 ): RuleMatch | null {
   const parsed = parseRequest(request);
+  const atResponse = request.responseHeaders !== undefined;
   let best: Compiled | null = null;
   for (const index of indexes) {
     for (const compiled of index.candidates(request.url, parsed.host)) {
-      if (compiled.rule.action.type === 'modifyHeaders') continue;
+      if (compiled.rule.action.type === 'modifyHeaders' || compiled.response !== atResponse) continue;
       if (only && !only(compiled.rule)) continue;
       if (better(compiled, best) && compiled.test(request, parsed)) best = compiled;
     }
   }
-  return best ? { rule: best.rule, regex: best.regex() } : null;
+  return best ? matchOf(best) : null;
+}
+
+export function headerRules(indexes: readonly RuleIndex[], request: NetRequest): RuleMatch[] {
+  const parsed = parseRequest(request);
+  const atResponse = request.responseHeaders !== undefined;
+  const found: Compiled[] = [];
+  for (const index of indexes) {
+    for (const compiled of index.candidates(request.url, parsed.host)) {
+      if (compiled.rule.action.type !== 'modifyHeaders') continue;
+      if (compiled.response && !atResponse) continue;
+      if (compiled.test(request, parsed)) found.push(compiled);
+    }
+  }
+  return found.sort((a, b) => b.priority - a.priority).map(matchOf);
+}
+
+interface HeaderOperation {
+  header?: unknown;
+  operation?: unknown;
+  value?: unknown;
+}
+
+// Higher priority rules win: once a header is set or removed, lower rules leave it alone; appends add up.
+export function modifiedHeaders<T extends string | string[]>(
+  headers: Record<string, T>,
+  matches: readonly RuleMatch[],
+  key: 'requestHeaders' | 'responseHeaders',
+): Record<string, T> | null {
+  const next: Record<string, string | string[]> = { ...headers };
+  const done = new Map<string, string>();
+  let changed = false;
+  for (const { rule } of matches) {
+    const operations = (rule.action as Record<string, unknown>)[key];
+    if (!Array.isArray(operations)) continue;
+    for (const { header, operation, value } of operations as HeaderOperation[]) {
+      if (typeof header !== 'string' || typeof operation !== 'string') continue;
+      const name = header.toLowerCase();
+      const previous = done.get(name);
+      if (previous && (previous !== 'append' || operation !== 'append')) continue;
+      const existing = Object.keys(next).filter((candidate) => candidate.toLowerCase() === name);
+      if (operation === 'remove') {
+        for (const candidate of existing) delete next[candidate];
+      } else if (typeof value === 'string' && (operation === 'set' || operation === 'append')) {
+        const current = operation === 'append' ? existing.flatMap((candidate) => next[candidate] ?? []) : [];
+        for (const candidate of existing) delete next[candidate];
+        next[header] =
+          key === 'responseHeaders'
+            ? [...current, value]
+            : [...current, value].join(operation === 'append' ? ', ' : '');
+      } else continue;
+      done.set(name, operation);
+      changed = true;
+    }
+  }
+  return changed ? (next as Record<string, T>) : null;
 }
 
 export function redirectTarget(

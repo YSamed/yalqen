@@ -13,6 +13,8 @@ export const ExtensionBridgeChannel = {
   netRequest: 'yalqen-extension-bridge:net-request',
   frames: 'yalqen-extension-bridge:frames',
   queryTabs: 'yalqen-extension-bridge:query-tabs',
+  contexts: 'yalqen-extension-bridge:contexts',
+  windowCall: 'yalqen-extension-bridge:window-call',
   subscribe: 'yalqen-extension-bridge:subscribe',
   event: 'yalqen-extension-bridge:event',
 } as const;
@@ -81,6 +83,7 @@ export function urlMatchesPattern(pattern: string, raw: string): boolean {
 export interface ExtensionWindowState {
   id: number;
   focused: boolean;
+  type?: 'normal' | 'popup';
 }
 
 export interface ExtensionWindows {
@@ -88,8 +91,8 @@ export interface ExtensionWindows {
   windows: ReturnType<typeof chromeWindow>[];
 }
 
-export function chromeWindow({ id, focused }: ExtensionWindowState) {
-  return { id, focused, type: 'normal', state: 'normal', incognito: false, alwaysOnTop: false };
+export function chromeWindow({ id, focused, type = 'normal' }: ExtensionWindowState) {
+  return { id, focused, type, state: 'normal', incognito: false, alwaysOnTop: false };
 }
 
 const EXTENSION_ID = /^[a-p]{32}$/;

@@ -106,6 +106,7 @@ app
         open: () => null,
         close: () => false,
         isTab: (contents) => contents === tab.webContents,
+        viewType: (contents) => (contents === tab.webContents ? 'TAB' : null),
         windowId: () => tab.id,
         isActive: () => true,
         windows: () => [{ id: tab.id, focused: true }],

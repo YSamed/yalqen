@@ -1,6 +1,7 @@
 import type { ElectronBlocker } from '@ghostery/adblocker-electron';
 import { ipcMain, powerMonitor, type OnBeforeRequestListenerDetails, type Session } from 'electron';
 import type { NetRequestVerdict } from '../extensions/net-request.js';
+import { HEADER_STAGE, setReceiveStage } from './header-stages.js';
 import { applyAdBlockExceptions } from './adblock-exceptions.js';
 
 const CACHE_REFRESH_DELAY_MS = 30_000;
@@ -140,6 +141,13 @@ export class AdBlocker {
         else if (this.wanted && this.blocker) this.blocker.onBeforeRequest(details, callback);
         else callback({});
       });
+      // Ghostery registers its own onHeadersReceived for CSP; run it as one stage beside the others.
+      const blocker = this.wanted ? this.blocker : null;
+      setReceiveStage(
+        session,
+        HEADER_STAGE.adBlock,
+        blocker ? (details) => new Promise((resolve) => blocker.onHeadersReceived(details, resolve)) : null,
+      );
     }
   }
 }

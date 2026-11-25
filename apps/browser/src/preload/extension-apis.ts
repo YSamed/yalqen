@@ -22,6 +22,8 @@ interface Bridge {
   netRequest(method: string, args: unknown[]): Promise<unknown>;
   frames(tabId: unknown): Promise<{ frameId: number }[] | null>;
   queryTabs(query: unknown): Promise<unknown[]>;
+  contexts(filter: unknown): Promise<unknown[]>;
+  windowCall(method: string, args: unknown[]): Promise<unknown>;
   silentWebAuthFlow(details: unknown): Promise<string>;
   shortcut(suggested: unknown): string;
   subscribe(event: ExtensionBridgeEvent, dispatch: Dispatch): void;
@@ -46,6 +48,8 @@ const bridge: Bridge = {
   netRequest: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.netRequest, method, args),
   frames: (tabId) => ipcRenderer.invoke(ExtensionBridgeChannel.frames, tabId),
   queryTabs: (query) => ipcRenderer.invoke(ExtensionBridgeChannel.queryTabs, query),
+  contexts: (filter) => ipcRenderer.invoke(ExtensionBridgeChannel.contexts, filter),
+  windowCall: (method, args) => ipcRenderer.invoke(ExtensionBridgeChannel.windowCall, method, args),
   silentWebAuthFlow: (details) =>
     ipcRenderer.invoke(ExtensionBridgeChannel.webAuthFlow, details).catch((error: Error) => {
       throw new Error(error.message.replace(/^Error invoking remote method '[^']+': (?:Error: )?/, ''));
@@ -66,6 +70,7 @@ function installExtensionApis(api: Bridge): void {
         id: string;
         dynamicId?: string;
         getManifest(): {
+          update_url?: string;
           permissions?: string[];
           commands?: Record<string, { description?: string; suggested_key?: unknown }>;
         };
@@ -132,6 +137,9 @@ function installExtensionApis(api: Bridge): void {
   define(tabs, 'onUpdated', tabUpdated);
   define(tabs, 'onRemoved', tabRemoved);
   define(runtime as unknown as Record<string, unknown>, 'onInstalled', event('runtime.onInstalled'));
+  define(runtime as unknown as Record<string, unknown>, 'getContexts', (filter: unknown, callback: Callback) =>
+    settle(api.contexts(filter), callback),
+  );
 
   if (!chromeApi.cookies && permissions.includes('cookies')) {
     const call = (method: string) => (details: unknown, callback: Callback) =>
@@ -267,6 +275,32 @@ function installExtensionApis(api: Bridge): void {
           callback,
         ),
     });
+  }
+
+  // Store extensions load unpacked, so Electron reports them as "development"; Chrome says "normal" for store installs.
+  const management = chromeApi.management as Record<string, unknown> | undefined;
+  if (management) {
+    type Info = { id?: string; installType?: string; updateUrl?: string };
+    const fromStore = (info: Info) =>
+      info.installType === 'development' &&
+      (info.updateUrl ?? (info.id === runtime.id ? runtime.getManifest().update_url : undefined))
+        ? { ...info, installType: 'normal' }
+        : info;
+    for (const name of ['getSelf', 'get', 'getAll']) {
+      const original = management[name] as ((...args: unknown[]) => Promise<Info | Info[]>) | undefined;
+      if (typeof original !== 'function') continue;
+      define(management, name, (...args: unknown[]) =>
+        settle(
+          original
+            .apply(
+              management,
+              args.filter((arg) => typeof arg !== 'function'),
+            )
+            .then((result) => (Array.isArray(result) ? result.map(fromStore) : fromStore(result))),
+          lastArgument(args),
+        ),
+      );
+    }
   }
 
   const extensionNamespace = chromeApi.extension as Record<string, unknown> | undefined;
@@ -529,26 +563,29 @@ function installExtensionApis(api: Bridge): void {
           api.windows().then(({ windows }) => windows),
           lastArgument(args),
         ),
-      // shortcut: windows.create opens the page as a tab in a browser window, not a separate popup window; add real popup windows if an extension needs its own window.
-      create: (properties: { url?: unknown } | undefined, callback: Callback) => {
-        const url = Array.isArray(properties?.url) ? properties.url[0] : properties?.url;
-        return settle(
-          api.createTab({ url, active: true }).then((tab) => ({
-            id: (tab as { windowId?: number }).windowId,
-            focused: true,
-            incognito: false,
-            alwaysOnTop: false,
-            type: 'normal',
-            state: 'normal',
-            tabs: [tab],
-          })),
-          callback,
-        );
-      },
-      update: (id: unknown, _info: unknown, callback: Callback) =>
+      create: (...args: unknown[]) =>
         settle(
-          pick(({ windows }) => windows.find((window) => window.id === id)),
-          callback,
+          api.windowCall(
+            'create',
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        ),
+      update: (...args: unknown[]) =>
+        settle(
+          api.windowCall(
+            'update',
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
+        ),
+      remove: (...args: unknown[]) =>
+        settle(
+          api.windowCall(
+            'remove',
+            args.filter((arg) => typeof arg !== 'function'),
+          ),
+          lastArgument(args),
         ),
       onCreated: event('windows.onCreated'),
       onRemoved: event('windows.onRemoved'),

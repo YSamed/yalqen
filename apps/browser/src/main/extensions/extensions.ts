@@ -46,6 +46,7 @@ type StoreExtensionStatus = 'available' | 'installing' | 'installed';
 interface ExtensionUpdateOptions {
   fetch?: (url: string, init: RequestInit) => Promise<Response>;
   automatic?: () => boolean;
+  removed?: (extensionId: string) => void;
 }
 type ConfirmUpdatePermissions = (name: string, permissions: string[]) => Promise<boolean>;
 
@@ -331,7 +332,9 @@ export class ExtensionManager {
       !this.entries.some((entry) => entry.path === directory)
     )
       return;
+    const id = this.ids.get(directory);
     this.unload(directory);
+    if (id) this.updateOptions.removed?.(id);
     this.errors.delete(directory);
     this.updateErrors.delete(directory);
     this.entries = this.entries.filter((entry) => entry.path !== directory);

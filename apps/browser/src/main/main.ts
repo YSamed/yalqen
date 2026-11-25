@@ -77,6 +77,7 @@ import { WINDOW_ID_NONE } from '../shared/extension-bridge.js';
 import { ExtensionPopup } from './extensions/extension-popup.js';
 import { NetRequestRules } from './extensions/net-request.js';
 import { InstallEvents } from './extensions/install-events.js';
+import { ExtensionPopupWindows } from './extensions/extension-windows.js';
 import { ExtensionManager } from './extensions/extensions.js';
 import { registerExtensionsIpc } from './extensions/extensions-ipc.js';
 import { registerWebStoreApi } from './extensions/web-store-api.js';
@@ -418,7 +419,13 @@ function startBrowser(): void {
       pushState();
       broadcastExtensions(extensions.list());
     },
-    { automatic: () => settings.get().autoUpdateExtensions },
+    {
+      automatic: () => settings.get().autoUpdateExtensions,
+      removed: (id) => {
+        netRequest.forget(id);
+        installEvents.forget(id);
+      },
+    },
   );
   const extensionPopup = new ExtensionPopup();
   const mainWindow = () =>
@@ -427,6 +434,10 @@ function startBrowser(): void {
   const extensionWindows = () => focusedFirst().filter((window) => !window.isPrivate && !window.window.isDestroyed());
   const extensionWindowById = (id: number | null) =>
     id === null ? mainWindow() : extensionWindows().find((window) => window.window.id === id);
+  const extensionPopupWindows = new ExtensionPopupWindows(daily, {
+    created: (state) => extensionBridge.windowCreated(state),
+    removed: (id) => extensionBridge.windowRemoved(id),
+  });
   const extensionBridge = new ExtensionBridge(
     daily,
     {
@@ -440,9 +451,29 @@ function startBrowser(): void {
       windowId: (contents) =>
         (tabsWindowOf(contents) ?? windows.find((window) => window.ownsExtensionSidePanel(contents)))?.window.id ??
         extensionPopup.windowId(contents) ??
+        extensionPopupWindows.windowId(contents) ??
         WINDOW_ID_NONE,
       isActive: (contents) => tabsWindowOf(contents)?.tabs.isActiveContents(contents) ?? false,
-      windows: () => extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
+      viewType: (contents) =>
+        tabsWindowOf(contents) || extensionPopupWindows.windowId(contents) !== undefined
+          ? 'TAB'
+          : windows.some((window) => window.ownsExtensionSidePanel(contents))
+            ? 'SIDE_PANEL'
+            : extensionPopup.windowId(contents) !== undefined
+              ? 'POPUP'
+              : null,
+      windows: () => [
+        ...extensionWindows().map((window) => ({ id: window.window.id, focused: window.window.isFocused() })),
+        ...extensionPopupWindows.states(),
+      ],
+      openPopupWindow: (url, options) => extensionPopupWindows.create(url, options),
+      focusWindow: (id) => {
+        if (extensionPopupWindows.focus(id)) return true;
+        const window = extensionWindowById(id);
+        window?.focus();
+        return window !== undefined;
+      },
+      removeWindow: (id) => extensionPopupWindows.remove(id),
       openAction: (extensionId, contents) =>
         ((contents && tabsWindowOf(contents)) ?? mainWindow())?.openExtensionAction(extensionId),
       openActionPopup: (windowId, popupUrl) => {
@@ -607,7 +638,7 @@ function startBrowser(): void {
   extensionBridge.attachLibrary({ history, bookmarks, downloads, downloadManager, bookmarksChanged });
   const netRequest = new NetRequestRules(daily, path.join(userData, 'extension-net-rules.json'));
   extensionBridge.attachNetRequest(netRequest);
-  new InstallEvents(daily, path.join(userData, 'extension-versions.json'), (id, details) =>
+  const installEvents = new InstallEvents(daily, path.join(userData, 'extension-versions.json'), (id, details) =>
     extensionBridge.dispatchInstalled(id, details),
   );
 

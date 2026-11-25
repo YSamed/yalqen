@@ -1659,6 +1659,8 @@ export const en = {
   'permissionText.privacy': 'Change your privacy-related settings',
   'permissionText.tabCapture': 'Read and change what you see in tabs',
   'permissionText.topSites': 'Read a list of your most frequently visited websites',
+  'permissionText.readingList': 'Read and change entries in the reading list',
+  'permissionText.tabGroups': 'View and manage your tab groups',
   'webStoreApi.remove': 'Remove',
 
   'siteData.localStorage': 'Local Storage',

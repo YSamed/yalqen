@@ -1671,6 +1671,8 @@ export const tr: Record<MessageKey, string> = {
   'permissionText.privacy': 'Gizlilikle ilgili ayarlarınızı değiştirebilir',
   'permissionText.tabCapture': 'Sekmelerde gördüklerinizi okuyup değiştirebilir',
   'permissionText.topSites': 'En sık ziyaret ettiğiniz sitelerin listesini okuyabilir',
+  'permissionText.readingList': 'Okuma listesindeki kayıtları okuyup değiştirebilir',
+  'permissionText.tabGroups': 'Sekme gruplarınızı görüntüleyip yönetebilir',
   'webStoreApi.remove': 'Kaldır',
 
   'siteData.localStorage': 'Yerel depolama',

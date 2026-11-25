@@ -10,11 +10,10 @@ export function installedDetails(previous: string | undefined, version: string):
 }
 
 // Electron never fires chrome.runtime.onInstalled, and extensions such as Bitwarden set their defaults there.
+// Extensions installed before this record existed get "install" once, since they never had it.
 export class InstallEvents {
   private readonly versions: Record<string, string>;
   private readonly store: JsonFile;
-  // shortcut: the first launch with this file only records versions, and a reinstall of the same version sends nothing; forget the version on uninstall if an extension needs that.
-  private readonly seeding: boolean;
 
   constructor(
     session: Session,
@@ -22,11 +21,15 @@ export class InstallEvents {
     private readonly dispatch: (extensionId: string, details: InstalledDetails) => void,
   ) {
     this.store = new JsonFile(file, 'extension-versions');
-    this.seeding = !fs.existsSync(file);
     this.versions = this.read(file);
     session.extensions.on('extension-loaded', (_event, extension) => this.loaded(extension));
     for (const extension of session.extensions.getAllExtensions()) this.loaded(extension);
-    if (this.seeding) this.store.schedule(() => this.versions);
+  }
+
+  forget(extensionId: string): void {
+    if (!(extensionId in this.versions)) return;
+    delete this.versions[extensionId];
+    this.store.schedule(() => this.versions);
   }
 
   private loaded(extension: Extension): void {
@@ -34,7 +37,7 @@ export class InstallEvents {
     if (!details) return;
     this.versions[extension.id] = extension.version;
     this.store.schedule(() => this.versions);
-    if (!this.seeding) this.dispatch(extension.id, details);
+    this.dispatch(extension.id, details);
   }
 
   private read(file: string): Record<string, string> {

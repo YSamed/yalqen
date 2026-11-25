@@ -1,16 +1,27 @@
 import fs from 'node:fs';
-import type { Extension, OnBeforeRequestListenerDetails, Session, WebFrameMain } from 'electron';
+import type {
+  Extension,
+  HeadersReceivedResponse,
+  OnBeforeRequestListenerDetails,
+  OnHeadersReceivedListenerDetails,
+  Session,
+  WebFrameMain,
+} from 'electron';
+import { HEADER_STAGE, setReceiveStage, setSendStage } from '../privacy/header-stages.js';
 import { JsonFile } from '../storage/json-file.js';
 import { extensionGrant, hostPermitted } from './extension-cookies.js';
 import { extensionFile } from './extension-manifest.js';
 import {
   bestMatch,
+  headerRules,
+  modifiedHeaders,
   redirectTarget,
   regexSupported,
   RuleIndex,
   validateRule,
   type NetRequest,
   type NetRule,
+  type RuleMatch,
 } from './net-request-rules.js';
 
 const MAX_DYNAMIC_RULES = 30_000;
@@ -18,6 +29,8 @@ const MAX_SESSION_RULES = 5_000;
 const MAX_REGEX_RULES = 1_000;
 const MAX_ENABLED_RULESETS = 50;
 const STATIC_RULE_LIMIT = 330_000;
+const MATCHED_RULES_KEPT_MS = 5 * 60_000;
+const MAX_MATCHED_RULES = 1_000;
 export const NET_REQUEST_PERMISSIONS = ['declarativeNetRequest', 'declarativeNetRequestWithHostAccess'] as const;
 
 const RESOURCE_TYPE: Record<string, string> = {
@@ -61,6 +74,21 @@ interface ExtensionRules {
 }
 
 export type NetRequestVerdict = { cancel: true } | { redirectURL: string };
+
+interface RequestDetails {
+  url: string;
+  method: string;
+  resourceType: string;
+  referrer: string;
+  webContentsId?: number;
+  frame?: WebFrameMain | null;
+}
+
+interface MatchedRule {
+  rule: { ruleId: number; rulesetId: string };
+  tabId: number;
+  timeStamp: number;
+}
 
 function staticRulesets(manifest: unknown): Ruleset[] {
   const resources = (manifest as { declarative_net_request?: { rule_resources?: unknown } } | undefined)
@@ -112,10 +140,10 @@ const ids = (value: unknown) => (Array.isArray(value) ? value.filter((id) => typ
 const names = (value: unknown) => (Array.isArray(value) ? value.filter((id) => typeof id === 'string') : []);
 
 export class NetRequestRules {
-  // shortcut: dynamic rules of an uninstalled extension stay in the state file and return on reinstall; clear them on uninstall if that bites.
   private readonly saved: Record<string, Saved>;
   private readonly rules = new Map<string, ExtensionRules>();
   private readonly dynamicIds = new Map<string, string>();
+  private readonly matched = new Map<string, MatchedRule[]>();
   private readonly store: JsonFile;
 
   constructor(
@@ -127,37 +155,159 @@ export class NetRequestRules {
     session.extensions.on('extension-loaded', (_event, extension) => void this.attach(extension));
     session.extensions.on('extension-unloaded', (_event, { id }) => this.rules.delete(id));
     for (const extension of session.extensions.getAllExtensions()) void this.attach(extension);
+    setSendStage(session, HEADER_STAGE.extensions, (details, headers) =>
+      this.rules.size === 0 ? null : this.requestHeaders(details, headers),
+    );
+    setReceiveStage(session, HEADER_STAGE.extensions, (details, headers) =>
+      this.rules.size === 0 ? null : this.responseHeaders(details, headers),
+    );
+  }
+
+  forget(extensionId: string): void {
+    this.rules.delete(extensionId);
+    this.dynamicIds.delete(extensionId);
+    this.matched.delete(extensionId);
+    if (!(extensionId in this.saved)) return;
+    delete this.saved[extensionId];
+    this.store.schedule(() => this.saved);
   }
 
   decide(session: Session, details: OnBeforeRequestListenerDetails): NetRequestVerdict | null {
-    if (session !== this.session || this.rules.size === 0 || details.url.startsWith('chrome-extension:')) return null;
-    const frame = this.frameOf(details);
-    const frameUrl = frame?.url ?? '';
-    if (frameUrl.startsWith('chrome-extension:')) return null;
-    const type = RESOURCE_TYPE[details.resourceType] ?? 'other';
-    const request: NetRequest = {
-      url: details.url,
-      method: details.method,
-      type,
-      initiator: type === 'main_frame' ? details.referrer || null : (this.origin(frame) ?? (details.referrer || null)),
-      tabId: details.webContentsId ?? -1,
-    };
+    if (session !== this.session || this.rules.size === 0) return null;
+    const context = this.requestOf(details);
+    if (!context) return null;
+    const { request, frame } = context;
     let redirect: string | null = null;
     for (const [extensionId, rules] of this.rules) {
-      const grant = extensionGrant(this.session.extensions.getExtension(extensionId)?.manifest);
-      const hostAccess = hostPermitted(grant.hosts, request.url);
-      if (!grant.permissions.includes('declarativeNetRequest') && !hostAccess) continue;
+      const access = this.access(extensionId, request.url);
+      if (!access) continue;
       const indexes = this.indexes(rules);
-      const match = bestMatch(indexes, request);
-      if (!match || match.rule.action.type === 'allow' || match.rule.action.type === 'allowAllRequests') continue;
-      if (rules.allowsFrames && this.frameAllowed(indexes, request, frame, type) >= (match.rule.priority ?? 1))
+      const match = this.finalMatch(rules, indexes, request, frame);
+      if (!match) continue;
+      const { type } = match.rule.action;
+      if (type === 'allow' || type === 'allowAllRequests') {
+        this.record(extensionId, match, request.tabId);
         continue;
-      if (match.rule.action.type === 'block') return { cancel: true };
-      if (redirect || !hostAccess) continue;
+      }
+      if (type === 'block') {
+        this.record(extensionId, match, request.tabId);
+        return { cancel: true };
+      }
+      if (redirect || access !== 'host') continue;
       const target = redirectTarget(match, request, (path) => this.extensionUrl(extensionId, path));
-      if (target && target !== request.url) redirect = target;
+      if (target && target !== request.url) {
+        this.record(extensionId, match, request.tabId);
+        redirect = target;
+      }
     }
     return redirect ? { redirectURL: redirect } : null;
+  }
+
+  private requestHeaders(details: RequestDetails, headers: Record<string, string>): Record<string, string> | null {
+    const context = this.requestOf(details);
+    if (!context) return null;
+    const matches = this.headerMatches(context.request, context.frame);
+    return matches.length > 0 ? modifiedHeaders(headers, matches, 'requestHeaders') : null;
+  }
+
+  private responseHeaders(
+    details: OnHeadersReceivedListenerDetails,
+    headers: Record<string, string[]>,
+  ): HeadersReceivedResponse | null {
+    const context = this.requestOf(details);
+    if (!context) return null;
+    const request = { ...context.request, responseHeaders: headers };
+    for (const [extensionId, rules] of this.rules) {
+      if (!this.access(extensionId, request.url)) continue;
+      const match = bestMatch(this.indexes(rules), request);
+      if (match?.rule.action.type !== 'block') continue;
+      this.record(extensionId, match, request.tabId);
+      return { cancel: true };
+    }
+    const matches = this.headerMatches(request, context.frame);
+    const responseHeaders = matches.length > 0 ? modifiedHeaders(headers, matches, 'responseHeaders') : null;
+    return responseHeaders ? { responseHeaders } : null;
+  }
+
+  // An allow rule stops the same extension's lower priority header rules, as in Chrome.
+  private headerMatches(request: NetRequest, frame: WebFrameMain | null): RuleMatch[] {
+    const found: { extensionId: string; match: RuleMatch }[] = [];
+    for (const [extensionId, rules] of this.rules) {
+      if (this.access(extensionId, request.url) !== 'host') continue;
+      const indexes = this.indexes(rules);
+      const candidates = headerRules(indexes, request);
+      if (candidates.length === 0) continue;
+      const decided = this.finalMatch(rules, indexes, { ...request, responseHeaders: undefined }, frame);
+      const allowed =
+        decided && ['allow', 'allowAllRequests'].includes(decided.rule.action.type) ? (decided.rule.priority ?? 1) : 0;
+      for (const match of candidates) if ((match.rule.priority ?? 1) > allowed) found.push({ extensionId, match });
+    }
+    found.sort((a, b) => (b.match.rule.priority ?? 1) - (a.match.rule.priority ?? 1));
+    for (const { extensionId, match } of found) this.record(extensionId, match, request.tabId);
+    return found.map(({ match }) => match);
+  }
+
+  private finalMatch(
+    rules: ExtensionRules,
+    indexes: RuleIndex[],
+    request: NetRequest,
+    frame: WebFrameMain | null,
+  ): RuleMatch | null {
+    const match = bestMatch(indexes, request);
+    if (!match || !rules.allowsFrames) return match;
+    const framePriority = this.frameAllowed(indexes, request, frame, request.type);
+    return framePriority >= (match.rule.priority ?? 1)
+      ? {
+          rule: { id: 0, priority: framePriority, action: { type: 'allowAllRequests' }, condition: {} },
+          regex: null,
+          rulesetId: '',
+        }
+      : match;
+  }
+
+  // "host" may block, redirect and change headers; "block" has only declarativeNetRequest without host access.
+  private access(extensionId: string, url: string): 'host' | 'block' | null {
+    const grant = extensionGrant(this.session.extensions.getExtension(extensionId)?.manifest);
+    if (hostPermitted(grant.hosts, url)) return 'host';
+    return grant.permissions.includes('declarativeNetRequest') ? 'block' : null;
+  }
+
+  private requestOf(details: RequestDetails): { request: NetRequest; frame: WebFrameMain | null } | null {
+    if (details.url.startsWith('chrome-extension:')) return null;
+    const frame = this.frameOf(details);
+    if ((frame?.url ?? '').startsWith('chrome-extension:')) return null;
+    const type = RESOURCE_TYPE[details.resourceType] ?? 'other';
+    return {
+      frame,
+      request: {
+        url: details.url,
+        method: details.method,
+        type,
+        initiator:
+          type === 'main_frame' ? details.referrer || null : (this.origin(frame) ?? (details.referrer || null)),
+        tabId: details.webContentsId ?? -1,
+      },
+    };
+  }
+
+  private record(extensionId: string, match: RuleMatch, tabId: number): void {
+    if (match.rule.id === 0) return;
+    const now = Date.now();
+    const list = (this.matched.get(extensionId) ?? []).filter((entry) => entry.timeStamp > now - MATCHED_RULES_KEPT_MS);
+    list.push({ rule: { ruleId: match.rule.id, rulesetId: match.rulesetId }, tabId, timeStamp: now });
+    this.matched.set(extensionId, list.slice(-MAX_MATCHED_RULES));
+  }
+
+  private matchedRules(extensionId: string, options: Record<string, unknown>): { rulesMatchedInfo: MatchedRule[] } {
+    const grant = extensionGrant(this.session.extensions.getExtension(extensionId)?.manifest);
+    if (!grant.permissions.includes('declarativeNetRequestFeedback'))
+      throw new Error('The extension needs the declarativeNetRequestFeedback permission.');
+    const since = typeof options.minTimeStamp === 'number' ? options.minTimeStamp : 0;
+    return {
+      rulesMatchedInfo: (this.matched.get(extensionId) ?? []).filter(
+        (entry) => entry.timeStamp >= since && (typeof options.tabId !== 'number' || entry.tabId === options.tabId),
+      ),
+    };
   }
 
   async call(extensionId: string, method: string, args: unknown[]): Promise<unknown> {
@@ -183,13 +333,13 @@ export class NetRequestRules {
         return this.filtered(rules.session, options.ruleIds);
       case 'updateDynamicRules':
         rules.dynamic = this.updated(rules.dynamic, options, MAX_DYNAMIC_RULES, rules.session);
-        rules.dynamicIndex = new RuleIndex(rules.dynamic);
+        rules.dynamicIndex = new RuleIndex(rules.dynamic, '_dynamic');
         this.refreshFrameRules(rules);
         this.save();
         return undefined;
       case 'updateSessionRules':
         rules.session = this.updated(rules.session, options, MAX_SESSION_RULES, rules.dynamic);
-        rules.sessionIndex = new RuleIndex(rules.session);
+        rules.sessionIndex = new RuleIndex(rules.session, '_session');
         this.refreshFrameRules(rules);
         return undefined;
       case 'updateStaticRules':
@@ -199,7 +349,7 @@ export class NetRequestRules {
       case 'isRegexSupported':
         return regexSupported(options.regex, options.isCaseSensitive === true);
       case 'getMatchedRules':
-        return { rulesMatchedInfo: [] };
+        return this.matchedRules(extensionId, options);
       case 'useDynamicId':
         if (typeof args[0] === 'string' && /^[0-9a-f-]{36}$/.test(args[0])) this.dynamicIds.set(extensionId, args[0]);
         return undefined;
@@ -236,8 +386,8 @@ export class NetRequestRules {
       disabled: new Map(Object.entries(saved.disabled ?? {}).map(([id, list]) => [id, new Set(ids(list))])),
       dynamic,
       session: [],
-      dynamicIndex: new RuleIndex(dynamic),
-      sessionIndex: new RuleIndex([]),
+      dynamicIndex: new RuleIndex(dynamic, '_dynamic'),
+      sessionIndex: new RuleIndex([], '_session'),
       allowsFrames: false,
       ready: Promise.resolve(),
     };
@@ -260,7 +410,7 @@ export class NetRequestRules {
       const all = validRules(JSON.parse(await fs.promises.readFile(file, 'utf8')), true);
       const disabled = rules.disabled.get(id);
       if (rules.enabled.has(id))
-        rules.loaded.set(id, new RuleIndex(disabled ? all.filter((rule) => !disabled.has(rule.id)) : all));
+        rules.loaded.set(id, new RuleIndex(disabled ? all.filter((rule) => !disabled.has(rule.id)) : all, id));
     } catch (error) {
       console.warn(`[net-request] ruleset ${id} of ${extension.id} could not be read:`, error);
       rules.enabled.delete(id);
@@ -357,7 +507,7 @@ export class NetRequestRules {
     return best;
   }
 
-  private frameOf(details: OnBeforeRequestListenerDetails): WebFrameMain | null {
+  private frameOf(details: RequestDetails): WebFrameMain | null {
     try {
       return details.frame ?? null;
     } catch {

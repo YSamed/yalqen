@@ -6,7 +6,8 @@ import { test } from 'node:test';
 import rulesModule from '../../../dist/main/extensions/net-request-rules.js';
 import netRequestModule from '../../../dist/main/extensions/net-request.js';
 
-const { RuleIndex, bestMatch, redirectTarget, urlFilterSource, validateRule } = rulesModule;
+const { RuleIndex, bestMatch, headerRules, modifiedHeaders, redirectTarget, urlFilterSource, validateRule } =
+  rulesModule;
 const { NetRequestRules } = netRequestModule;
 const ID = 'b'.repeat(32);
 
@@ -124,6 +125,11 @@ function fakeSession(manifest, files) {
   const extension = { id: ID, path: root, manifest };
   const listeners = {};
   const session = {
+    listeners,
+    webRequest: {
+      onBeforeSendHeaders: (listener) => (listeners.send = listener),
+      onHeadersReceived: (listener) => (listeners.receive = listener),
+    },
     extensions: {
       on: (name, listener) => (listeners[name] = listener),
       getAllExtensions: () => [extension],
@@ -221,8 +227,118 @@ test('redirects need host access and the state survives a restart', async () => 
   const restarted = new NetRequestRules(session, state);
   assert.equal((await restarted.call(ID, 'getDynamicRules', [])).length, 2);
   assert.deepEqual(await restarted.call(ID, 'getSessionRules', []), []);
+  restarted.forget(ID);
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  const reinstalled = new NetRequestRules(session, state);
+  assert.deepEqual(await reinstalled.call(ID, 'getDynamicRules', []), []);
   assert.deepEqual(await restarted.call(ID, 'isRegexSupported', [{ regex: '[' }]), {
     isSupported: false,
     reason: 'syntaxError',
   });
+});
+
+test('response header conditions wait for the response', () => {
+  const rules = [
+    rule(1, { urlFilter: '||cdn.test^', responseHeaders: [{ header: 'content-type', values: ['text/*'] }] }),
+    rule(2, { urlFilter: '||cdn.test^', excludedResponseHeaders: [{ header: 'x-safe' }] }, { type: 'block' }),
+  ];
+  const index = [new RuleIndex(rules, 'rs')];
+  assert.equal(bestMatch(index, request('https://cdn.test/a.js')), null);
+  const html = bestMatch(
+    index,
+    request('https://cdn.test/a.js', { responseHeaders: { 'Content-Type': ['text/html'] } }),
+  );
+  assert.deepEqual([html.rule.id, html.rulesetId], [1, 'rs']);
+  assert.equal(
+    bestMatch(
+      index,
+      request('https://cdn.test/a.js', { responseHeaders: { 'x-safe': ['1'], 'content-type': ['image/png'] } }),
+    ),
+    null,
+  );
+});
+
+test('header rules apply by priority: set or remove wins, appends add up', () => {
+  const modify = (id, priority, requestHeaders) =>
+    rule(id, { urlFilter: '||api.test^' }, { type: 'modifyHeaders', requestHeaders }, priority);
+  const index = [
+    new RuleIndex([
+      modify(1, 1, [
+        { header: 'x-a', operation: 'set', value: 'low' },
+        { header: 'x-b', operation: 'append', value: '2' },
+      ]),
+      modify(2, 5, [
+        { header: 'X-A', operation: 'set', value: 'high' },
+        { header: 'x-b', operation: 'append', value: '1' },
+      ]),
+      modify(3, 3, [{ header: 'cookie', operation: 'remove' }]),
+    ]),
+  ];
+  const matches = headerRules(index, request('https://api.test/v1'));
+  assert.deepEqual(
+    matches.map((match) => match.rule.id),
+    [2, 3, 1],
+  );
+  assert.deepEqual(modifiedHeaders({ Cookie: 'a=1', Accept: '*/*' }, matches, 'requestHeaders'), {
+    Accept: '*/*',
+    'X-A': 'high',
+    'x-b': '1, 2',
+  });
+  assert.equal(modifiedHeaders({ Accept: '*/*' }, [], 'requestHeaders'), null);
+  const response = [
+    new RuleIndex([
+      rule(
+        4,
+        { urlFilter: '||api.test^' },
+        { type: 'modifyHeaders', responseHeaders: [{ header: 'content-security-policy', operation: 'remove' }] },
+      ),
+    ]),
+  ];
+  const at = request('https://api.test/v1', { responseHeaders: { 'Content-Security-Policy': ['x'] } });
+  assert.deepEqual(
+    modifiedHeaders({ 'Content-Security-Policy': ['x'] }, headerRules(response, at), 'responseHeaders'),
+    {},
+  );
+});
+
+test('header stages and matched rules run through the session listeners', async () => {
+  const manifest = {
+    permissions: ['declarativeNetRequest', 'declarativeNetRequestFeedback'],
+    host_permissions: ['<all_urls>'],
+  };
+  const { session } = fakeSession(manifest, {});
+  const rules = new NetRequestRules(session, path.join(os.tmpdir(), `yalqen-dnr-${process.pid}-headers.json`));
+  await rules.call(ID, 'updateSessionRules', [
+    {
+      addRules: [
+        rule(
+          1,
+          { urlFilter: '||api.test^' },
+          { type: 'modifyHeaders', requestHeaders: [{ header: 'x-ext', operation: 'set', value: 'on' }] },
+        ),
+        rule(2, { urlFilter: '||api.test^', responseHeaders: [{ header: 'x-bad' }] }),
+        rule(3, { urlFilter: '||api.test/allowed' }, { type: 'allow' }, 2),
+      ],
+    },
+  ]);
+  let sent;
+  session.listeners.send(
+    details('https://api.test/v1', { requestHeaders: { Accept: '*/*' } }),
+    (value) => (sent = value),
+  );
+  assert.deepEqual(sent, { requestHeaders: { Accept: '*/*', 'x-ext': 'on' } });
+  session.listeners.send(details('https://api.test/allowed', { requestHeaders: {} }), (value) => (sent = value));
+  assert.deepEqual(sent, {});
+  const received = await new Promise((resolve) =>
+    session.listeners.receive(details('https://api.test/v1', { responseHeaders: { 'x-bad': ['1'] } }), resolve),
+  );
+  assert.deepEqual(received, { cancel: true });
+  const { rulesMatchedInfo } = await rules.call(ID, 'getMatchedRules', [{ tabId: 3 }]);
+  assert.deepEqual(
+    rulesMatchedInfo.map((info) => [info.rule.ruleId, info.rule.rulesetId]),
+    [
+      [1, '_session'],
+      [2, '_session'],
+    ],
+  );
 });

@@ -155,6 +155,7 @@ app
         open: (url, active) => tabManager.openContents(url, active),
         close: (contents) => tabManager.closeContents(contents),
         isTab: (contents) => tabManager.hasContents(contents),
+        viewType: (contents) => (tabManager.hasContents(contents) ? 'TAB' : null),
         windowId: (contents) => (contents === page.webContents ? page.id : window.id),
         isActive: (contents) => tabManager.isActiveContents(contents),
         windows: () => [
