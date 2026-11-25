@@ -26,3 +26,8 @@ test('a busy or missing edge gives no color', () => {
   assert.equal(edgeColor(new Uint8Array(8), 100, 4), null);
   assert.equal(edgeColor(new Uint8Array(0), 0, 0), null);
 });
+
+test('near-identical shades count as one color', () => {
+  const bitmap = strip(96, 4, (x) => (x % 2 ? [250, 250, 250] : [252, 253, 251]));
+  assert.match(edgeColor(bitmap, 96, 4), /^#fa|^#fc/);
+});

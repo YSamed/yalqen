@@ -119,7 +119,11 @@ import { tabForBookmark } from '../../shared/bookmarks-panel.js';
 const STORAGE_WORLD_ID = 1001;
 const MAX_PINCH_ZOOM = 3;
 // Lets the page paint its top edge before the toolbar samples it.
-const PAGE_COLOR_DELAY_MS = 300;
+const PAGE_COLOR_DELAYS_MS = [300, 1500];
+// Samples at most this often while the page scrolls, plus once after it stops.
+const SCROLL_COLOR_INTERVAL_MS = 120;
+const SCROLL_COLOR_SETTLE_MS = 200;
+const SCROLL_KEYS = new Set([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown']);
 
 type Listen = WebContents['on'];
 
@@ -2368,25 +2372,64 @@ export class TabManager {
   }
 
   private samplePageColor(tab: Tab, view: WebContentsView): void {
-    setTimeout(() => {
-      const contents = view.webContents;
-      if (tab.view !== view || contents.isDestroyed() || tab.url === NEW_TAB_URL) return;
-      const { width } = this.placement.bounds;
-      if (width <= 0) return;
-      contents.capturePage({ x: 0, y: 0, width, height: 4 }).then(
-        (image) => {
-          if (image.isEmpty() || tab.view !== view) return;
-          const size = image.getSize();
-          const bitmap = image.toBitmap();
-          const scale = Math.sqrt(bitmap.length / 4 / (size.width * size.height)) || 1;
-          const color = edgeColor(bitmap, Math.round(size.width * scale), Math.round(size.height * scale));
-          if (color === tab.pageColor) return;
-          tab.pageColor = color;
-          this.changed('lazy');
-        },
-        () => {},
-      );
-    }, PAGE_COLOR_DELAY_MS);
+    for (const delay of PAGE_COLOR_DELAYS_MS) this.samplePageColorAfter(tab, view, delay);
+  }
+
+  private samplePageColorAfter(tab: Tab, view: WebContentsView, delay: number): void {
+    setTimeout(() => void this.capturePageColor(tab, view), delay);
+  }
+
+  private async capturePageColor(tab: Tab, view: WebContentsView): Promise<void> {
+    const color = await this.readPageColor(tab, view);
+    if (color !== undefined) this.setPageColor(tab, color);
+  }
+
+  private async readPageColor(tab: Tab, view: WebContentsView): Promise<string | null | undefined> {
+    const contents = view.webContents;
+    if (tab.view !== view || contents.isDestroyed() || tab.url === NEW_TAB_URL) return undefined;
+    const { width } = this.placement.bounds;
+    if (width <= 0) return undefined;
+    const image = await contents.capturePage({ x: 0, y: 0, width, height: 4 }).catch(() => null);
+    if (!image || image.isEmpty() || tab.view !== view) return undefined;
+    const size = image.getSize();
+    const bitmap = image.toBitmap();
+    const scale = Math.sqrt(bitmap.length / 4 / (size.width * size.height)) || 1;
+    return edgeColor(bitmap, Math.round(size.width * scale), Math.round(size.height * scale));
+  }
+
+  private setPageColor(tab: Tab, color: string | null): void {
+    if (color === tab.pageColor) return;
+    tab.pageColor = color;
+    this.changed('lazy');
+  }
+
+  // Mid-scroll, a color must show in two reads in a row, so content sliding under the toolbar does not flicker it.
+  private scrollColorSampler(tab: Tab, view: WebContentsView): () => void {
+    let capturing = false;
+    let lastCapture = 0;
+    let candidate: string | null | undefined;
+    let trailing: ReturnType<typeof setTimeout> | undefined;
+    const capture = (settled: boolean) => {
+      if (tab.id !== this.activeId) return;
+      if (capturing) {
+        if (settled) trailing = setTimeout(() => capture(true), SCROLL_COLOR_INTERVAL_MS);
+        return;
+      }
+      capturing = true;
+      lastCapture = Date.now();
+      void this.readPageColor(tab, view)
+        .then((color) => {
+          if (color === undefined) return;
+          if (settled || color === candidate) this.setPageColor(tab, color);
+          candidate = color === tab.pageColor ? undefined : color;
+        })
+        .finally(() => (capturing = false));
+    };
+    return () => {
+      clearTimeout(trailing);
+      trailing = setTimeout(() => capture(true), SCROLL_COLOR_SETTLE_MS);
+      if (Date.now() - lastCapture >= SCROLL_COLOR_INTERVAL_MS) capture(false);
+    };
   }
 
   private attachListeners(tab: Tab, view: WebContentsView): void {
@@ -2409,9 +2452,17 @@ export class TabManager {
 
   private listenForInput(tab: Tab, view: WebContentsView, listen: Listen): void {
     const contents = view.webContents;
+    const sampleAfterScroll = this.scrollColorSampler(tab, view);
     listen('before-input-event', (_event, input) => {
       const modifier = input.control || input.meta || input.alt || input.shift;
       if (input.type === 'keyDown' && input.key === 'Escape' && !modifier && tab.loading) contents.stop();
+      if (input.type === 'keyDown' && SCROLL_KEYS.has(input.key)) sampleAfterScroll();
+    });
+    // A left-button drag covers the scrollbar thumb.
+    listen('input-event', (_event, input) => {
+      if (input.type === 'mouseWheel' || (input.type === 'mouseMove' && input.modifiers?.includes('leftbuttondown'))) {
+        sampleAfterScroll();
+      }
     });
 
     const allowPinch = () => void contents.setVisualZoomLevelLimits(1, MAX_PINCH_ZOOM).catch(() => {});
