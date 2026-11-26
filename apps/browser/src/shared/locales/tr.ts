@@ -168,6 +168,8 @@ export const tr: Record<MessageKey, string> = {
   'sites.allowCookies': 'Üçüncü taraf çerezlerine izin ver',
   'sites.adsChip': 'Reklamlara izin',
   'sites.cookiesChip': 'Çerezlere izin',
+  'sites.allowedChip': '{permission} izinli',
+  'sites.blockedChip': '{permission} engelli',
   'sites.data': 'Kayıtlı veriler',
   'sites.noData': 'Kayıtlı veri yok.',
   'sites.resetPermissions': 'İzinleri sıfırla',
@@ -700,12 +702,13 @@ export const tr: Record<MessageKey, string> = {
 
   'extensionsPanel.title': 'Uzantılar',
   'extensionsPanel.intro':
-    "Chrome Web Mağazası'ndan adres veya kimlikle uzantı ekleyin ya da paketlenmemiş bir uzantıyı klasöründen yükleyin. Uzantılar gizli sekmelerde ve geliştirici pencerelerinde çalışmaz. Chrome'un uzantı arayüzlerinin yalnızca bir kısmı desteklenir; bazı uzantılar beklendiği gibi çalışmayabilir.",
+    'Uzantılar gizli sekmelerde ve geliştirici pencerelerinde çalışmaz; bazıları beklendiği gibi çalışmayabilir.',
   'extensionsPanel.loadFailed': 'Yüklenemedi: {error}',
   'extensionsPanel.options': 'Seçenekler',
   'extensionsPanel.enabledLabel': '{name} etkin',
   'extensionsPanel.removeLabel': '{name} kaldır',
   'extensionsPanel.empty': 'Yüklü uzantı yok.',
+  'extensionsPanel.emptyHint': 'Chrome Web Mağazası’ndan ekleyin veya bir klasörden yükleyin.',
   'extensionsPanel.storePlaceholder': 'Chrome Web Mağazası adresi veya uzantı kimliği',
   'extensionsPanel.adding': 'Ekleniyor…',
   'extensionsPanel.addFromStore': 'Mağazadan ekle',

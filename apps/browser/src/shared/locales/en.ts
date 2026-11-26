@@ -164,6 +164,8 @@ export const en = {
   'sites.allowCookies': 'Allow third-party cookies',
   'sites.adsChip': 'Ads allowed',
   'sites.cookiesChip': 'Cookies allowed',
+  'sites.allowedChip': '{permission} allowed',
+  'sites.blockedChip': '{permission} blocked',
   'sites.data': 'Stored data',
   'sites.noData': 'No stored data.',
   'sites.resetPermissions': 'Reset permissions',
@@ -693,12 +695,13 @@ export const en = {
 
   'extensionsPanel.title': 'Extensions',
   'extensionsPanel.intro':
-    "Add an extension from the Chrome Web Store by URL or ID, or load an unpacked extension from its folder. Extensions don't run in private tabs or developer windows. Only some of Chrome's extension APIs are supported, so some extensions may not work as expected.",
+    "Extensions don't run in private tabs or developer windows, and some may not work as expected.",
   'extensionsPanel.loadFailed': "Couldn't load: {error}",
   'extensionsPanel.options': 'Options',
   'extensionsPanel.enabledLabel': '{name} enabled',
   'extensionsPanel.removeLabel': 'Remove {name}',
   'extensionsPanel.empty': 'No extensions installed.',
+  'extensionsPanel.emptyHint': 'Add one from the Chrome Web Store or load it from a folder.',
   'extensionsPanel.storePlaceholder': 'Chrome Web Store URL or extension ID',
   'extensionsPanel.adding': 'Adding…',
   'extensionsPanel.addFromStore': 'Add from store',

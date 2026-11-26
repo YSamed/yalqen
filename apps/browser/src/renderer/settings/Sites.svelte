@@ -49,7 +49,7 @@
     unknown: t('sitePermissions.systemDenied'),
   };
   function shortAccess(device: string, access: SystemAccess): string {
-    if (access === 'granted') return device;
+    if (access === 'granted') return t('sites.allowedChip', { permission: device });
     if (access === 'not-determined') return t('sites.systemAsk', { device });
     if (access === 'restricted') return t('sites.systemRestricted', { device });
     return t('sites.systemOff', { device });
@@ -314,9 +314,12 @@
                 {/if}
               </span>
               <span class="chips">
-                {#each site.permissions as entry (`${entry.origin} ${entry.kind}`)}
-                  <span class="pill" class:ok={entry.decision === 'allow'} class:warn={entry.decision === 'deny'}>
-                    {t(`permissions.${entry.kind}`)}
+                {#each [...new Set(site.permissions.map((entry) => `${entry.kind} ${entry.decision}`))] as chip (chip)}
+                  {@const [kind, decision] = chip.split(' ') as [SitePermission, PermissionDecision]}
+                  <span class="pill" class:ok={decision === 'allow'} class:warn={decision === 'deny'}>
+                    {t(decision === 'allow' ? 'sites.allowedChip' : 'sites.blockedChip', {
+                      permission: t(`permissions.${kind}`),
+                    })}
                   </span>
                 {/each}
                 {#each [...new Set(site.exceptions

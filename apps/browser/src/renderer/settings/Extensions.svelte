@@ -59,27 +59,6 @@
 </script>
 
 <h2>{t('extensionsPanel.title')}</h2>
-<p class="hint intro">{t('extensionsPanel.intro')}</p>
-<SettingRow title={t('extensionsPanel.automaticUpdates')} hint={t('extensionsPanel.automaticUpdatesHint')}>
-  <Switch
-    label={t('extensionsPanel.automaticUpdates')}
-    checked={values.autoUpdateExtensions}
-    onchange={(checked) => update({ autoUpdateExtensions: checked })}
-  />
-</SettingRow>
-<div class="actions">
-  <Button
-    variant="tonal"
-    disabled={checking ||
-      extensions.some((extension) => extension.updating) ||
-      !extensions.some((extension) => extension.fromStore)}
-    onclick={checkUpdates}
-  >
-    {checking ? t('extensionsPanel.checkingUpdates') : t('extensionsPanel.checkUpdates')}
-  </Button>
-  {#if updateStatus}<span class="hint" role="status">{updateStatus}</span>{/if}
-</div>
-
 {#each extensions as extension (extension.path)}
   <div class="extension" class:disabled={!extension.enabled}>
     <span class="icon">
@@ -124,7 +103,11 @@
     </div>
   </div>
 {:else}
-  <p class="hint empty">{t('extensionsPanel.empty')}</p>
+  <div class="empty">
+    <Icon name="extensions" size={28} />
+    <strong>{t('extensionsPanel.empty')}</strong>
+    <span class="hint">{t('extensionsPanel.emptyHint')}</span>
+  </div>
 {/each}
 
 <form class="store" onsubmit={installFromStore}>
@@ -153,13 +136,48 @@
     </span>{/if}
 </div>
 
+<SettingRow title={t('extensionsPanel.automaticUpdates')} hint={t('extensionsPanel.automaticUpdatesHint')}>
+  <Switch
+    label={t('extensionsPanel.automaticUpdates')}
+    checked={values.autoUpdateExtensions}
+    onchange={(checked) => update({ autoUpdateExtensions: checked })}
+  />
+</SettingRow>
+{#if extensions.some((extension) => extension.fromStore)}
+  <div class="actions">
+    <Button
+      variant="tonal"
+      disabled={checking || extensions.some((extension) => extension.updating)}
+      onclick={checkUpdates}
+    >
+      {checking ? t('extensionsPanel.checkingUpdates') : t('extensionsPanel.checkUpdates')}
+    </Button>
+    {#if updateStatus}<span class="hint" role="status">{updateStatus}</span>{/if}
+  </div>
+{/if}
+<p class="hint intro">{t('extensionsPanel.intro')}</p>
+
 <style>
   .intro {
-    margin: 0 0 8px;
+    margin: 12px 0 0;
   }
 
   .empty {
-    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 24px 16px;
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .empty strong {
+    margin-top: 6px;
+    color: var(--text);
   }
 
   .extension {
