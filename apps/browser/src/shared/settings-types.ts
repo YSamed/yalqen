@@ -137,7 +137,6 @@ export const SettingsChannel = {
   clearData: 'yalqen-settings:clear-data',
   makeDefault: 'yalqen-settings:make-default',
   relaunch: 'yalqen-settings:relaunch',
-  processUsage: 'yalqen-settings:process-usage',
   checkForUpdates: 'yalqen-settings:check-for-updates',
   installUpdate: 'yalqen-settings:install-update',
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
@@ -152,26 +151,6 @@ export const SettingsChannel = {
 } as const;
 
 export type SettingsTransferResult = 'cancelled' | 'done' | 'failed';
-
-export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
-
-export interface ProcessGroup {
-  kind: ProcessGroupKind;
-  count: number;
-  memoryMB: number;
-}
-
-export interface PageProcess {
-  pid: number;
-  titles: string[];
-  memoryMB: number;
-}
-
-export interface ProcessUsage {
-  totalMB: number;
-  groups: ProcessGroup[];
-  pages: PageProcess[];
-}
 
 export type SitePermission = 'camera' | 'microphone' | 'geolocation' | 'notifications' | 'popups' | 'apps';
 export type PromptPermission = Exclude<SitePermission, 'popups' | 'apps'>;
@@ -298,7 +277,6 @@ export interface SettingsApi {
   clearData(request: ClearDataRequest): Promise<void>;
   makeDefault(): Promise<SettingsView>;
   relaunch(): Promise<void>;
-  processUsage(): Promise<ProcessUsage>;
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;
   chooseDownloadDirectory(): Promise<SettingsSaveResult | null>;

@@ -2,7 +2,6 @@
   import { AUTO_ARCHIVE_HOURS, DISCARD_AFTER_MINUTES, type SettingsValues } from '../../shared/types';
   import { t, type MessageKey } from '../../shared/i18n';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
-  import ProcessUsage from './ProcessUsage.svelte';
   import SettingRow from './SettingRow.svelte';
 
   let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
@@ -49,4 +48,3 @@
     onchange={(value) => update({ autoArchiveHours: value })}
   />
 </SettingRow>
-<ProcessUsage />

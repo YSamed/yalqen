@@ -697,23 +697,6 @@ export const tr: Record<MessageKey, string> = {
   'agentChat.placeholderAgent': '{agent} için bir soru yaz…',
   'agentChat.noProjectHint': 'Ya da proje seçmeden okuduğun sayfa hakkında sor.',
   'agentChat.pageSendHint': '{url} sayfasının metni bu mesajla gönderilir.',
-  'processUsage.groupPages': 'Web sayfaları',
-  'processUsage.groupInterface': 'Tarayıcı arayüzü',
-  'processUsage.groupExtensions': 'Uzantılar',
-  'processUsage.groupBrowser': 'Ana süreç',
-  'processUsage.groupGpu': 'Grafik (GPU)',
-  'processUsage.groupUtility': 'Ağ ve yardımcı süreçler',
-  'processUsage.groupOther': 'Diğer',
-  'processUsage.pageAndMore': '{title} ve {count} sekme daha',
-  'processUsage.pageAndMore.one': '{title} ve {count} sekme daha',
-  'processUsage.memoryUsage': 'Bellek kullanımı',
-  'processUsage.total': 'Toplam',
-  'processUsage.processCount': '{count} süreç',
-  'processUsage.processCount.one': '{count} süreç',
-  'processUsage.topTabs': 'En çok bellek kullanan sekmeler',
-  'processUsage.note':
-    "Değerler işletim sisteminin bildirdiği çalışma kümesidir ve paylaşılan belleği de içerir; Etkinlik İzleyicisi'ndeki değerlerden farklı olabilir.",
-  'processUsage.measuring': 'Ölçülüyor…',
 
   'extensionsPanel.title': 'Uzantılar',
   'extensionsPanel.intro':

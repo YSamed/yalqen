@@ -15,7 +15,6 @@ import {
   type ManualPassword,
   type PasswordTransferResult,
   type SavedLoginsView,
-  type ProcessUsage,
   type ProfilesView,
   type ProfilesResult,
   type RequestRule,
@@ -191,7 +190,6 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     clearData: (request: ClearDataRequest) => ipcRenderer.invoke(settingsChannel.clearData, request) as Promise<void>,
     makeDefault: () => ipcRenderer.invoke(settingsChannel.makeDefault) as Promise<SettingsView>,
     relaunch: () => ipcRenderer.invoke(settingsChannel.relaunch) as Promise<void>,
-    processUsage: () => ipcRenderer.invoke(settingsChannel.processUsage) as Promise<ProcessUsage>,
     checkForUpdates: () => ipcRenderer.invoke(settingsChannel.checkForUpdates) as Promise<void>,
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
     chooseDownloadDirectory: () =>

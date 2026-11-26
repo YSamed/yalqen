@@ -19,7 +19,6 @@ import { isSystemDevice, openSystemSettings, systemAccessStatus } from '../priva
 import { sanitizeClearRequest } from '../library/clear-data.js';
 import { sanitizeIconDomains } from '../library/site-icons.js';
 import { makeDefaultBrowser, refreshDefaultBrowser } from './default-browser.js';
-import { processUsage } from './process-metrics.js';
 import { handleSettingsCall } from './settings-page.js';
 import { parseSettingsFile, settingsFileText } from './settings.js';
 import type { Updater } from './updater.js';
@@ -109,7 +108,6 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
     return host.view();
   });
   handleSettingsCall(SettingsChannel.relaunch, () => host.relaunch());
-  handleSettingsCall(SettingsChannel.processUsage, () => processUsage());
   handleSettingsCall(SettingsChannel.checkForUpdates, () => host.updater.check());
   handleSettingsCall(SettingsChannel.installUpdate, () => host.updater.install());
   handleSettingsCall(SettingsChannel.updateThreatLists, async () => {

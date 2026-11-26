@@ -690,23 +690,6 @@ export const en = {
   'agentChat.placeholderAgent': 'Ask {agent} something…',
   'agentChat.noProjectHint': 'Or ask about the page you are reading without choosing a project.',
   'agentChat.pageSendHint': 'The text of {url} is sent with this message.',
-  'processUsage.groupPages': 'Web pages',
-  'processUsage.groupInterface': 'Browser interface',
-  'processUsage.groupExtensions': 'Extensions',
-  'processUsage.groupBrowser': 'Main process',
-  'processUsage.groupGpu': 'Graphics (GPU)',
-  'processUsage.groupUtility': 'Network and utility processes',
-  'processUsage.groupOther': 'Other',
-  'processUsage.pageAndMore': '{title} and {count} more tabs',
-  'processUsage.pageAndMore.one': '{title} and {count} more tab',
-  'processUsage.memoryUsage': 'Memory usage',
-  'processUsage.total': 'Total',
-  'processUsage.processCount': '{count} processes',
-  'processUsage.processCount.one': '{count} process',
-  'processUsage.topTabs': 'Tabs using the most memory',
-  'processUsage.note':
-    'Values are the working set reported by the operating system and include shared memory, so they may differ from those in Activity Monitor.',
-  'processUsage.measuring': 'Measuring…',
 
   'extensionsPanel.title': 'Extensions',
   'extensionsPanel.intro':
