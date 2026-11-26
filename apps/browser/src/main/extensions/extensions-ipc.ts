@@ -53,9 +53,6 @@ export function registerExtensionsIpc({ extensions, access, parentWindow, confir
       : await dialog.showOpenDialog(options);
     return canceled || !filePaths[0] ? null : extensions.install(filePaths[0]);
   });
-  handleSettingsCall(ExtensionsChannel.installFromStore, (_event, input) =>
-    typeof input === 'string' ? extensions.installFromStore(input) : null,
-  );
   handleSettingsCall(ExtensionsChannel.openStore, (event) => openTab(event.sender, STORE_HOME));
   handleSettingsCall(ExtensionsChannel.remove, (_event, directory) => {
     if (typeof directory === 'string') extensions.remove(directory);

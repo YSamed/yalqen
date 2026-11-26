@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
   import type { SettingsValues, SettingsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent';
@@ -9,6 +8,7 @@
   import Icon, { type IconName } from '../ui/Icon.svelte';
   import Select from '../ui/Select.svelte';
   import TextField from '../ui/TextField.svelte';
+  import SettingRow from './SettingRow.svelte';
   import SpaceRules from './SpaceRules.svelte';
 
   type DataPage = 'privacy' | 'passwords';
@@ -31,7 +31,6 @@
   const api = window.yalqenSettings;
   let busy = $state(false);
   let failed = $state(false);
-  let showRules = $state(untrack(() => settings.values.spaceRules.length > 0));
 
   const edited = $derived(profile === null ? undefined : settings.spaces.find((space) => space.id === profile));
   const names = $derived(new Map(settings.spaces.map((space) => [space.id, space.name])));
@@ -74,6 +73,15 @@
     }
   }
 
+  const frameOf = (space: SpaceView) =>
+    space.id === DEFAULT_SPACE_ID ? settings.values.frameTheme : (space.theme ?? settings.values.frameTheme);
+
+  function setIntensity(space: SpaceView, intensity: number): void {
+    const theme = { ...frameOf(space), intensity };
+    if (space.id === DEFAULT_SPACE_ID) void update({ frameTheme: theme });
+    else void api.setSpaceTheme(space.id, $state.snapshot(theme));
+  }
+
   function setColor(space: SpaceView, id: AccentColorId): void {
     if (space.id === DEFAULT_SPACE_ID) {
       void update({
@@ -82,11 +90,10 @@
       });
       return;
     }
-    void api.setSpaceTheme(space.id, {
-      ...(space.theme ?? settings.values.frameTheme),
-      colors: [accentHex(id)],
-      texture: 'none',
-    });
+    void api.setSpaceTheme(
+      space.id,
+      $state.snapshot({ ...(space.theme ?? settings.values.frameTheme), colors: [accentHex(id)], texture: 'none' }),
+    );
   }
 
   // A space's own data lives under its id, so switching back to "own" finds the same passwords again.
@@ -141,6 +148,16 @@
     <span class="label">{t('settings.themeColor')}</span>
     <AccentPicker label={t('settings.themeColor')} value={colorId(edited)} onchange={(id) => setColor(edited, id)} />
   </div>
+  <SettingRow title={t('settings.themeIntensity')} hint={t('settings.themeIntensityHint')} labelFor="theme-intensity">
+    <input
+      id="theme-intensity"
+      type="range"
+      min="0"
+      max="100"
+      value={frameOf(edited).intensity}
+      onchange={(event) => setIntensity(edited, event.currentTarget.valueAsNumber)}
+    />
+  </SettingRow>
 
   <h2>{t('profiles.data')}</h2>
   <div class="row">
@@ -173,16 +190,6 @@
     </Button>
   </div>
 {:else}
-  <p class="hint intro">{t('profiles.spacesHint')}</p>
-
-  <h2>{t('profiles.windowsLinks')}</h2>
-  <div class="actions">
-    <Button variant="surface" aria-expanded={showRules} onclick={() => (showRules = !showRules)}>
-      {t('profiles.linkRules')}
-    </Button>
-  </div>
-  {#if showRules}<SpaceRules view={settings} {update} />{/if}
-
   <h2>{t('settings.paneProfiles')}</h2>
   <ul>
     {#each settings.spaces as space (space.id)}
@@ -198,21 +205,20 @@
       </li>
     {/each}
   </ul>
-  <div class="actions">
-    <Button variant="surface" disabled={busy} onclick={create}>{t('profiles.createEllipsis')}</Button>
+  <div class="actions start">
+    <Button variant="tonal" icon="plus" disabled={busy} onclick={create}>{t('profiles.createEllipsis')}</Button>
   </div>
+
+  <SpaceRules view={settings} {update} />
 {/if}
 
 <style>
-  .intro {
-    margin: 8px 10px 0;
-  }
   ul {
     list-style: none;
     padding: 0;
     margin: 0;
   }
-  li.row {
+  li.row.row {
     padding: 0;
   }
   .link {
@@ -222,7 +228,7 @@
     justify-content: space-between;
     gap: 12px;
     min-height: 42px;
-    padding: 7px 10px;
+    padding: 7px 20px;
     border: 0;
     border-radius: inherit;
     background: transparent;
@@ -273,5 +279,8 @@
     justify-content: flex-end;
     gap: 8px;
     margin-top: 10px;
+  }
+  .actions.start {
+    justify-content: flex-start;
   }
 </style>

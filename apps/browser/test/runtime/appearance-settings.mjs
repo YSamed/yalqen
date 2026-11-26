@@ -78,7 +78,6 @@ app
       }),
       profiles: { view: () => ({ currentId: 'default', profiles: [] }) },
       update: (patch) => preferences.update(patch),
-      updateThreatLists: async () => {},
       clearData: async (request) => {
         clears.push(request);
       },

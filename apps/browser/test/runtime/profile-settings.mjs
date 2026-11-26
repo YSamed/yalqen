@@ -71,7 +71,6 @@ app
       view,
       profiles: controller,
       update: (patch) => store.update(patch),
-      updateThreatLists: async () => {},
       clearData: async () => {},
       updater: { check() {}, install() {} },
       relaunch() {},

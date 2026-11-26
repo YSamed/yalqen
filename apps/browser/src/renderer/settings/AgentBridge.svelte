@@ -279,9 +279,9 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--surface);
   }
 
   .connection-text {

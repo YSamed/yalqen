@@ -50,7 +50,6 @@ app
       view,
       profiles: { view: () => ({ currentId: 'default', profiles: [] }) },
       update: (patch) => preferences.update(patch),
-      updateThreatLists: async () => {},
       clearData: async () => {},
       updater: {},
       relaunch() {},
@@ -112,6 +111,8 @@ app
       if (level === 'error') console.error(message);
     });
     await window.loadURL('yalqen://settings/extensions');
+    await eventually("!!document.querySelector('.extension button[aria-expanded]')");
+    await window.webContents.executeJavaScript("document.querySelector('.extension button[aria-expanded]').click()");
     await eventually("!!document.querySelector('.access form,form.access')");
     await window.webContents.executeJavaScript(
       `Array.from(document.querySelector('form.access').querySelectorAll('[role=option]')).find(item=>item.textContent.trim()==='Selected sites').click()`,

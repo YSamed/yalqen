@@ -7,6 +7,7 @@
   import IconButton from '../ui/IconButton.svelte';
   import Select from '../ui/Select.svelte';
   import TextField from '../ui/TextField.svelte';
+  import EmptyState from './EmptyState.svelte';
 
   const api = window.yalqenSettings;
 
@@ -48,8 +49,6 @@
 </script>
 
 <h2>{t('requestRulesPanel.title')}</h2>
-<!-- eslint-disable-next-line svelte/no-at-html-tags -- static dictionary text, no user data -->
-<p class="hint intro">{@html t('requestRulesPanel.intro')}</p>
 
 {#each rules as rule, index (rule.id)}
   <fieldset class="rule" class:disabled={!rule.enabled}>
@@ -120,7 +119,7 @@
     {/if}
   </fieldset>
 {:else}
-  <p class="hint empty">{t('requestRulesPanel.empty')}</p>
+  <EmptyState icon="code" title={t('requestRulesPanel.empty')} hint={t('requestRulesPanel.emptyHint')} />
 {/each}
 
 <div class="actions">
@@ -128,34 +127,23 @@
   <span class="spacer"></span>
   {#if dirty}
     <Button variant="tonal" onclick={() => load(JSON.parse(saved))}>{t('requestRulesPanel.cancel')}</Button>
+    <Button variant="primary" disabled={saving} onclick={save}>
+      {saving ? t('requestRulesPanel.saving') : t('requestRulesPanel.save')}
+    </Button>
   {/if}
-  <Button variant="primary" disabled={!dirty || saving} onclick={save}>
-    {saving ? t('requestRulesPanel.saving') : t('requestRulesPanel.save')}
-  </Button>
 </div>
 
 <style>
-  .intro {
-    margin: 0 0 8px;
-  }
-
-  .empty {
-    margin: 8px 0;
-  }
-
-  .intro :global(code) {
-    font-size: 0.95em;
-  }
-
   .rule {
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-width: 0;
-    margin: 0;
-    padding: 12px 0;
+    margin: 8px 0 0;
+    padding: 12px 16px;
     border: 0;
-    border-bottom: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
   }
 
   .rule.disabled {

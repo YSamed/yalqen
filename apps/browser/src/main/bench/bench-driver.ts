@@ -3,7 +3,6 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { app, powerSaveBlocker, type WebContents } from 'electron';
 import { roundMs, type Bench } from './bench.js';
 import { ERR_ABORTED } from '../pages/error-page.js';
-import { processUsage } from '../app/process-metrics.js';
 import type { YalqenWindow } from '../window/window.js';
 
 const LOAD_TIMEOUT_MS = 30_000;
@@ -96,12 +95,9 @@ async function navigationTiming(contents: WebContents): Promise<Record<string, n
   );
 }
 
-function memorySnapshot(): { totalMB: number; groupsMB: Record<string, number> } {
-  const usage = processUsage();
-  return {
-    totalMB: usage.totalMB,
-    groupsMB: Object.fromEntries(usage.groups.map((group) => [group.kind, group.memoryMB])),
-  };
+function memorySnapshot(): { totalMB: number } {
+  const totalKB = app.getAppMetrics().reduce((sum, metric) => sum + metric.memory.workingSetSize, 0);
+  return { totalMB: Math.round(totalKB / 1024) };
 }
 
 function processMemoryMB(pid: number): number | null {

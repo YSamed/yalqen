@@ -51,7 +51,6 @@
 
 <section aria-labelledby="persistent-profiles-title">
   <h2 id="persistent-profiles-title">{t('profiles.title')}</h2>
-  <p class="hint">{t('profiles.hint')}</p>
   {#if error}<p class="error" role="alert">{t(`profiles.${error}`)}</p>{/if}
   {#if view}
     <ul>
@@ -78,7 +77,7 @@
               {profile.running ? t('profiles.switch') : t('profiles.open')}
             </Button>
             <Button
-              variant="ghost"
+              variant="tonal"
               size="sm"
               disabled={busy}
               onclick={() => (editing = { id: profile.id, name: profile.name })}
@@ -86,7 +85,7 @@
               {t('profiles.rename')}
             </Button>
             <Button
-              variant="ghost"
+              variant="tonal"
               size="sm"
               disabled={busy || profile.default}
               onclick={() => perform('default', profile.id)}
@@ -94,7 +93,7 @@
               {t('profiles.makeDefault')}
             </Button>
             <Button
-              variant="ghost"
+              variant="tonal"
               size="sm"
               disabled={busy || profile.active || profile.running || profile.id === 'default'}
               title={profile.id === 'default' ? t('profiles.originalHint') : t('profiles.closeHint')}
@@ -149,7 +148,7 @@
 
 <style>
   section {
-    margin-bottom: 24px;
+    margin-top: 18px;
   }
   ul {
     list-style: none;
@@ -157,13 +156,21 @@
     margin: 12px 0;
   }
   li {
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--surface);
   }
   .identity {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
     overflow-wrap: anywhere;
   }
   .actions,
@@ -171,7 +178,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 8px;
+  }
+  li form {
+    flex-basis: 100%;
   }
   form :global(.field) {
     flex: 1;
