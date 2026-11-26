@@ -136,6 +136,9 @@ test('a tab card centers on its row and still stays inside the window', () => {
   const size = { width: 172, height: 90 };
   assert.deepEqual(placePreview({ x: 10, y: 200, width: 170, height: 36 }, size, area, true), { x: 188, y: 173 });
   assert.deepEqual(placePreview({ x: 10, y: 10, width: 170, height: 36 }, size, area, true), { x: 188, y: 8 });
+  // A pinned tile in the top row, its anchor stretched to the sidebar's edge and top-aligned: the card opens beside
+  // the sidebar at the tile's own height, clear of the other tiles and of the window buttons above.
+  assert.deepEqual(placePreview({ x: 6, y: 51, width: 178, height: 41 }, size, area, false), { x: 192, y: 51 });
 });
 
 const theme = { dark: false, surface: '#fff', text: '#000', accent: '#e8590c', border: 'rgb(0 0 0 / 0.1)' };
@@ -146,8 +149,14 @@ test('preview requests are checked before anything is read', () => {
     url: 'https://mail.google.com/mail/u/0/',
     anchor: { x: 1, y: 2, width: 3, height: 4 },
     theme,
+    align: 'center',
   };
   assert.deepEqual(validPreviewRequest(request), request);
+  // Tiles ask for top alignment; anything else, or nothing, is centered.
+  assert.equal(validPreviewRequest({ ...request, align: 'top' }).align, 'top');
+  assert.equal(validPreviewRequest({ ...request, align: 'sideways' }).align, 'center');
+  const { align: _align, ...withoutAlign } = request;
+  assert.equal(validPreviewRequest(withoutAlign).align, 'center');
   assert.deepEqual(validPreviewRequest({ ...request, tabId: null }), { ...request, tabId: null });
   assert.deepEqual(validPreviewRequest({ ...request, url: 'https://example.com/' }), {
     ...request,

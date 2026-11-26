@@ -31,6 +31,8 @@ export interface PreviewRequest {
   url: string;
   anchor: AnchorRect;
   theme: TooltipTheme;
+  // Tiles in the sidebar grid line the card's top up with the tile; rows center it on the row.
+  align?: 'center' | 'top';
 }
 
 export const PREVIEW_MESSAGES = 3;
@@ -172,7 +174,8 @@ export function validPreviewRequest(value: unknown): PreviewRequest | null {
   if (typeof url !== 'string' || url.length > 4096 || (tabId === null && !previewKind(url))) return null;
   const rect = validAnchor(anchor);
   const colors = validTheme(theme);
-  return rect && colors ? { tabId, url, anchor: rect, theme: colors } : null;
+  const align = (value as Record<string, unknown>).align === 'top' ? 'top' : 'center';
+  return rect && colors ? { tabId, url, anchor: rect, theme: colors, align } : null;
 }
 
 export interface PreviewItem {
