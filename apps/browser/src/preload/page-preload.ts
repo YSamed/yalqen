@@ -201,7 +201,6 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
       ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,
     transferSettings: (mode: 'import' | 'export') =>
       ipcRenderer.invoke(settingsChannel.transfer, mode) as Promise<SettingsTransferResult>,
-    updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,
     profiles: () => ipcRenderer.invoke(settingsChannel.profiles) as Promise<ProfilesView>,
     profileAction: (action, id, name) =>
       ipcRenderer.invoke(settingsChannel.profileAction, action, id, name) as Promise<ProfilesResult>,

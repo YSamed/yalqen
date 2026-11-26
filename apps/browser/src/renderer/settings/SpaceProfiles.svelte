@@ -8,6 +8,7 @@
   import Icon, { type IconName } from '../ui/Icon.svelte';
   import Select from '../ui/Select.svelte';
   import TextField from '../ui/TextField.svelte';
+  import SettingRow from './SettingRow.svelte';
   import SpaceRules from './SpaceRules.svelte';
 
   type DataPage = 'privacy' | 'passwords';
@@ -70,6 +71,15 @@
     } finally {
       busy = false;
     }
+  }
+
+  const frameOf = (space: SpaceView) =>
+    space.id === DEFAULT_SPACE_ID ? settings.values.frameTheme : (space.theme ?? settings.values.frameTheme);
+
+  function setIntensity(space: SpaceView, intensity: number): void {
+    const theme = { ...frameOf(space), intensity };
+    if (space.id === DEFAULT_SPACE_ID) void update({ frameTheme: theme });
+    else void api.setSpaceTheme(space.id, theme);
   }
 
   function setColor(space: SpaceView, id: AccentColorId): void {
@@ -139,6 +149,16 @@
     <span class="label">{t('settings.themeColor')}</span>
     <AccentPicker label={t('settings.themeColor')} value={colorId(edited)} onchange={(id) => setColor(edited, id)} />
   </div>
+  <SettingRow title={t('settings.themeIntensity')} hint={t('settings.themeIntensityHint')} labelFor="theme-intensity">
+    <input
+      id="theme-intensity"
+      type="range"
+      min="0"
+      max="100"
+      value={frameOf(edited).intensity}
+      onchange={(event) => setIntensity(edited, event.currentTarget.valueAsNumber)}
+    />
+  </SettingRow>
 
   <h2>{t('profiles.data')}</h2>
   <div class="row">
@@ -199,7 +219,7 @@
     padding: 0;
     margin: 0;
   }
-  li.row {
+  li.row.row {
     padding: 0;
   }
   .link {
@@ -209,7 +229,7 @@
     justify-content: space-between;
     gap: 12px;
     min-height: 42px;
-    padding: 7px 10px;
+    padding: 7px 20px;
     border: 0;
     border-radius: inherit;
     background: transparent;

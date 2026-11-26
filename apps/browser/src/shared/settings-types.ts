@@ -142,7 +142,6 @@ export const SettingsChannel = {
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
   setSpaceTheme: 'yalqen-settings:set-space-theme',
   spaceAction: 'yalqen-settings:space-action',
-  updateThreatLists: 'yalqen-settings:update-threat-lists',
   profiles: 'yalqen-settings:profiles',
   profileAction: 'yalqen-settings:profile-action',
   siteIcons: 'yalqen-settings:site-icons',
@@ -283,7 +282,6 @@ export interface SettingsApi {
   spaceAction(action: SpaceAction, id?: string, value?: string | null): Promise<string | null>;
   showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;
   transferSettings(mode: 'import' | 'export'): Promise<SettingsTransferResult>;
-  updateThreatLists(): Promise<SettingsView>;
   profiles(): Promise<ProfilesView>;
   profileAction(
     action: 'create' | 'rename' | 'default' | 'open' | 'remove',

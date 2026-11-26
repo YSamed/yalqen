@@ -46,8 +46,6 @@
       onclick={() => remove(index)}
     />
   </div>
-{:else}
-  <p class="hint">{t('airTraffic.empty')}</p>
 {/each}
 
 <form
@@ -85,7 +83,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 0;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface);
   }
 
   .target {

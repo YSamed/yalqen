@@ -1,11 +1,6 @@
 <script lang="ts">
   import { DEFAULT_ZOOM_FACTORS, type SettingsValues } from '../../shared/types';
   import { t } from '../../shared/i18n';
-  import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent';
-  import type { FrameTheme } from '../../shared/frame-theme';
-  import { DEFAULT_SPACE_ID, type SpaceView } from '../../shared/workspaces';
-  import AccentPicker from '../ui/AccentPicker.svelte';
-  import Button from '../ui/Button.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import ChoiceCards from './ChoiceCards.svelte';
@@ -13,17 +8,13 @@
 
   let {
     values,
-    spaces = [],
     update,
     section,
   }: {
     values: SettingsValues;
-    spaces?: SpaceView[];
     update: (patch: Partial<SettingsValues>) => Promise<void>;
     section: 'look' | 'tabs';
   } = $props();
-
-  const api = window.yalqenSettings;
 
   type Theme = SettingsValues['theme'];
   const themeOptions = [
@@ -36,35 +27,6 @@
     value: factor,
     label: t('settings.zoomPercent', { percent: Math.round(factor * 100) }),
   }));
-
-  // The space menu opens this pane with #space=<id> to theme just that space.
-  let frameScope = $state(new URLSearchParams(location.hash.slice(1)).get('space') ?? DEFAULT_SPACE_ID);
-  $effect(() => {
-    const follow = () => {
-      const space = new URLSearchParams(location.hash.slice(1)).get('space');
-      if (space !== null) frameScope = space;
-    };
-    window.addEventListener('hashchange', follow);
-    return () => window.removeEventListener('hashchange', follow);
-  });
-  const scopedSpace = $derived(spaces.find((space) => space.id !== DEFAULT_SPACE_ID && space.id === frameScope));
-  const frame = $derived(scopedSpace?.theme ?? values.frameTheme);
-  const themeColor = $derived<AccentColorId>(
-    ACCENT_COLORS.find(({ hex }) => hex === frame.colors[0])?.id ?? values.accentColor,
-  );
-
-  // One color themes the card frame and the accent; the shared theme also stores it as the global accent.
-  function setThemeColor(id: AccentColorId): void {
-    const theme: FrameTheme = { ...frame, colors: [accentHex(id)], texture: 'none' };
-    if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
-    else void update({ frameTheme: theme, accentColor: id });
-  }
-
-  function setIntensity(intensity: number): void {
-    const theme: FrameTheme = { ...frame, intensity };
-    if (scopedSpace) void api.setSpaceTheme(scopedSpace.id, theme);
-    else void update({ frameTheme: theme });
-  }
 </script>
 
 {#snippet mockWindow(scheme: 'light' | 'dark')}
@@ -99,25 +61,6 @@
     onchange={(value) => update({ theme: value })}
     preview={themePreview}
   />
-  <SettingRow title={scopedSpace ? t('settings.themeColorFor', { space: scopedSpace.name }) : t('settings.themeColor')}>
-    <AccentPicker label={t('settings.themeColor')} value={themeColor} onchange={setThemeColor} />
-    {#if scopedSpace?.theme}
-      <Button variant="ghost" onclick={() => api.setSpaceTheme(scopedSpace.id, null)}>
-        {t('settings.frameScopeReset')}
-      </Button>
-    {/if}
-  </SettingRow>
-  <SettingRow title={t('settings.themeIntensity')} hint={t('settings.themeIntensityHint')} labelFor="theme-intensity">
-    <input
-      id="theme-intensity"
-      type="range"
-      min="0"
-      max="100"
-      value={frame.intensity}
-      onchange={(event) => setIntensity(event.currentTarget.valueAsNumber)}
-    />
-  </SettingRow>
-
   <SettingRow title={t('settings.darkSites')} hint={t('settings.darkSitesHint')}>
     <Switch
       label={t('settings.darkSites')}

@@ -128,7 +128,6 @@ export const en = {
   'airTraffic.add': 'Add rule',
   'airTraffic.remove': 'Remove the rule for {host}',
   'airTraffic.invalid': 'Enter a site such as github.com. A path prefix must start with /.',
-  'airTraffic.empty': 'No rules yet.',
   'airTraffic.missingSpace': 'Removed space',
   'readingList.savePage': 'Save page to reading list',
   'readingList.intro':
@@ -350,15 +349,8 @@ export const en = {
   'threats.protection': 'Phishing and malicious download protection',
   'threats.protectionHint':
     'Check addresses and downloaded files against local threat lists. Browsing addresses and file contents stay on your device.',
-  'threats.lists': 'Local threat lists',
-  'threats.update': 'Update lists',
-  'threats.updating': 'Updating…',
-  'threats.counts': '{domains} domains · {hashes} file hashes',
-  'threats.updated': 'Last updated: {date}',
-  'threats.notLoaded': 'Not downloaded yet',
   'threats.updateFailed': 'Update failed. Previously downloaded lists remain active.',
-  'threats.coverage':
-    'Lists cover known threats only; an unlisted site or file is not guaranteed safe. CERT Polska updates every 5 minutes; file hashes update daily. Protection requires an initial download, then works offline.',
+  'threats.sources': 'Threat list sources:',
   'threats.pageTitle': 'This website may be dangerous',
   'threats.pageMessage':
     '{host} is on the CERT Polska phishing list. It may steal your passwords or personal information.',
@@ -774,8 +766,6 @@ export const en = {
   'requestRulesPanel.actionRedirect': 'Redirect',
   'requestRulesPanel.actionHeaders': 'Modify request headers',
   'requestRulesPanel.title': 'Request rules',
-  'requestRulesPanel.intro':
-    "Rules only work in tabs where you've turned them on from the developer menu or with the <code>&gt;request rules</code> command. In a URL, <code>*</code> matches any text; the first matching rule is applied.",
   'requestRulesPanel.rule': 'Rule {number}',
   'requestRulesPanel.ruleEnabled': 'Rule {number} enabled',
   'requestRulesPanel.patternPlaceholder': 'https://api.example.com/*',
@@ -790,6 +780,7 @@ export const en = {
   'requestRulesPanel.headersHint':
     'Enter one header per line. A header with an empty value is removed from the request; headers the browser adds itself, such as Cookie and Accept-Language, can only be replaced with a new value.',
   'requestRulesPanel.empty': 'No rules yet.',
+  'requestRulesPanel.emptyHint': 'Turn rules on for a tab from the developer menu or with the >request rules command.',
   'requestRulesPanel.addRule': 'Add rule',
   'requestRulesPanel.cancel': 'Cancel',
   'requestRulesPanel.saving': 'Saving…',
@@ -1009,8 +1000,6 @@ export const en = {
   'bookmarksPanel.cancel': 'Cancel',
   'bookmarksPanel.save': 'Save',
   'settings.themeColor': 'Theme color',
-  'settings.themeColorFor': 'Theme color for {space}',
-  'settings.frameScopeReset': 'Use the shared theme',
   'settings.themeIntensity': 'Color intensity',
   'settings.themeIntensityHint': 'Sets how strongly the theme color tints the window frame.',
   'spaces.theme': 'Edit Profile…',
