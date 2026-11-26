@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.3](https://github.com/YSamed/yalqen/compare/v0.5.2...v0.5.3) (2026-11-26)
+
+
+### Features
+
+* standardize settings pages and remove process metrics ([#511](https://github.com/YSamed/yalqen/issues/511)) ([af42a65](https://github.com/YSamed/yalqen/commit/af42a65fc13a282100e03eecf646819371c0c2d8))
+
+
+### Bug Fixes
+
+* open the tab hover card beside the sidebar for pinned tiles ([#510](https://github.com/YSamed/yalqen/issues/510)) ([e70ba66](https://github.com/YSamed/yalqen/commit/e70ba665734346dadb60ee0487fd08bb807131cf))
+
 ## [0.5.2](https://github.com/YSamed/yalqen/compare/v0.5.1...v0.5.2) (2026-11-26)
 
 
