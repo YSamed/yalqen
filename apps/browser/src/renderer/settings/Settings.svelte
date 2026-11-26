@@ -163,7 +163,7 @@
   }
 
   function update(patch: Partial<SettingsValues>): Promise<void> {
-    return saveSettings(() => api.update(patch));
+    return saveSettings(() => api.update($state.snapshot(patch)));
   }
 
   function chooseDownloadDirectory(): Promise<void> {
@@ -188,7 +188,7 @@
 {#snippet content(id: PaneId, view: SettingsView)}
   {#if id === 'general'}
     <GeneralPane section="general" {view} {update} {makeDefault} {chooseDownloadDirectory} />
-    <AppearancePane section="look" values={view.values} spaces={view.spaces} {update} />
+    <AppearancePane section="look" values={view.values} {update} />
   {:else if id === 'tabs'}
     <AppearancePane section="tabs" values={view.values} {update} />
     <GeneralPane section="windows" {view} {update} {makeDefault} {chooseDownloadDirectory} />

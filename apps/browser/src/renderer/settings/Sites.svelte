@@ -12,6 +12,7 @@
     SystemDevice,
   } from '../../shared/types';
   import Button from '../ui/Button.svelte';
+  import Icon, { type IconName } from '../ui/Icon.svelte';
   import Select from '../ui/Select.svelte';
   import Switch from '../ui/Switch.svelte';
   import TextField from '../ui/TextField.svelte';
@@ -36,10 +37,10 @@
   }
 
   const api = window.yalqenSettings;
-  const devices: { device: SystemDevice; label: string }[] = [
-    { device: 'camera', label: t('permissions.camera') },
-    { device: 'microphone', label: t('permissions.microphone') },
-    { device: 'screen', label: t('sitePermissions.screen') },
+  const devices: { device: SystemDevice; label: string; icon: IconName }[] = [
+    { device: 'camera', label: t('permissions.camera'), icon: 'camera' },
+    { device: 'microphone', label: t('permissions.microphone'), icon: 'microphone' },
+    { device: 'screen', label: t('sitePermissions.screen'), icon: 'display' },
   ];
   const accessText: Record<SystemAccess, string> = {
     granted: t('sitePermissions.systemGranted'),
@@ -48,12 +49,13 @@
     'not-determined': t('sitePermissions.systemNotAsked'),
     unknown: t('sitePermissions.systemDenied'),
   };
-  function shortAccess(device: string, access: SystemAccess): string {
-    if (access === 'granted') return device;
-    if (access === 'not-determined') return t('sites.systemAsk', { device });
-    if (access === 'restricted') return t('sites.systemRestricted', { device });
-    return t('sites.systemOff', { device });
-  }
+  const accessStatus: Record<SystemAccess, string> = {
+    granted: t('sites.systemAllowed'),
+    denied: t('sites.systemOff'),
+    restricted: t('sites.systemRestricted'),
+    'not-determined': t('sites.systemNotAsked'),
+    unknown: t('sites.systemOff'),
+  };
   const exceptionLabels: Record<ExceptionKey, { title: string; chip: string }> = {
     adBlockExceptions: { title: t('sites.allowAds'), chip: t('sites.adsChip') },
     thirdPartyCookieExceptions: { title: t('sites.allowCookies'), chip: t('sites.cookiesChip') },
@@ -225,30 +227,27 @@
 {/snippet}
 
 {#if permissions?.system}
-  <div
-    class="system"
-    role="group"
-    aria-label={t('sitePermissions.systemTitle')}
-    title={t('sitePermissions.systemIntro')}
-  >
-    <span class="system-label">macOS</span>
-    {#each devices as { device, label } (device)}
-      {@const access = permissions.system[device]}
-      <span
-        class="pill"
-        class:ok={access === 'granted'}
-        class:warn={access === 'denied' || access === 'restricted' || access === 'unknown'}
-        title={accessText[access]}
-      >
-        {shortAccess(label, access)}
+  <h2>{t('sitePermissions.systemTitle')}</h2>
+  {#each devices as { device, label, icon } (device)}
+    {@const access = permissions.system[device]}
+    <div class="row device" title={accessText[access]}>
+      <span class="device-name"><Icon name={icon} size={16} />{label}</span>
+      <span class="device-status">
+        {#if access === 'denied' || access === 'unknown'}
+          <Button size="sm" variant="tonal" onclick={() => api.openSystemSettings(device)}>
+            {t('permissionHandlers.openSystemSettings')}
+          </Button>
+        {/if}
+        <span
+          class="status"
+          class:ok={access === 'granted'}
+          class:warn={access === 'denied' || access === 'restricted' || access === 'unknown'}
+        >
+          {accessStatus[access]}
+        </span>
       </span>
-      {#if access === 'denied' || access === 'unknown'}
-        <Button size="sm" variant="ghost" onclick={() => api.openSystemSettings(device)}>
-          {t('permissionHandlers.openSystemSettings')}
-        </Button>
-      {/if}
-    {/each}
-  </div>
+    </div>
+  {/each}
 {/if}
 
 <h2>{t('sites.defaultPermissions')}</h2>
@@ -314,9 +313,12 @@
                 {/if}
               </span>
               <span class="chips">
-                {#each site.permissions as entry (`${entry.origin} ${entry.kind}`)}
-                  <span class="pill" class:ok={entry.decision === 'allow'} class:warn={entry.decision === 'deny'}>
-                    {t(`permissions.${entry.kind}`)}
+                {#each [...new Set(site.permissions.map((entry) => `${entry.kind} ${entry.decision}`))] as chip (chip)}
+                  {@const [kind, decision] = chip.split(' ') as [SitePermission, PermissionDecision]}
+                  <span class="pill" class:ok={decision === 'allow'} class:warn={decision === 'deny'}>
+                    {t(decision === 'allow' ? 'sites.allowedChip' : 'sites.blockedChip', {
+                      permission: t(`permissions.${kind}`),
+                    })}
                   </span>
                 {/each}
                 {#each [...new Set(site.exceptions
@@ -406,25 +408,36 @@
       </Button>
     </div>
   {/if}
-  <p class="hint footnote">{t('sites.footnote')}</p>
 </section>
 
 <style>
-  .system {
+  .device-name {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    margin: 6px 0 18px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    gap: 10px;
   }
 
-  .system-label {
-    margin-right: 2px;
+  .device-name :global(svg) {
+    color: var(--text-muted);
+  }
+
+  .device-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .status {
+    color: var(--text-muted);
     font-size: var(--font-size-small);
-    font-weight: 600;
+  }
+
+  .status.ok {
+    color: var(--success);
+  }
+
+  .status.warn {
+    color: var(--warn);
   }
 
   .pill {
@@ -463,8 +476,8 @@
     margin: 14px 0 0;
     padding: 0;
     overflow: hidden;
-    border: 1px solid var(--border);
     border-radius: 12px;
+    background: var(--surface);
     list-style: none;
   }
 
@@ -586,10 +599,6 @@
 
   .empty {
     margin: 14px 0 0;
-  }
-
-  .footnote {
-    margin: 12px 0 0;
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -35,10 +35,9 @@
 </script>
 
 <h2>{t('settings.shortcuts')}</h2>
-<p class="hint">{t('settings.shortcutsHint')}</p>
 {#each SHORTCUTS as shortcut (shortcut.id)}
   <SettingRow title={t(shortcut.label)} labelFor="shortcut-{shortcut.id}">
-    <div class="field">
+    <div class="shortcut">
       <TextField
         id="shortcut-{shortcut.id}"
         spellcheck="false"
@@ -59,7 +58,7 @@
 {/each}
 
 <style>
-  .field {
+  .shortcut {
     display: flex;
     flex-direction: column;
     align-items: flex-end;

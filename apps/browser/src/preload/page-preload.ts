@@ -15,7 +15,6 @@ import {
   type ManualPassword,
   type PasswordTransferResult,
   type SavedLoginsView,
-  type ProcessUsage,
   type ProfilesView,
   type ProfilesResult,
   type RequestRule,
@@ -191,7 +190,6 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     clearData: (request: ClearDataRequest) => ipcRenderer.invoke(settingsChannel.clearData, request) as Promise<void>,
     makeDefault: () => ipcRenderer.invoke(settingsChannel.makeDefault) as Promise<SettingsView>,
     relaunch: () => ipcRenderer.invoke(settingsChannel.relaunch) as Promise<void>,
-    processUsage: () => ipcRenderer.invoke(settingsChannel.processUsage) as Promise<ProcessUsage>,
     checkForUpdates: () => ipcRenderer.invoke(settingsChannel.checkForUpdates) as Promise<void>,
     installUpdate: () => ipcRenderer.invoke(settingsChannel.installUpdate) as Promise<void>,
     chooseDownloadDirectory: () =>
@@ -203,7 +201,6 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
       ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,
     transferSettings: (mode: 'import' | 'export') =>
       ipcRenderer.invoke(settingsChannel.transfer, mode) as Promise<SettingsTransferResult>,
-    updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,
     profiles: () => ipcRenderer.invoke(settingsChannel.profiles) as Promise<ProfilesView>,
     profileAction: (action, id, name) =>
       ipcRenderer.invoke(settingsChannel.profileAction, action, id, name) as Promise<ProfilesResult>,
@@ -222,8 +219,6 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     extensions: () => ipcRenderer.invoke(ExtensionsChannel.list) as Promise<ExtensionInfo[]>,
     checkExtensionUpdates: () => ipcRenderer.invoke(ExtensionsChannel.checkUpdates) as Promise<string | null>,
     installExtension: () => ipcRenderer.invoke(ExtensionsChannel.install) as Promise<string | null>,
-    installExtensionFromStore: (input: string) =>
-      ipcRenderer.invoke(ExtensionsChannel.installFromStore, input) as Promise<string | null>,
     openExtensionStore: () => ipcRenderer.invoke(ExtensionsChannel.openStore) as Promise<void>,
     removeExtension: (path: string) => ipcRenderer.invoke(ExtensionsChannel.remove, path) as Promise<void>,
     setExtensionEnabled: (path: string, enabled: boolean) =>

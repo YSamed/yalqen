@@ -1287,7 +1287,6 @@ function startBrowser(): void {
   };
   registerSettingsIpc({
     view: settingsView,
-    updateThreatLists: () => threatLists.update(true),
     profiles: persistentProfiles,
     update: updateSettings,
     clearData,

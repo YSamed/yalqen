@@ -1,8 +1,7 @@
 <script lang="ts">
   import { AUTO_ARCHIVE_HOURS, DISCARD_AFTER_MINUTES, type SettingsValues } from '../../shared/types';
   import { t, type MessageKey } from '../../shared/i18n';
-  import SegmentedControl from '../ui/SegmentedControl.svelte';
-  import ProcessUsage from './ProcessUsage.svelte';
+  import Select from '../ui/Select.svelte';
   import SettingRow from './SettingRow.svelte';
 
   let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
@@ -33,20 +32,30 @@
 </script>
 
 <h2>{t('settings.memory')}</h2>
-<SettingRow title={t('settings.discardUnusedTabs')} hint={t('settings.discardUnusedTabsHint')}>
-  <SegmentedControl
-    label={t('settings.discardUnusedTabs')}
-    options={discardOptions}
-    value={values.discardAfterMinutes}
-    onchange={(value) => update({ discardAfterMinutes: value })}
-  />
-</SettingRow>
-<SettingRow title={t('settings.autoArchiveTabs')} hint={t('settings.autoArchiveTabsHint')}>
-  <SegmentedControl
-    label={t('settings.autoArchiveTabs')}
-    options={archiveOptions}
-    value={values.autoArchiveHours}
-    onchange={(value) => update({ autoArchiveHours: value })}
-  />
-</SettingRow>
-<ProcessUsage />
+<div class="durations">
+  <SettingRow title={t('settings.discardUnusedTabs')} hint={t('settings.discardUnusedTabsHint')}>
+    <Select
+      controlled
+      aria-label={t('settings.discardUnusedTabs')}
+      options={discardOptions}
+      value={values.discardAfterMinutes}
+      onchange={(value) => update({ discardAfterMinutes: value })}
+    />
+  </SettingRow>
+  <SettingRow title={t('settings.autoArchiveTabs')} hint={t('settings.autoArchiveTabsHint')}>
+    <Select
+      controlled
+      aria-label={t('settings.autoArchiveTabs')}
+      options={archiveOptions}
+      value={values.autoArchiveHours}
+      onchange={(value) => update({ autoArchiveHours: value })}
+    />
+  </SettingRow>
+</div>
+
+<style>
+  .durations :global(.select-trigger) {
+    min-width: 120px;
+    justify-content: space-between;
+  }
+</style>

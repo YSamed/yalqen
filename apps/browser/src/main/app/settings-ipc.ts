@@ -19,7 +19,6 @@ import { isSystemDevice, openSystemSettings, systemAccessStatus } from '../priva
 import { sanitizeClearRequest } from '../library/clear-data.js';
 import { sanitizeIconDomains } from '../library/site-icons.js';
 import { makeDefaultBrowser, refreshDefaultBrowser } from './default-browser.js';
-import { processUsage } from './process-metrics.js';
 import { handleSettingsCall } from './settings-page.js';
 import { parseSettingsFile, settingsFileText } from './settings.js';
 import type { Updater } from './updater.js';
@@ -34,7 +33,6 @@ export interface SettingsIpcHost {
   requestRules: RequestRuleStore;
   permissionsFor(contents: WebContents): PermissionStore | null;
   onRequestRulesSaved(): void;
-  updateThreatLists(): Promise<void>;
   profiles: import('./profile-controller.js').ProfileController;
   siteIcons?(domains: string[]): Record<string, string>;
   setSpaceTheme(id: string, theme: unknown): void;
@@ -109,13 +107,8 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
     return host.view();
   });
   handleSettingsCall(SettingsChannel.relaunch, () => host.relaunch());
-  handleSettingsCall(SettingsChannel.processUsage, () => processUsage());
   handleSettingsCall(SettingsChannel.checkForUpdates, () => host.updater.check());
   handleSettingsCall(SettingsChannel.installUpdate, () => host.updater.install());
-  handleSettingsCall(SettingsChannel.updateThreatLists, async () => {
-    await host.updateThreatLists();
-    return host.view();
-  });
   handleSettingsCall(SettingsChannel.chooseDownloadDirectory, async () => {
     const options: OpenDialogOptions = {
       title: t('settings.chooseDownloadDirectory'),

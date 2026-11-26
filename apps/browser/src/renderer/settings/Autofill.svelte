@@ -4,6 +4,7 @@
   import type { AutofillData, AutofillInfo, AutofillKind, AutofillView } from '../../shared/autofill';
   import Button from '../ui/Button.svelte';
   import TextField from '../ui/TextField.svelte';
+  import EmptyState from './EmptyState.svelte';
   const api = window.yalqenSettings;
   let view = $state<AutofillView>({ available: false, records: [] });
   let editing = $state<string | null>(null);
@@ -96,14 +97,12 @@
 </script>
 
 <h2>{t('autofill.title')}</h2>
-<p class="hint">{t('autofill.intro')}</p>
-<p class="hint">{t('autofill.cardHint')}</p>
 {#if !view.available}<p role="status">{t('autofill.unavailable')}</p>{/if}
 <div class="actions">
-  <Button variant="tonal" disabled={!view.available || busy} onclick={() => add('address')}>
+  <Button variant="tonal" icon="plus" disabled={!view.available || busy} onclick={() => add('address')}>
     {t('autofill.addAddress')}
   </Button>
-  <Button variant="tonal" disabled={!view.available || busy} onclick={() => add('card')}>
+  <Button variant="tonal" icon="card" disabled={!view.available || busy} onclick={() => add('card')}>
     {t('autofill.addCard')}
   </Button>
 </div>
@@ -159,6 +158,9 @@
   </form>
 {/if}
 {#if error}<p class="error" role="alert">{t('autofill.failed')}</p>{/if}
+{#if view.records.length === 0}
+  <EmptyState icon="card" title={t('autofill.empty')} />
+{/if}
 <ul>
   {#each view.records as record (record.id)}
     <li>
@@ -166,9 +168,9 @@
       <Button size="sm" variant="tonal" disabled={busy || !view.available} onclick={() => edit(record)}>
         {t('autofill.edit')}
       </Button>
-      <Button size="sm" disabled={busy} onclick={() => remove(record)}>{t('autofill.remove')}</Button>
+      <Button size="sm" variant="tonal" disabled={busy} onclick={() => remove(record)}>{t('autofill.remove')}</Button>
     </li>
-  {:else}<li class="hint">{t('autofill.empty')}</li>{/each}
+  {/each}
 </ul>
 
 <style>
@@ -223,8 +225,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
+    margin-top: 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: var(--surface);
   }
   li > div {
     display: flex;

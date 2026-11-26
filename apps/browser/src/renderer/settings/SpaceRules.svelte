@@ -34,7 +34,6 @@
 </script>
 
 <h2>{t('airTraffic.title')}</h2>
-<p class="hint intro">{t('airTraffic.intro')}</p>
 
 {#each rules as rule, index (rule.host + rule.path)}
   <div class="rule">
@@ -47,8 +46,6 @@
       onclick={() => remove(index)}
     />
   </div>
-{:else}
-  <p class="hint">{t('airTraffic.empty')}</p>
 {/each}
 
 <form
@@ -82,15 +79,14 @@
 {#if invalid}<p class="hint error" role="alert">{t('airTraffic.invalid')}</p>{/if}
 
 <style>
-  .intro {
-    margin: 0 0 8px;
-  }
-
   .rule {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 0;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface);
   }
 
   .target {
