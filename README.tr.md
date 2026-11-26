@@ -16,7 +16,7 @@
 </div>
 
 <p align="center">
-  <a href="https://yalqen.com/"><img src="assets/screenshots/website.webp" alt="Yalqen — Light as paper. Clear as glass." width="900"></a>
+  <a href="https://yalqen.com/"><img src="assets/screenshots/website.webp" alt="Yalqen — One browser. Many workspaces." width="900"></a>
 </p>
 
 <p align="center">
