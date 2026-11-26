@@ -163,7 +163,7 @@
   }
 
   function update(patch: Partial<SettingsValues>): Promise<void> {
-    return saveSettings(() => api.update(patch));
+    return saveSettings(() => api.update($state.snapshot(patch)));
   }
 
   function chooseDownloadDirectory(): Promise<void> {

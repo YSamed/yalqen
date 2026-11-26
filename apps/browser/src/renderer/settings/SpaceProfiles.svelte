@@ -79,7 +79,7 @@
   function setIntensity(space: SpaceView, intensity: number): void {
     const theme = { ...frameOf(space), intensity };
     if (space.id === DEFAULT_SPACE_ID) void update({ frameTheme: theme });
-    else void api.setSpaceTheme(space.id, theme);
+    else void api.setSpaceTheme(space.id, $state.snapshot(theme));
   }
 
   function setColor(space: SpaceView, id: AccentColorId): void {
@@ -90,11 +90,10 @@
       });
       return;
     }
-    void api.setSpaceTheme(space.id, {
-      ...(space.theme ?? settings.values.frameTheme),
-      colors: [accentHex(id)],
-      texture: 'none',
-    });
+    void api.setSpaceTheme(
+      space.id,
+      $state.snapshot({ ...(space.theme ?? settings.values.frameTheme), colors: [accentHex(id)], texture: 'none' }),
+    );
   }
 
   // A space's own data lives under its id, so switching back to "own" finds the same passwords again.
