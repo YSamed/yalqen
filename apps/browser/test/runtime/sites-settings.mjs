@@ -109,7 +109,7 @@ app
     const chips = await run(
       `[...${site('example.com')}.querySelectorAll('summary .pill')].map((item) => item.textContent.trim())`,
     );
-    assert.deepEqual(chips, ['Camera', 'Ads allowed', 'Cookies allowed']);
+    assert.deepEqual(chips, ['Camera allowed', 'Ads allowed', 'Cookies allowed']);
     assert.deepEqual([...new Set(iconRequests)].sort(), ['example.com', 'github.com']);
     await eventually(`${site('example.com')}.querySelector('.icon').textContent.trim()==='E'`);
 
@@ -121,7 +121,9 @@ app
     await run(
       `[...document.getElementById(${labelled('Camera for meet.example.com')}.getAttribute('aria-controls')).querySelectorAll('[role=option]')].find((item) => item.textContent.trim()==='Block').click()`,
     );
-    await eventually(`${site('example.com')}.querySelector('summary .pill.warn')?.textContent.trim()==='Camera'`);
+    await eventually(
+      `${site('example.com')}.querySelector('summary .pill.warn')?.textContent.trim()==='Camera blocked'`,
+    );
     assert.equal(permissions.decide('https://meet.example.com', ['camera']), 'deny');
 
     const ads = labelled('Show ads: https://example.com');
