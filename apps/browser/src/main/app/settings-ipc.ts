@@ -1,4 +1,6 @@
-import { dialog, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
+import { app, dialog, type IpcMainInvokeEvent, type OpenDialogOptions, type WebContents } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
 import { t } from '../../shared/i18n.js';
 import {
   RequestRulesChannel,
@@ -6,6 +8,7 @@ import {
   SitePermissionsChannel,
   type ClearDataRequest,
   type SettingsSaveResult,
+  type SettingsTransferResult,
   type SettingsValues,
   type SettingsView,
   type SitePermissionsView,
@@ -18,6 +21,7 @@ import { sanitizeIconDomains } from '../library/site-icons.js';
 import { makeDefaultBrowser, refreshDefaultBrowser } from './default-browser.js';
 import { processUsage } from './process-metrics.js';
 import { handleSettingsCall } from './settings-page.js';
+import { parseSettingsFile, settingsFileText } from './settings.js';
 import type { Updater } from './updater.js';
 
 export interface SettingsIpcHost {
@@ -35,6 +39,39 @@ export interface SettingsIpcHost {
   siteIcons?(domains: string[]): Record<string, string>;
   setSpaceTheme(id: string, theme: unknown): void;
   spaceAction(action: unknown, id: unknown, value: unknown): Promise<string | null>;
+}
+
+const SETTINGS_FILTERS = [{ name: 'Yalqen Settings', extensions: ['json'] }];
+const MAX_SETTINGS_FILE_BYTES = 1024 * 1024;
+
+async function transferSettings(host: SettingsIpcHost, mode: 'import' | 'export'): Promise<SettingsTransferResult> {
+  try {
+    if (mode === 'export') {
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: t('settings.exportSettings'),
+        defaultPath: path.join(app.getPath('documents'), 'Yalqen Settings.json'),
+        filters: SETTINGS_FILTERS,
+        properties: ['createDirectory', 'showOverwriteConfirmation'],
+      });
+      if (canceled || !filePath) return 'cancelled';
+      await fs.promises.writeFile(filePath, settingsFileText(host.view().values), { mode: 0o600 });
+      return 'done';
+    }
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: t('settings.importSettings'),
+      buttonLabel: t('window.import'),
+      filters: SETTINGS_FILTERS,
+      properties: ['openFile'],
+    });
+    const file = canceled ? undefined : filePaths[0];
+    if (!file) return 'cancelled';
+    if ((await fs.promises.stat(file)).size > MAX_SETTINGS_FILE_BYTES) return 'failed';
+    const patch = parseSettingsFile(await fs.promises.readFile(file, 'utf8'));
+    return patch && host.update(patch) ? 'done' : 'failed';
+  } catch (error) {
+    console.warn(`[settings] could not ${mode}:`, error);
+    return 'failed';
+  }
 }
 
 function sitePermissionsView(store: PermissionStore | null): SitePermissionsView {
@@ -63,6 +100,9 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
   handleSettingsCall(SettingsChannel.showImportMenu, (event, kind) => {
     if (kind === 'bookmarks' || kind === 'history') host.showImportMenu(kind, event.sender);
   });
+  handleSettingsCall(SettingsChannel.transfer, (_event, mode) =>
+    mode === 'import' || mode === 'export' ? transferSettings(host, mode) : 'failed',
+  );
   handleSettingsCall(SettingsChannel.makeDefault, async () => {
     await makeDefaultBrowser();
     await refreshDefaultBrowser();

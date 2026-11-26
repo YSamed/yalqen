@@ -148,7 +148,10 @@ export const SettingsChannel = {
   profileAction: 'yalqen-settings:profile-action',
   siteIcons: 'yalqen-settings:site-icons',
   showImportMenu: 'yalqen-settings:show-import-menu',
+  transfer: 'yalqen-settings:transfer',
 } as const;
+
+export type SettingsTransferResult = 'cancelled' | 'done' | 'failed';
 
 export type ProcessGroupKind = 'pages' | 'interface' | 'extensions' | 'browser' | 'gpu' | 'utility' | 'other';
 
@@ -302,6 +305,7 @@ export interface SettingsApi {
   setSpaceTheme(id: string, theme: import('./frame-theme').FrameTheme | null): Promise<SettingsView>;
   spaceAction(action: SpaceAction, id?: string, value?: string | null): Promise<string | null>;
   showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;
+  transferSettings(mode: 'import' | 'export'): Promise<SettingsTransferResult>;
   updateThreatLists(): Promise<SettingsView>;
   profiles(): Promise<ProfilesView>;
   profileAction(

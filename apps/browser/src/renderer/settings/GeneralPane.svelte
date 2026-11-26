@@ -78,6 +78,21 @@
     void update({ customSearchTemplate: templateDraft.trim() || null });
   }
 
+  let transferring = $state(false);
+  let transferMessage = $state('');
+
+  async function transferSettings(mode: 'import' | 'export'): Promise<void> {
+    transferring = true;
+    try {
+      const result = await api.transferSettings(mode);
+      if (result === 'failed') transferMessage = t('settings.settingsFileFailed');
+      else if (result === 'done')
+        transferMessage = mode === 'import' ? t('settings.settingsImported') : t('settings.settingsExported');
+    } finally {
+      transferring = false;
+    }
+  }
+
   async function chooseDirectory(): Promise<void> {
     choosingDirectory = true;
     try {
@@ -193,6 +208,16 @@
   <SettingRow title={t('settings.importHistory')} hint={t('settings.importHistoryHint')}>
     <Button variant="tonal" onclick={() => api.showImportMenu('history')}>{t('settings.importEllipsis')}</Button>
   </SettingRow>
+  <SettingRow title={t('settings.settingsFile')} hint={transferMessage || t('settings.settingsFileHint')}>
+    <div class="actions">
+      <Button variant="tonal" disabled={transferring} onclick={() => transferSettings('import')}>
+        {t('settings.importEllipsis')}
+      </Button>
+      <Button variant="tonal" disabled={transferring} onclick={() => transferSettings('export')}>
+        {t('settings.exportEllipsis')}
+      </Button>
+    </div>
+  </SettingRow>
 
   <h2>{t('settings.language')}</h2>
   <SettingRow
@@ -247,6 +272,11 @@
     border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
     border-radius: 12px;
     background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
   }
 
   #startup-urls {

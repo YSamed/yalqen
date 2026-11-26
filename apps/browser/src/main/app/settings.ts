@@ -250,6 +250,50 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
   };
 }
 
+// Left out of settings files: AI agent access and usage consent must be granted on each Mac, and the rest are
+// tied to this machine (a folder path, the Keychain group, a dismissed update).
+const LOCAL_ONLY_KEYS = [
+  'agentBridge',
+  'agentOrigins',
+  'agentActions',
+  'agentTracing',
+  'agentTerminal',
+  'agentFloating',
+  'usageCounting',
+  'downloadDirectory',
+  'touchIdPasskeys',
+  'dismissedUpdate',
+] as const satisfies readonly (keyof Settings)[];
+
+export const SETTINGS_FILE_FORMAT = 'yalqen-settings';
+
+function withoutLocalKeys(values: Record<string, unknown>): Record<string, unknown> {
+  const portable = { ...values };
+  for (const key of LOCAL_ONLY_KEYS) delete portable[key];
+  return portable;
+}
+
+export function settingsFileText(values: SettingsValues): string {
+  return JSON.stringify(
+    { format: SETTINGS_FILE_FORMAT, version: 1, settings: withoutLocalKeys({ ...values }) },
+    null,
+    2,
+  );
+}
+
+export function parseSettingsFile(text: string): Record<string, unknown> | null {
+  try {
+    const file = JSON.parse(text) as unknown;
+    if (typeof file !== 'object' || file === null) return null;
+    const { format, settings } = file as Record<string, unknown>;
+    if (format !== SETTINGS_FILE_FORMAT || typeof settings !== 'object' || settings === null || Array.isArray(settings))
+      return null;
+    return withoutLocalKeys(settings as Record<string, unknown>);
+  } catch {
+    return null;
+  }
+}
+
 function sameSettings(a: Settings, b: Settings): boolean {
   return (Object.keys(a) as (keyof Settings)[]).every((key) => JSON.stringify(a[key]) === JSON.stringify(b[key]));
 }

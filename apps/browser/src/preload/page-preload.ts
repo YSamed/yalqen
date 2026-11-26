@@ -21,6 +21,7 @@ import {
   type RequestRule,
   type SettingsApi,
   type SettingsSaveResult,
+  type SettingsTransferResult,
   type SettingsValues,
   type SettingsView,
   type SitePermissionsView,
@@ -200,6 +201,8 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
       ipcRenderer.invoke(settingsChannel.spaceAction, action, id, value) as Promise<string | null>,
     showImportMenu: (kind: 'bookmarks' | 'history') =>
       ipcRenderer.invoke(settingsChannel.showImportMenu, kind) as Promise<void>,
+    transferSettings: (mode: 'import' | 'export') =>
+      ipcRenderer.invoke(settingsChannel.transfer, mode) as Promise<SettingsTransferResult>,
     updateThreatLists: () => ipcRenderer.invoke(settingsChannel.updateThreatLists) as Promise<SettingsView>,
     profiles: () => ipcRenderer.invoke(settingsChannel.profiles) as Promise<ProfilesView>,
     profileAction: (action, id, name) =>

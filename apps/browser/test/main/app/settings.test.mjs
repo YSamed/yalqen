@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import settings from '../../../dist/main/app/settings.js';
 
-const { SettingsStore, sanitizeSettings } = settings;
+const { SettingsStore, sanitizeSettings, settingsFileText, parseSettingsFile } = settings;
 
 test('unknown or mistyped fields fall back', () => {
   assert.deepEqual(
@@ -344,4 +344,24 @@ test('frame theme falls back to defaults for unknown values', () => {
   }).frameTheme;
   assert.deepEqual(theme, sanitizeSettings({}).frameTheme);
   assert.deepEqual(sanitizeSettings({ frameTheme: null }).frameTheme, sanitizeSettings({}).frameTheme);
+});
+
+test('settings files carry portable values and leave local ones out', () => {
+  const values = { ...sanitizeSettings({}), theme: 'light', agentBridge: true, downloadDirectory: '/tmp/x' };
+  const file = JSON.parse(settingsFileText(values));
+  assert.equal(file.format, 'yalqen-settings');
+  assert.equal(file.settings.theme, 'light');
+  assert.equal('agentBridge' in file.settings, false);
+  assert.equal('downloadDirectory' in file.settings, false);
+
+  const patch = parseSettingsFile(
+    JSON.stringify({
+      format: 'yalqen-settings',
+      settings: { theme: 'light', agentActions: 'allow', usageCounting: true },
+    }),
+  );
+  assert.deepEqual(patch, { theme: 'light' });
+  assert.equal(parseSettingsFile('{"settings":{"theme":"light"}}'), null);
+  assert.equal(parseSettingsFile('not json'), null);
+  assert.equal(parseSettingsFile('{"format":"yalqen-settings","settings":[]}'), null);
 });
