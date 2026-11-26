@@ -225,7 +225,14 @@ export class HoverPreview {
     if (!this.onCard) this.hideAfter(LEAVE_ANCHOR_MS);
   }
 
-  show(ticket: number, key: string, view: PreviewView, anchor: AnchorRect, theme: TooltipTheme): void {
+  show(
+    ticket: number,
+    key: string,
+    view: PreviewView,
+    anchor: AnchorRect,
+    theme: TooltipTheme,
+    align: 'center' | 'top' = 'center',
+  ): void {
     if (ticket !== this.sequence || this.window.isDestroyed()) return;
     this.key = key;
     this.onCard = false;
@@ -242,7 +249,7 @@ export class HoverPreview {
         )) as PreviewSize;
         if (ticket !== this.sequence || this.window.isDestroyed()) return;
         const inner = { width: size.width - PAD * 2, height: Math.min(size.height, MAX_HEIGHT) - PAD * 2 };
-        const { x, y } = placePreview(anchor, inner, area, view.tab !== undefined);
+        const { x, y } = placePreview(anchor, inner, area, view.tab !== undefined && align === 'center');
         overlay.setBounds({ x: x - PAD, y: y - PAD, width: size.width, height: Math.min(size.height, MAX_HEIGHT) });
         await overlay.webContents.executeJavaScript('window.reveal()');
       })

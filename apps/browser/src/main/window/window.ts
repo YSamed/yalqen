@@ -2309,7 +2309,14 @@ export class YalqenWindow {
       const view = content
         ? previewView(content, Date.now(), getLocale(), t)
         : { heading: null, items: [], message: null, footer: null };
-      this.preview.show(ticket, key, card ? { ...view, tab: card } : view, request.anchor, request.theme);
+      this.preview.show(
+        ticket,
+        key,
+        card ? { ...view, tab: card } : view,
+        request.anchor,
+        request.theme,
+        request.align,
+      );
     });
   }
 

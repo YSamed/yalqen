@@ -1,10 +1,21 @@
 import { previewKind } from '../../shared/previews';
-import type { UiAction } from '../../shared/types';
+import type { AnchorRect, UiAction } from '../../shared/types';
 import { interfaceTheme } from './tooltips';
 import { anchorRect } from './anchor';
 
 const DELAY_MS = 450;
 const RETURN_MS = 600;
+
+// The card opens beside the sidebar, not beside the hovered element: a tile in the pinned or favorites grid has
+// other tiles to its right, and the top row sits under the window's buttons, so a card placed next to the tile
+// covered both. Stretching the anchor to the sidebar's right edge keeps the card clear of the whole sidebar.
+function sidebarAnchor(element: HTMLElement): AnchorRect {
+  const anchor = anchorRect(element);
+  const panel = element.closest('aside');
+  if (!panel) return anchor;
+  const right = panel.getBoundingClientRect().right;
+  return right > anchor.x + anchor.width ? { ...anchor, width: right - anchor.x } : anchor;
+}
 
 export function createHoverPreviews(send: (action: UiAction) => void) {
   let timer: number | undefined;
@@ -13,10 +24,11 @@ export function createHoverPreviews(send: (action: UiAction) => void) {
 
   function request(element: HTMLElement, tabId: string | null, url: string): void {
     if (!element.isConnected) return;
-    const anchor = anchorRect(element);
+    const anchor = sidebarAnchor(element);
     if (anchor.width === 0 || anchor.height === 0) return;
     requested = element;
-    send({ type: 'show-preview', preview: { tabId, url, anchor, theme: interfaceTheme() } });
+    const align = element.classList.contains('favorite') ? 'top' : 'center';
+    send({ type: 'show-preview', preview: { tabId, url, anchor, theme: interfaceTheme(), align } });
   }
 
   function enter(element: HTMLElement, tabId: string | null, url: string): void {
