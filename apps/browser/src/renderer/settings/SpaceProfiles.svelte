@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
   import type { SettingsValues, SettingsView } from '../../shared/types';
   import { t } from '../../shared/i18n';
   import { ACCENT_COLORS, accentHex, type AccentColorId } from '../../shared/accent';
@@ -31,7 +30,6 @@
   const api = window.yalqenSettings;
   let busy = $state(false);
   let failed = $state(false);
-  let showRules = $state(untrack(() => settings.values.spaceRules.length > 0));
 
   const edited = $derived(profile === null ? undefined : settings.spaces.find((space) => space.id === profile));
   const names = $derived(new Map(settings.spaces.map((space) => [space.id, space.name])));
@@ -173,16 +171,6 @@
     </Button>
   </div>
 {:else}
-  <p class="hint intro">{t('profiles.spacesHint')}</p>
-
-  <h2>{t('profiles.windowsLinks')}</h2>
-  <div class="actions">
-    <Button variant="surface" aria-expanded={showRules} onclick={() => (showRules = !showRules)}>
-      {t('profiles.linkRules')}
-    </Button>
-  </div>
-  {#if showRules}<SpaceRules view={settings} {update} />{/if}
-
   <h2>{t('settings.paneProfiles')}</h2>
   <ul>
     {#each settings.spaces as space (space.id)}
@@ -198,15 +186,14 @@
       </li>
     {/each}
   </ul>
-  <div class="actions">
-    <Button variant="surface" disabled={busy} onclick={create}>{t('profiles.createEllipsis')}</Button>
+  <div class="actions start">
+    <Button variant="tonal" icon="plus" disabled={busy} onclick={create}>{t('profiles.createEllipsis')}</Button>
   </div>
+
+  <SpaceRules view={settings} {update} />
 {/if}
 
 <style>
-  .intro {
-    margin: 8px 10px 0;
-  }
   ul {
     list-style: none;
     padding: 0;
@@ -273,5 +260,8 @@
     justify-content: flex-end;
     gap: 8px;
     margin-top: 10px;
+  }
+  .actions.start {
+    justify-content: flex-start;
   }
 </style>

@@ -122,8 +122,6 @@ export const en = {
   'spaces.cancel': 'Cancel',
   'menu.spaceNumber': 'Space {number}',
   'airTraffic.title': 'Link routing',
-  'airTraffic.intro':
-    'A link opened from another app opens in the space of the most specific rule that matches it. A rule for a site also covers its subdomains.',
   'airTraffic.host': 'Site, for example github.com',
   'airTraffic.path': 'Path prefix (optional)',
   'airTraffic.space': 'Space',
@@ -170,10 +168,8 @@ export const en = {
   'sites.noData': 'No stored data.',
   'sites.resetPermissions': 'Reset permissions',
   'sites.systemOff': '{device} off',
-  'sites.systemAsk': '{device}: asked on first use',
+  'sites.systemAsk': '{device} not asked',
   'sites.systemRestricted': '{device} restricted',
-  'sites.footnote':
-    'Sites are grouped with their subdomains, and size counts databases and cache only. Clearing a site may sign you out. Allow ads or third-party cookies for a site from the site menu next to the address.',
   'siteStorage.clear': 'Clear data',
   'siteStorage.clearAll': 'Clear all site data',
   'siteStorage.clearPrompt': 'Clear stored data for {domain} and its subdomains?',
@@ -189,10 +185,6 @@ export const en = {
   'siteStorage.next': 'Next',
   'siteStorage.limited': 'The site index reached its limit. Clear all site data also removes data beyond the list.',
   'autofill.title': 'Addresses and payment cards',
-  'autofill.intro':
-    'Records are encrypted in this browser profile. Focus a field with an autocomplete hint, then use its fill button to choose a record. Only blank fields in the same form section are filled.',
-  'autofill.cardHint':
-    'Card security codes are never stored. Cards require system authentication on devices that support Touch ID. Filling is available on HTTPS or localhost, in regular tabs only.',
   'autofill.addAddress': 'Add address',
   'autofill.addCard': 'Add card',
   'autofill.edit': 'Edit',
@@ -311,8 +303,6 @@ export const en = {
   'pageFiles.openFailed': 'The files could not be opened.',
   'pageFiles.pageChanged': 'The page changed while it was being saved.',
   'profiles.title': 'Persistent profiles',
-  'profiles.hint':
-    'Create separate profiles for work and personal browsing. Cookies, history, bookmarks, passwords, extensions and settings are kept separately. Each profile opens in its own browser instance.',
   'profiles.manage': 'Manage profiles…',
   'profiles.current': 'Current',
   'profiles.running': 'Open',
@@ -328,11 +318,7 @@ export const en = {
   'profiles.save': 'Save',
   'profiles.cancel': 'Cancel',
   'profiles.edit': 'Edit Profile',
-  'profiles.windowsLinks': 'Windows & Links',
-  'profiles.linkRules': 'Link Rules…',
   'profiles.createEllipsis': 'Create Profile…',
-  'profiles.spacesHint':
-    'Profiles keep your browsing organized. Each one has its own tabs, color and link rules, and can keep its sign-ins separate or share them with selected profiles.',
   'profiles.dataSharing': 'Profile data',
   'profiles.dataSharingHint':
     'Sign-ins, cookies, passwords, cards and site permissions follow this choice. History and bookmarks are shared by all profiles.',
@@ -694,23 +680,17 @@ export const en = {
   'agentChat.pageSendHint': 'The text of {url} is sent with this message.',
 
   'extensionsPanel.title': 'Extensions',
-  'extensionsPanel.intro':
-    "Extensions don't run in private tabs or developer windows, and some may not work as expected.",
   'extensionsPanel.loadFailed': "Couldn't load: {error}",
   'extensionsPanel.options': 'Options',
   'extensionsPanel.enabledLabel': '{name} enabled',
   'extensionsPanel.removeLabel': 'Remove {name}',
+  'extensionsPanel.moreLabel': '{name} settings',
   'extensionsPanel.empty': 'No extensions installed.',
   'extensionsPanel.emptyHint': 'Add one from the Chrome Web Store or load it from a folder.',
-  'extensionsPanel.storePlaceholder': 'Chrome Web Store URL or extension ID',
-  'extensionsPanel.adding': 'Adding…',
-  'extensionsPanel.addFromStore': 'Add from store',
   'extensionsPanel.openStore': 'Open Chrome Web Store',
   'extensionsPanel.loadFromFolder': 'Load from folder…',
 
   'passwordsPanel.title': 'Passwords',
-  'passwordsPanel.intro':
-    "When you sign in to a site, Yalqen offers to save the password. Passwords are encrypted with a key kept in the macOS Keychain. Saving isn't offered in private tabs or developer windows.",
   'passwordsPanel.unavailable': "Encryption isn't available on this Mac, so passwords can't be saved.",
   'passwordsPanel.searchPlaceholder': 'Search by site or username',
   'passwordsPanel.searchLabel': 'Search passwords',
@@ -736,7 +716,6 @@ export const en = {
   'passwordsPanel.copyUsername': 'Copy username',
   'passwordsPanel.changed': 'Changed {date}',
   'passwordsPanel.confirmDelete': 'Delete the saved password for {host}?',
-  'passwordsPanel.clipboardNote': 'A copied password is cleared from the clipboard after 30 seconds.',
   'passwordTools.weakHint': 'This password is easy to guess. Generate a stronger one.',
 
   'agentBridge.title': 'Agent connection',
@@ -1098,8 +1077,6 @@ export const en = {
   'settings.pageSwipeHint': 'Swipe left or right with two fingers on the page to go back or forward.',
   'settings.paneShortcuts': 'Shortcuts',
   'settings.shortcuts': 'Menu shortcuts',
-  'settings.shortcutsHint':
-    'Type modifiers and a key, for example CmdOrCtrl+Shift+K. Modifiers are CmdOrCtrl, Cmd, Ctrl, Alt and Shift. Leave a field empty to use the default.',
   'settings.shortcutInvalid': 'This is not a valid key combination.',
   'settings.shortcutConflict': 'Another command or a built-in shortcut also uses this key combination.',
   'menu.about': 'About Yalqen',

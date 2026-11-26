@@ -180,7 +180,7 @@ contextBridge.exposeInMainWorld('yalqenSettings', {
   get: async () => view, update: async () => ({ view, saved: true }), onChange: none, clearData: async () => {}, makeDefault: async () => view,
   checkForUpdates: async () => {}, installUpdate: async () => {},
   requestRules: async () => [], saveRequestRules: async (rules) => rules, extensions: async () => [{ path: "/Extensions/example", id: "example", name: "Example extension", version: "1.0", description: "", enabled: true, error: null, icon: null, hasOptions: false, fromStore: true, updating: false, updateError: null }], checkExtensionUpdates: async () => null, installExtension: async () => null,
-  installExtensionFromStore: async () => null, openExtensionStore: async () => {}, removeExtension: async () => {},
+  openExtensionStore: async () => {}, removeExtension: async () => {},
   setExtensionEnabled: async () => {}, openExtensionOptions: async () => {}, onExtensionsChange: none,
   profiles: async () => ({ currentId: 'default', profiles: [{ id: 'default', name: 'Default', active: true, default: true, running: true }] }),
   agentConnections: async () => ({ claude: 'missing', codex: 'missing' }),

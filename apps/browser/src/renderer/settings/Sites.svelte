@@ -54,6 +54,9 @@
     if (access === 'restricted') return t('sites.systemRestricted', { device });
     return t('sites.systemOff', { device });
   }
+  const blockedDevice = $derived(
+    devices.find(({ device }) => ['denied', 'unknown'].includes(permissions?.system?.[device] ?? ''))?.device,
+  );
   const exceptionLabels: Record<ExceptionKey, { title: string; chip: string }> = {
     adBlockExceptions: { title: t('sites.allowAds'), chip: t('sites.adsChip') },
     thirdPartyCookieExceptions: { title: t('sites.allowCookies'), chip: t('sites.cookiesChip') },
@@ -242,12 +245,12 @@
       >
         {shortAccess(label, access)}
       </span>
-      {#if access === 'denied' || access === 'unknown'}
-        <Button size="sm" variant="ghost" onclick={() => api.openSystemSettings(device)}>
-          {t('permissionHandlers.openSystemSettings')}
-        </Button>
-      {/if}
     {/each}
+    {#if blockedDevice}
+      <Button class="open-system" size="sm" variant="tonal" onclick={() => api.openSystemSettings(blockedDevice)}>
+        {t('permissionHandlers.openSystemSettings')}
+      </Button>
+    {/if}
   </div>
 {/if}
 
@@ -409,7 +412,6 @@
       </Button>
     </div>
   {/if}
-  <p class="hint footnote">{t('sites.footnote')}</p>
 </section>
 
 <style>
@@ -420,8 +422,12 @@
     gap: 8px;
     margin: 6px 0 18px;
     padding: 10px 12px;
-    border: 1px solid var(--border);
     border-radius: 12px;
+    background: var(--surface);
+  }
+
+  .system :global(.open-system) {
+    margin-left: auto;
   }
 
   .system-label {
@@ -466,8 +472,8 @@
     margin: 14px 0 0;
     padding: 0;
     overflow: hidden;
-    border: 1px solid var(--border);
     border-radius: 12px;
+    background: var(--surface);
     list-style: none;
   }
 
@@ -589,10 +595,6 @@
 
   .empty {
     margin: 14px 0 0;
-  }
-
-  .footnote {
-    margin: 12px 0 0;
   }
 
   @media (prefers-reduced-motion: reduce) {

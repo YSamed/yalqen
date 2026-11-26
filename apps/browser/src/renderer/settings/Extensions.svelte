@@ -2,12 +2,12 @@
   import { onMount } from 'svelte';
   import { t } from '../../shared/i18n';
   import type { ExtensionInfo, SettingsValues } from '../../shared/types';
+  import EmptyState from './EmptyState.svelte';
   import SettingRow from './SettingRow.svelte';
   import Icon from '../ui/Icon.svelte';
   import Button from '../ui/Button.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import Switch from '../ui/Switch.svelte';
-  import TextField from '../ui/TextField.svelte';
   import ExtensionAccessEditor from './ExtensionAccessEditor.svelte';
 
   let { values, update }: { values: SettingsValues; update: (patch: Partial<SettingsValues>) => Promise<void> } =
@@ -24,11 +24,10 @@
       checking = false;
     }
   }
-
   let extensions = $state<ExtensionInfo[]>([]);
+  let expanded = $state<string | null>(null);
   let installing = $state(false);
   let installError = $state<string | null>(null);
-  let storeInput = $state('');
 
   async function run(task: () => Promise<string | null>): Promise<string | null> {
     installing = true;
@@ -43,11 +42,6 @@
 
   const install = () => run(() => api.installExtension());
 
-  async function installFromStore(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
-    if (!(await run(() => api.installExtensionFromStore(storeInput)))) storeInput = '';
-  }
-
   onMount(() => {
     void api.extensions().then((next) => {
       extensions = next;
@@ -61,74 +55,67 @@
 <h2>{t('extensionsPanel.title')}</h2>
 {#each extensions as extension (extension.path)}
   <div class="extension" class:disabled={!extension.enabled}>
-    <span class="icon">
-      {#if extension.icon}
-        <img src={extension.icon} alt="" width="32" height="32" />
-      {:else}
-        <Icon name="extensions" size={20} />
-      {/if}
-    </span>
-    <div class="details">
-      <span class="name" title={extension.path}>{extension.name} <span class="hint">{extension.version}</span></span>
-      {#if extension.description}<span class="hint description" title={extension.description}>
-          {extension.description}
-        </span>{/if}
-      {#if extension.error}<span class="error" role="alert">
-          {t('extensionsPanel.loadFailed', { error: extension.error })}
-        </span>{/if}
-      {#if extension.updateError}<span class="error" role="status">
-          {t('extensionsPanel.updateFailed', { error: extension.updateError })}
-        </span>{/if}
-      <ExtensionAccessEditor {extension} />
+    <div class="head">
+      <span class="icon">
+        {#if extension.icon}
+          <img src={extension.icon} alt="" width="32" height="32" />
+        {:else}
+          <Icon name="extensions" size={20} />
+        {/if}
+      </span>
+      <div class="details">
+        <span class="name" title={extension.name}>{extension.name}</span>
+        <span class="hint">{extension.version}</span>
+      </div>
+      <div class="controls">
+        <Switch
+          label={t('extensionsPanel.enabledLabel', { name: extension.name })}
+          checked={extension.enabled}
+          disabled={extension.updating}
+          onchange={(checked) => api.setExtensionEnabled(extension.path, checked)}
+        />
+        <IconButton
+          icon="more"
+          tone="muted"
+          label={t('extensionsPanel.moreLabel', { name: extension.name })}
+          aria-expanded={expanded === extension.path}
+          onclick={() => (expanded = expanded === extension.path ? null : extension.path)}
+        />
+        <IconButton
+          icon="trash"
+          disabled={extension.updating}
+          tone="muted"
+          label={t('extensionsPanel.removeLabel', { name: extension.name })}
+          onclick={() => api.removeExtension(extension.path)}
+        />
+      </div>
     </div>
-    <div class="controls">
-      {#if extension.hasOptions}
-        <Button size="sm" variant="tonal" onclick={() => api.openExtensionOptions(extension.path)}>
-          {t('extensionsPanel.options')}
-        </Button>
-      {/if}
-      <Switch
-        label={t('extensionsPanel.enabledLabel', { name: extension.name })}
-        checked={extension.enabled}
-        disabled={extension.updating}
-        onchange={(checked) => api.setExtensionEnabled(extension.path, checked)}
-      />
-      <IconButton
-        icon="close"
-        disabled={extension.updating}
-        tone="muted"
-        label={t('extensionsPanel.removeLabel', { name: extension.name })}
-        onclick={() => api.removeExtension(extension.path)}
-      />
-    </div>
+    {#if extension.error}<p class="error" role="alert">
+        {t('extensionsPanel.loadFailed', { error: extension.error })}
+      </p>{/if}
+    {#if extension.updateError}<p class="error" role="status">
+        {t('extensionsPanel.updateFailed', { error: extension.updateError })}
+      </p>{/if}
+    {#if expanded === extension.path}
+      <div class="more">
+        <ExtensionAccessEditor {extension} />
+        {#if extension.hasOptions}
+          <Button size="sm" variant="tonal" onclick={() => api.openExtensionOptions(extension.path)}>
+            {t('extensionsPanel.options')}
+          </Button>
+        {/if}
+      </div>
+    {/if}
   </div>
 {:else}
-  <div class="empty">
-    <Icon name="extensions" size={28} />
-    <strong>{t('extensionsPanel.empty')}</strong>
-    <span class="hint">{t('extensionsPanel.emptyHint')}</span>
-  </div>
+  <EmptyState icon="extensions" title={t('extensionsPanel.empty')} hint={t('extensionsPanel.emptyHint')} />
 {/each}
 
-<form class="store" onsubmit={installFromStore}>
-  <TextField
-    bind:value={storeInput}
-    placeholder={t('extensionsPanel.storePlaceholder')}
-    aria-label={t('extensionsPanel.storePlaceholder')}
-    spellcheck="false"
-    autocomplete="off"
-    disabled={installing}
-  />
-  <Button type="submit" variant="tonal" icon="plus" disabled={installing || storeInput.trim() === ''}>
-    {installing ? t('extensionsPanel.adding') : t('extensionsPanel.addFromStore')}
-  </Button>
-</form>
-
 <div class="actions">
-  <Button variant="tonal" icon="extensions" onclick={() => api.openExtensionStore()}>
+  <Button variant="primary" icon="extensions" onclick={() => api.openExtensionStore()}>
     {t('extensionsPanel.openStore')}
   </Button>
-  <Button variant="tonal" icon="plus" disabled={installing} onclick={install}>
+  <Button variant="ghost" size="sm" disabled={installing} onclick={install}>
     {t('extensionsPanel.loadFromFolder')}
   </Button>
   {#if installError}<span class="error" role="alert">
@@ -143,7 +130,7 @@
     onchange={(checked) => update({ autoUpdateExtensions: checked })}
   />
 </SettingRow>
-{#if extensions.some((extension) => extension.fromStore)}
+{#if extensions.some((extension) => extension.fromStore && (!values.autoUpdateExtensions || extension.updateError))}
   <div class="actions">
     <Button
       variant="tonal"
@@ -155,39 +142,19 @@
     {#if updateStatus}<span class="hint" role="status">{updateStatus}</span>{/if}
   </div>
 {/if}
-<p class="hint intro">{t('extensionsPanel.intro')}</p>
 
 <style>
-  .intro {
-    margin: 12px 0 0;
-  }
-
-  .empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    margin-top: 8px;
-    padding: 24px 16px;
-    border-radius: 12px;
-    background: var(--surface);
-    color: var(--text-muted);
-    text-align: center;
-  }
-
-  .empty strong {
-    margin-top: 6px;
-    color: var(--text);
-  }
-
   .extension {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
     margin-top: 8px;
     padding: 12px 16px;
     border-radius: 12px;
     background: var(--surface);
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .extension.disabled .icon,
@@ -218,13 +185,22 @@
   }
 
   .name {
-    font-weight: 500;
-  }
-
-  .description {
     overflow: hidden;
+    font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .extension .error {
+    margin: 8px 0 0 44px;
+  }
+
+  .more {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 10px 0 0 44px;
   }
 
   .controls {
@@ -232,18 +208,6 @@
     flex: none;
     align-items: center;
     gap: 8px;
-  }
-
-  .store {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 0 0;
-  }
-
-  .store :global(input) {
-    flex: 1;
-    min-width: 0;
   }
 
   .actions {

@@ -35,7 +35,6 @@
 </script>
 
 <h2>{t('settings.shortcuts')}</h2>
-<p class="hint">{t('settings.shortcutsHint')}</p>
 {#each SHORTCUTS as shortcut (shortcut.id)}
   <SettingRow title={t(shortcut.label)} labelFor="shortcut-{shortcut.id}">
     <div class="shortcut">

@@ -200,7 +200,6 @@ export interface ExtensionInfo {
 export const ExtensionsChannel = {
   list: 'yalqen-extensions:list',
   install: 'yalqen-extensions:install',
-  installFromStore: 'yalqen-extensions:install-from-store',
   openStore: 'yalqen-extensions:open-store',
   checkUpdates: 'yalqen-extensions:check-updates',
   remove: 'yalqen-extensions:remove',
@@ -305,7 +304,6 @@ export interface SettingsApi {
   extensions(): Promise<ExtensionInfo[]>;
   checkExtensionUpdates(): Promise<string | null>;
   installExtension(): Promise<string | null>;
-  installExtensionFromStore(input: string): Promise<string | null>;
   openExtensionStore(): Promise<void>;
   removeExtension(path: string): Promise<void>;
   setExtensionEnabled(path: string, enabled: boolean): Promise<void>;

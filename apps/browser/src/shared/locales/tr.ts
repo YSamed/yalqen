@@ -126,8 +126,6 @@ export const tr: Record<MessageKey, string> = {
   'spaces.cancel': 'Vazgeç',
   'menu.spaceNumber': 'Alan {number}',
   'airTraffic.title': 'Bağlantı yönlendirme',
-  'airTraffic.intro':
-    'Başka bir uygulamadan açılan bağlantı, eşleşen en belirgin kuralın alanında açılır. Bir site kuralı alt alan adlarını da kapsar.',
   'airTraffic.host': 'Site, örneğin github.com',
   'airTraffic.path': 'Yol öneki (isteğe bağlı)',
   'airTraffic.space': 'Alan',
@@ -174,10 +172,8 @@ export const tr: Record<MessageKey, string> = {
   'sites.noData': 'Kayıtlı veri yok.',
   'sites.resetPermissions': 'İzinleri sıfırla',
   'sites.systemOff': '{device} kapalı',
-  'sites.systemAsk': '{device}: ilk kullanımda sorulur',
+  'sites.systemAsk': '{device} sorulmadı',
   'sites.systemRestricted': '{device} kısıtlı',
-  'sites.footnote':
-    'Siteler alt alan adlarıyla birlikte gruplanır; boyut yalnızca veritabanı ve önbelleği sayar. Bir siteyi temizlemek oturumunuzu kapatabilir. Bir siteye reklam veya üçüncü taraf çerez izni, adresin yanındaki site menüsünden verilir.',
   'siteStorage.clear': 'Verileri temizle',
   'siteStorage.clearAll': 'Tüm site verilerini temizle',
   'siteStorage.clearPrompt': '{domain} ve alt alan adlarının kayıtlı verileri temizlensin mi?',
@@ -194,10 +190,6 @@ export const tr: Record<MessageKey, string> = {
   'siteStorage.limited':
     'Site listesi sınırına ulaşıldı. Tüm site verilerini temizlemek listenin dışındaki verileri de siler.',
   'autofill.title': 'Adresler ve ödeme kartları',
-  'autofill.intro':
-    'Kayıtlar bu tarayıcı profilinde şifreli saklanır. Otomatik doldurma etiketi bulunan bir alana odaklanıp yanındaki doldurma düğmesinden kayıt seçin. Yalnızca aynı form bölümündeki boş alanlar doldurulur.',
-  'autofill.cardHint':
-    'Kart güvenlik kodları saklanmaz. Touch ID destekleyen cihazlarda kart işlemleri sistem kimlik doğrulaması ister. Doldurma yalnızca normal sekmelerde HTTPS veya localhost üzerinde kullanılabilir.',
   'autofill.addAddress': 'Adres ekle',
   'autofill.addCard': 'Kart ekle',
   'autofill.edit': 'Düzenle',
@@ -275,7 +267,7 @@ export const tr: Record<MessageKey, string> = {
   'certificate.unavailable': 'Bu bağlantı için sertifika ayrıntıları alınamadı.',
   'certificate.close': 'Kapat',
   'certificate.copy': 'Ayrıntıları ve PEM verisini kopyala',
-  'passwordTools.add': 'Parola ekle',
+  'passwordTools.add': 'Şifre ekle',
   'passwordTools.edit': 'Düzenle',
   'passwordTools.site': 'Web sitesi',
   'passwordTools.siteHint':
@@ -319,8 +311,6 @@ export const tr: Record<MessageKey, string> = {
   'pageFiles.openFailed': 'Dosyalar açılamadı.',
   'pageFiles.pageChanged': 'Kaydetme sırasında sayfa değişti.',
   'profiles.title': 'Kalıcı profiller',
-  'profiles.hint':
-    'İş ve kişisel gezinme için ayrı profiller oluşturun. Çerezler, geçmiş, yer imleri, parolalar, uzantılar ve ayarlar ayrı tutulur. Her profil kendi tarayıcı örneğinde açılır.',
   'profiles.manage': 'Profilleri yönet…',
   'profiles.current': 'Geçerli',
   'profiles.running': 'Açık',
@@ -336,11 +326,7 @@ export const tr: Record<MessageKey, string> = {
   'profiles.save': 'Kaydet',
   'profiles.cancel': 'İptal',
   'profiles.edit': 'Profili düzenle',
-  'profiles.windowsLinks': 'Pencereler ve bağlantılar',
-  'profiles.linkRules': 'Bağlantı kuralları…',
   'profiles.createEllipsis': 'Profil oluştur…',
-  'profiles.spacesHint':
-    'Profiller gezinmenizi düzenli tutar. Her profilin kendi sekmeleri, rengi ve bağlantı kuralları vardır. Oturum açma bilgilerini ayrı tutabilir veya seçtiğiniz profillerle paylaşabilir.',
   'profiles.dataSharing': 'Profil verileri',
   'profiles.dataSharingHint':
     'Oturumlar, çerezler, parolalar, kartlar ve site izinleri bu seçime göre ayrılır. Geçmiş ve yer imleri tüm profillerde ortaktır.',
@@ -701,23 +687,17 @@ export const tr: Record<MessageKey, string> = {
   'agentChat.pageSendHint': '{url} sayfasının metni bu mesajla gönderilir.',
 
   'extensionsPanel.title': 'Uzantılar',
-  'extensionsPanel.intro':
-    'Uzantılar gizli sekmelerde ve geliştirici pencerelerinde çalışmaz; bazıları beklendiği gibi çalışmayabilir.',
   'extensionsPanel.loadFailed': 'Yüklenemedi: {error}',
   'extensionsPanel.options': 'Seçenekler',
   'extensionsPanel.enabledLabel': '{name} etkin',
   'extensionsPanel.removeLabel': '{name} kaldır',
+  'extensionsPanel.moreLabel': '{name} ayarları',
   'extensionsPanel.empty': 'Yüklü uzantı yok.',
   'extensionsPanel.emptyHint': 'Chrome Web Mağazası’ndan ekleyin veya bir klasörden yükleyin.',
-  'extensionsPanel.storePlaceholder': 'Chrome Web Mağazası adresi veya uzantı kimliği',
-  'extensionsPanel.adding': 'Ekleniyor…',
-  'extensionsPanel.addFromStore': 'Mağazadan ekle',
   'extensionsPanel.openStore': 'Chrome Web Mağazası’nı aç',
   'extensionsPanel.loadFromFolder': 'Klasörden yükle…',
 
   'passwordsPanel.title': 'Şifreler',
-  'passwordsPanel.intro':
-    "Bir sitede oturum açtığınızda Yalqen şifreyi kaydetmeyi önerir. Şifreler macOS Anahtar Zinciri'nde tutulan bir anahtarla şifrelenir; gizli sekmelerde ve geliştirici pencerelerinde kaydetme önerilmez.",
   'passwordsPanel.unavailable': "Bu Mac'te şifreleme kullanılamıyor; şifreler kaydedilemez.",
   'passwordsPanel.searchPlaceholder': 'Site veya kullanıcı adı ara',
   'passwordsPanel.searchLabel': 'Şifrelerde ara',
@@ -743,7 +723,6 @@ export const tr: Record<MessageKey, string> = {
   'passwordsPanel.copyUsername': 'Kullanıcı adını kopyala',
   'passwordsPanel.changed': 'Değiştirildi: {date}',
   'passwordsPanel.confirmDelete': '{host} için kayıtlı şifre silinsin mi?',
-  'passwordsPanel.clipboardNote': 'Kopyalanan şifre 30 saniye sonra panodan temizlenir.',
   'passwordTools.weakHint': 'Bu şifre kolay tahmin edilir. Daha güçlü bir şifre oluşturun.',
 
   'agentBridge.title': 'Ajan bağlantısı',
@@ -1109,8 +1088,6 @@ export const tr: Record<MessageKey, string> = {
   'settings.pageSwipeHint': 'Geri veya ileri gitmek için sayfada iki parmakla sola ya da sağa kaydırın.',
   'settings.paneShortcuts': 'Kısayollar',
   'settings.shortcuts': 'Menü kısayolları',
-  'settings.shortcutsHint':
-    'Değiştirici tuşları ve bir tuş yazın, örneğin CmdOrCtrl+Shift+K. Değiştiriciler: CmdOrCtrl, Cmd, Ctrl, Alt ve Shift. Varsayılanı kullanmak için alanı boş bırakın.',
   'settings.shortcutInvalid': 'Bu geçerli bir tuş birleşimi değil.',
   'settings.shortcutConflict': 'Bu tuş birleşimini başka bir komut ya da yerleşik bir kısayol da kullanıyor.',
   'menu.about': 'Yalqen Hakkında',

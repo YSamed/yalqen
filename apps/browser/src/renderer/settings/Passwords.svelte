@@ -5,6 +5,7 @@
   import { isWeakPassword } from '../../shared/password-health';
   import type { PasswordsView, SavedPasswordInfo, ManualPassword, PasswordIssue } from '../../shared/types';
   import Button from '../ui/Button.svelte';
+  import EmptyState from './EmptyState.svelte';
   import IconButton from '../ui/IconButton.svelte';
   import SearchField from '../ui/SearchField.svelte';
   import SegmentedControl from '../ui/SegmentedControl.svelte';
@@ -150,7 +151,6 @@
 </script>
 
 <h2>{t('passwordsPanel.title')}</h2>
-<p class="hint intro">{t('passwordsPanel.intro')}</p>
 
 {#if view}
   {#if !view.available}
@@ -158,8 +158,10 @@
   {/if}
 
   <div class="actions">
-    <Button disabled={busy || !view.available} onclick={() => edit()}>{t('passwordTools.add')}</Button>
-    <Button variant="tonal" disabled={busy || !view.available} onclick={() => transfer('import')}>
+    <Button variant="tonal" icon="plus" disabled={busy || !view.available} onclick={() => edit()}>
+      {t('passwordTools.add')}
+    </Button>
+    <Button variant="tonal" icon="download" disabled={busy || !view.available} onclick={() => transfer('import')}>
       {t('passwordTools.import')}
     </Button>
     <Button
@@ -231,7 +233,6 @@
       value={filter}
       onchange={(next) => (filter = next)}
     />
-    <p class="hint">{t('passwordsPanel.clipboardNote')}</p>
   {/if}
 
   {#each groups as group (group.name)}
@@ -283,7 +284,11 @@
       {/each}
     </section>
   {:else}
-    <p class="hint empty">{view.passwords.length > 0 ? t('passwordsPanel.noMatches') : t('passwordsPanel.empty')}</p>
+    {#if view.passwords.length > 0}
+      <p class="hint empty">{t('passwordsPanel.noMatches')}</p>
+    {:else}
+      <EmptyState icon="key" title={t('passwordsPanel.empty')} />
+    {/if}
   {/each}
 
   {#if view.neverSave.length > 0}
@@ -314,14 +319,11 @@
     flex-direction: column;
     gap: 8px;
     padding: 16px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-control);
+    border-radius: 12px;
+    background: var(--surface);
   }
   .editor .hint {
     margin: 0;
-  }
-  .intro {
-    margin: 0 0 8px;
   }
 
   .empty {

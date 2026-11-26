@@ -34,7 +34,6 @@
 </script>
 
 <h2>{t('airTraffic.title')}</h2>
-<p class="hint intro">{t('airTraffic.intro')}</p>
 
 {#each rules as rule, index (rule.host + rule.path)}
   <div class="rule">
@@ -82,10 +81,6 @@
 {#if invalid}<p class="hint error" role="alert">{t('airTraffic.invalid')}</p>{/if}
 
 <style>
-  .intro {
-    margin: 0 0 8px;
-  }
-
   .rule {
     display: flex;
     align-items: center;

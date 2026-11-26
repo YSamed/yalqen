@@ -220,8 +220,6 @@ if (location.href.startsWith(SETTINGS_URL) && window === window.top) {
     extensions: () => ipcRenderer.invoke(ExtensionsChannel.list) as Promise<ExtensionInfo[]>,
     checkExtensionUpdates: () => ipcRenderer.invoke(ExtensionsChannel.checkUpdates) as Promise<string | null>,
     installExtension: () => ipcRenderer.invoke(ExtensionsChannel.install) as Promise<string | null>,
-    installExtensionFromStore: (input: string) =>
-      ipcRenderer.invoke(ExtensionsChannel.installFromStore, input) as Promise<string | null>,
     openExtensionStore: () => ipcRenderer.invoke(ExtensionsChannel.openStore) as Promise<void>,
     removeExtension: (path: string) => ipcRenderer.invoke(ExtensionsChannel.remove, path) as Promise<void>,
     setExtensionEnabled: (path: string, enabled: boolean) =>
