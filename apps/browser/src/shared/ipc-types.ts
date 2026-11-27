@@ -70,6 +70,7 @@ export type UiAction =
   | { type: 'dev-command'; id: DevCommandId }
   | { type: 'resize-device'; width: number; height: number }
   | { type: 'set-device-scale-factor'; value: number }
+  | { type: 'set-titlebar-tone'; tone: 'light' | 'dark' | null }
   | { type: 'stop' }
   | { type: 'reset-zoom' }
   | { type: 'open-site-info' }
