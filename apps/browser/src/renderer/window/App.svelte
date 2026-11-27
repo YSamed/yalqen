@@ -54,7 +54,7 @@
     splitTabIds: [],
     pageFullScreen: false,
     windowFullScreen: false,
-    panelCollapsed: true,
+    panelCollapsed: IS_MAC,
     favorites: [],
     spaces: [],
     activeSpaceId: '',

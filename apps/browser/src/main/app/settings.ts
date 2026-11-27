@@ -15,6 +15,7 @@ import { sanitizeSidebarWidgets } from '../../shared/sidebar-widgets.js';
 import { DEFAULT_ACCENT, isAccentColor } from '../../shared/accent.js';
 import { DEFAULT_FRAME_THEME, sanitizeFrameTheme } from '../../shared/frame-theme.js';
 import { JsonFile } from '../storage/json-file.js';
+import { IS_MAC } from '../platform.js';
 import { isAutoArchiveHours } from '../tabs/auto-archive.js';
 import { DEFAULT_DISCARD_AFTER_MINUTES, isDiscardAfterMinutes } from '../tabs/memory-saver.js';
 import { sanitizeAgentOrigins } from '../agent-bridge/tab-scope.js';
@@ -36,7 +37,7 @@ const DEFAULTS: Settings = {
   startupBehavior: 'restore',
   startupUrls: [],
   spaceRules: [],
-  panelCollapsed: true,
+  panelCollapsed: IS_MAC,
   pinnedTabsStayHome: false,
   manualTabCleanup: false,
   tabModes: false,

@@ -914,6 +914,11 @@
     background-color: color-mix(in srgb, var(--accent) 12%, transparent);
   }
 
+  /* Shift counts as keyboard input, so a shift-click would add a focus ring inside the selection ring. */
+  .panel.card .row.selected .select:focus-visible {
+    outline: none;
+  }
+
   .folder {
     flex: none;
     margin: 4px 0;

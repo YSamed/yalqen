@@ -5,6 +5,7 @@
   import { untrack } from 'svelte';
   import { t } from '../../shared/i18n';
   import { isNewTab, siteLabel } from './format';
+  import { IS_MAC } from '../platform';
   import Capsule from './Capsule.svelte';
   import Icon from '../ui/Icon.svelte';
   import PageActions from './PageActions.svelte';
@@ -102,6 +103,10 @@
   }
   const surface = $derived(span && activeTab && !isNewTab(activeTab.url) ? (activeTab.pageColor ?? null) : null);
   const surfaceTone = $derived(surface === null ? null : toneScheme(surface));
+  $effect(() => {
+    // Windows draws its caption buttons over the toolbar, so their glyphs must follow the page-tinted surface.
+    if (!IS_MAC) send({ type: 'set-titlebar-tone', tone: surfaceTone });
+  });
   const chatPill = $derived(span && agentAvailable && activeTab !== null && !isNewTab(activeTab.url));
 
   function openExtensionsMenu(event: MouseEvent & { currentTarget: HTMLElement }): void {

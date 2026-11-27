@@ -192,10 +192,11 @@ const FIRST_PAINT_SCRIPT = `new Promise((resolve) => {
 const MAX_PICKED_ELEMENTS = 5;
 const MAX_AGENT_PROJECTS = 6;
 
-function titleBarOverlayOptions(): TitleBarOverlay {
+function titleBarOverlayOptions(surfaceTone: 'light' | 'dark' | null = null): TitleBarOverlay {
+  const dark = surfaceTone ? surfaceTone === 'dark' : nativeTheme.shouldUseDarkColors;
   return {
     color: 'rgba(0, 0, 0, 0)',
-    symbolColor: nativeTheme.shouldUseDarkColors ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
+    symbolColor: dark ? TITLEBAR_SYMBOL_COLORS.dark : TITLEBAR_SYMBOL_COLORS.light,
     height: TITLEBAR_OVERLAY_HEIGHT,
   };
 }
@@ -285,6 +286,7 @@ export class YalqenWindow {
   private sidebarMenuAnchor: AnchorRect = { x: 0, y: 0, width: 0, height: 0 };
   private menuBarSlide = RESTING_SLIDE;
   private menuBarInset = 0;
+  private titleBarSurfaceTone: 'light' | 'dark' | null = null;
   private menuBarTimer: NodeJS.Timeout | null = null;
   readonly window: BaseWindow;
   readonly tabs: TabManager;
@@ -2241,6 +2243,10 @@ export class YalqenWindow {
       case 'open-extensions-menu':
         this.openExtensionsMenu(sanitizeAnchor(action.anchor));
         break;
+      case 'set-titlebar-tone':
+        this.titleBarSurfaceTone = action.tone === 'light' || action.tone === 'dark' ? action.tone : null;
+        this.applyTitleBarTheme();
+        break;
       case 'open-history':
         tabs.openHistory();
         break;
@@ -2921,7 +2927,7 @@ export class YalqenWindow {
 
   private applyTitleBarTheme(): void {
     if (IS_MAC || this.window.isDestroyed()) return;
-    this.window.setTitleBarOverlay(titleBarOverlayOptions());
+    this.window.setTitleBarOverlay(titleBarOverlayOptions(this.titleBarSurfaceTone));
   }
 
   private applyLayout(): void {

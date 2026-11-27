@@ -43,7 +43,7 @@ test('unknown or mistyped fields fall back', () => {
       startupBehavior: 'restore',
       startupUrls: [],
       spaceRules: [],
-      panelCollapsed: true,
+      panelCollapsed: process.platform === 'darwin',
       pinnedTabsStayHome: false,
       manualTabCleanup: false,
       tabModes: false,
