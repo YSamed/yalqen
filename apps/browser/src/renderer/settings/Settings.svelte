@@ -170,6 +170,10 @@
     return saveSettings(() => api.chooseDownloadDirectory());
   }
 
+  function chooseSyncFolder(): Promise<void> {
+    return saveSettings(() => api.chooseSyncFolder());
+  }
+
   async function makeDefault(): Promise<void> {
     view = await api.makeDefault();
   }
@@ -187,11 +191,11 @@
 
 {#snippet content(id: PaneId, view: SettingsView)}
   {#if id === 'general'}
-    <GeneralPane section="general" {view} {update} {makeDefault} {chooseDownloadDirectory} />
+    <GeneralPane section="general" {view} {update} {makeDefault} {chooseDownloadDirectory} {chooseSyncFolder} />
     <AppearancePane section="look" values={view.values} {update} />
   {:else if id === 'tabs'}
     <AppearancePane section="tabs" values={view.values} {update} />
-    <GeneralPane section="windows" {view} {update} {makeDefault} {chooseDownloadDirectory} />
+    <GeneralPane section="windows" {view} {update} {makeDefault} {chooseDownloadDirectory} {chooseSyncFolder} />
     <PerformancePane values={view.values} {update} />
   {:else if id === 'privacy'}
     <PrivacyPane section="protection" values={view.values} threatLists={view.threatLists} {update} />

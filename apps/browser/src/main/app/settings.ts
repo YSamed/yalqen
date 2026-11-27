@@ -69,6 +69,7 @@ const DEFAULTS: Settings = {
   askBeforeDownload: true,
   screenshotsInDownloads: false,
   downloadDirectory: null,
+  syncFolder: null,
   displayName: '',
   accentColor: DEFAULT_ACCENT,
   dismissedUpdate: '',
@@ -151,6 +152,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     screenshotsInDownloads,
     askDownloadLocation,
     downloadDirectory,
+    syncFolder,
     displayName,
     accentColor,
     dismissedUpdate,
@@ -235,6 +237,11 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
       (typeof downloadDirectory === 'string' && path.isAbsolute(downloadDirectory) && !downloadDirectory.includes('\0'))
         ? downloadDirectory
         : base.downloadDirectory,
+    syncFolder:
+      syncFolder === null ||
+      (typeof syncFolder === 'string' && path.isAbsolute(syncFolder) && !syncFolder.includes('\0'))
+        ? syncFolder
+        : base.syncFolder,
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
     dismissedUpdate: typeof dismissedUpdate === 'string' ? dismissedUpdate.slice(0, 64) : base.dismissedUpdate,
@@ -268,6 +275,7 @@ const LOCAL_ONLY_KEYS = [
   'agentFloating',
   'usageCounting',
   'downloadDirectory',
+  'syncFolder',
   'touchIdPasskeys',
   'dismissedUpdate',
   'defaultBrowserPromptDismissed',
@@ -275,7 +283,7 @@ const LOCAL_ONLY_KEYS = [
 
 export const SETTINGS_FILE_FORMAT = 'yalqen-settings';
 
-function withoutLocalKeys(values: Record<string, unknown>): Record<string, unknown> {
+export function withoutLocalKeys(values: Record<string, unknown>): Record<string, unknown> {
   const portable = { ...values };
   for (const key of LOCAL_ONLY_KEYS) delete portable[key];
   return portable;

@@ -900,6 +900,13 @@ export const en = {
   'settings.importHistoryHint': 'Bring browsing history from Chrome or Firefox.',
   'settings.importEllipsis': 'Import…',
   'settings.settingsFile': 'Settings file',
+  'settings.sync': 'Sync',
+  'settings.syncFolder': 'Sync folder',
+  'settings.syncFolderHint':
+    'Pick a folder that syncs between your computers, such as one in iCloud Drive or Dropbox. Spaces, pinned tabs, folders and settings stay in step; history, passwords and open tabs do not.',
+  'settings.chooseSyncFolder': 'Choose folder…',
+  'settings.changeSyncFolder': 'Change folder…',
+  'settings.turnOffSync': 'Turn off',
   'settings.settingsFileHint':
     'Move your settings to another Mac with a file. AI agent access, the download folder and usage counting stay on this Mac.',
   'settings.settingsFileFailed': 'This file could not be read or saved.',

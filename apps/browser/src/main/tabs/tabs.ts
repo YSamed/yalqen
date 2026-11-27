@@ -2013,6 +2013,29 @@ export class TabManager {
     this.changed(true);
   }
 
+  replacePins(saved: SavedWindow, space: string): void {
+    const pinned = this.tabs.filter((tab) => tab.space === space && tab.pinnedUrl);
+    const lostActive = pinned.some((tab) => tab.id === this.activeId);
+    for (const tab of pinned) {
+      this.leaveSplit(tab.id);
+      this.openedPinned.delete(tab.id);
+      this.selected.delete(tab.id);
+      this.destroyView(tab);
+      this.tabs.splice(this.tabs.indexOf(tab), 1);
+      this.options.closed.push({ ...savedTab(tab), closedAt: Date.now() });
+      if (this.options.closed.length > MAX_CLOSED_TABS) this.options.closed.shift();
+    }
+    if (pinned.length) this.options.onClosedChanged?.();
+    if (pinned.some((tab) => tab.id === this.spaceActive.get(space))) this.spaceActive.delete(space);
+    this.autoReloader.sync();
+    this.importIntoSpace({ ...saved, tabs: saved.tabs.filter((tab) => tab.pinnedUrl) }, space);
+    if (!lostActive) return;
+    this.activeId = null;
+    const target = this.listOrder()[0];
+    if (target) this.activate(target.id);
+    else this.open();
+  }
+
   toSavedWindow(only?: string): SavedWindow {
     const kept = this.tabs.filter((tab) => !tab.isPrivate && (only === undefined || tab.space === only));
     const groupsOf = (space: string): SavedGroups => {
