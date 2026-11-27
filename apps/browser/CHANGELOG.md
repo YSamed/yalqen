@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.4](https://github.com/YSamed/yalqen/compare/v0.5.3...v0.5.4) (2026-11-27)
+
+
+### Features
+
+* add default browser bar to new tab page ([#514](https://github.com/YSamed/yalqen/issues/514)) ([8c0cce6](https://github.com/YSamed/yalqen/commit/8c0cce6d2e2b79e5ccf31d2f1786dba16a7e3db5))
+
+
+### Bug Fixes
+
+* improve windows title bar contrast, tab selection and sidebar default ([#513](https://github.com/YSamed/yalqen/issues/513)) ([7ec47b4](https://github.com/YSamed/yalqen/commit/7ec47b430b3f93cd8959d7cad8b7271144c1f8e6))
+
 ## [0.5.3](https://github.com/YSamed/yalqen/compare/v0.5.2...v0.5.3) (2026-11-26)
 
 
