@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.5](https://github.com/YSamed/yalqen/compare/v0.5.4...v0.5.5) (2026-11-27)
+
+
+### Features
+
+* sync spaces, pins and settings through a chosen folder ([#517](https://github.com/YSamed/yalqen/issues/517)) ([5761ef7](https://github.com/YSamed/yalqen/commit/5761ef707e945e2e23cea72793f17fa676bacc89))
+
 ## [0.5.4](https://github.com/YSamed/yalqen/compare/v0.5.3...v0.5.4) (2026-11-27)
 
 
