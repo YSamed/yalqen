@@ -30,6 +30,11 @@ test('command addresses are recognised with their arguments', () => {
     action: 'install',
   });
   assert.equal(internalNavigation('yalqen://newtab/update?action=bogus'), null);
+  assert.deepEqual(internalNavigation('yalqen://newtab/default-browser?action=make'), {
+    type: 'new-tab-default-browser',
+    action: 'make',
+  });
+  assert.equal(internalNavigation('yalqen://newtab/default-browser?action=bogus'), null);
   const command = internalNavigation('yalqen://bookmarks/rename?id=1&title=A');
   assert.equal(command.type, 'page-command');
   assert.equal(command.page, 'bookmarks');

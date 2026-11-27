@@ -78,6 +78,7 @@ test('unknown or mistyped fields fall back', () => {
       displayName: '',
       accentColor: 'orange',
       dismissedUpdate: '',
+      defaultBrowserPromptDismissed: false,
       agentBridge: false,
       agentOrigins: [],
       agentActions: 'ask',

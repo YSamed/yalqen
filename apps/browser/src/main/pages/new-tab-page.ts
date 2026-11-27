@@ -9,6 +9,8 @@ const NEW_TAB_CSP =
 const UPDATE_MARKER = '__YALQEN_UPDATE_SLOT__';
 const REPO_PROMPT_MARKER = '__YALQEN_REPO_PROMPT_SLOT__';
 const ENGINE_MARKER = '__YALQEN_ENGINE_SLOT__';
+const DEFAULT_BROWSER_MARKER = '__YALQEN_DEFAULT_BROWSER_SLOT__';
+const BAR_CLOSE_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="15" height="15"');
 const SMALL_FORGET_ICON = FORGET_ICON.replace('width="14" height="14"', 'width="11" height="11"');
 
 export interface NewTabAssets {
@@ -19,6 +21,7 @@ export interface NewTabAssets {
 
 export interface NewTabSources {
   readyUpdate: () => string | null;
+  showDefaultBrowserPrompt?: () => boolean;
   showRepoPrompt: () => boolean;
   engine?: () => string;
   accent?: () => string;
@@ -33,6 +36,15 @@ function renderUpdate(version: string): string {
     <div class="repo-prompt-actions">
       <a class="btn primary" href="${NEW_TAB_URL}update?action=install">${t('internalPages.updateInstall')}</a>
     </div>
+  </aside>`;
+}
+
+function renderDefaultBrowserBar(): string {
+  return `<aside class="default-bar" aria-labelledby="default-browser-title">
+    <img class="default-bar-mark" src="${NEW_TAB_URL}mark.png" alt="" width="16" height="16" />
+    <span id="default-browser-title" class="default-bar-text">${t('internalPages.defaultBrowserTitle')}</span>
+    <a class="default-bar-btn" href="${NEW_TAB_URL}default-browser?action=make">${t('settings.makeDefault')}</a>
+    <a class="default-bar-close" href="${NEW_TAB_URL}default-browser?action=close" aria-label="${t('internalPages.close')}">${BAR_CLOSE_ICON}</a>
   </aside>`;
 }
 
@@ -62,10 +74,12 @@ export function serveNewTab(url: URL, assets: NewTabAssets, sources: NewTabSourc
       });
     case '/': {
       const readyUpdate = sources.readyUpdate();
+      const defaultBar = !readyUpdate && sources.showDefaultBrowserPrompt?.() === true;
       const slots: [string, string][] = [
         [UPDATE_MARKER, readyUpdate ? renderUpdate(readyUpdate) : ''],
         [ENGINE_MARKER, escapeHtml(sources.engine?.() ?? '')],
-        [REPO_PROMPT_MARKER, !readyUpdate && sources.showRepoPrompt() ? renderRepoPrompt() : ''],
+        [DEFAULT_BROWSER_MARKER, defaultBar ? renderDefaultBrowserBar() : ''],
+        [REPO_PROMPT_MARKER, !readyUpdate && !defaultBar && sources.showRepoPrompt() ? renderRepoPrompt() : ''],
       ];
       const accent = sources.accent?.();
       const template = accent

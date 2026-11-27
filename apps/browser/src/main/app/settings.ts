@@ -72,6 +72,7 @@ const DEFAULTS: Settings = {
   displayName: '',
   accentColor: DEFAULT_ACCENT,
   dismissedUpdate: '',
+  defaultBrowserPromptDismissed: false,
   agentBridge: false,
   agentOrigins: [],
   agentActions: 'ask',
@@ -153,6 +154,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     displayName,
     accentColor,
     dismissedUpdate,
+    defaultBrowserPromptDismissed,
     agentBridge,
     agentOrigins,
     agentActions,
@@ -236,6 +238,10 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
     displayName: typeof displayName === 'string' ? sanitizeDisplayName(displayName) : base.displayName,
     accentColor: isAccentColor(accentColor) ? accentColor : base.accentColor,
     dismissedUpdate: typeof dismissedUpdate === 'string' ? dismissedUpdate.slice(0, 64) : base.dismissedUpdate,
+    defaultBrowserPromptDismissed:
+      typeof defaultBrowserPromptDismissed === 'boolean'
+        ? defaultBrowserPromptDismissed
+        : base.defaultBrowserPromptDismissed,
     agentBridge: typeof agentBridge === 'boolean' ? agentBridge : base.agentBridge,
     agentOrigins: Array.isArray(agentOrigins) ? sanitizeAgentOrigins(agentOrigins) : base.agentOrigins,
     agentActions:
@@ -252,7 +258,7 @@ export function sanitizeSettings(data: unknown, base: Settings = DEFAULTS): Sett
 }
 
 // Left out of settings files: AI agent access and usage consent must be granted on each Mac, and the rest are
-// tied to this machine (a folder path, the Keychain group, a dismissed update).
+// tied to this machine (a folder path, the Keychain group, a dismissed update or default-browser prompt).
 const LOCAL_ONLY_KEYS = [
   'agentBridge',
   'agentOrigins',
@@ -264,6 +270,7 @@ const LOCAL_ONLY_KEYS = [
   'downloadDirectory',
   'touchIdPasskeys',
   'dismissedUpdate',
+  'defaultBrowserPromptDismissed',
 ] as const satisfies readonly (keyof Settings)[];
 
 export const SETTINGS_FILE_FORMAT = 'yalqen-settings';

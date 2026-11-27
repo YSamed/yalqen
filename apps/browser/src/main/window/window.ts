@@ -100,6 +100,7 @@ import type { PersistChange, SavedTab, SavedWindow } from '../tabs/persistence.j
 import { blockedPopupsTemplate } from '../tabs/popups.js';
 import { Preconnector } from '../address-bar/preconnect.js';
 import type { RepoPrompt } from '../app/repo-prompt.js';
+import type { DefaultBrowserCardAction } from '../pages/internal-navigation.js';
 import type { ChatPreferenceStore } from '../agent-bridge/chat-preferences.js';
 import {
   exportBookmarksWithDialog,
@@ -218,6 +219,7 @@ export interface AppContext {
   dismissUpdate: () => void;
   installUpdate: () => void;
   updateReady: () => boolean;
+  defaultBrowserCard: (action: DefaultBrowserCardAction) => Promise<void>;
   chatPreferences: ChatPreferenceStore;
   downloads: DownloadStore;
   bookmarks: BookmarkStore;
@@ -536,6 +538,7 @@ export class YalqenWindow {
         if (action === 'install') app.installUpdate();
         else app.dismissUpdate();
       },
+      onDefaultBrowserCard: (action) => app.defaultBrowserCard(action),
       onHtmlFullScreenChange: (tabId, fullScreen) => {
         if (fullScreen) {
           if (tabId !== this.tabs.activeTabId || this.htmlFullScreenTabId === tabId) return;
