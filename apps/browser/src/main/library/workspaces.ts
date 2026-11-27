@@ -38,6 +38,14 @@ export interface SpaceFile {
   theme?: FrameTheme;
   isDefault?: boolean;
 }
+export interface SyncedSpace {
+  id: string;
+  name: string;
+  icon: string | null;
+  isolated: boolean;
+  savedAt: number;
+  theme?: FrameTheme;
+}
 export function spacePartition(id: string, isolated: boolean): string | null {
   return isolated && UUID.test(id) ? `persist:space-${id}` : null;
 }
@@ -260,6 +268,58 @@ export class WorkspaceStore {
       ...(file.isolated && { isolated: true }),
       ...(file.theme && { theme: file.theme }),
     });
+  }
+  syncedSpaces(): SyncedSpace[] {
+    return this.entries
+      .toSorted((a, b) => a.savedAt - b.savedAt)
+      .map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        icon: entry.icon,
+        isolated: profileOf(entry) !== null,
+        savedAt: entry.savedAt,
+        ...(entry.theme && { theme: entry.theme }),
+      }));
+  }
+  applySyncedSpaces(remote: SyncedSpace[], removable: ReadonlySet<string>): boolean {
+    const incoming = new Map(remote.map((space) => [space.id, space]));
+    const kept = this.entries.filter((entry) => incoming.has(entry.id) || !removable.has(entry.id));
+    const removed = this.entries.filter((entry) => !kept.includes(entry));
+    const next = kept.map((entry) => {
+      const space = incoming.get(entry.id);
+      if (!space) return entry;
+      const { theme: _theme, ...rest } = entry;
+      return {
+        ...rest,
+        name: space.name,
+        icon: space.icon,
+        savedAt: space.savedAt,
+        ...(space.theme && { theme: space.theme }),
+      };
+    });
+    for (const space of remote) {
+      if (next.length >= MAX_SPACES) break;
+      if (next.some((entry) => entry.id === space.id)) continue;
+      next.push({
+        id: space.id,
+        name: space.name,
+        icon: space.icon,
+        savedAt: space.savedAt,
+        window: { activeTabId: null, tabs: [] },
+        ...(space.isolated && { isolated: true }),
+        ...(space.theme && { theme: space.theme }),
+      });
+    }
+    const names = new Set<string>();
+    const unique = next.map((entry) => {
+      let name = entry.name;
+      for (let n = 2; names.has(name); n++) name = `${entry.name.slice(0, 70)} ${n}`;
+      names.add(name);
+      return name === entry.name ? entry : { ...entry, name };
+    });
+    if (JSON.stringify(unique) === JSON.stringify(this.entries) || !this.replace(unique)) return false;
+    this.forgetUnused(removed.flatMap((entry) => [profileOf(entry), entry.isolated !== undefined ? entry.id : null]));
+    return true;
   }
   setTheme(id: string, value: unknown): boolean {
     if (!this.entries.some((item) => item.id === id)) return false;

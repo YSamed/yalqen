@@ -15,6 +15,7 @@
     update,
     makeDefault,
     chooseDownloadDirectory,
+    chooseSyncFolder,
     section,
   }: {
     section: 'general' | 'windows';
@@ -22,6 +23,7 @@
     update: (patch: Partial<SettingsValues>) => Promise<void>;
     makeDefault: () => Promise<void>;
     chooseDownloadDirectory: () => Promise<void>;
+    chooseSyncFolder: () => Promise<void>;
   } = $props();
 
   const api = window.yalqenSettings;
@@ -200,6 +202,20 @@
       />
     </SettingRow>
   {/if}
+
+  <h2>{t('settings.sync')}</h2>
+  <SettingRow
+    title={t('settings.syncFolder')}
+    detail={values.syncFolder ?? undefined}
+    hint={t('settings.syncFolderHint')}
+  >
+    <Button variant="tonal" onclick={chooseSyncFolder}>
+      {values.syncFolder ? t('settings.changeSyncFolder') : t('settings.chooseSyncFolder')}
+    </Button>
+    {#if values.syncFolder}
+      <Button variant="ghost" onclick={() => update({ syncFolder: null })}>{t('settings.turnOffSync')}</Button>
+    {/if}
+  </SettingRow>
 
   <h2>{t('settings.importData')}</h2>
   <SettingRow title={t('settings.importBookmarks')} hint={t('settings.importBookmarksHint')}>

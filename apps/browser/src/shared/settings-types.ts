@@ -52,6 +52,7 @@ export interface SettingsValues {
   askBeforeDownload: boolean;
   screenshotsInDownloads: boolean;
   downloadDirectory: string | null;
+  syncFolder: string | null;
   displayName: string;
   accentColor: import('./accent').AccentColorId;
   dismissedUpdate: string;
@@ -141,6 +142,7 @@ export const SettingsChannel = {
   checkForUpdates: 'yalqen-settings:check-for-updates',
   installUpdate: 'yalqen-settings:install-update',
   chooseDownloadDirectory: 'yalqen-settings:choose-download-directory',
+  chooseSyncFolder: 'yalqen-settings:choose-sync-folder',
   setSpaceTheme: 'yalqen-settings:set-space-theme',
   spaceAction: 'yalqen-settings:space-action',
   profiles: 'yalqen-settings:profiles',
@@ -279,6 +281,7 @@ export interface SettingsApi {
   checkForUpdates(): Promise<void>;
   installUpdate(): Promise<void>;
   chooseDownloadDirectory(): Promise<SettingsSaveResult | null>;
+  chooseSyncFolder(): Promise<SettingsSaveResult | null>;
   setSpaceTheme(id: string, theme: import('./frame-theme').FrameTheme | null): Promise<SettingsView>;
   spaceAction(action: SpaceAction, id?: string, value?: string | null): Promise<string | null>;
   showImportMenu(kind: 'bookmarks' | 'history'): Promise<void>;

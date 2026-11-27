@@ -118,6 +118,14 @@ export function registerSettingsIpc(host: SettingsIpcHost): void {
     const { canceled, filePaths } = await dialog.showOpenDialog(options);
     return !canceled && filePaths[0] ? save({ downloadDirectory: filePaths[0] }) : null;
   });
+  handleSettingsCall(SettingsChannel.chooseSyncFolder, async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: t('settings.chooseSyncFolder'),
+      defaultPath: host.view().values.syncFolder ?? app.getPath('home'),
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return !canceled && filePaths[0] ? save({ syncFolder: filePaths[0] }) : null;
+  });
   handleSettingsCall(SettingsChannel.setSpaceTheme, (_event, id, theme) => {
     if (typeof id === 'string') host.setSpaceTheme(id, theme);
     return host.view();

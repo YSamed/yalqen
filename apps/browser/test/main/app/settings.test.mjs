@@ -75,6 +75,7 @@ test('unknown or mistyped fields fall back', () => {
       askBeforeDownload: true,
       screenshotsInDownloads: false,
       downloadDirectory: null,
+      syncFolder: null,
       displayName: '',
       accentColor: 'orange',
       dismissedUpdate: '',
@@ -348,12 +349,19 @@ test('frame theme falls back to defaults for unknown values', () => {
 });
 
 test('settings files carry portable values and leave local ones out', () => {
-  const values = { ...sanitizeSettings({}), theme: 'light', agentBridge: true, downloadDirectory: '/tmp/x' };
+  const values = {
+    ...sanitizeSettings({}),
+    theme: 'light',
+    agentBridge: true,
+    downloadDirectory: '/tmp/x',
+    syncFolder: '/tmp/s',
+  };
   const file = JSON.parse(settingsFileText(values));
   assert.equal(file.format, 'yalqen-settings');
   assert.equal(file.settings.theme, 'light');
   assert.equal('agentBridge' in file.settings, false);
   assert.equal('downloadDirectory' in file.settings, false);
+  assert.equal('syncFolder' in file.settings, false);
 
   const patch = parseSettingsFile(
     JSON.stringify({

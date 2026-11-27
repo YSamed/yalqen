@@ -908,6 +908,13 @@ export const tr: Record<MessageKey, string> = {
   'settings.importHistory': 'Geçmiş',
   'settings.importHistoryHint': 'Chrome veya Firefox’tan tarama geçmişini alır.',
   'settings.importEllipsis': 'İçe aktar…',
+  'settings.sync': 'Eşitleme',
+  'settings.syncFolder': 'Eşitleme klasörü',
+  'settings.syncFolderHint':
+    'Bilgisayarlarınız arasında eşitlenen bir klasör seçin, örneğin iCloud Drive veya Dropbox içinde. Space’ler, sabitlenmiş sekmeler, klasörler ve ayarlar eşitlenir; geçmiş, parolalar ve açık sekmeler eşitlenmez.',
+  'settings.chooseSyncFolder': 'Klasör seç…',
+  'settings.changeSyncFolder': 'Klasörü değiştir…',
+  'settings.turnOffSync': 'Kapat',
   'settings.settingsFile': 'Ayar dosyası',
   'settings.settingsFileHint':
     'Ayarlarınızı bir dosyayla başka bir Mac’e taşıyın. AI ajan erişimi, indirme klasörü ve kullanım sayımı bu Mac’te kalır.',

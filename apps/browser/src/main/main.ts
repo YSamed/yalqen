@@ -128,7 +128,8 @@ import { RequestRuleStore } from './devtools/request-rules.js';
 import { SessionStore, pinnedOnly, type SavedSession } from './tabs/persistence.js';
 import { ClosedTabStore } from './tabs/closed-tabs.js';
 import { SEARCH_ENGINES, isValidSearchTemplate, resolveSearchEngine } from './address-bar/search.js';
-import { SettingsStore } from './app/settings.js';
+import { SETTINGS_FILE_FORMAT, SettingsStore, parseSettingsFile, withoutLocalKeys } from './app/settings.js';
+import { FolderSync, pinsOf, pinsWindow, samePins } from './library/folder-sync.js';
 import { ProfileRegistry, profileArguments, initializeProfile } from './app/profiles.js';
 import { ProfileController } from './app/profile-controller.js';
 import {
@@ -285,6 +286,7 @@ function startBrowser(): void {
   };
 
   const windows: YalqenWindow[] = [];
+  let folderSync: FolderSync | null = null;
   const readingListChanged = () => broadcastReadingList(webContents.getAllWebContents());
   installReadingListHandlers({
     store: readingList,
@@ -343,6 +345,7 @@ function startBrowser(): void {
         contents.send(WorkspaceChannel.changed);
     for (const window of windows) window.spacesChanged();
     broadcastSettings(settingsView());
+    folderSync?.changed();
   };
   installWorkspaceHandlers({
     store: workspaces,
@@ -824,8 +827,44 @@ function startBrowser(): void {
     applyCookieBlocking(sessions, next.blockThirdPartyCookies, cookiesAllowed);
     pushState();
     broadcastSettings(settingsView());
+    if (next.syncFolder !== previous.syncFolder) folderSync?.start();
+    else folderSync?.changed();
     return next;
   };
+
+  // shortcut: only the first regular window's pins sync; a per-window pin set would need its own sync key.
+  const syncWindow = () =>
+    windows.find((window) => !window.isPrivate && !window.isDeveloper && window.webApp === null) ?? null;
+  folderSync = new FolderSync({
+    directory: userData,
+    folder: () => settings.get().syncFolder,
+    collect: () => {
+      const window = syncWindow();
+      if (!window) return null;
+      const { version: _version, ...values } = settings.get();
+      const spaces = workspaces.syncedSpaces();
+      const ids = [DEFAULT_SPACE_ID, ...spaces.map((space) => space.id)];
+      return {
+        settings: withoutLocalKeys(values),
+        spaces,
+        pins: Object.fromEntries(ids.map((id) => [id, pinsOf(window.tabs.toSavedWindow(id))])),
+      };
+    },
+    apply: (state, removableSpaces) => {
+      const window = syncWindow();
+      if (!window) return false;
+      const patch = parseSettingsFile(JSON.stringify({ format: SETTINGS_FILE_FORMAT, settings: state.settings }));
+      if (patch) updateSettings(patch);
+      if (workspaces.applySyncedSpaces(state.spaces, removableSpaces)) workspacesChanged();
+      const known = new Set([DEFAULT_SPACE_ID, ...workspaces.spaces().map((space) => space.id)]);
+      for (const [id, pins] of Object.entries(state.pins)) {
+        if (!known.has(id) || samePins(pins, pinsOf(window.tabs.toSavedWindow(id)))) continue;
+        const saved = pinsWindow(pins);
+        if (saved) window.tabs.replacePins(saved, id);
+      }
+      return true;
+    },
+  });
 
   const usage = new UsageReporter({
     directory: userData,
@@ -927,8 +966,10 @@ function startBrowser(): void {
       else openWindow({ developer: profile === 'developer', isPrivate: profile === 'private', from });
     },
     onWindowChange: (persist) => {
-      if (persist && !quit.isQuitting)
+      if (persist && !quit.isQuitting) {
         store.scheduleSave(sessionSnapshot, persist === 'lazy' ? LAZY_SAVE_DELAY_MS : undefined);
+        folderSync?.changed();
+      }
     },
     onPrivateTabsClosed: () => {
       if (windows.some((window) => !window.isDeveloper && window.tabs.hasPrivateTabs)) return;
@@ -945,6 +986,7 @@ function startBrowser(): void {
     },
     onWindowFocus: (window) => {
       current = window;
+      folderSync?.check();
       if (process.platform === 'win32') void refreshDefaultBrowser().then(() => broadcastSettings(settingsView()));
     },
     onWindowClosing: (window) => {
@@ -1332,6 +1374,8 @@ function startBrowser(): void {
 
   app.on('before-quit', (event) => quit.beforeQuit(event));
   app.on('will-quit', () => {
+    folderSync?.flush();
+    folderSync?.stop();
     persistentProfiles.stop();
     stopMemorySaver();
     stopAutoArchive();
@@ -1446,6 +1490,7 @@ function startBrowser(): void {
     bench?.mark('extensions-loaded');
     if (!bench) extensions.scheduleUpdates();
     openInitialWindows();
+    folderSync?.start();
     usage.schedule();
     void agentBridge.sync();
     prewarmCommandBar();
