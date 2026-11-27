@@ -51,6 +51,7 @@ import {
   internalNavigation,
   isAllowedFrom,
   type UpdateCardAction,
+  type DefaultBrowserCardAction,
   type InternalNavigation,
 } from '../pages/internal-navigation.js';
 import { PROCEED_URL } from '../privacy/certificates.js';
@@ -157,6 +158,7 @@ interface TabManagerOptions {
   onNewTabSearch: (query: string) => void;
   onRepoPrompt: (action: RepoPromptAction) => void;
   onUpdateCard: (action: UpdateCardAction) => void;
+  onDefaultBrowserCard: (action: DefaultBrowserCardAction) => Promise<void>;
   onHtmlFullScreenChange: (tabId: TabId, fullScreen: boolean) => void;
   onVisit: (url: string, title: string) => string | null;
   onVisitTitle: (id: string | null, title: string) => void;
@@ -2828,6 +2830,11 @@ export class TabManager {
       case 'new-tab-update':
         this.options.onUpdateCard(navigation.action);
         if (navigation.action === 'close') contents.reload();
+        return;
+      case 'new-tab-default-browser':
+        void this.options.onDefaultBrowserCard(navigation.action).then(() => {
+          if (!contents.isDestroyed()) contents.reload();
+        });
         return;
     }
   }

@@ -385,6 +385,78 @@
         gap: 6px;
       }
 
+      .default-bar {
+        --bar-button: #1c1c1e;
+        --bar-button-text: #fff;
+        --bar-button-edge: rgb(0 0 0 / 0.08);
+        position: fixed;
+        z-index: 2;
+        right: 24px;
+        bottom: 10px;
+        left: 24px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 652px;
+        margin: 0 auto;
+        animation: repo-prompt-in 240ms 600ms ease-out backwards;
+      }
+
+      .default-bar-mark {
+        flex: none;
+        filter: grayscale(1);
+        opacity: 0.45;
+      }
+
+      .default-bar-text {
+        flex: 1;
+        min-width: 0;
+        color: var(--faint);
+        font-size: 14px;
+      }
+
+      .default-bar-btn {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 6px;
+        background: var(--bar-button);
+        box-shadow: 0 0 0 1px var(--bar-button-edge);
+        color: var(--bar-button-text);
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+      }
+
+      .default-bar-btn:hover {
+        filter: brightness(1.15);
+      }
+
+      .default-bar-close {
+        display: inline-grid;
+        flex: none;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        margin-left: 8px;
+        border-radius: 6px;
+        color: var(--faint);
+      }
+
+      .default-bar-close:hover {
+        background: var(--hover);
+        color: var(--muted);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .default-bar {
+          --bar-button: rgb(0 0 0 / 0.55);
+          --bar-button-edge: rgb(255 255 255 / 0.08);
+        }
+      }
+
       @keyframes repo-prompt-in {
         from {
           opacity: 0;
@@ -393,7 +465,8 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .repo-prompt {
+        .repo-prompt,
+        .default-bar {
           animation: none;
         }
       }
@@ -487,6 +560,7 @@
       </div>
     </main>
     <div class="cards">__YALQEN_UPDATE_SLOT__ __YALQEN_REPO_PROMPT_SLOT__</div>
+    __YALQEN_DEFAULT_BROWSER_SLOT__
     <script src="yalqen://newtab/suggestions.js" defer></script>
   </body>
 </html>

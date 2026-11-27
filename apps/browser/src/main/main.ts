@@ -151,7 +151,7 @@ import {
   openBrowsingSessions,
   openSpaceSession,
 } from './app/sessions.js';
-import { isDefaultBrowser, refreshDefaultBrowser } from './app/default-browser.js';
+import { isDefaultBrowser, makeDefaultBrowser, refreshDefaultBrowser } from './app/default-browser.js';
 import { EMPTY_HISTORY_INDEX, suggest } from './address-bar/suggestions.js';
 import { appIconPath, preloadPath, rendererPath } from './app/paths.js';
 import { Updater, loadAutoUpdater } from './app/updater.js';
@@ -853,6 +853,13 @@ function startBrowser(): void {
     },
     installUpdate: () => updater.install(),
     updateReady: () => updater.status().state === 'ready',
+    defaultBrowserCard: async (action) => {
+      // macOS confirms the change in its own dialog after this returns, so the card cannot wait for the answer.
+      settings.update({ defaultBrowserPromptDismissed: true });
+      if (action === 'make') await makeDefaultBrowser();
+      await refreshDefaultBrowser();
+      broadcastSettings(settingsView());
+    },
     chatPreferences,
     downloads,
     bookmarks,
@@ -1003,6 +1010,8 @@ function startBrowser(): void {
           ? status.version
           : null;
       },
+      showDefaultBrowserPrompt: () =>
+        !isPrivate && !isDefaultBrowser() && !settings.get().defaultBrowserPromptDismissed,
       showRepoPrompt: () => !isPrivate && repoPrompt.take(),
       engine: () => searchEngine().label,
       accent: () => accentHex(settings.get().accentColor),

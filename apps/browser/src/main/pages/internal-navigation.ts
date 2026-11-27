@@ -7,11 +7,14 @@ import type { RepoPromptAction } from '../app/repo-prompt.js';
 const NEW_TAB_SEARCH_URL = `${NEW_TAB_URL}search`;
 const NEW_TAB_REPO_URL = `${NEW_TAB_URL}repo`;
 const NEW_TAB_UPDATE_URL = `${NEW_TAB_URL}update`;
+const NEW_TAB_DEFAULT_URL = `${NEW_TAB_URL}default-browser`;
 const UPDATE_ACTIONS = new Set<string>(['install', 'close'] satisfies UpdateCardAction[]);
+const DEFAULT_BROWSER_ACTIONS = new Set<string>(['make', 'close'] satisfies DefaultBrowserCardAction[]);
 const REPO_ACTIONS = new Set<string>(['star', 'later', 'close'] satisfies RepoPromptAction[]);
 const COMMAND_PAGES = new Set<string>(['downloads', 'bookmarks'] satisfies CommandPage[]);
 
 export type UpdateCardAction = 'install' | 'close';
+export type DefaultBrowserCardAction = 'make' | 'close';
 
 export type InternalNavigation =
   | { type: 'proceed-http'; token: string }
@@ -23,7 +26,8 @@ export type InternalNavigation =
   | { type: 'archive-restore'; id: string }
   | { type: 'new-tab-search'; query: string }
   | { type: 'new-tab-repo'; action: RepoPromptAction }
-  | { type: 'new-tab-update'; action: UpdateCardAction };
+  | { type: 'new-tab-update'; action: UpdateCardAction }
+  | { type: 'new-tab-default-browser'; action: DefaultBrowserCardAction };
 
 function pageCommand(url: string): InternalNavigation | null {
   try {
@@ -62,6 +66,12 @@ export function internalNavigation(url: string): InternalNavigation | null {
     const action = param(url, 'action');
     return UPDATE_ACTIONS.has(action) ? { type: 'new-tab-update', action: action as UpdateCardAction } : null;
   }
+  if (url.startsWith(`${NEW_TAB_DEFAULT_URL}?`)) {
+    const action = param(url, 'action');
+    return DEFAULT_BROWSER_ACTIONS.has(action)
+      ? { type: 'new-tab-default-browser', action: action as DefaultBrowserCardAction }
+      : null;
+  }
   return pageCommand(url);
 }
 
@@ -81,6 +91,7 @@ export function isAllowedFrom(navigation: InternalNavigation, currentUrl: string
     case 'new-tab-search':
     case 'new-tab-repo':
     case 'new-tab-update':
+    case 'new-tab-default-browser':
       return currentUrl === NEW_TAB_URL;
   }
 }

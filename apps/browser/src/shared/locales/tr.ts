@@ -1412,6 +1412,7 @@ export const tr: Record<MessageKey, string> = {
   'internalPages.updateTitle': 'Yalqen {version} hazır',
   'internalPages.updateText': 'Güncelleme indirildi. Kullanmaya başlamak için yeniden başlat.',
   'internalPages.updateInstall': 'Yeniden başlat',
+  'internalPages.defaultBrowserTitle': 'Yalqen varsayılan tarayıcın olduğunda en iyi şekilde çalışır',
   'internalPages.repoTitle': "Yalqen'i beğendin mi?",
   'internalPages.repoText': "GitHub'da yıldız vermen projenin görünür olmasına yardım eder.",
   'internalPages.repoStar': 'Yıldızla',

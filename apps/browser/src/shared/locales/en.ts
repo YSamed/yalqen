@@ -1400,6 +1400,7 @@ export const en = {
   'internalPages.updateTitle': 'Yalqen {version} is ready',
   'internalPages.updateText': 'The update is downloaded. Restart to start using it.',
   'internalPages.updateInstall': 'Restart',
+  'internalPages.defaultBrowserTitle': 'Yalqen works best as your default browser',
   'internalPages.repoTitle': 'Enjoying Yalqen?',
   'internalPages.repoText': 'A star on GitHub helps more people find the project.',
   'internalPages.repoStar': 'Star',

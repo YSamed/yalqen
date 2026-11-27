@@ -55,6 +55,7 @@ export interface SettingsValues {
   displayName: string;
   accentColor: import('./accent').AccentColorId;
   dismissedUpdate: string;
+  defaultBrowserPromptDismissed: boolean;
   agentBridge: boolean;
   agentOrigins: string[];
   agentActions: AgentActionPolicy;
