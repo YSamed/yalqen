@@ -101,6 +101,8 @@ app
     const actions = [];
     ipcMain.handle(IpcChannel.getState, () => view());
     ipcMain.on(IpcChannel.action, (_event, action) => {
+      // Windows and Linux report the toolbar tone for the caption buttons; it is not a mode action.
+      if (action.type === 'set-titlebar-tone') return;
       actions.push(action.type === 'set-tab-mode' ? `mode:${action.mode}` : action.type);
       if (action.type === 'set-tab-mode') {
         Object.assign(manager.find('a'), tabModes.modeFlags(action.mode));
